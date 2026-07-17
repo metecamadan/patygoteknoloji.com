@@ -1,0 +1,14 @@
+{
+  "name": "patygoteknoloji-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Patygo Teknoloji kurumsal web sitesi (statik).",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js 5173",
+    "serve": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
