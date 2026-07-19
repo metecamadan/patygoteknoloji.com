@@ -1086,7 +1086,7 @@ h1, h2, h3, h4 {
   gap: clamp(24px, 4vw, 40px);
 }
 .footer-brand img {
-  height: 36px;
+  height: 44px;
   width: auto;
   margin-bottom: 14px;
   filter: brightness(0) invert(1);
