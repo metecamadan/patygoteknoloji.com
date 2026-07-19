@@ -1109,39 +1109,87 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 860px) {
+  :root { --header-h: 64px; }
+  .brand img { height: 32px; }
+  .nav { gap: 10px; }
   .nav-links {
     position: fixed;
-    inset: var(--header-h) 0 auto 0;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    bottom: auto;
+    z-index: 99;
     flex-direction: column;
     align-items: stretch;
     background: #fff;
     padding: 14px var(--gutter) 20px;
     border-bottom: 1px solid var(--line);
     box-shadow: var(--shadow);
-    transform: translateY(-120%);
-    transition: transform var(--t);
+    transform: translateY(-110%);
+    transition: transform var(--t), visibility var(--t);
     max-height: calc(100vh - var(--header-h));
     overflow-y: auto;
+    pointer-events: none;
+    visibility: hidden;
   }
-  .nav-links.open { transform: translateY(0); }
-  .nav-links a { padding: 12px 10px; }
-  .nav-toggle { display: flex; }
+  .nav-links.open {
+    transform: translateY(0);
+    pointer-events: auto;
+    visibility: visible;
+  }
+  .nav-links a { padding: 14px 12px; font-size: 1rem; }
+  .nav-toggle { display: flex; position: relative; z-index: 101; }
+  .nav-actions { gap: 8px; }
   .nav-actions .btn-outline { display: none; }
   .nav-actions .btn-primary {
     display: inline-flex;
-    padding: 9px 14px;
-    font-size: 0.85rem;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+    position: relative;
+    z-index: 101;
   }
+  .hero { padding-top: 36px; }
+  .hero-copy h1 { max-width: none; font-size: clamp(1.85rem, 8vw, 2.4rem); }
+  .hero-cta .btn { width: 100%; justify-content: center; }
+  .hero-stats { gap: 16px 20px; }
+  .product-tabs {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    margin-inline: calc(var(--gutter) * -0.25);
+    padding-inline: calc(var(--gutter) * 0.25);
+  }
+  .product-tabs::-webkit-scrollbar { display: none; }
+  .product-tabs button { flex-shrink: 0; }
   .split, .contact-grid, .form-row, .checkout-wrap { grid-template-columns: 1fr; }
   .process { grid-template-columns: 1fr 1fr; }
   .g-3 { grid-template-columns: 1fr; }
+  .quote-card { padding: 18px; }
+  .partners-track { gap: 36px; animation-duration: 26s; }
+  .fab {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+  .fab a, .fab button { width: 44px; height: 44px; }
+  .form-wrap,
+  .checkout-card { padding-right: clamp(28px, 8vw, 40px); }
+  main { padding-bottom: 72px; }
+  .footer-bottom .legal-links { gap: 10px 14px; }
+  html { scroll-padding-top: calc(var(--header-h) + 12px); }
 }
 
 @media (max-width: 620px) {
   .feature-grid, .product-grid, .process, .g-2, .stat-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; }
-  .footer-bottom { flex-direction: column; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; }
   .info-table th { width: auto; }
+  .product-card .actions .btn { font-size: 0.84rem; padding: 12px 8px; }
+  .product-card .price { font-size: 1.2rem; }
+  .check-inline { align-items: flex-start; }
+  .page-hero { padding: 40px 0 28px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
