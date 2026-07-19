@@ -2,10 +2,14 @@
 (function () {
   "use strict";
 
-  /* Header gölge (scroll) */
   const header = document.querySelector(".site-header");
+  const isHome = document.body.classList.contains("home");
+
+  /* İç sayfalarda header her zaman solid */
+  if (header && !isHome) header.classList.add("solid");
+
   const onScroll = () => {
-    if (header) header.classList.toggle("scrolled", window.scrollY > 8);
+    if (header && isHome) header.classList.toggle("scrolled", window.scrollY > 24);
     const top = document.querySelector(".fab .top");
     if (top) top.classList.toggle("show", window.scrollY > 500);
   };
@@ -20,6 +24,7 @@
       const open = links.classList.toggle("open");
       toggle.classList.toggle("open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (header && isHome) header.classList.toggle("scrolled", open || window.scrollY > 24);
     });
     links.querySelectorAll("a").forEach((a) =>
       a.addEventListener("click", () => {
@@ -71,12 +76,12 @@
           cio.unobserve(el);
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.45 }
     );
     counters.forEach((el) => cio.observe(el));
   }
 
-  /* Akordeon (SSS) */
+  /* Akordeon */
   document.querySelectorAll(".acc-head").forEach((head) => {
     head.addEventListener("click", () => {
       const item = head.closest(".acc-item");
@@ -103,7 +108,6 @@
     });
   }
 
-  /* Aktif yıl */
   document.querySelectorAll("[data-year]").forEach((el) => {
     el.textContent = new Date().getFullYear();
   });

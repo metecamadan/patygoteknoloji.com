@@ -16,7 +16,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
   <script type="application/ld+json">
   {
@@ -36,7 +36,7 @@
   }
   </script>
 </head>
-<body>
+<body class="home">
   <header class="site-header">
     <div class="container">
       <nav class="nav" aria-label="Ana menü">
@@ -62,26 +62,21 @@
   </header>
 
   <main>
-    <!-- FULL-BLEED HERO -->
+    <!-- FULL-BLEED CINEMATIC HERO -->
     <section class="hero">
-      <div class="hero-mesh" aria-hidden="true"></div>
-      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="hero-media" aria-hidden="true"></div>
+      <div class="hero-scan" aria-hidden="true"></div>
       <div class="container">
-        <div class="hero-inner reveal">
+        <div class="hero-inner">
           <p class="hero-brand">Patygo Teknoloji</p>
-          <h1>Tek noktadan; <em>uçtan uca</em> elektronik çözümler.</h1>
-          <p class="lead">Apple, Arçelik, Philips, Korkmaz, Lenovo ve HP — tüm elektrikli ürünlerde kurumsal teknik servis, bakım ve BT çözümleri tek elden.</p>
+          <h1>Tek nokta; <em>uçtan uca</em> çözümler.</h1>
+          <p class="lead">Apple, Arçelik, Philips, Korkmaz, Lenovo ve HP — tüm elektrikli ürünlerde kurumsal teknik servis ve BT çözümleri.</p>
           <div class="hero-cta">
             <a href="hizmetler.html" class="btn btn-primary btn-lg">
               Çözümlerimizi Keşfet
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
             <a href="iletisim.html" class="btn btn-outline-light btn-lg">Bizimle İletişime Geç</a>
-          </div>
-          <div class="hero-meta">
-            <div><strong data-count="6" data-suffix="+">6+</strong><span>Yetkili Marka Ortağı</span></div>
-            <div><strong>2023</strong><span>Kuruluş</span></div>
-            <div><strong data-count="100" data-suffix="%">100%</strong><span>Orijinal Parça</span></div>
           </div>
         </div>
       </div>
@@ -96,7 +91,7 @@
       </div>
     </div>
 
-    <!-- SOLUTIONS -->
+    <!-- SOLUTIONS MOSAIC -->
     <section class="section">
       <div class="container">
         <div class="section-head reveal">
@@ -145,27 +140,37 @@
       </div>
     </section>
 
-    <!-- METRICS -->
-    <section class="section section-mist" style="padding-block: clamp(48px, 6vw, 72px)">
+    <!-- SPOTLIGHT -->
+    <section class="section" style="padding-top:0">
       <div class="container">
-        <div class="metrics reveal">
-          <div class="metric"><strong data-count="6" data-suffix="+">6+</strong><span>Yetkili Marka</span></div>
-          <div class="metric"><strong>48s</strong><span>Ortalama Çözüm</span></div>
-          <div class="metric"><strong data-count="100" data-suffix="%">100%</strong><span>Orijinal Parça</span></div>
-          <div class="metric"><strong>24/7</strong><span>Kurumsal Destek</span></div>
+        <div class="spotlight reveal">
+          <div class="spotlight-copy">
+            <span class="badge">Yetkili Servis Deneyimi</span>
+            <h2>Garantili elektronik servis merkezi</h2>
+            <p>Garantili ve garantisi bitmiş tüm elektrikli ürünlere bakım, onarım ve orijinal parçalı teknik destek.</p>
+            <a href="iletisim.html" class="btn btn-primary">Servis Talebi Oluştur</a>
+          </div>
+          <div class="spotlight-stats">
+            <div><strong data-count="6" data-suffix="+">6+</strong><span>Yetkili Marka</span></div>
+            <div><strong>48s</strong><span>Ortalama Çözüm</span></div>
+            <div><strong data-count="100" data-suffix="%">100%</strong><span>Orijinal Parça</span></div>
+            <div><strong>24/7</strong><span>Kurumsal Destek</span></div>
+            <div><strong>2023</strong><span>Kuruluş</span></div>
+            <div><strong>TR</strong><span>İstanbul Merkez</span></div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- SERVICE HIGHLIGHT (navy band like Coretek HP section) -->
+    <!-- SERVICE HIGHLIGHT -->
     <section class="section section-navy">
       <div class="container">
         <div class="feature-band">
           <div class="reveal">
-            <span class="kicker">Yetkili Servis Deneyimi</span>
+            <span class="kicker">Neden Patygo?</span>
             <div class="section-head" style="margin-bottom:0">
-              <h2>Garantili elektronik servis merkezi</h2>
-              <p>Garantili ve garantisi bitmiş tüm elektrikli ürünlere bakım, onarım ve orijinal parçalı teknik destek.</p>
+              <h2>Kurumsal standartta, hızlı ve şeffaf servis</h2>
+              <p>Onayınız olmadan işlem başlamaz; orijinal parça, garantili işçilik ve faturalı süreç.</p>
             </div>
             <ul class="feature-list">
               <li><span class="dot"></span> Orijinal parça — %100 uyumlu</li>
@@ -173,9 +178,9 @@
               <li><span class="dot"></span> Hızlı turnaround — kısa sürede çözüm</li>
               <li><span class="dot"></span> Kurumsal güvence — faturalı hizmet</li>
             </ul>
-            <div class="hero-cta" style="margin-top:32px">
-              <a href="iletisim.html" class="btn btn-primary btn-lg">Servis Talebi Oluştur</a>
-              <a href="hizmetler.html" class="btn btn-outline-light btn-lg">Hizmetleri İncele</a>
+            <div class="hero-cta" style="margin-top:32px;opacity:1;animation:none">
+              <a href="hizmetler.html" class="btn btn-primary btn-lg">Hizmetleri İncele</a>
+              <a href="markalar.html" class="btn btn-outline-light btn-lg">Markaları Gör</a>
             </div>
           </div>
           <div class="feature-panel reveal d2">
@@ -226,7 +231,7 @@
     </section>
 
     <!-- CORPORATE -->
-    <section class="section section-mist">
+    <section class="section section-soft">
       <div class="container split">
         <div class="reveal">
           <span class="kicker">Kurumsal Güvence</span>
@@ -240,7 +245,7 @@
             <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Filo bazlı bakım ve garanti takibi</li>
             <li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Öncelikli kurumsal destek hattı</li>
           </ul>
-          <div class="hero-cta"><a href="kurumsal.html" class="btn btn-primary">Kurumsal Bilgilerimiz</a></div>
+          <div class="hero-cta" style="opacity:1;animation:none"><a href="kurumsal.html" class="btn btn-primary">Kurumsal Bilgilerimiz</a></div>
         </div>
         <div class="reveal d2">
           <div class="hero-card">
@@ -291,7 +296,7 @@
         <div class="cta-block reveal">
           <h2>Cihazınız için hızlı ve güvenilir çözüm</h2>
           <p>Bireysel veya kurumsal teknoloji ihtiyaçlarınız için bugün bizimle iletişime geçin.</p>
-          <div class="hero-cta">
+          <div class="hero-cta" style="opacity:1;animation:none">
             <a href="iletisim.html" class="btn btn-light btn-lg">Teklif / Randevu Al</a>
             <a href="hizmetler.html" class="btn btn-outline-light btn-lg">Hizmetleri İncele</a>
           </div>
