@@ -147,6 +147,17 @@
       els.note.textContent = "Lütfen zorunlu alanları doldurun.";
       return;
     }
+    if (
+      !els.form.onayOnBilgi?.checked ||
+      !els.form.onayMesafeli?.checked ||
+      !els.form.onayIade?.checked
+    ) {
+      els.note.classList.remove("ok");
+      els.note.classList.add("err");
+      els.note.textContent =
+        "Devam etmek için Ön Bilgilendirme, Mesafeli Satış Sözleşmesi ve İade/Cayma koşullarını onaylayın.";
+      return;
+    }
 
     const totals = renderTotals();
     const order = {
@@ -167,6 +178,12 @@
         phone: tel,
         taxId: els.form.vergi.value.trim(),
         note: els.form.not.value.trim(),
+      },
+      contractsAccepted: {
+        onBilgilendirme: true,
+        mesafeliSatis: true,
+        iadeCayma: true,
+        at: new Date().toISOString(),
       },
       status: "pending_payment",
       createdAt: new Date().toISOString(),

@@ -704,8 +704,11 @@ h1, h2, h3, h4 {
   align-items: flex-start;
   font-size: 0.85rem;
   color: var(--muted);
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
+.check-inline + .check-inline { margin-top: -4px; }
+.check-inline + .form-note,
+.check-inline + .btn { margin-top: 8px; }
 .check-inline input {
   width: 17px;
   height: 17px;
