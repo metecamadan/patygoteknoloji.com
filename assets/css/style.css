@@ -130,7 +130,7 @@ h1, h2, h3, h4 {
 }
 .brand { display: flex; align-items: center; line-height: 0; flex-shrink: 0; }
 .brand img {
-  height: 38px;
+  height: 34px;
   width: auto;
   display: block;
 }
