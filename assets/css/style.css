@@ -130,7 +130,7 @@ h1, h2, h3, h4 {
 }
 .brand { display: flex; align-items: center; line-height: 0; flex-shrink: 0; }
 .brand img {
-  height: 34px;
+  height: 42px;
   width: auto;
   display: block;
 }
@@ -1172,7 +1172,7 @@ h1, h2, h3, h4 {
 
 @media (max-width: 860px) {
   :root { --header-h: 64px; }
-  .brand img { height: 32px; }
+  .brand img { height: 38px; }
   .nav { gap: 10px; }
   .nav-links {
     position: fixed;
