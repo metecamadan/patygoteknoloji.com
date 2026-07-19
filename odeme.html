@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ödeme | Patygo Teknoloji — Satın Alma</title>
+  <meta name="description" content="Patygo Teknoloji güvenli satın alma ve ödeme adımı. Siparişinizi oluşturun; sanal POS ile ödeme yakında aktif olacaktır." />
+  <meta name="robots" content="noindex,follow" />
+  <link rel="canonical" href="https://patygoteknoloji.com/odeme.html" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav" aria-label="Ana menü">
+        <a class="brand" href="index.html" aria-label="Patygo Teknoloji ana sayfa"><img src="assets/img/patygo-logo.svg" alt="Patygo Teknoloji logosu" /></a>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="hizmetler.html">Kurumsal Tedarik</a></li>
+          <li><a href="markalar.html">Markalar</a></li>
+          <li><a href="kurumsal.html">Hakkımızda</a></li>
+          <li><a href="iletisim.html">İletişim</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a href="index.html#urunler" class="btn btn-outline">Ürünlere Dön</a>
+          <a href="iletisim.html" class="btn btn-primary">Giriş Yap</a>
+          <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="breadcrumb reveal"><a href="index.html">Ana Sayfa</a> <span>/</span> <a href="index.html#urunler">Ürünler</a> <span>/</span> <span>Ödeme</span></div>
+        <h1 class="reveal">Satın alma</h1>
+        <p class="reveal d1">Sipariş bilgilerinizi girin. Ödeme adımında sanal POS entegrasyonu bağlanacaktır.</p>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="checkout-wrap" id="checkoutRoot">
+          <div class="checkout-card reveal">
+            <h2 style="font-size:1.15rem;margin-bottom:18px">Alıcı bilgileri</h2>
+            <form id="checkout-form" novalidate>
+              <div class="form-row">
+                <div class="field">
+                  <label for="ad">Ad Soyad *</label>
+                  <input type="text" id="ad" name="ad" required autocomplete="name" />
+                </div>
+                <div class="field">
+                  <label for="firma">Firma (opsiyonel)</label>
+                  <input type="text" id="firma" name="firma" autocomplete="organization" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="field">
+                  <label for="email">E-posta *</label>
+                  <input type="email" id="email" name="email" required autocomplete="email" />
+                </div>
+                <div class="field">
+                  <label for="tel">Telefon *</label>
+                  <input type="tel" id="tel" name="tel" required autocomplete="tel" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="field">
+                  <label for="vergi">Vergi No / T.C. (opsiyonel)</label>
+                  <input type="text" id="vergi" name="vergi" inputmode="numeric" />
+                </div>
+                <div class="qty-row" style="align-items:flex-end;margin-bottom:0;padding-bottom:2px">
+                  <div class="field" style="margin:0">
+                    <label for="adet">Adet *</label>
+                    <input type="number" id="adet" name="adet" min="1" max="99" value="1" required />
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label for="not">Sipariş notu</label>
+                <textarea id="not" name="not" rows="3" placeholder="Teslimat veya fatura ile ilgili notunuz..."></textarea>
+              </div>
+              <p class="form-note" id="checkoutNote" aria-live="polite"></p>
+              <button type="submit" class="btn btn-primary btn-block btn-lg" id="payBtn">Ödemeye Geç</button>
+            </form>
+          </div>
+
+          <aside class="checkout-card reveal d1">
+            <h2 style="font-size:1.15rem;margin-bottom:18px">Sipariş özeti</h2>
+            <div class="checkout-product" id="orderProduct">
+              <div class="visual" id="orderBrand">—</div>
+              <div>
+                <span class="brand-tag" id="orderBrandLabel">—</span>
+                <h3 id="orderName">Ürün seçilmedi</h3>
+              </div>
+            </div>
+            <div class="checkout-sum"><span>Birim fiyat (KDV hariç)</span><span id="unitPrice">₺0</span></div>
+            <div class="checkout-sum"><span>Adet</span><span id="qtyLabel">1</span></div>
+            <div class="checkout-sum"><span>Ara toplam</span><span id="subtotal">₺0</span></div>
+            <div class="checkout-sum"><span>KDV (%20)</span><span id="vatAmount">₺0</span></div>
+            <div class="checkout-sum total"><span>Genel toplam</span><strong id="grandTotal">₺0</strong></div>
+            <div class="pos-box" id="posBox">
+              Sanal POS bağlantısı henüz aktif değil. “Ödemeye Geç” ile sipariş kaydı oluşturulur; PayTR / iyzico entegrasyonu eklendiğinde bu adım otomatik ödeme ekranına yönlendirecektir.
+            </div>
+            <p style="margin-top:14px;font-size:0.82rem;color:var(--muted-2)">Sipariş no: <strong id="orderIdPreview">—</strong></p>
+            <a href="index.html#urunler" class="btn btn-outline btn-block" style="margin-top:12px">Ürünlere dön</a>
+          </aside>
+        </div>
+
+        <div class="checkout-card reveal" id="orderSuccess" hidden style="max-width:640px;margin:0 auto;text-align:center">
+          <h2 style="margin-bottom:10px">Siparişiniz oluşturuldu</h2>
+          <p style="color:var(--muted);margin-bottom:18px">Ödeme için sanal POS bağlandığında bu sipariş üzerinden tahsilat yapılacaktır.</p>
+          <p style="font-size:1.05rem;margin-bottom:8px">Sipariş no: <strong id="successOrderId"></strong></p>
+          <p style="color:var(--muted-2);font-size:0.9rem;margin-bottom:22px" id="successSummary"></p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a href="index.html#urunler" class="btn btn-primary">Alışverişe devam</a>
+            <a href="iletisim.html" class="btn btn-outline">İletişim</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/img/patygo-logo.svg" alt="Patygo Teknoloji" />
+          <p>Patygo Teknoloji ve Bilişim Ltd. Şti. — Elektronik marka ürünlerin kurumsal temin, tedarik ve satışı.</p>
+        </div>
+        <div class="footer-col"><h4>Kurumsal</h4><a href="kurumsal.html">Hakkımızda</a><a href="iletisim.html">İletişim</a></div>
+        <div class="footer-col"><h4>Yasal</h4><a href="hizmet-sozlesmesi.html">Satış Sözleşmesi</a><a href="kvkk.html">KVKK</a></div>
+        <div class="footer-col"><h4>İletişim</h4><a href="mailto:info@patygoteknoloji.com">info@patygoteknoloji.com</a></div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span data-year>2026</span> Patygo Teknoloji ve Bilişim Ltd. Şti.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/checkout.js"></script>
+</body>
+</html>
