@@ -313,7 +313,7 @@ h1, h2, h3, h4 {
 }
 .quote-total strong { color: var(--brand); font-size: 1.1rem; }
 
-/* ---------- Partners ---------- */
+/* ---------- Partners (infinite marquee) ---------- */
 .partners {
   border-block: 1px solid var(--line-soft);
   background: #fff;
@@ -329,23 +329,30 @@ h1, h2, h3, h4 {
   color: var(--muted-2);
   margin-bottom: 18px;
 }
+.partners-viewport {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
 .partners-track {
   display: flex;
   gap: 48px;
   width: max-content;
-  animation: scroll-x 28s linear infinite;
+  animation: partners-scroll 32s linear infinite;
+  will-change: transform;
 }
-.partners:hover .partners-track { animation-play-state: paused; }
 .partners-track span {
   font-size: 1.2rem;
   font-weight: 700;
   color: #cbd5e1;
   letter-spacing: -0.02em;
   white-space: nowrap;
-  transition: color var(--t);
+  flex-shrink: 0;
 }
-.partners-track span:hover { color: var(--brand); }
-@keyframes scroll-x { to { transform: translateX(-50%); } }
+@keyframes partners-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
 
 /* ---------- Section heads ---------- */
 .section-head {
@@ -1119,7 +1126,12 @@ h1, h2, h3, h4 {
   .nav-links.open { transform: translateY(0); }
   .nav-links a { padding: 12px 10px; }
   .nav-toggle { display: flex; }
-  .nav-actions .btn:not(.nav-toggle) { display: none; }
+  .nav-actions .btn-outline { display: none; }
+  .nav-actions .btn-primary {
+    display: inline-flex;
+    padding: 9px 14px;
+    font-size: 0.85rem;
+  }
   .split, .contact-grid, .form-row, .checkout-wrap { grid-template-columns: 1fr; }
   .process { grid-template-columns: 1fr 1fr; }
   .g-3 { grid-template-columns: 1fr; }
@@ -1136,6 +1148,10 @@ h1, h2, h3, h4 {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+  .partners-track {
+    animation: partners-scroll 32s linear infinite !important;
+    animation-duration: 32s !important;
   }
   .reveal { opacity: 1; transform: none; }
 }
