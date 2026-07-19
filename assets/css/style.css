@@ -1053,20 +1053,6 @@ h1, h2, h3, h4 {
 }
 .footer-bottom .legal-links { display: flex; flex-wrap: wrap; gap: 16px; }
 .footer-bottom a:hover { color: #fff; }
-.footer-social { display: flex; gap: 8px; margin-top: 14px; }
-.footer-social a {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.06);
-  display: grid;
-  place-items: center;
-  color: #cbd5e1;
-  padding: 0;
-}
-.footer-social a:hover { background: var(--brand); color: #fff; }
-.footer-social svg { width: 16px; height: 16px; }
-
 /* ---------- FAB / reveal ---------- */
 .fab {
   position: fixed;
