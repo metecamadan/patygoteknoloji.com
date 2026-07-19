@@ -64,7 +64,7 @@ const brands = [
   ["dyson", "dyson", "#1A1A1A"],
   ["korkmaz", "KORKMAZ", "#C8102E"],
   ["profilo", "Profilo", "#E30613"],
-  ["altus", "Altus", "#0033A0"],
+  ["karcher", "Kärcher", "#FFED00"],
   ["regal", "Regal", "#E30613"],
   ["grundig", "GRUNDIG", "#111111"],
   ["electrolux", "Electrolux", "#003DA5"],

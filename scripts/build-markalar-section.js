@@ -70,7 +70,7 @@ const home = [
   ["dyson", "Dyson", "Süpürge ve bakım ürünleri"],
   ["korkmaz", "Korkmaz", "Mutfak ve küçük ev aletleri"],
   ["profilo", "Profilo", "Beyaz eşya çözümleri"],
-  ["altus", "Altus", "Ekonomik beyaz eşya"],
+  ["karcher", "Kärcher", "Basınçlı yıkama ve temizlik"],
   ["regal", "Regal", "Beyaz eşya serileri"],
   ["grundig", "Grundig", "Ev aletleri ve elektronik"],
   ["electrolux", "Electrolux", "Beyaz eşya ve mutfak"],
