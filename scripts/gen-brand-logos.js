@@ -3,7 +3,7 @@ const path = require("path");
 const dir = path.join(__dirname, "..", "assets", "img", "brands");
 fs.mkdirSync(dir, { recursive: true });
 
-/** [slug, displayName, color] */
+/** [slug, displayName, color] — aktif marka seti */
 const brands = [
   // Bilgisayar & BT
   ["apple", "Apple", "#111111"],
@@ -39,23 +39,20 @@ const brands = [
   ["jbl", "JBL", "#FF6600"],
   ["philips", "PHILIPS", "#0B5CAB"],
   ["oppo", "OPPO", "#1BA784"],
-  ["realme", "realme", "#FFC915"],
   ["vivo", "vivo", "#415FFF"],
   ["honor", "HONOR", "#111111"],
   ["oneplus", "OnePlus", "#F5010C"],
-  ["nokia", "NOKIA", "#124191"],
+  ["duracell", "Duracell", "#000000"],
   ["tcl", "TCL", "#E50012"],
   ["panasonic", "Panasonic", "#013B81"],
-  ["sharp", "SHARP", "#E4002B"],
-  ["hisense", "Hisense", "#00B4E4"],
+  ["gopro", "GoPro", "#111111"],
+  ["garmin", "Garmin", "#007CC3"],
   ["bose", "BOSE", "#111111"],
   ["beats", "Beats", "#E01F3D"],
   ["anker", "Anker", "#00A9E0"],
-  ["baseus", "Baseus", "#111111"],
-  ["tecno", "TECNO", "#0057FF"],
-  ["infinix", "Infinix", "#111111"],
-  ["google", "Google", "#4285F4"],
-  ["nothing", "Nothing", "#111111"],
+  ["marshall", "Marshall", "#111111"],
+  ["nikon", "Nikon", "#FFE100"],
+  ["braun", "Braun", "#111111"],
 
   // Beyaz eşya & ev
   ["arcelik", "Arçelik", "#E30613"],
@@ -78,10 +75,10 @@ const brands = [
   ["fakir", "FAKIR", "#C8102E"],
   ["homend", "Homend", "#E30613"],
   ["schafer", "Schafer", "#C8102E"],
-  ["sinbo", "Sinbo", "#0033A0"],
+  ["rowenta", "Rowenta", "#E30613"],
   ["arzum", "Arzum", "#E30613"],
-  ["aeg", "AEG", "#C8102E"],
-  ["king", "King", "#111111"],
+  ["smeg", "SMEG", "#E30613"],
+  ["kitchenaid", "KitchenAid", "#C8102E"],
 
   // Yazıcı & çevre
   ["epson", "EPSON", "#003399"],
@@ -91,24 +88,34 @@ const brands = [
   ["kyocera", "KYOCERA", "#E60012"],
   ["ricoh", "RICOH", "#E60012"],
   ["lexmark", "Lexmark", "#C8102E"],
-  ["pantum", "Pantum", "#E30613"],
+  ["seagate", "Seagate", "#6EBE4A"],
   ["oki", "OKI", "#E60012"],
   ["konica", "Konica Minolta", "#0033A0"],
   ["zebra", "ZEBRA", "#111111"],
-  ["godex", "Godex", "#0033A0"],
+  ["wd", "Western Digital", "#00529B"],
   ["honeywell", "Honeywell", "#E30613"],
   ["dymo", "DYMO", "#0033A0"],
-  ["plustek", "Plustek", "#0066B3"],
+  ["sandisk", "SanDisk", "#ED1C24"],
   ["kodak", "KODAK", "#FFD100"],
-  ["utax", "UTAX", "#0033A0"],
-  ["triumph", "Triumph-Adler", "#111111"],
-  ["deli", "deli", "#E30613"],
+  ["fujifilm", "FUJIFILM", "#E60012"],
+  ["3m", "3M", "#E30613"],
+  ["logitech-print", "Logitech", "#00B8FC"],
   ["hp-print", "HP", "#0096D6"],
   ["samsung-print", "SAMSUNG", "#1428A0"],
-  ["sharp-print", "SHARP", "#E4002B"],
+  ["nikon-print", "Nikon", "#111111"],
   ["fujitsu-scan", "FUJITSU", "#E60012"],
-  ["evolis", "Evolis", "#E30613"],
+  ["energizer", "Energizer", "#E30613"],
 ];
+
+const keep = new Set(brands.map(([s]) => s));
+for (const file of fs.readdirSync(dir)) {
+  if (!file.endsWith(".svg")) continue;
+  const slug = file.replace(/\.svg$/, "");
+  if (!keep.has(slug)) {
+    fs.unlinkSync(path.join(dir, file));
+    console.log("removed", file);
+  }
+}
 
 const seen = new Set();
 for (const [slug, name, color] of brands) {
