@@ -106,7 +106,7 @@
     if (els.note) {
       els.note.classList.add("err");
       els.note.textContent =
-        "Ürün bulunamadı. Lütfen ürün listesinden Satın Al ile tekrar deneyin.";
+        "Ürün bulunamadı. Lütfen Ürünler sayfasından Satın Al ile tekrar deneyin.";
     }
     if (els.form) {
       const btn = els.form.querySelector('button[type="submit"]');
