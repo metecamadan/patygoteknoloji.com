@@ -814,21 +814,79 @@ h1, h2, h3, h4 {
 }
 .check-list svg { width: 13px; height: 13px; }
 
+.brand-cat {
+  margin-bottom: clamp(36px, 5vw, 52px);
+}
+.brand-cat:last-child { margin-bottom: 0; }
+.brand-cat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.brand-cat-head h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.brand-cat-head span {
+  font-size: 0.82rem;
+  color: var(--muted-2);
+  font-weight: 500;
+}
+.brand-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
 .brand-tile {
   text-align: center;
-  padding: 32px 20px;
+  padding: 22px 16px 18px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  transition: border-color var(--t), box-shadow var(--t);
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 140px;
 }
-.brand-tile:hover { border-color: #bfdbfe; box-shadow: var(--shadow); }
+.brand-tile:hover {
+  border-color: #bfdbfe;
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+.brand-tile .logo {
+  width: 100%;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+}
+.brand-tile .logo img {
+  max-width: 140px;
+  max-height: 36px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
 .brand-tile .logo-word {
   font-size: 1.4rem;
   font-weight: 700;
   margin-bottom: 8px;
 }
-.brand-tile p { color: var(--muted); font-size: 0.88rem; }
+.brand-tile p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin: 0;
+}
 
 .info-table {
   width: 100%;
@@ -1107,6 +1165,7 @@ h1, h2, h3, h4 {
   .hero-visual { max-width: 480px; }
   .product-grid { grid-template-columns: repeat(2, 1fr); }
   .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  .brand-grid { grid-template-columns: repeat(3, 1fr); }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .dark-band-grid { grid-template-columns: 1fr; }
 }
@@ -1186,6 +1245,10 @@ h1, h2, h3, h4 {
 
 @media (max-width: 620px) {
   .feature-grid, .product-grid, .process, .g-2, .stat-grid { grid-template-columns: 1fr; }
+  .brand-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .brand-tile { min-height: 120px; padding: 16px 12px 14px; }
+  .brand-tile .logo { height: 44px; }
+  .brand-cat-head { flex-direction: column; align-items: flex-start; gap: 4px; }
   .footer-grid { grid-template-columns: 1fr; }
   .footer-bottom { flex-direction: column; align-items: flex-start; }
   .info-table th { width: auto; }
