@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#2563eb"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Patygo">
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <!-- Logo wordmark'taki P harfi -->
+  <path fill="#ffffff" transform="translate(32 33) scale(2.05) translate(-10.75 11.2)" d="M10.02-7.72L7.61-7.72L7.61 0L2.56 0L2.56-22.41L10.47-22.41Q18.94-22.41 18.94-15.27Q18.94-11.89 16.51-9.80Q14.08-7.72 10.02-7.72M9.59-18.53L7.61-18.53L7.61-11.55L9.59-11.55Q13.63-11.55 13.63-15.08Q13.63-18.53 9.59-18.53"/>
 </svg>
