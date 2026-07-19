@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 86" role="img" aria-label="Patygo Teknoloji">
   <defs>
     <style>
-      .p { font: 800 62px/1 Arial Black, Arial, Helvetica, sans-serif; fill: #0b6be8; }
-      .rest { font: 700 40px/1 Arial, Helvetica, sans-serif; fill: #0b6be8; }
+      .p { font: 800 62px/1 Arial Black, Arial, Helvetica, sans-serif; fill: #2563eb; }
+      .rest { font: 700 40px/1 Arial, Helvetica, sans-serif; fill: #2563eb; }
       .sub { font: 500 15.5px/1 Arial, Helvetica, sans-serif; fill: #5a6574; letter-spacing: 0.3px; }
     </style>
   </defs>

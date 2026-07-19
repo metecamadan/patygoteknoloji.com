@@ -3,20 +3,14 @@
   "use strict";
 
   const header = document.querySelector(".site-header");
-  const isHome = document.body.classList.contains("home");
-
-  /* İç sayfalarda header her zaman solid */
-  if (header && !isHome) header.classList.add("solid");
-
   const onScroll = () => {
-    if (header && isHome) header.classList.toggle("scrolled", window.scrollY > 24);
+    if (header) header.classList.toggle("scrolled", window.scrollY > 8);
     const top = document.querySelector(".fab .top");
     if (top) top.classList.toggle("show", window.scrollY > 500);
   };
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
-  /* Mobil menü */
   const toggle = document.querySelector(".nav-toggle");
   const links = document.querySelector(".nav-links");
   if (toggle && links) {
@@ -24,7 +18,6 @@
       const open = links.classList.toggle("open");
       toggle.classList.toggle("open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      if (header && isHome) header.classList.toggle("scrolled", open || window.scrollY > 24);
     });
     links.querySelectorAll("a").forEach((a) =>
       a.addEventListener("click", () => {
@@ -35,7 +28,6 @@
     );
   }
 
-  /* Scroll reveal */
   const revealables = document.querySelectorAll(".reveal");
   if ("IntersectionObserver" in window && revealables.length) {
     const io = new IntersectionObserver(
@@ -47,41 +39,30 @@
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -30px 0px" }
     );
     revealables.forEach((el) => io.observe(el));
   } else {
     revealables.forEach((el) => el.classList.add("in"));
   }
 
-  /* Sayaç animasyonu */
-  const counters = document.querySelectorAll("[data-count]");
-  if ("IntersectionObserver" in window && counters.length) {
-    const cio = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return;
-          const el = e.target;
-          const target = parseFloat(el.dataset.count);
-          const suffix = el.dataset.suffix || "";
-          const dur = 1400;
-          const start = performance.now();
-          const step = (now) => {
-            const p = Math.min((now - start) / dur, 1);
-            const eased = 1 - Math.pow(1 - p, 3);
-            el.textContent = Math.round(target * eased) + suffix;
-            if (p < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
-          cio.unobserve(el);
+  /* Ürün sekmeleri */
+  const tabs = document.querySelectorAll(".product-tabs button");
+  const cards = document.querySelectorAll(".product-card");
+  if (tabs.length && cards.length) {
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabs.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const filter = btn.dataset.filter;
+        cards.forEach((card) => {
+          const show = filter === "all" || card.dataset.cat === filter;
+          card.hidden = !show;
         });
-      },
-      { threshold: 0.45 }
-    );
-    counters.forEach((el) => cio.observe(el));
+      });
+    });
   }
 
-  /* Akordeon */
   document.querySelectorAll(".acc-head").forEach((head) => {
     head.addEventListener("click", () => {
       const item = head.closest(".acc-item");
@@ -92,7 +73,6 @@
     });
   });
 
-  /* İletişim formu (demo) */
   const form = document.querySelector("#contact-form");
   if (form) {
     form.addEventListener("submit", (ev) => {
@@ -104,7 +84,6 @@
           "Teşekkürler! Talebiniz alındı. Ekibimiz en kısa sürede sizinle iletişime geçecek.";
       }
       form.reset();
-      if (note) note.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
 
