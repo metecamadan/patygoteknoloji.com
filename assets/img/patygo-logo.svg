@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 86" role="img" aria-label="Patygo Teknoloji">
+  <defs>
+    <style>
+      .p { font: 800 62px/1 Arial Black, Arial, Helvetica, sans-serif; fill: #0b6be8; }
+      .rest { font: 700 40px/1 Arial, Helvetica, sans-serif; fill: #0b6be8; }
+      .sub { font: 500 15.5px/1 Arial, Helvetica, sans-serif; fill: #5a6574; letter-spacing: 0.3px; }
+    </style>
+  </defs>
+  <text class="p" x="0" y="54">P</text>
+  <text class="rest" x="42" y="48">atygo</text>
+  <text class="sub" x="46" y="72">teknoloji.com</text>
+</svg>

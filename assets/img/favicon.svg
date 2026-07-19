@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#0b6be8"/>
-  <path d="M20 15h16.5c7.7 0 13 4.7 13 12s-5.3 12.2-13 12.2H28V49h-8V15zm8 17.6h7.4c3.4 0 5.6-2 5.6-5.3 0-3.2-2.2-5.1-5.6-5.1H28v10.4z" fill="#fff"/>
+  <text x="12" y="46" fill="#fff" font-family="Arial Black, Arial, sans-serif" font-size="40" font-weight="800">P</text>
 </svg>
