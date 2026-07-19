@@ -47,7 +47,7 @@ const mobile = [
   ["oneplus", "OnePlus", "Flagship telefon çözümleri"],
   ["google", "Google", "Pixel telefon ve Nest ürünleri"],
   ["duracell", "Duracell", "Pil ve güç çözümleri"],
-  ["tcl", "TCL", "TV ve mobil ürünler"],
+  ["dji", "DJI", "Drone, gimbal ve kamera sistemleri"],
   ["panasonic", "Panasonic", "TV ve görüntü sistemleri"],
   ["gopro", "GoPro", "Aksiyon kamera ve aksesuar"],
   ["garmin", "Garmin", "Akıllı saat ve navigasyon"],

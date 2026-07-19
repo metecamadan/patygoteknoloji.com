@@ -44,7 +44,7 @@ const brands = [
   ["oneplus", "OnePlus", "#F5010C"],
   ["google", "Google", "#4285F4"],
   ["duracell", "Duracell", "#000000"],
-  ["tcl", "TCL", "#E50012"],
+  ["dji", "DJI", "#111111"],
   ["panasonic", "Panasonic", "#013B81"],
   ["gopro", "GoPro", "#111111"],
   ["garmin", "Garmin", "#007CC3"],
