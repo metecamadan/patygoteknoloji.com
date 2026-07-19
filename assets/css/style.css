@@ -844,7 +844,7 @@ h1, h2, h3, h4 {
 }
 .brand-tile {
   text-align: center;
-  padding: 22px 16px 18px;
+  padding: 26px 16px 20px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -852,7 +852,7 @@ h1, h2, h3, h4 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 140px;
+  min-height: 168px;
 }
 .brand-tile:hover {
   border-color: #bfdbfe;
@@ -861,17 +861,17 @@ h1, h2, h3, h4 {
 }
 .brand-tile .logo {
   width: 100%;
-  height: 52px;
+  height: 72px;
   display: grid;
   place-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--line-soft);
 }
 .brand-tile .logo img {
-  max-width: 140px;
-  max-height: 36px;
+  max-width: 170px;
+  max-height: 48px;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -1246,8 +1246,9 @@ h1, h2, h3, h4 {
 @media (max-width: 620px) {
   .feature-grid, .product-grid, .process, .g-2, .stat-grid { grid-template-columns: 1fr; }
   .brand-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .brand-tile { min-height: 120px; padding: 16px 12px 14px; }
-  .brand-tile .logo { height: 44px; }
+  .brand-tile { min-height: 148px; padding: 18px 12px 14px; }
+  .brand-tile .logo { height: 60px; }
+  .brand-tile .logo img { max-height: 42px; max-width: 150px; }
   .brand-cat-head { flex-direction: column; align-items: flex-start; gap: 4px; }
   .footer-grid { grid-template-columns: 1fr; }
   .footer-bottom { flex-direction: column; align-items: flex-start; }
