@@ -130,9 +130,10 @@ h1, h2, h3, h4 {
 }
 .brand { display: flex; align-items: center; line-height: 0; flex-shrink: 0; }
 .brand img {
-  height: 42px;
+  height: 52px;
   width: auto;
   display: block;
+  border-radius: 10px;
 }
 .nav-links {
   display: flex;
@@ -1094,10 +1095,11 @@ h1, h2, h3, h4 {
   gap: clamp(24px, 4vw, 40px);
 }
 .footer-brand img {
-  height: 44px;
+  height: 56px;
   width: auto;
   margin-bottom: 14px;
-  filter: brightness(0) invert(1);
+  border-radius: 12px;
+  background: #fff;
 }
 .footer-brand p { font-size: 0.9rem; max-width: 300px; line-height: 1.55; }
 .footer-col h4 {
@@ -1191,7 +1193,7 @@ h1, h2, h3, h4 {
 
 @media (max-width: 860px) {
   :root { --header-h: 64px; }
-  .brand img { height: 38px; }
+  .brand img { height: 44px; }
   .nav { gap: 10px; }
   .nav-links {
     position: fixed;
