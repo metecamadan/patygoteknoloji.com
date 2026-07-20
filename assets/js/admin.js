@@ -72,8 +72,11 @@
   }
 
   function showPanel(on) {
-    loginView.hidden = on;
+    loginView.hidden = !!on;
     panelView.hidden = !on;
+    loginView.classList.toggle("is-hidden", !!on);
+    panelView.classList.toggle("is-hidden", !on);
+    document.body.classList.toggle("admin-authed", !!on);
   }
 
   function emptyForm() {

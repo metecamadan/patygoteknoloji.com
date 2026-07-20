@@ -14,10 +14,11 @@
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
-    <form id="loginForm" class="admin-login-card">
+    <form id="loginForm" class="admin-login-card" method="post" action="#">
       <img src="assets/img/patygo-logo.png" alt="Patygo" class="admin-logo" />
       <h1>Ürün paneli</h1>
       <p>Yalnızca yetkili kullanım içindir.</p>
+      <p class="admin-hint">Adres: <code>http://127.0.0.1:5173/admin.html</code> · Şifre: <code>patygo-admin</code></p>
       <label for="password">Şifre</label>
       <input type="password" id="password" name="password" required autocomplete="current-password" />
       <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
