@@ -319,10 +319,11 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, () => {
   console.log("\n  Patygo Teknoloji — yerel sunucu");
   console.log("  ----------------------------------------");
   console.log(`  Site  : http://127.0.0.1:${PORT}`);
+  console.log(`  Site  : http://localhost:${PORT}`);
   console.log(`  Admin : http://127.0.0.1:${PORT}/admin.html`);
   console.log(`  Şifre : ADMIN_PASSWORD (varsayılan: patygo-admin)`);
   console.log("");

@@ -43,14 +43,32 @@
   }
 
   async function api(path, options) {
+    if (location.protocol === "file:") {
+      throw new Error("Paneli file:// ile açmayın. http://127.0.0.1:5173/admin.html kullanın.");
+    }
     const opts = options || {};
     const headers = Object.assign({ Accept: "application/json" }, opts.headers || {});
     if (token) headers.Authorization = "Bearer " + token;
     if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-    const res = await fetch(path, Object.assign({}, opts, { headers }));
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "İstek başarısız");
-    return data;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "İstek başarısız (" + res.status + ")");
+      return data;
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        throw new Error("Sunucu yanıt vermedi. node server.js çalışıyor mu?");
+      }
+      if (err && err.message && /Failed to fetch|NetworkError|fetch/i.test(err.message)) {
+        throw new Error("API'ye ulaşılamadı. Adres: http://127.0.0.1:5173/admin.html");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   function showPanel(on) {
@@ -166,6 +184,8 @@
 
   loginForm.addEventListener("submit", async (ev) => {
     ev.preventDefault();
+    const btn = loginForm.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
     note(loginNote, "", "Giriş yapılıyor…");
     try {
       const data = await api("/api/admin/login", {
@@ -177,8 +197,12 @@
       showPanel(true);
       await refresh();
       emptyForm();
+      note(loginNote, "", "");
     } catch (err) {
+      showPanel(false);
       note(loginNote, "err", err.message || "Giriş başarısız");
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
