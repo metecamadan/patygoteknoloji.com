@@ -452,12 +452,12 @@ async function handleApi(req, res, urlPath) {
       const result = paid ? "success" : "failed";
       const location =
         SITE_BASE_URL +
-        "/odeme.html?payment=" +
+        "/odeme?payment=" +
         result +
         (orderId ? "&orderId=" + encodeURIComponent(orderId) : "");
       return htmlRedirect(res, location);
     } catch (_) {
-      return htmlRedirect(res, SITE_BASE_URL + "/odeme.html?payment=failed");
+      return htmlRedirect(res, SITE_BASE_URL + "/odeme?payment=failed");
     }
   }
 
@@ -733,43 +733,76 @@ async function handleApi(req, res, urlPath) {
   return json(res, 404, { ok: false, error: "API bulunamadı" });
 }
 
-function serveStatic(req, res) {
-  let filePath = safeJoin(ROOT, req.url === "/" ? "/index.html" : req.url);
+function permanentRedirect(res, location) {
+  res.writeHead(
+    301,
+    securityHeaders({
+      Location: location,
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=86400",
+    })
+  );
+  res.end("Moved Permanently");
+}
+
+function serveNotFound(res, method) {
+  const notFound = path.join(ROOT, "404.html");
+  fs.readFile(notFound, (e, page) => {
+    res.writeHead(404, securityHeaders({ "Content-Type": MIME[".html"] }));
+    if (method === "HEAD") return res.end();
+    res.end(e ? "404 Not Found" : page);
+  });
+}
+
+function sendFile(res, filePath, method) {
+  const rel = path.relative(ROOT, filePath).split(path.sep).join("/");
+  if (isBlocked(rel) || rel.split("/").some((p) => p.startsWith("."))) {
+    return serveNotFound(res, method);
+  }
+  const ext = path.extname(filePath).toLowerCase();
+  if (!ALLOWED_EXT.has(ext)) {
+    return serveNotFound(res, method);
+  }
+  fs.readFile(filePath, (readErr, data) => {
+    if (readErr) return serveNotFound(res, method);
+    res.writeHead(200, securityHeaders({ "Content-Type": MIME[ext] || "application/octet-stream" }));
+    if (method === "HEAD") return res.end();
+    res.end(data);
+  });
+}
+
+function serveStatic(req, res, pathname) {
+  let filePath = safeJoin(ROOT, pathname === "/" ? "/index.html" : pathname);
   if (!filePath) {
     res.writeHead(403, securityHeaders({ "Content-Type": "text/plain; charset=utf-8" }));
     return res.end("403 Forbidden");
   }
 
-  const rel = path.relative(ROOT, filePath).split(path.sep).join("/");
-  if (isBlocked(rel) || rel.split("/").some((p) => p.startsWith("."))) {
-    res.writeHead(404, securityHeaders({ "Content-Type": "text/plain; charset=utf-8" }));
-    return res.end("404 Not Found");
-  }
-
   fs.stat(filePath, (err, stat) => {
-    if (!err && stat.isDirectory()) filePath = path.join(filePath, "index.html");
-    const ext = path.extname(filePath).toLowerCase();
-    if (!ALLOWED_EXT.has(ext)) {
-      res.writeHead(404, securityHeaders({ "Content-Type": "text/plain; charset=utf-8" }));
-      return res.end("404 Not Found");
+    if (!err && stat.isDirectory()) {
+      filePath = path.join(filePath, "index.html");
+      return sendFile(res, filePath, req.method);
     }
-    fs.readFile(filePath, (readErr, data) => {
-      if (readErr) {
-        const notFound = path.join(ROOT, "404.html");
-        return fs.readFile(notFound, (e, page) => {
-          res.writeHead(404, securityHeaders({ "Content-Type": MIME[".html"] }));
-          res.end(e ? "404 Not Found" : page);
-        });
+    if (!err && stat.isFile()) {
+      return sendFile(res, filePath, req.method);
+    }
+
+    // Uzantısız temiz URL: /urunler → urunler.html
+    if (!path.extname(pathname) && pathname !== "/") {
+      const htmlPath = safeJoin(ROOT, pathname + ".html");
+      if (htmlPath && fs.existsSync(htmlPath)) {
+        return sendFile(res, htmlPath, req.method);
       }
-      res.writeHead(200, securityHeaders({ "Content-Type": MIME[ext] || "application/octet-stream" }));
-      if (req.method === "HEAD") return res.end();
-      res.end(data);
-    });
+    }
+
+    return serveNotFound(res, req.method);
   });
 }
 
 const server = http.createServer(async (req, res) => {
-  const urlPath = (req.url || "/").split("?")[0];
+  const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const urlPath = requestUrl.pathname;
+  const search = requestUrl.search || "";
 
   if (urlPath.startsWith("/api/")) {
     try {
@@ -785,7 +818,23 @@ const server = http.createServer(async (req, res) => {
     return res.end("405 Method Not Allowed");
   }
 
-  serveStatic(req, res);
+  // SEO: /sayfa.html → /sayfa (301)
+  if (/\.html$/i.test(urlPath)) {
+    const clean =
+      urlPath.toLowerCase() === "/index.html" ? "/" + search : urlPath.replace(/\.html$/i, "") + search;
+    return permanentRedirect(res, clean);
+  }
+
+  // /urunler/ → /urunler
+  if (urlPath.length > 1 && urlPath.endsWith("/")) {
+    const trimmed = urlPath.replace(/\/+$/, "");
+    const htmlPath = safeJoin(ROOT, trimmed + ".html");
+    if (htmlPath && fs.existsSync(htmlPath)) {
+      return permanentRedirect(res, trimmed + search);
+    }
+  }
+
+  serveStatic(req, res, urlPath);
 });
 
 server.listen(PORT, () => {
@@ -793,7 +842,7 @@ server.listen(PORT, () => {
   console.log("  ----------------------------------------");
   console.log(`  Site  : http://127.0.0.1:${PORT}`);
   console.log(`  Site  : http://localhost:${PORT}`);
-  console.log(`  Admin : http://127.0.0.1:${PORT}/admin.html`);
+  console.log(`  Admin : http://127.0.0.1:${PORT}/admin`);
   console.log(`  Şifre : ADMIN_PASSWORD (varsayılan: patygo-admin)`);
   console.log(
     `  POS   : ${

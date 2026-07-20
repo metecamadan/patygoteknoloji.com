@@ -28,8 +28,8 @@
 
   function quoteHref() {
     const path = (location.pathname || "").toLowerCase();
-    if (path.endsWith("/") || path.endsWith("index.html") || path === "") return "#teklif";
-    return "index.html#teklif";
+    if (path === "/" || path === "") return "#teklif";
+    return "/#teklif";
   }
 
   function makeCard(product, index) {
@@ -66,7 +66,7 @@
 
     const title = document.createElement("h3");
     const titleLink = document.createElement("a");
-    titleLink.href = "urun-detay.html?id=" + encodeURIComponent(product.id);
+    titleLink.href = "/urun-detay?id=" + encodeURIComponent(product.id);
     titleLink.textContent = product.name || "";
     title.appendChild(titleLink);
 
@@ -112,7 +112,7 @@
 
     const buy = document.createElement("a");
     buy.className = "btn btn-outline";
-    buy.href = "odeme.html?id=" + encodeURIComponent(product.id);
+    buy.href = "/odeme?id=" + encodeURIComponent(product.id);
     buy.textContent = "Hemen Al";
 
     const quote = document.createElement("a");

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://patygoteknoloji.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://patygoteknoloji.com/urunler.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://patygoteknoloji.com/kurumsal.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://patygoteknoloji.com/hizmetler.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://patygoteknoloji.com/markalar.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://patygoteknoloji.com/iletisim.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://patygoteknoloji.com/kvkk.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://patygoteknoloji.com/gizlilik.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://patygoteknoloji.com/cerez.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://patygoteknoloji.com/kullanim-kosullari.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://patygoteknoloji.com/hizmet-sozlesmesi.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://patygoteknoloji.com/mesafeli-satis-sozlesmesi.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://patygoteknoloji.com/on-bilgilendirme-formu.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://patygoteknoloji.com/iade-ve-cayma.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://patygoteknoloji.com/urunler</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://patygoteknoloji.com/kurumsal</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://patygoteknoloji.com/hizmetler</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://patygoteknoloji.com/markalar</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://patygoteknoloji.com/iletisim</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://patygoteknoloji.com/kvkk</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://patygoteknoloji.com/gizlilik</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://patygoteknoloji.com/cerez</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://patygoteknoloji.com/kullanim-kosullari</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://patygoteknoloji.com/hizmet-sozlesmesi</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://patygoteknoloji.com/mesafeli-satis-sozlesmesi</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://patygoteknoloji.com/on-bilgilendirme-formu</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://patygoteknoloji.com/iade-ve-cayma</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
 </urlset>

@@ -7,7 +7,7 @@
     root.textContent = "";
     if (!product) {
       root.innerHTML =
-        '<p style="color:var(--muted)">Ürün bulunamadı. <a href="urunler.html" style="color:var(--brand)">Ürünlere dön</a></p>';
+        '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürünlere dön</a></p>';
       return;
     }
 
@@ -62,7 +62,7 @@
     const crumb = document.createElement("div");
     crumb.className = "breadcrumb";
     crumb.innerHTML =
-      '<a href="index.html">Ana Sayfa</a> <span>/</span> <a href="urunler.html">Ürünler</a> <span>/</span> <span></span>';
+      '<a href="/">Ana Sayfa</a> <span>/</span> <a href="/urunler">Ürünler</a> <span>/</span> <span></span>';
     crumb.querySelector("span:last-child").textContent = product.name;
 
     const tag = document.createElement("span");
@@ -97,7 +97,7 @@
     });
     const buy = document.createElement("a");
     buy.className = "btn btn-outline btn-lg";
-    buy.href = "odeme.html?id=" + encodeURIComponent(product.id);
+    buy.href = "/odeme?id=" + encodeURIComponent(product.id);
     buy.textContent = "Hemen Al";
     actions.appendChild(add);
     actions.appendChild(buy);

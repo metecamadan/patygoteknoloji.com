@@ -55,7 +55,7 @@
 
   async function api(path, options) {
     if (location.protocol === "file:") {
-      throw new Error("Paneli file:// ile açmayın. http://127.0.0.1:5173/admin.html kullanın.");
+      throw new Error("Paneli file:// ile açmayın. http://127.0.0.1:5173/admin kullanın.");
     }
     const opts = options || {};
     const headers = Object.assign({ Accept: "application/json" }, opts.headers || {});
@@ -77,7 +77,7 @@
         throw new Error("Sunucu yanıt vermedi. node server.js çalışıyor mu?");
       }
       if (err && err.message && /Failed to fetch|NetworkError|fetch/i.test(err.message)) {
-        throw new Error("API'ye ulaşılamadı. Adres: http://127.0.0.1:5173/admin.html");
+        throw new Error("API'ye ulaşılamadı. Adres: http://127.0.0.1:5173/admin");
       }
       throw err;
     } finally {
