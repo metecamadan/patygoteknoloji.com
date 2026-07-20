@@ -55,8 +55,14 @@
   }
 
   function showResult(kind, order) {
-    if (els.root) els.root.hidden = true;
-    if (els.success) els.success.hidden = false;
+    if (els.root) {
+      els.root.hidden = true;
+      els.root.style.display = "none";
+    }
+    if (els.success) {
+      els.success.hidden = false;
+      els.success.style.display = "block";
+    }
     const paid = kind === "success";
     if (els.successTitle) {
       els.successTitle.textContent = paid ? "Ödemeniz alındı" : "Ödeme tamamlanamadı";
@@ -64,7 +70,7 @@
     if (els.successLead) {
       els.successLead.textContent = paid
         ? "Akbank güvenli ödeme ekranından işleminiz onaylandı. Siparişiniz işleme alındı."
-        : "Kart işlemi tamamlanmadı veya banka reddetti. Dilerseniz tekrar deneyebilirsiniz.";
+        : "Kart işlemi tamamlanmadı veya banka reddetti. Sepetten tekrar deneyebilirsiniz.";
     }
     if (els.successOrderId) els.successOrderId.textContent = (order && order.id) || returnedOrderId || "—";
     if (els.successSummary) {
@@ -82,6 +88,15 @@
     }
     if (paid && window.PatygoAnalytics) window.PatygoAnalytics.track("order_submitted");
     if (paid && window.PatygoCart) window.PatygoCart.clear();
+    // URL'deki payment= parametresini temizle (yenilemede aynı ekranı tekrar açmasın)
+    try {
+      const clean = new URL(window.location.href);
+      if (clean.searchParams.has("payment")) {
+        clean.searchParams.delete("payment");
+        clean.searchParams.delete("orderId");
+        window.history.replaceState({}, "", clean.pathname + (clean.search || ""));
+      }
+    } catch (_) {}
   }
 
   function postToBank(action, fields) {
