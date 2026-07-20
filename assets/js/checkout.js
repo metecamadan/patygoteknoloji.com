@@ -126,14 +126,15 @@
   els.adet.addEventListener("change", renderTotals);
 
   /**
-   * Sanal POS entegrasyon noktası.
-   * PayTR / iyzico bağlandığında burada token alınıp ödeme sayfasına yönlendirilir.
-   * Şimdilik sipariş kaydı oluşturulur (localStorage demo).
+   * Sanal POS entegrasyon noktası (henüz aktif değil).
+   * Production'da paymentUrl yalnızca allowlist hostlara yönlendirilmeli.
    */
-  function startVirtualPos(order) {
-    // Gelecek: fetch('/api/pos/init', { method:'POST', body: JSON.stringify(order) })
-    // .then(r => r.json()).then(({ paymentUrl }) => { window.location = paymentUrl; });
-    return { redirected: false, provider: null, order };
+  function startVirtualPos() {
+    return { redirected: false, provider: null };
+  }
+
+  function isValidEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
   els.form.addEventListener("submit", (ev) => {
@@ -145,6 +146,12 @@
       els.note.classList.remove("ok");
       els.note.classList.add("err");
       els.note.textContent = "Lütfen zorunlu alanları doldurun.";
+      return;
+    }
+    if (!isValidEmail(email)) {
+      els.note.classList.remove("ok");
+      els.note.classList.add("err");
+      els.note.textContent = "Geçerli bir e-posta adresi girin.";
       return;
     }
     if (
@@ -171,13 +178,12 @@
       vat: totals.vat,
       total: totals.total,
       currency: "TRY",
+      // Hassas vergi no tarayıcıda saklanmaz
       customer: {
         name: ad,
         company: els.form.firma.value.trim(),
         email,
         phone: tel,
-        taxId: els.form.vergi.value.trim(),
-        note: els.form.not.value.trim(),
       },
       contractsAccepted: {
         onBilgilendirme: true,
@@ -185,7 +191,8 @@
         iadeCayma: true,
         at: new Date().toISOString(),
       },
-      status: "pending_payment",
+      status: "request_received",
+      paymentTaken: false,
       createdAt: new Date().toISOString(),
     };
 
@@ -193,13 +200,22 @@
       const key = "patygo_orders";
       const prev = JSON.parse(localStorage.getItem(key) || "[]");
       prev.unshift(order);
-      localStorage.setItem(key, JSON.stringify(prev.slice(0, 50)));
-      localStorage.setItem("patygo_last_order", JSON.stringify(order));
+      localStorage.setItem(key, JSON.stringify(prev.slice(0, 20)));
+      localStorage.setItem(
+        "patygo_last_order",
+        JSON.stringify({
+          id: order.id,
+          productId: order.productId,
+          name: order.name,
+          total: order.total,
+          createdAt: order.createdAt,
+        })
+      );
     } catch (_) {
       /* ignore storage errors */
     }
 
-    const pos = startVirtualPos(order);
+    const pos = startVirtualPos();
     if (pos.redirected) return;
 
     els.root.hidden = true;
@@ -213,9 +229,9 @@
       order.qty +
       " — " +
       formatTRY(order.total) +
-      " (KDV dahil)";
+      " (KDV dahil) · Ödeme alınmadı";
 
     els.posBox.textContent =
-      "Sipariş kaydı oluşturuldu. Sanal POS bağlandığında ödeme bu sipariş numarası ile başlatılacaktır.";
+      "Sipariş talebi kaydedildi. Kart ödemesi henüz aktif değildir.";
   });
 })();

@@ -79,6 +79,20 @@
   /* Teklif / iletişim formları → info@patygoteknoloji.com */
   const MAIL_ENDPOINT =
     "https://formsubmit.co/ajax/info@patygoteknoloji.com";
+  const MAIL_ALLOWED = [
+    "firma",
+    "vkn",
+    "email",
+    "tel",
+    "urun",
+    "kategori",
+    "konu",
+    "mesaj",
+    "_subject",
+    "_template",
+    "_honey",
+    "_replyto",
+  ];
 
   document.querySelectorAll("form#contact-form").forEach((form) => {
     form.addEventListener("submit", async (ev) => {
@@ -97,15 +111,15 @@
         return;
       }
 
-      const data = Object.fromEntries(new FormData(form).entries());
-      delete data.onay;
-      delete data._honey;
-      if (!data._subject) {
-        data._subject = "Patygo Teklif / İletişim Talebi";
-      }
-      data._template = data._template || "table";
-      data._captcha = "false";
+      const raw = new FormData(form);
+      const data = {};
+      MAIL_ALLOWED.forEach((key) => {
+        if (raw.has(key)) data[key] = String(raw.get(key) || "").trim();
+      });
+      if (!data._subject) data._subject = "Patygo Teklif / İletişim Talebi";
+      data._template = "table";
       data._replyto = data.email || "";
+      // Honeypot (_honey) bilinçli gönderilir; bot doldurursa FormSubmit engeller.
 
       if (btn) {
         btn.disabled = true;

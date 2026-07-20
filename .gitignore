@@ -11,6 +11,16 @@ desktop.ini
 # Cursor
 .cursor/
 
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+*secret*
+*credentials*
+
 # Logs & temp
 *.log
 node_modules/

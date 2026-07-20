@@ -50,7 +50,7 @@
         <div class="checkout-wrap" id="checkoutRoot">
           <div class="checkout-card reveal">
             <h2 style="font-size:1.15rem;margin-bottom:18px">Alıcı bilgileri</h2>
-            <form id="checkout-form" novalidate>
+            <form id="checkout-form">
               <div class="form-row">
                 <div class="field">
                   <label for="ad">Ad Soyad *</label>
@@ -100,7 +100,7 @@
                 <label for="onayIade"><a href="iade-ve-cayma.html" target="_blank" rel="noopener" style="color:var(--brand)">İade ve Cayma Hakkı</a> koşullarını okudum. *</label>
               </div>
               <p class="form-note" id="checkoutNote" aria-live="polite"></p>
-              <button type="submit" class="btn btn-primary btn-block btn-lg" id="payBtn">Ödemeye Geç</button>
+              <button type="submit" class="btn btn-primary btn-block btn-lg" id="payBtn">Sipariş Talebi Oluştur</button>
             </form>
           </div>
 
@@ -119,20 +119,20 @@
             <div class="checkout-sum"><span>KDV (%20)</span><span id="vatAmount">₺0</span></div>
             <div class="checkout-sum total"><span>Genel toplam</span><strong id="grandTotal">₺0</strong></div>
             <div class="pos-box" id="posBox">
-              Sanal POS bağlantısı henüz aktif değil. “Ödemeye Geç” ile sipariş kaydı oluşturulur; PayTR / iyzico entegrasyonu eklendiğinde bu adım otomatik ödeme ekranına yönlendirecektir.
+              Bu adımda karttan ödeme alınmaz. Sipariş talebi oluşturulur; sanal POS (PayTR / iyzico) bağlandığında güvenli ödeme ekranı eklenecektir.
             </div>
-            <p style="margin-top:14px;font-size:0.82rem;color:var(--muted-2)">Sipariş no: <strong id="orderIdPreview">—</strong></p>
-            <a href="index.html#urunler" class="btn btn-outline btn-block" style="margin-top:12px">Ürünlere dön</a>
+            <p style="margin-top:14px;font-size:0.82rem;color:var(--muted-2)">Talep no: <strong id="orderIdPreview">—</strong></p>
+            <a href="urunler.html" class="btn btn-outline btn-block" style="margin-top:12px">Ürünlere dön</a>
           </aside>
         </div>
 
         <div class="checkout-card reveal" id="orderSuccess" hidden style="max-width:640px;margin:0 auto;text-align:center">
-          <h2 style="margin-bottom:10px">Siparişiniz oluşturuldu</h2>
-          <p style="color:var(--muted);margin-bottom:18px">Ödeme için sanal POS bağlandığında bu sipariş üzerinden tahsilat yapılacaktır.</p>
-          <p style="font-size:1.05rem;margin-bottom:8px">Sipariş no: <strong id="successOrderId"></strong></p>
+          <h2 style="margin-bottom:10px">Sipariş talebiniz alındı</h2>
+          <p style="color:var(--muted);margin-bottom:18px">Ödeme henüz alınmamıştır. Ekibimiz talebinizi inceler; sanal POS aktif olduğunda tahsilat bu talep üzerinden yapılır.</p>
+          <p style="font-size:1.05rem;margin-bottom:8px">Talep no: <strong id="successOrderId"></strong></p>
           <p style="color:var(--muted-2);font-size:0.9rem;margin-bottom:22px" id="successSummary"></p>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <a href="index.html#urunler" class="btn btn-primary">Alışverişe devam</a>
+            <a href="urunler.html" class="btn btn-primary">Ürünlere dön</a>
             <a href="iletisim.html" class="btn btn-outline">İletişim</a>
           </div>
         </div>
