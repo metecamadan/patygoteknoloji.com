@@ -765,7 +765,12 @@ function sendFile(res, filePath, method) {
   }
   fs.readFile(filePath, (readErr, data) => {
     if (readErr) return serveNotFound(res, method);
-    res.writeHead(200, securityHeaders({ "Content-Type": MIME[ext] || "application/octet-stream" }));
+    const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
+    if (rel === "admin.html") {
+      headers["X-Robots-Tag"] = "noindex, nofollow";
+      headers["Cache-Control"] = "no-store";
+    }
+    res.writeHead(200, securityHeaders(headers));
     if (method === "HEAD") return res.end();
     res.end(data);
   });

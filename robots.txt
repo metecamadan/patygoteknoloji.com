@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /odeme
+Disallow: /odeme.html
+Disallow: /sepet
+Disallow: /sepet.html
+Disallow: /api/
 
 Sitemap: https://patygoteknoloji.com/sitemap.xml
