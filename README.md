@@ -65,6 +65,31 @@ Panel: `http://localhost:5173/admin` (temiz URL; `.html` uzantılı eski adresle
 
 Node.js çalıştırabilen bir sunucu gerekir. `.runtime/` klasörü kalıcı diskte tutulmalı; dışarıdan erişime açılmamalıdır. Alan adı: `patygoteknoloji.com`.
 
+### Otomatik CI / Deploy
+
+`main` branch’e her push’ta GitHub Actions:
+
+1. `npm test` çalıştırır (fail → deploy yok)
+2. Test geçerse sunucuda `git pull` + `pm2 restart patygo`
+
+**Bir kerelik kurulum (sunucuda SSH ile):**
+
+```bash
+cd /var/www/patygo
+git pull
+bash scripts/setup-github-deploy-key.sh
+```
+
+Script’in yazdırdığı private key’i GitHub’da repo → **Settings → Secrets and variables → Actions** altına ekleyin:
+
+| Secret | Değer |
+|--------|--------|
+| `DEPLOY_HOST` | Sunucu IP (ör. `8.229.158.154`) |
+| `DEPLOY_USER` | SSH kullanıcı adı |
+| `DEPLOY_SSH_KEY` | Script’in ürettiği private key (tümü) |
+
+Sonraki yayınlar: kodu `main`’e push etmek yeterli. Durum: repo → **Actions** sekmesi.
+
 ## Yapılacaklar / Notlar
 
 - Telefon numarası ve WhatsApp hattı gerçek numarayla güncellenmeli (`wa.me/900000000000`).

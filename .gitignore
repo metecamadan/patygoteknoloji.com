@@ -8,8 +8,13 @@ desktop.ini
 .idea/
 *.swp
 
-# Cursor
-.cursor/
+# Cursor (paylaşılan hook/kural hariç)
+.cursor/*
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/**
+!.cursor/rules/
+!.cursor/rules/**
 
 # Secrets / credentials
 .env

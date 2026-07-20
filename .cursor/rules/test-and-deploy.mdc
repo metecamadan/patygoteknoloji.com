@@ -1,0 +1,12 @@
+---
+description: Test kapısı ve GitHub Actions deploy kuralları
+alwaysApply: true
+---
+
+# Test ve yayın
+
+- Anlamlı bir özellik, bugfix veya refactor bitince yerelde `npm test` çalıştır; kırmızıysa commit/push öncesi düzelt.
+- Canlıya giden tek yol: `main` branch + GitHub Actions (`CI and Deploy`). Actions önce testleri çalıştırır; geçmezse deploy olmaz.
+- Kullanıcı açıkça istemedikçe force push / `--no-verify` kullanma.
+- Sunucuya elle `git pull` artık gerekmez (Actions secret’ları kuruluysa). Secret’lar yoksa veya deploy kırmızısıysa kullanıcıya Actions log’unu ve secret kurulumunu hatırlat.
+- `.env`, private key ve secret değerlerini sohbete veya commit’e yazma.
