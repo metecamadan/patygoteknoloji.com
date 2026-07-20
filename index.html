@@ -286,7 +286,11 @@
           <h2>Teklif Al</h2>
           <p>Formu doldurun; ekibimiz e-posta, WhatsApp veya telefon üzerinden sizinle iletişime geçerek özel teklifinizi hazırlasın.</p>
         </div>
-        <form class="form-wrap reveal" id="contact-form">
+        <form class="form-wrap reveal" id="contact-form" action="https://formsubmit.co/info@patygoteknoloji.com" method="POST">
+          <input type="hidden" name="_subject" value="Patygo Teklif Talebi" />
+          <input type="hidden" name="_template" value="table" />
+          <input type="hidden" name="_captcha" value="false" />
+          <input type="text" name="_honey" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true" />
           <div class="form-row">
             <div class="field"><label for="firma">Firma Adı *</label><input id="firma" name="firma" required autocomplete="organization" /></div>
             <div class="field"><label for="vkn">VKN *</label><input id="vkn" name="vkn" required inputmode="numeric" autocomplete="off" maxlength="11" placeholder="10 haneli vergi no" /></div>

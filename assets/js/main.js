@@ -76,19 +76,75 @@
     });
   });
 
-  const form = document.querySelector("#contact-form");
-  if (form) {
-    form.addEventListener("submit", (ev) => {
+  /* Teklif / iletişim formları → info@patygoteknoloji.com */
+  const MAIL_ENDPOINT =
+    "https://formsubmit.co/ajax/info@patygoteknoloji.com";
+
+  document.querySelectorAll("form#contact-form").forEach((form) => {
+    form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const note = form.querySelector(".form-note");
-      if (note) {
-        note.classList.add("ok");
-        note.textContent =
-          "Teşekkürler! Talebiniz alındı. Ekibimiz en kısa sürede sizinle iletişime geçecek.";
+      const btn = form.querySelector('button[type="submit"]');
+      const setNote = (type, text) => {
+        if (!note) return;
+        note.classList.remove("ok", "err");
+        if (type) note.classList.add(type);
+        note.textContent = text;
+      };
+
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
       }
-      form.reset();
+
+      const data = Object.fromEntries(new FormData(form).entries());
+      delete data.onay;
+      delete data._honey;
+      if (!data._subject) {
+        data._subject = "Patygo Teklif / İletişim Talebi";
+      }
+      data._template = data._template || "table";
+      data._captcha = "false";
+      data._replyto = data.email || "";
+
+      if (btn) {
+        btn.disabled = true;
+        btn.dataset.label = btn.textContent;
+        btn.textContent = "Gönderiliyor…";
+      }
+      setNote("", "Talebiniz gönderiliyor…");
+
+      try {
+        const res = await fetch(MAIL_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.success === "false" || json.success === false) {
+          throw new Error(json.message || "Gönderim başarısız");
+        }
+        setNote(
+          "ok",
+          "Teşekkürler! Talebiniz info@patygoteknoloji.com adresine iletildi. En kısa sürede dönüş yapacağız."
+        );
+        form.reset();
+      } catch (err) {
+        setNote(
+          "err",
+          "Gönderim şu an tamamlanamadı. Lütfen doğrudan info@patygoteknoloji.com adresine yazın veya WhatsApp’tan ulaşın."
+        );
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = btn.dataset.label || "Gönder";
+        }
+      }
     });
-  }
+  });
 
   document.querySelectorAll("[data-year]").forEach((el) => {
     el.textContent = new Date().getFullYear();

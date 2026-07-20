@@ -729,6 +729,14 @@ h1, h2, h3, h4 {
 }
 .form-note.ok { display: block; color: #166534; }
 .form-note.err { display: block; color: #b91c1c; }
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* ---------- Page hero (inner) ---------- */
 .page-hero {
