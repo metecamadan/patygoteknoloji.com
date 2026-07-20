@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { parseSupplierXml, isPrivateIp } = require("../lib/supplier");
-const { buildAkakceXml } = require("../lib/akakce");
+const { analyzeAkakceProducts, buildAkakceXml } = require("../lib/akakce");
 
 test("supplier XML products are normalized", () => {
   const xml = `<?xml version="1.0"?>
@@ -24,6 +24,17 @@ test("supplier XML products are normalized", () => {
   assert.equal(products[0].costPrice, 12345.5);
   assert.equal(products[0].stockQty, 7);
   assert.equal(products[0].image, "https://supplier.example/images/test.jpg");
+});
+
+test("broken supplier XML is rejected without changing data", () => {
+  assert.throws(
+    () =>
+      parseSupplierXml(
+        "<catalog><products><product><name>Eksik",
+        new URL("https://supplier.example/feed.xml")
+      ),
+    /ürün listesi|XML/i
+  );
 });
 
 test("private network addresses are rejected", () => {
@@ -60,4 +71,58 @@ test("Akakce feed escapes text and includes VAT", () => {
   assert.match(xml, /Ekran &amp; Klavye &lt;Set&gt;/);
   assert.match(xml, /Kurumsal &quot;set&quot;/);
   assert.doesNotMatch(xml, /Gizli/);
+});
+
+test("Akakce feed excludes out-of-stock and incomplete products with diagnostics", () => {
+  const products = [
+    {
+      id: "ready",
+      supplierSku: "READY-1",
+      name: "Hazır Ürün",
+      brand: "PATYGO",
+      category: "bilgisayar",
+      price: 100,
+      image: "https://cdn.example/ready.jpg",
+      stockQty: 3,
+      active: true,
+      source: "supplier",
+    },
+    {
+      id: "no-stock",
+      supplierSku: "NO-STOCK",
+      name: "Stoksuz Ürün",
+      brand: "PATYGO",
+      category: "bilgisayar",
+      price: 100,
+      image: "https://cdn.example/no-stock.jpg",
+      stockQty: 0,
+      active: true,
+      source: "supplier",
+    },
+    {
+      id: "no-image",
+      name: "Görselsiz Ürün",
+      brand: "PATYGO",
+      category: "bilgisayar",
+      price: 100,
+      active: true,
+      source: "manual",
+    },
+  ];
+  const analysis = analyzeAkakceProducts(products, {
+    siteBaseUrl: "https://patygoteknoloji.com",
+  });
+  assert.equal(analysis.eligible.length, 1);
+  assert.equal(analysis.excluded.length, 2);
+  assert.deepEqual(
+    analysis.excluded.map((item) => item.reasons[0]).sort(),
+    ["Görsel eksik", "Stok yok"]
+  );
+
+  const xml = buildAkakceXml(products, {
+    siteBaseUrl: "https://patygoteknoloji.com",
+    vatRate: 0.2,
+  });
+  assert.match(xml, /Hazır Ürün/);
+  assert.doesNotMatch(xml, /Stoksuz Ürün|Görselsiz Ürün/);
 });

@@ -7,7 +7,7 @@
   let selectedIndex = -1;
   let currentImages = [];
   let supplierProducts = [];
-  let supplierStatus = null;
+  let supplierSlots = [];
   let feedStatus = null;
   const selectedSupplierSkus = new Set();
 
@@ -27,6 +27,7 @@
   const supplierRows = document.getElementById("supplierProductRows");
   const supplierSearch = document.getElementById("supplierSearch");
   const supplierStatusFilter = document.getElementById("supplierStatusFilter");
+  const supplierSlotFilter = document.getElementById("supplierSlotFilter");
 
   const fields = {
     editIndex: document.getElementById("editIndex"),
@@ -124,7 +125,11 @@
   document.querySelectorAll("[data-open-admin-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       selectAdminTab(button.dataset.openAdminTab, false);
-      if (button.dataset.openAdminTab === "products") emptyForm();
+      if (button.dataset.openAdminTab === "products") {
+        const view = button.dataset.openProductsView || "manual";
+        selectProductsView(view, false);
+        if (view === "manual") emptyForm();
+      }
     });
   });
 
@@ -134,6 +139,39 @@
     if (["overview", "products", "xml"].includes(saved)) initialAdminTab = saved;
   } catch (_) {}
   selectAdminTab(initialAdminTab, false);
+
+  function selectProductsView(name, focus) {
+    document.querySelectorAll("[data-products-view]").forEach((tab) => {
+      const selected = tab.dataset.productsView === name;
+      tab.classList.toggle("active", selected);
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      const panel = document.getElementById(tab.getAttribute("aria-controls"));
+      if (panel) panel.hidden = !selected;
+      if (selected && focus) tab.focus();
+    });
+    document.getElementById("newProductBtn").hidden = name !== "manual";
+    if (name === "xml") renderSupplierProducts();
+    try {
+      sessionStorage.setItem("patygo_products_view", name);
+    } catch (_) {}
+  }
+
+  document.querySelectorAll("[data-products-view]").forEach((tab) => {
+    tab.addEventListener("click", () => selectProductsView(tab.dataset.productsView, false));
+    tab.addEventListener("keydown", (ev) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(ev.key)) return;
+      ev.preventDefault();
+      selectProductsView(tab.dataset.productsView === "manual" ? "xml" : "manual", true);
+    });
+  });
+  let initialProductsView = "manual";
+  try {
+    if (sessionStorage.getItem("patygo_products_view") === "xml") {
+      initialProductsView = "xml";
+    }
+  } catch (_) {}
+  selectProductsView(initialProductsView, false);
 
   function renderImagePreviews() {
     imagePreview.textContent = "";
@@ -231,9 +269,12 @@
       .toLocaleLowerCase("tr-TR");
     const category = productCategoryFilter ? productCategoryFilter.value : "";
     const status = productStatusFilter ? productStatusFilter.value : "";
-    const visible = products
-      .map((product, index) => ({ product, index }))
-      .filter(({ product }) => {
+    const entries = products
+      .map((product, index) => ({
+        product: Object.assign({}, product, { source: "manual" }),
+        index,
+      }));
+    const visible = entries.filter(({ product }) => {
         const haystack = [product.id, product.name, product.brand]
           .join(" ")
           .toLocaleLowerCase("tr-TR");
@@ -243,11 +284,11 @@
         if (status === "inactive" && product.active !== false) return false;
         return true;
       });
-    productCount.textContent = visible.length + " / " + products.length + " ürün";
+    productCount.textContent = visible.length + " / " + entries.length + " ürün";
     if (!visible.length) {
       const empty = document.createElement("div");
       empty.className = "admin-table-empty";
-      empty.textContent = products.length
+      empty.textContent = entries.length
         ? "Filtrelere uygun ürün bulunamadı."
         : "Henüz ürün yok. Yeni ürün ekleyebilir veya XML’den aktarabilirsiniz.";
       productList.appendChild(empty);
@@ -256,7 +297,9 @@
     }
     visible.forEach(({ product: p, index }) => {
       const row = document.createElement("div");
-      row.className = "admin-item" + (index === selectedIndex ? " active" : "");
+      row.className =
+        "admin-item" +
+        (p.source === "manual" && index === selectedIndex ? " active" : "");
       const primaryImage =
         (Array.isArray(p.images) && p.images.find(Boolean)) || p.image || "";
       const media = primaryImage
@@ -268,7 +311,13 @@
       const strong = document.createElement("strong");
       strong.textContent = p.name;
       const small = document.createElement("small");
-      small.textContent = p.brand + " · " + money(p.price) + " +KDV · " + p.category;
+      small.textContent =
+        (p.source === "supplier" ? "XML · " : "Manuel · ") +
+        p.brand +
+        " · " +
+        money(p.price) +
+        " +KDV · " +
+        p.category;
       meta.appendChild(strong);
       meta.appendChild(small);
 
@@ -286,10 +335,29 @@
       const track = document.createElement("span");
       toggle.addEventListener("change", async () => {
         toggle.disabled = true;
-        const next = products.slice();
-        next[index] = Object.assign({}, next[index], { active: toggle.checked });
         try {
-          await persist(next, p.name + (toggle.checked ? " yayına alındı." : " pasife alındı."));
+          if (p.source === "supplier") {
+            await updateSupplierProducts([
+              {
+                supplierSku: p.supplierSku,
+                supplierSlot: p.supplierSlot,
+                active: toggle.checked,
+              },
+            ]);
+            notifySite();
+            note(
+              formNote,
+              "ok",
+              p.name + (toggle.checked ? " yayına alındı." : " pasife alındı.")
+            );
+          } else {
+            const next = products.slice();
+            next[index] = Object.assign({}, next[index], { active: toggle.checked });
+            await persist(
+              next,
+              p.name + (toggle.checked ? " yayına alındı." : " pasife alındı.")
+            );
+          }
         } catch (err) {
           toggle.checked = !toggle.checked;
           note(formNote, "err", err.message || "Durum güncellenemedi.");
@@ -306,8 +374,15 @@
       row.appendChild(meta);
       row.appendChild(quick);
       meta.addEventListener("click", () => {
-        fillForm(p, index);
-        renderList();
+        if (p.source === "supplier") {
+          supplierSearch.value = p.supplierSku || p.name;
+          selectAdminTab("products", false);
+          selectProductsView("xml", false);
+          renderSupplierProducts();
+        } else {
+          fillForm(p, index);
+          renderList();
+        }
       });
       productList.appendChild(row);
     });
@@ -325,6 +400,13 @@
   function updateDashboard() {
     const activeManual = products.filter((item) => item.active !== false).length;
     const activeSupplier = supplierProducts.filter((item) => item.active).length;
+    const configuredSlots = supplierSlots.filter((slot) => slot.configured);
+    const failedSlots = supplierSlots.filter((slot) => slot.lastFetchStatus === "error");
+    const latestFetch = supplierSlots
+      .map((slot) => slot.lastFetchAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1);
     document.getElementById("dashboardProductCount").textContent = String(products.length);
     document.getElementById("dashboardActiveCount").textContent = String(
       activeManual + activeSupplier
@@ -336,52 +418,75 @@
       feedStatus ? feedStatus.activeCount : activeManual + activeSupplier
     );
     const badge = document.getElementById("dashboardXmlStatus");
-    const configured = supplierStatus && supplierStatus.configured;
-    const failed = supplierStatus && supplierStatus.lastFetchStatus === "error";
-    badge.className = "admin-status " + (failed ? "err" : configured ? "on" : "pending");
-    badge.textContent = failed ? "Bağlantı hatası" : configured ? "Bağlı" : "Yapılandırılmadı";
-    document.getElementById("dashboardLastSync").textContent = formatDate(
-      supplierStatus && supplierStatus.lastFetchAt
-    );
+    badge.className =
+      "admin-status " +
+      (failedSlots.length ? "err" : configuredSlots.length ? "on" : "pending");
+    badge.textContent = failedSlots.length
+      ? failedSlots.length + " bağlantıda hata"
+      : configuredSlots.length
+        ? configuredSlots.length + " / 3 bağlı"
+        : "Yapılandırılmadı";
+    document.getElementById("dashboardLastSync").textContent = formatDate(latestFetch);
     document.getElementById("dashboardXmlHost").textContent =
-      (supplierStatus && supplierStatus.host) || "Tanımlanmadı";
+      configuredSlots.length ? configuredSlots.length + " XML kaynağı" : "Tanımlanmadı";
     document.getElementById("dashboardMargin").textContent =
-      "%" + (supplierStatus ? supplierStatus.globalMarginPercent : 15);
+      configuredSlots.length
+        ? configuredSlots.map((slot) => "%" + slot.globalMarginPercent).join(" · ")
+        : "%15";
   }
 
   function renderSupplierStatus() {
-    if (!supplierStatus) return;
-    const failed = supplierStatus.lastFetchStatus === "error";
-    const badge = document.getElementById("supplierConnectionBadge");
-    badge.className =
-      "admin-status " + (failed ? "err" : supplierStatus.configured ? "on" : "pending");
-    badge.textContent = failed
-      ? "Senkron hatası"
-      : supplierStatus.configured
-        ? "Bağlantı kayıtlı"
-        : "Yapılandırılmadı";
-    document.getElementById("supplierMaskedUrl").textContent =
-      supplierStatus.maskedUrl || "Tanımlanmadı";
-    document.getElementById("supplierLastSync").textContent = formatDate(
-      supplierStatus.lastFetchAt
-    );
-    document.getElementById("supplierItemCount").textContent = String(
-      supplierStatus.itemCount || supplierProducts.length
-    );
-    document.getElementById("supplierMargin").value = String(
-      supplierStatus.globalMarginPercent
-    );
-    if (failed && supplierStatus.lastError) {
-      note(document.getElementById("supplierConfigNote"), "err", supplierStatus.lastError);
-    } else {
-      note(document.getElementById("supplierConfigNote"), "", "");
-    }
+    supplierSlots.forEach((slot) => {
+      const card = document.querySelector('[data-supplier-card="' + slot.id + '"]');
+      if (!card) return;
+      const failed = slot.lastFetchStatus === "error";
+      const field = (name) => card.querySelector('[data-slot-field="' + name + '"]');
+      const input = (name) => card.querySelector('[data-slot-input="' + name + '"]');
+      const badge = field("badge");
+      badge.className =
+        "admin-status " + (failed ? "err" : slot.configured ? "on" : "pending");
+      badge.textContent = failed
+        ? "Senkron hatası"
+        : slot.configured
+          ? "Bağlantı kayıtlı"
+          : "Yapılandırılmadı";
+      field("title").textContent = slot.name;
+      field("maskedUrl").textContent = slot.maskedUrl || "Tanımlanmadı";
+      field("lastSync").textContent = formatDate(slot.lastFetchAt);
+      field("itemCount").textContent = String(slot.itemCount || 0);
+      input("name").value = slot.name;
+      input("margin").value = String(slot.globalMarginPercent);
+      note(field("note"), failed ? "err" : "", failed ? slot.lastError : "");
+      const option = supplierSlotFilter.querySelector('option[value="' + slot.id + '"]');
+      if (option) option.textContent = slot.name;
+    });
     if (feedStatus) {
       document.getElementById("feedActiveCount").textContent = String(feedStatus.activeCount || 0);
       document.getElementById("feedSourceCounts").textContent =
         String(feedStatus.supplierActiveCount || 0) +
         " / " +
         String(feedStatus.manualActiveCount || 0);
+      const feedBadge = document.getElementById("feedStatusBadge");
+      feedBadge.className =
+        "admin-status " + (feedStatus.activeCount > 0 ? "on" : "pending");
+      feedBadge.textContent =
+        feedStatus.activeCount > 0 ? "Feed hazır" : "Uygun ürün yok";
+      const warnings = document.getElementById("feedWarnings");
+      warnings.textContent = "";
+      warnings.hidden = !(feedStatus.excludedCount > 0);
+      if (feedStatus.excludedCount > 0) {
+        const summary = document.createElement("strong");
+        summary.textContent =
+          feedStatus.excludedCount + " aktif ürün feed’e alınmadı.";
+        warnings.appendChild(summary);
+        const list = document.createElement("ul");
+        (feedStatus.issues || []).slice(0, 3).forEach((issue) => {
+          const item = document.createElement("li");
+          item.textContent = issue.name + ": " + issue.reasons.join(", ");
+          list.appendChild(item);
+        });
+        warnings.appendChild(list);
+      }
     }
     const absoluteFeedUrl = location.origin + "/api/feeds/akakce.xml";
     document.getElementById("feedUrl").textContent = absoluteFeedUrl;
@@ -394,11 +499,13 @@
       .trim()
       .toLocaleLowerCase("tr-TR");
     const status = supplierStatusFilter ? supplierStatusFilter.value : "";
+    const slotId = supplierSlotFilter ? supplierSlotFilter.value : "";
     return supplierProducts.filter((item) => {
-      const haystack = [item.supplierSku, item.name, item.brand]
+      const haystack = [item.supplierSku, item.name, item.brand, item.supplierName]
         .join(" ")
         .toLocaleLowerCase("tr-TR");
       if (query && !haystack.includes(query)) return false;
+      if (slotId && item.supplierSlot !== slotId) return false;
       if (status === "active" && !item.active) return false;
       if (status === "inactive" && item.active) return false;
       if (status === "stock" && !(item.stockQty === null || Number(item.stockQty) > 0)) {
@@ -416,7 +523,7 @@
     if (!visible.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 7;
+      cell.colSpan = 9;
       cell.className = "admin-table-empty";
       cell.textContent = supplierProducts.length
         ? "Filtrelere uygun XML ürünü bulunamadı."
@@ -429,15 +536,16 @@
 
     visible.forEach((item) => {
       const row = document.createElement("tr");
+      const selectionKey = item.supplierSlot + "|" + item.supplierSku;
       const checkCell = document.createElement("td");
       checkCell.className = "admin-check-col";
       const check = document.createElement("input");
       check.type = "checkbox";
-      check.checked = selectedSupplierSkus.has(item.supplierSku);
+      check.checked = selectedSupplierSkus.has(selectionKey);
       check.setAttribute("aria-label", item.name + " ürününü seç");
       check.addEventListener("change", () => {
-        if (check.checked) selectedSupplierSkus.add(item.supplierSku);
-        else selectedSupplierSkus.delete(item.supplierSku);
+        if (check.checked) selectedSupplierSkus.add(selectionKey);
+        else selectedSupplierSkus.delete(selectionKey);
       });
       checkCell.appendChild(check);
 
@@ -467,8 +575,43 @@
 
       const skuCell = document.createElement("td");
       skuCell.textContent = item.supplierSku;
+      const sourceCell = document.createElement("td");
+      sourceCell.textContent = item.supplierName || item.supplierSlot;
       const costCell = document.createElement("td");
       costCell.textContent = money(item.costPrice);
+      const marginCell = document.createElement("td");
+      const marginInput = document.createElement("input");
+      marginInput.className = "admin-margin-input";
+      marginInput.type = "number";
+      marginInput.min = "0";
+      marginInput.max = "500";
+      marginInput.step = "0.1";
+      marginInput.value =
+        item.marginOverride === null ? "" : String(item.marginOverride);
+      marginInput.placeholder = String(item.marginPercent);
+      marginInput.title = "Boş bırakırsanız genel kâr oranı kullanılır";
+      marginInput.addEventListener("change", async () => {
+        marginInput.disabled = true;
+        try {
+          await updateSupplierProducts([
+            {
+              supplierSku: item.supplierSku,
+              supplierSlot: item.supplierSlot,
+              marginPercent: marginInput.value || null,
+            },
+          ]);
+          note(
+            document.getElementById("supplierProductsNote"),
+            "ok",
+            "Ürüne özel kâr oranı güncellendi."
+          );
+        } catch (err) {
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        } finally {
+          marginInput.disabled = false;
+        }
+      });
+      marginCell.appendChild(marginInput);
       const saleCell = document.createElement("td");
       const saleInput = document.createElement("input");
       saleInput.className = "admin-price-input";
@@ -481,7 +624,11 @@
         saleInput.disabled = true;
         try {
           await updateSupplierProducts([
-            { supplierSku: item.supplierSku, salePrice: saleInput.value || null },
+            {
+              supplierSku: item.supplierSku,
+              supplierSlot: item.supplierSlot,
+              salePrice: saleInput.value || null,
+            },
           ]);
           note(document.getElementById("supplierProductsNote"), "ok", "Özel satış fiyatı güncellendi.");
         } catch (err) {
@@ -506,7 +653,11 @@
         toggle.disabled = true;
         try {
           await updateSupplierProducts([
-            { supplierSku: item.supplierSku, active: toggle.checked },
+            {
+              supplierSku: item.supplierSku,
+              supplierSlot: item.supplierSlot,
+              active: toggle.checked,
+            },
           ]);
           notifySite();
           note(
@@ -527,9 +678,17 @@
       toggleLabel.appendChild(track);
       activeCell.appendChild(toggleLabel);
 
-      [checkCell, productCell, skuCell, costCell, saleCell, stockCell, activeCell].forEach(
-        (cell) => row.appendChild(cell)
-      );
+      [
+        checkCell,
+        productCell,
+        skuCell,
+        sourceCell,
+        costCell,
+        marginCell,
+        saleCell,
+        stockCell,
+        activeCell,
+      ].forEach((cell) => row.appendChild(cell));
       supplierRows.appendChild(row);
     });
     updateDashboard();
@@ -540,12 +699,16 @@
       api("/api/admin/supplier/status"),
       api("/api/admin/supplier/products"),
     ]);
-    supplierStatus = results[0].status || null;
+    supplierSlots = Array.isArray(results[0].slots)
+      ? results[0].slots
+      : Array.isArray(results[1].slots)
+        ? results[1].slots
+        : [];
     feedStatus = results[0].feed || null;
     supplierProducts = Array.isArray(results[1].products) ? results[1].products : [];
-    if (results[1].status) supplierStatus = results[1].status;
     renderSupplierStatus();
     renderSupplierProducts();
+    renderList();
   }
 
   async function updateSupplierProducts(updates) {
@@ -555,7 +718,6 @@
     });
     supplierProducts = Array.isArray(data.products) ? data.products : supplierProducts;
     await loadSupplierData();
-    renderSupplierProducts();
   }
 
   async function refresh() {
@@ -591,11 +753,13 @@
     );
   }
 
-  [productSearch, productCategoryFilter, productStatusFilter].forEach((control) => {
+  [productSearch, productCategoryFilter, productStatusFilter].forEach(
+    (control) => {
     if (!control) return;
     control.addEventListener(control.tagName === "INPUT" ? "input" : "change", renderList);
-  });
-  [supplierSearch, supplierStatusFilter].forEach((control) => {
+    }
+  );
+  [supplierSearch, supplierStatusFilter, supplierSlotFilter].forEach((control) => {
     if (!control) return;
     control.addEventListener(
       control.tagName === "INPUT" ? "input" : "change",
@@ -603,85 +767,94 @@
     );
   });
 
-  document.getElementById("supplierConfigForm").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const input = document.getElementById("supplierUrl");
-    const button = ev.currentTarget.querySelector('button[type="submit"]');
-    if (!input.value.trim()) {
-      note(document.getElementById("supplierConfigNote"), "err", "XML bağlantısını girin.");
-      return;
-    }
-    button.disabled = true;
-    note(document.getElementById("supplierConfigNote"), "", "Bağlantı güvenli şekilde kaydediliyor…");
-    try {
-      await api("/api/admin/supplier/config", {
-        method: "PUT",
-        body: JSON.stringify({ url: input.value.trim() }),
-      });
-      input.value = "";
-      await loadSupplierData();
-      note(
-        document.getElementById("supplierConfigNote"),
-        "ok",
-        "Bağlantı kaydedildi. Şimdi XML’i Güncelle seçeneğini kullanın."
-      );
-    } catch (err) {
-      note(document.getElementById("supplierConfigNote"), "err", err.message);
-    } finally {
-      button.disabled = false;
-    }
+  document.querySelectorAll(".supplier-config-form").forEach((form) => {
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const slotId = form.dataset.slotId;
+      const card = form.closest("[data-supplier-card]");
+      const urlInput = form.querySelector('[data-slot-input="url"]');
+      const nameInput = form.querySelector('[data-slot-input="name"]');
+      const statusNote = card.querySelector('[data-slot-field="note"]');
+      const button = form.querySelector('button[type="submit"]');
+      if (!urlInput.value.trim()) {
+        note(statusNote, "err", "XML bağlantısını girin.");
+        return;
+      }
+      button.disabled = true;
+      note(statusNote, "", "Bağlantı güvenli şekilde kaydediliyor…");
+      try {
+        await api("/api/admin/supplier/config", {
+          method: "PUT",
+          body: JSON.stringify({
+            slotId,
+            url: urlInput.value.trim(),
+            name: nameInput.value.trim(),
+          }),
+        });
+        urlInput.value = "";
+        await loadSupplierData();
+        note(statusNote, "ok", "Bağlantı kaydedildi. XML’i Güncelle ile ürünleri alın.");
+      } catch (err) {
+        note(statusNote, "err", err.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
   });
 
-  document.getElementById("supplierRefreshBtn").addEventListener("click", async (ev) => {
-    const button = ev.currentTarget;
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = "XML alınıyor…";
-    note(document.getElementById("supplierProductsNote"), "", "Tedarikçi kataloğu güncelleniyor…");
-    try {
-      const data = await api("/api/admin/supplier/refresh", {
-        method: "POST",
-        body: JSON.stringify({}),
-        timeout: 45000,
-      });
-      supplierProducts = Array.isArray(data.products) ? data.products : [];
-      supplierStatus = data.status || supplierStatus;
-      selectedSupplierSkus.clear();
-      await loadSupplierData();
-      notifySite();
-      note(
-        document.getElementById("supplierProductsNote"),
-        "ok",
-        supplierProducts.length + " ürün XML’den güncellendi."
-      );
-    } catch (err) {
-      await loadSupplierData().catch(() => {});
-      note(document.getElementById("supplierProductsNote"), "err", err.message);
-    } finally {
-      button.disabled = false;
-      button.textContent = original;
-    }
+  document.querySelectorAll(".supplier-refresh-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const slotId = button.dataset.slotId;
+      const card = button.closest("[data-supplier-card]");
+      const statusNote = card.querySelector('[data-slot-field="note"]');
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = "XML alınıyor…";
+      note(statusNote, "", "Tedarikçi kataloğu güncelleniyor…");
+      try {
+        await api("/api/admin/supplier/refresh", {
+          method: "POST",
+          body: JSON.stringify({ slotId }),
+          timeout: 45000,
+        });
+        selectedSupplierSkus.clear();
+        await loadSupplierData();
+        notifySite();
+        const count = supplierProducts.filter((item) => item.supplierSlot === slotId).length;
+        note(statusNote, "ok", count + " ürün bu XML kaynağından güncellendi.");
+      } catch (err) {
+        await loadSupplierData().catch(() => {});
+        note(statusNote, "err", err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
   });
 
-  document.getElementById("supplierSettingsForm").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const margin = Number(document.getElementById("supplierMargin").value);
-    const button = ev.currentTarget.querySelector('button[type="submit"]');
-    button.disabled = true;
-    try {
-      const data = await api("/api/admin/supplier/settings", {
-        method: "PUT",
-        body: JSON.stringify({ globalMarginPercent: margin }),
-      });
-      supplierProducts = Array.isArray(data.products) ? data.products : supplierProducts;
-      await loadSupplierData();
-      notifySite();
-      note(document.getElementById("feedNote"), "ok", "Genel kâr oranı güncellendi.");
-    } catch (err) {
-      note(document.getElementById("feedNote"), "err", err.message);
-    } finally {
-      button.disabled = false;
-    }
+  document.querySelectorAll(".supplier-settings-form").forEach((form) => {
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const slotId = form.dataset.slotId;
+      const card = form.closest("[data-supplier-card]");
+      const statusNote = card.querySelector('[data-slot-field="note"]');
+      const margin = Number(form.querySelector('[data-slot-input="margin"]').value);
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        await api("/api/admin/supplier/settings", {
+          method: "PUT",
+          body: JSON.stringify({ slotId, globalMarginPercent: margin }),
+        });
+        await loadSupplierData();
+        notifySite();
+        note(statusNote, "ok", "Bu XML kaynağının genel kâr oranı güncellendi.");
+      } catch (err) {
+        note(statusNote, "err", err.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
   });
 
   document.getElementById("feedCopyBtn").addEventListener("click", async () => {
@@ -697,8 +870,9 @@
   document.getElementById("supplierSelectAll").addEventListener("change", (ev) => {
     const checked = ev.currentTarget.checked;
     filteredSupplierProducts().forEach((item) => {
-      if (checked) selectedSupplierSkus.add(item.supplierSku);
-      else selectedSupplierSkus.delete(item.supplierSku);
+      const key = item.supplierSlot + "|" + item.supplierSku;
+      if (checked) selectedSupplierSkus.add(key);
+      else selectedSupplierSkus.delete(key);
     });
     renderSupplierProducts();
   });
@@ -710,7 +884,14 @@
     }
     try {
       await updateSupplierProducts(
-        Array.from(selectedSupplierSkus).map((supplierSku) => ({ supplierSku, active }))
+        Array.from(selectedSupplierSkus).map((key) => {
+          const separator = key.indexOf("|");
+          return {
+            supplierSlot: key.slice(0, separator),
+            supplierSku: key.slice(separator + 1),
+            active,
+          };
+        })
       );
       selectedSupplierSkus.clear();
       document.getElementById("supplierSelectAll").checked = false;
@@ -766,6 +947,7 @@
 
   document.getElementById("newProductBtn").addEventListener("click", () => {
     selectAdminTab("products", false);
+    selectProductsView("manual", false);
     emptyForm();
     renderList();
     fields.name.focus();

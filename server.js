@@ -9,8 +9,18 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
-const { createSupplierStore } = require("./lib/supplier");
-const { buildAkakceXml } = require("./lib/akakce");
+const { createMultiSupplierManager } = require("./lib/multi-supplier");
+const { analyzeAkakceProducts, buildAkakceXml } = require("./lib/akakce");
+const { mergeCatalogProducts } = require("./lib/catalog");
+const { createAnalyticsStore } = require("./lib/analytics");
+const {
+  createAkbankConfig,
+  buildHostedPaymentForm,
+  verifyCallbackHash,
+  isPaymentSuccess,
+  publicPosStatus,
+} = require("./lib/akbank-pos");
+const { createOrderStore } = require("./lib/orders");
 
 const ROOT = path.resolve(__dirname);
 const ROOT_PREFIX = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
@@ -28,14 +38,40 @@ const SITE_BASE_URL = String(process.env.SITE_BASE_URL || `http://localhost:${PO
   ""
 );
 const VAT_RATE = 0.2;
-const supplierStore = createSupplierStore(ROOT, {
-  envUrl: process.env.SUPPLIER_XML_URL || "",
+const supplierAllowedHosts = String(
+  process.env.SUPPLIER_ALLOWED_HOSTS || "www.bilgisayarim.com.tr"
+)
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const supplierManager = createMultiSupplierManager(ROOT, {
+  allowedHosts: supplierAllowedHosts,
   defaultMarginPercent: process.env.SUPPLIER_MARGIN_PERCENT || 15,
-  allowedHosts: String(process.env.SUPPLIER_ALLOWED_HOSTS || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean),
+  slots: [
+    {
+      id: "supplier-1",
+      filePrefix: "supplier",
+      defaultName: "XML Kaynağı 1",
+      envUrl: process.env.SUPPLIER_XML_URL || "",
+    },
+    {
+      id: "supplier-2",
+      filePrefix: "supplier-2",
+      defaultName: "XML Kaynağı 2",
+      envUrl: process.env.SUPPLIER_XML_URL_2 || "",
+    },
+    {
+      id: "supplier-3",
+      filePrefix: "supplier-3",
+      defaultName: "XML Kaynağı 3",
+      envUrl: process.env.SUPPLIER_XML_URL_3 || "",
+    },
+  ],
 });
+const analyticsStore = createAnalyticsStore(ROOT);
+const orderStore = createOrderStore(ROOT);
+const akbankConfig = createAkbankConfig(process.env);
+const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -79,6 +115,13 @@ function securityHeaders(extra) {
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
       "Cross-Origin-Opener-Policy": "same-origin",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Content-Security-Policy":
+        "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
+        "script-src 'self'; style-src 'self' 'unsafe-inline' https:; " +
+        "img-src 'self' data: https: http:; font-src 'self' data: https:; " +
+        "connect-src 'self'; form-action 'self' https://formsubmit.co " +
+        "https://virtualpospaymentgatewaypre.akbank.com https://virtualpospaymentgateway.akbank.com",
     },
     extra || {}
   );
@@ -112,6 +155,130 @@ function readBody(req, limit = 8 * 1024 * 1024) {
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+function parseFormBody(buf) {
+  const out = {};
+  const params = new URLSearchParams(String(buf || ""));
+  for (const [key, value] of params.entries()) out[key] = value;
+  return out;
+}
+
+function clientIp(req) {
+  return String((req.socket && req.socket.remoteAddress) || "unknown");
+}
+
+function rateLimited(map, ip, max, windowMs) {
+  const now = Date.now();
+  const attempt = map.get(ip);
+  if (attempt && attempt.resetAt > now && attempt.count >= max) return true;
+  if (attempt && attempt.resetAt <= now) map.delete(ip);
+  const current = map.get(ip);
+  map.set(ip, {
+    count: current && current.resetAt > now ? current.count + 1 : 1,
+    resetAt: current && current.resetAt > now ? current.resetAt : now + windowMs,
+  });
+  return false;
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ""));
+}
+
+function makeOrderId() {
+  const d = new Date();
+  const stamp =
+    d.getFullYear().toString().slice(2) +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    String(d.getDate()).padStart(2, "0");
+  const rand = crypto.randomBytes(3).toString("hex").toUpperCase();
+  return "PTY-" + stamp + "-" + rand;
+}
+
+function buildCheckoutOrder(body) {
+  const catalog = mergedProducts(false);
+  const byId = Object.fromEntries(catalog.map((product) => [product.id, product]));
+  const rawItems = Array.isArray(body && body.items) ? body.items : [];
+  if (!rawItems.length) throw new Error("Sepet boş.");
+
+  const items = [];
+  let subtotal = 0;
+  for (const row of rawItems.slice(0, 40)) {
+    const product = byId[String(row.productId || "")];
+    if (!product || product.active === false) {
+      throw new Error("Sepette geçersiz ürün var.");
+    }
+    const qty = Math.max(1, Math.min(99, Number(row.qty) || 1));
+    const line = product.price * qty;
+    subtotal += line;
+    items.push({
+      productId: product.id,
+      brand: product.brand,
+      name: product.name,
+      unitPrice: product.price,
+      qty,
+      line,
+    });
+  }
+
+  const vat = Math.round(subtotal * VAT_RATE * 100) / 100;
+  const total = Math.round((subtotal + vat) * 100) / 100;
+  const customer = (body && body.customer) || {};
+  const name = String(customer.name || "").trim().slice(0, 120);
+  const email = String(customer.email || "").trim().slice(0, 120);
+  const phone = String(customer.phone || "").trim().slice(0, 40);
+  if (!name || !email || !phone) throw new Error("Alıcı bilgileri eksik.");
+  if (!isValidEmail(email)) throw new Error("Geçerli bir e-posta girin.");
+  if (!body.contractsAccepted) throw new Error("Sözleşme onayları gerekli.");
+
+  return {
+    id: makeOrderId(),
+    items,
+    subtotal,
+    vat,
+    total,
+    currency: "TRY",
+    customer: {
+      name,
+      company: String(customer.company || "").trim().slice(0, 120),
+      email,
+      phone,
+      taxId: String(customer.taxId || "").trim().slice(0, 40),
+      note: String(customer.note || "").trim().slice(0, 500),
+    },
+    contractsAccepted: {
+      onBilgilendirme: true,
+      mesafeliSatis: true,
+      iadeCayma: true,
+      at: new Date().toISOString(),
+    },
+    status: "payment_pending",
+    paymentStatus: "pending",
+    paymentTaken: false,
+    provider: "akbank",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function htmlRedirect(res, location) {
+  const safe = String(location || "/").replace(/"/g, "");
+  const body =
+    "<!doctype html><html lang=\"tr\"><head><meta charset=\"utf-8\" />" +
+    "<meta http-equiv=\"refresh\" content=\"0;url=" +
+    safe +
+    "\" /><title>Yönlendiriliyor</title></head><body>" +
+    "<p>Yönlendiriliyorsunuz… <a href=\"" +
+    safe +
+    "\">Devam</a></p></body></html>";
+  res.writeHead(
+    303,
+    securityHeaders({
+      Location: safe,
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    })
+  );
+  res.end(body);
 }
 
 function isBlocked(relPosix) {
@@ -195,37 +362,10 @@ function normalizeProduct(p, fallbackId) {
 }
 
 function mergedProducts(includeInactiveManual) {
-  const manual = loadProducts()
-    .map((item) => Object.assign({}, normalizeProduct(item), { source: "manual" }))
-    .filter((item) => includeInactiveManual || item.active !== false);
-  const ids = new Set(manual.map((item) => item.id));
-  const supplier = supplierStore
-    .listProducts()
-    .filter((item) => item.active)
-    .map((item) => {
-      const normalized = normalizeProduct({
-        id: item.id,
-        brand: item.brand,
-        name: item.name,
-        price: item.salePrice,
-        category: item.category,
-        description: item.description,
-        details: item.description,
-        image: item.image,
-        images: item.image ? [item.image] : [],
-        featured: false,
-        active: true,
-      });
-      return Object.assign(normalized, {
-        source: "supplier",
-        supplierSku: item.supplierSku,
-        barcode: item.barcode || "",
-        stockQty: item.stockQty,
-        costPrice: item.costPrice,
-      });
-    })
-    .filter((item) => !ids.has(item.id));
-  return manual.concat(supplier);
+  return mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
+    includeInactiveManual,
+    normalizeProduct,
+  });
 }
 
 function authOk(req) {
@@ -241,13 +381,132 @@ function authOk(req) {
 }
 
 async function handleApi(req, res, urlPath) {
+  if (req.method === "GET" && urlPath === "/api/payment/status") {
+    return json(res, 200, publicPosStatus(akbankConfig));
+  }
+
+  if (req.method === "POST" && urlPath === "/api/payment/start") {
+    try {
+      if (!akbankConfig.enabled) {
+        return json(res, 503, {
+          ok: false,
+          error:
+            "Sanal POS henüz yapılandırılmadı. .env içinde AKBANK_MERCHANT_SAFE_ID, AKBANK_TERMINAL_SAFE_ID ve AKBANK_SECRET_KEY tanımlayın.",
+          pos: publicPosStatus(akbankConfig),
+        });
+      }
+      const ip = clientIp(req);
+      if (rateLimited(paymentStartAttempts, ip, 20, 15 * 60 * 1000)) {
+        return json(res, 429, { ok: false, error: "Çok fazla ödeme denemesi. Lütfen sonra tekrar deneyin." });
+      }
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const order = buildCheckoutOrder(body);
+      orderStore.save(order);
+      const callbackUrl = SITE_BASE_URL + "/api/payment/callback";
+      const form = buildHostedPaymentForm(akbankConfig, {
+        orderId: order.id,
+        amount: order.total,
+        currency: order.currency,
+        okUrl: callbackUrl,
+        failUrl: callbackUrl,
+        emailAddress: order.customer.email,
+        merchantData: order.id,
+      });
+      return json(res, 200, {
+        ok: true,
+        orderId: order.id,
+        amount: order.total,
+        action: form.action,
+        method: form.method,
+        fields: form.fields,
+        testMode: akbankConfig.testMode,
+      });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Ödeme başlatılamadı." });
+    }
+  }
+
+  if (req.method === "POST" && urlPath === "/api/payment/callback") {
+    try {
+      const raw = await readBody(req, 256 * 1024);
+      const payload = parseFormBody(raw);
+      const orderId = String(payload.orderId || payload.merchantData || "").slice(0, 64);
+      const order = orderId ? orderStore.get(orderId) : null;
+      const hashOk = akbankConfig.enabled && verifyCallbackHash(payload, akbankConfig.secretKey);
+      const paid = hashOk && isPaymentSuccess(payload);
+
+      if (order) {
+        orderStore.update(orderId, {
+          paymentStatus: paid ? "paid" : "failed",
+          paymentTaken: paid,
+          status: paid ? "paid" : "payment_failed",
+          bankResponse: {
+            responseCode: String(payload.responseCode || "").slice(0, 40),
+            responseMessage: String(payload.responseMessage || "").slice(0, 200),
+            hashOk,
+            at: new Date().toISOString(),
+          },
+        });
+      }
+
+      const result = paid ? "success" : "failed";
+      const location =
+        SITE_BASE_URL +
+        "/odeme.html?payment=" +
+        result +
+        (orderId ? "&orderId=" + encodeURIComponent(orderId) : "");
+      return htmlRedirect(res, location);
+    } catch (_) {
+      return htmlRedirect(res, SITE_BASE_URL + "/odeme.html?payment=failed");
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/payment/order") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const orderId = String(requestUrl.searchParams.get("orderId") || "").slice(0, 64);
+    const order = orderId ? orderStore.get(orderId) : null;
+    if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı." });
+    return json(res, 200, {
+      ok: true,
+      order: {
+        id: order.id,
+        total: order.total,
+        currency: order.currency,
+        paymentStatus: order.paymentStatus,
+        paymentTaken: Boolean(order.paymentTaken),
+        status: order.status,
+        items: order.items,
+        createdAt: order.createdAt,
+      },
+    });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/analytics/event") {
+    try {
+      const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+      analyticsStore.record({
+        type: String(body.type || "").slice(0, 40),
+        path: String(body.path || "/").slice(0, 200),
+        sessionId: String(body.sessionId || "").slice(0, 120),
+      });
+      return json(res, 202, { ok: true });
+    } catch (_) {
+      return json(res, 422, { ok: false, error: "Analitik olayı geçersiz." });
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/products") {
     const all = mergedProducts(false);
-    const supplierStatus = supplierStore.status();
+    const supplierStatuses = supplierManager.listSlots();
+    const lastSupplierFetch = supplierStatuses
+      .map((status) => status.lastFetchAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1);
     return json(res, 200, {
       products: all,
       updatedAt:
-        supplierStatus.lastFetchAt ||
+        lastSupplierFetch ||
         (fs.existsSync(PRODUCTS_FILE) ? fs.statSync(PRODUCTS_FILE).mtime.toISOString() : null),
     });
   }
@@ -309,15 +568,33 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, { products: loadProducts() });
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/analytics") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    return json(res, 200, {
+      analytics: analyticsStore.summary(requestUrl.searchParams.get("days")),
+    });
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/supplier/status") {
     const feedProducts = mergedProducts(false);
+    const feedAnalysis = analyzeAkakceProducts(feedProducts, {
+      siteBaseUrl: SITE_BASE_URL,
+    });
+    const slots = supplierManager.listSlots();
     return json(res, 200, {
-      status: supplierStore.status(),
+      slots,
+      status: slots[0],
       feed: {
         path: "/api/feeds/akakce.xml",
-        activeCount: feedProducts.length,
-        supplierActiveCount: feedProducts.filter((item) => item.source === "supplier").length,
-        manualActiveCount: feedProducts.filter((item) => item.source === "manual").length,
+        activeCount: feedAnalysis.eligible.length,
+        excludedCount: feedAnalysis.excluded.length,
+        supplierActiveCount: feedAnalysis.eligible.filter(
+          (item) => item.source === "supplier"
+        ).length,
+        manualActiveCount: feedAnalysis.eligible.filter(
+          (item) => item.source === "manual"
+        ).length,
+        issues: feedAnalysis.excluded.slice(0, 20),
       },
     });
   }
@@ -325,7 +602,10 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/config") {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
-      const config = await supplierStore.saveUrl(body.url);
+      const config = await supplierManager.saveConfig(body.slotId || "supplier-1", {
+        url: body.url,
+        name: body.name,
+      });
       return json(res, 200, { ok: true, config });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Bağlantı kaydedilemedi" });
@@ -334,12 +614,15 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "POST" && urlPath === "/api/admin/supplier/refresh") {
     try {
-      const result = await supplierStore.refresh();
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const result = await supplierManager.refresh(body.slotId || "supplier-1");
+      const slots = supplierManager.listSlots();
       return json(res, 200, {
         ok: true,
         result,
-        status: supplierStore.status(),
-        products: supplierStore.listProducts(),
+        slots,
+        status: slots.find((slot) => slot.id === result.slotId) || slots[0],
+        products: supplierManager.listProducts(),
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: err.message || "XML alınamadı" });
@@ -347,20 +630,25 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
+    const slots = supplierManager.listSlots();
     return json(res, 200, {
-      products: supplierStore.listProducts(),
-      status: supplierStore.status(),
+      products: supplierManager.listProducts(),
+      slots,
+      status: slots[0],
     });
   }
 
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/settings") {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
-      const settings = supplierStore.setGlobalMargin(body.globalMarginPercent);
+      const settings = supplierManager.setGlobalMargin(
+        body.slotId || "supplier-1",
+        body.globalMarginPercent
+      );
       return json(res, 200, {
         ok: true,
         settings,
-        products: supplierStore.listProducts(),
+        products: supplierManager.listProducts(),
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Ayar kaydedilemedi" });
@@ -374,11 +662,15 @@ async function handleApi(req, res, urlPath) {
       if (!updates.length) {
         return json(res, 422, { ok: false, error: "Güncellenecek ürün seçilmedi." });
       }
-      supplierStore.updateOverrides(updates);
+      supplierManager.updateProducts(updates);
+      const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
+        siteBaseUrl: SITE_BASE_URL,
+      });
       return json(res, 200, {
         ok: true,
-        products: supplierStore.listProducts(),
-        feedCount: mergedProducts(false).length,
+        products: supplierManager.listProducts(),
+        feedCount: feedAnalysis.eligible.length,
+        feedExcludedCount: feedAnalysis.excluded.length,
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Ürünler güncellenemedi" });
@@ -495,6 +787,13 @@ server.listen(PORT, () => {
   console.log(`  Site  : http://localhost:${PORT}`);
   console.log(`  Admin : http://127.0.0.1:${PORT}/admin.html`);
   console.log(`  Şifre : ADMIN_PASSWORD (varsayılan: patygo-admin)`);
+  console.log(
+    `  POS   : ${
+      akbankConfig.enabled
+        ? "Akbank SecurePay hazır (" + (akbankConfig.testMode ? "TEST" : "CANLI") + ")"
+        : "yapılandırılmadı (.env AKBANK_* )"
+    }`
+  );
   console.log("");
 });
 

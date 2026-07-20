@@ -68,8 +68,8 @@
               <section class="admin-card">
                 <div class="admin-card-head"><div><span class="admin-eyebrow">KATALOG</span><h2>Hızlı işlemler</h2></div></div>
                 <div class="admin-quick-actions">
-                  <button type="button" data-open-admin-tab="products" class="admin-quick-action"><strong>Yeni ürün ekle</strong><span>Manuel ürün oluşturun veya düzenleyin.</span></button>
-                  <button type="button" data-open-admin-tab="xml" class="admin-quick-action"><strong>XML ürünlerini yönet</strong><span>Tedarikçi ürünlerini alın ve yayınlayın.</span></button>
+                  <button type="button" data-open-admin-tab="products" data-open-products-view="manual" class="admin-quick-action"><strong>Yeni ürün ekle</strong><span>Manuel ürün oluşturun veya düzenleyin.</span></button>
+                  <button type="button" data-open-admin-tab="products" data-open-products-view="xml" class="admin-quick-action"><strong>XML ürünlerini yönet</strong><span>Tedarikçi ürünlerini görüntüleyin ve yayınlayın.</span></button>
                 </div>
               </section>
               <section class="admin-card">
@@ -87,9 +87,14 @@
         <section id="adminTabProducts" class="admin-tab-panel" aria-labelledby="productsTab" hidden>
           <div class="admin-page">
             <div class="admin-page-head">
-              <div><h2>Ürünler</h2><p>Manuel ürünleri düzenleyin ve yayın durumunu yönetin.</p></div>
+              <div><h2>Ürünler</h2><p>Manuel ve XML ürünlerini ayrı alanlardan yönetin.</p></div>
               <button type="button" class="btn btn-primary" id="newProductBtn">+ Yeni Ürün</button>
             </div>
+            <nav class="admin-subtabs" aria-label="Ürün kaynakları" role="tablist">
+              <button type="button" class="admin-subtab active" id="manualProductsSubtab" role="tab" aria-selected="true" aria-controls="manualProductsView" data-products-view="manual">Manuel Ürünler</button>
+              <button type="button" class="admin-subtab" id="xmlProductsSubtab" role="tab" aria-selected="false" aria-controls="xmlProductsView" data-products-view="xml">XML Ürünleri</button>
+            </nav>
+            <section id="manualProductsView" class="admin-products-view" role="tabpanel" aria-labelledby="manualProductsSubtab">
             <div class="admin-product-toolbar">
               <label class="admin-search"><span aria-hidden="true">⌕</span><input id="productSearch" type="search" placeholder="Ürün, marka veya kod ara" /></label>
               <select id="productCategoryFilter" aria-label="Kategori filtresi"><option value="">Tüm kategoriler</option><option value="bilgisayar">Bilgisayar</option><option value="yazici">Yazıcı</option><option value="kucuk-ev">Küçük Ev Aletleri</option><option value="beyaz-esya">Beyaz Eşya</option></select>
@@ -162,55 +167,117 @@
         </form>
       </section>
       </div>
+            </section>
+
+            <section id="xmlProductsView" class="admin-products-view" role="tabpanel" aria-labelledby="xmlProductsSubtab" hidden>
+              <section class="admin-card admin-supplier-catalog">
+                <div class="admin-card-head">
+                  <div><span class="admin-eyebrow">XML ÜRÜNLERİ</span><h2>Tedarikçi ürün havuzu</h2><span class="admin-list-count" id="supplierVisibleCount">0 ürün</span></div>
+                  <div class="admin-bulk-actions">
+                    <button type="button" class="btn btn-outline" id="supplierBulkEnable">Seçilenleri Aktif Et</button>
+                    <button type="button" class="btn btn-ghost" id="supplierBulkDisable">Pasif Et</button>
+                  </div>
+                </div>
+                <div class="admin-product-toolbar">
+                  <label class="admin-search"><span aria-hidden="true">⌕</span><input id="supplierSearch" type="search" placeholder="Stok kodu, ürün veya marka ara" /></label>
+                  <select id="supplierStatusFilter" aria-label="XML ürün durum filtresi"><option value="">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="stock">Stokta</option></select>
+                  <select id="supplierSlotFilter" aria-label="XML kaynak filtresi"><option value="">Tüm XML kaynakları</option><option value="supplier-1">XML Kaynağı 1</option><option value="supplier-2">XML Kaynağı 2</option><option value="supplier-3">XML Kaynağı 3</option></select>
+                </div>
+                <div class="admin-table-wrap">
+                  <table class="admin-table">
+                    <thead><tr><th scope="col" class="admin-check-col"><input type="checkbox" id="supplierSelectAll" aria-label="Görünen tüm ürünleri seç" /></th><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">XML Kaynağı</th><th scope="col">Tedarikçi fiyatı</th><th scope="col">Özel kâr %</th><th scope="col">Satış fiyatı</th><th scope="col">Stok</th><th scope="col">Yayın</th></tr></thead>
+                    <tbody id="supplierProductRows"><tr><td colspan="9" class="admin-table-empty">XML bağlantısını kaydedip ürünleri güncelleyin.</td></tr></tbody>
+                  </table>
+                </div>
+                <p class="admin-note" id="supplierProductsNote" role="status"></p>
+              </section>
+            </section>
           </div>
         </section>
 
         <section id="adminTabXml" class="admin-tab-panel" aria-labelledby="xmlTab" hidden>
           <div class="admin-page">
             <div class="admin-page-head">
-              <div><h2>XML Yönetimi</h2><p>Tedarikçi kataloğunu alın, fiyatlandırın ve yayınlayın.</p></div>
-              <button type="button" class="btn btn-primary" id="supplierRefreshBtn">XML’i Güncelle</button>
+              <div><h2>XML Yönetimi</h2><p>En fazla üç tedarikçi XML bağlantısını ayrı ayrı yönetin.</p></div>
             </div>
 
-            <div class="admin-xml-layout">
-              <section class="admin-card admin-xml-card">
+            <div class="admin-supplier-slots">
+              <section class="admin-card admin-xml-card" data-supplier-card="supplier-1">
                 <div class="admin-card-head">
-                  <div><span class="admin-eyebrow">TEDARİKÇİ BAĞLANTISI</span><h2>XML importu</h2></div>
-                  <span class="admin-status pending" id="supplierConnectionBadge">Yapılandırılmadı</span>
+                  <div><span class="admin-eyebrow">XML KAYNAĞI 1</span><h2 data-slot-field="title">XML Kaynağı 1</h2></div>
+                  <span class="admin-status pending" data-slot-field="badge">Yapılandırılmadı</span>
                 </div>
-                <form id="supplierConfigForm" class="admin-form">
+                <form class="admin-form supplier-config-form" data-slot-id="supplier-1">
                   <div class="field">
-                    <label for="supplierUrl">Tedarikçi XML bağlantısı</label>
-                    <div class="admin-input-action">
-                      <input id="supplierUrl" type="url" placeholder="http://tedarikci.com/xml?..." autocomplete="off" />
-                      <button type="submit" class="btn btn-outline">Kaydet</button>
-                    </div>
+                    <label for="supplierName1">Kaynak adı</label>
+                    <input id="supplierName1" type="text" maxlength="60" value="XML Kaynağı 1" data-slot-input="name" />
+                  </div>
+                  <div class="field">
+                    <label for="supplierUrl1">Tedarikçi XML bağlantısı</label>
+                    <input id="supplierUrl1" type="url" placeholder="https://tedarikci.com/xml?..." autocomplete="off" data-slot-input="url" />
                     <p class="admin-field-help">Bağlantı yalnızca sunucuda saklanır. Kaydettikten sonra güvenlik nedeniyle tekrar gösterilmez.</p>
+                  </div>
+                  <div class="admin-form-actions">
+                    <button type="submit" class="btn btn-outline">Bağlantıyı Kaydet</button>
+                    <button type="button" class="btn btn-primary supplier-refresh-btn" data-slot-id="supplier-1">XML’i Güncelle</button>
                   </div>
                 </form>
                 <dl class="admin-xml-meta">
-                  <div><dt>Kayıtlı kaynak</dt><dd id="supplierMaskedUrl">Tanımlanmadı</dd></div>
-                  <div><dt>Son senkron</dt><dd id="supplierLastSync">Henüz yok</dd></div>
-                  <div><dt>Alınan ürün</dt><dd id="supplierItemCount">0</dd></div>
+                  <div><dt>Kayıtlı kaynak</dt><dd data-slot-field="maskedUrl">Tanımlanmadı</dd></div>
+                  <div><dt>Son senkron</dt><dd data-slot-field="lastSync">Henüz yok</dd></div>
+                  <div><dt>Alınan ürün</dt><dd data-slot-field="itemCount">0</dd></div>
                 </dl>
-                <p class="admin-note" id="supplierConfigNote" role="status"></p>
+                <form class="admin-form supplier-settings-form" data-slot-id="supplier-1">
+                  <div class="field"><label for="supplierMargin1">Genel kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin1" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div></div>
+                </form>
+                <p class="admin-note" data-slot-field="note" role="status"></p>
               </section>
 
+              <section class="admin-card admin-xml-card" data-supplier-card="supplier-2">
+                <div class="admin-card-head">
+                  <div><span class="admin-eyebrow">XML KAYNAĞI 2</span><h2 data-slot-field="title">XML Kaynağı 2</h2></div>
+                  <span class="admin-status pending" data-slot-field="badge">Yapılandırılmadı</span>
+                </div>
+                <form class="admin-form supplier-config-form" data-slot-id="supplier-2">
+                  <div class="field"><label for="supplierName2">Kaynak adı</label><input id="supplierName2" type="text" maxlength="60" value="XML Kaynağı 2" data-slot-input="name" /></div>
+                  <div class="field"><label for="supplierUrl2">Tedarikçi XML bağlantısı</label><input id="supplierUrl2" type="url" placeholder="https://tedarikci.com/xml?..." autocomplete="off" data-slot-input="url" /><p class="admin-field-help">Bu kaynağın ayar, fiyat ve ürün durumları diğer XML bağlantılarından ayrıdır.</p></div>
+                  <div class="admin-form-actions"><button type="submit" class="btn btn-outline">Bağlantıyı Kaydet</button><button type="button" class="btn btn-primary supplier-refresh-btn" data-slot-id="supplier-2">XML’i Güncelle</button></div>
+                </form>
+                <dl class="admin-xml-meta">
+                  <div><dt>Kayıtlı kaynak</dt><dd data-slot-field="maskedUrl">Tanımlanmadı</dd></div>
+                  <div><dt>Son senkron</dt><dd data-slot-field="lastSync">Henüz yok</dd></div>
+                  <div><dt>Alınan ürün</dt><dd data-slot-field="itemCount">0</dd></div>
+                </dl>
+                <form class="admin-form supplier-settings-form" data-slot-id="supplier-2"><div class="field"><label for="supplierMargin2">Genel kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin2" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div></div></form>
+                <p class="admin-note" data-slot-field="note" role="status"></p>
+              </section>
+
+              <section class="admin-card admin-xml-card" data-supplier-card="supplier-3">
+                <div class="admin-card-head">
+                  <div><span class="admin-eyebrow">XML KAYNAĞI 3</span><h2 data-slot-field="title">XML Kaynağı 3</h2></div>
+                  <span class="admin-status pending" data-slot-field="badge">Yapılandırılmadı</span>
+                </div>
+                <form class="admin-form supplier-config-form" data-slot-id="supplier-3">
+                  <div class="field"><label for="supplierName3">Kaynak adı</label><input id="supplierName3" type="text" maxlength="60" value="XML Kaynağı 3" data-slot-input="name" /></div>
+                  <div class="field"><label for="supplierUrl3">Tedarikçi XML bağlantısı</label><input id="supplierUrl3" type="url" placeholder="https://tedarikci.com/xml?..." autocomplete="off" data-slot-input="url" /><p class="admin-field-help">Bu kaynağın ayar, fiyat ve ürün durumları diğer XML bağlantılarından ayrıdır.</p></div>
+                  <div class="admin-form-actions"><button type="submit" class="btn btn-outline">Bağlantıyı Kaydet</button><button type="button" class="btn btn-primary supplier-refresh-btn" data-slot-id="supplier-3">XML’i Güncelle</button></div>
+                </form>
+                <dl class="admin-xml-meta">
+                  <div><dt>Kayıtlı kaynak</dt><dd data-slot-field="maskedUrl">Tanımlanmadı</dd></div>
+                  <div><dt>Son senkron</dt><dd data-slot-field="lastSync">Henüz yok</dd></div>
+                  <div><dt>Alınan ürün</dt><dd data-slot-field="itemCount">0</dd></div>
+                </dl>
+                <form class="admin-form supplier-settings-form" data-slot-id="supplier-3"><div class="field"><label for="supplierMargin3">Genel kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin3" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div></div></form>
+                <p class="admin-note" data-slot-field="note" role="status"></p>
+              </section>
+            </div>
+
+            <div class="admin-xml-layout admin-feed-layout">
               <section class="admin-card admin-xml-card">
                 <div class="admin-card-head">
-                  <div><span class="admin-eyebrow">FİYATLANDIRMA</span><h2>Satış ve Akakçe</h2></div>
+                  <div><span class="admin-eyebrow">AKAKÇE FEED</span><h2>Satış ve yayın özeti</h2></div>
                   <span class="admin-status on" id="feedStatusBadge">Feed hazır</span>
                 </div>
-                <form id="supplierSettingsForm" class="admin-form">
-                  <div class="field">
-                    <label for="supplierMargin">Genel kâr oranı (%)</label>
-                    <div class="admin-input-action compact">
-                      <input id="supplierMargin" type="number" min="0" max="500" step="0.1" value="15" />
-                      <button type="submit" class="btn btn-outline">Uygula</button>
-                    </div>
-                    <p class="admin-field-help">Ürün bazında özel fiyat verilmediyse bu oran kullanılır.</p>
-                  </div>
-                </form>
                 <div class="admin-feed-box">
                   <span>Akakçe XML adresi</span>
                   <code id="feedUrl">/api/feeds/akakce.xml</code>
@@ -220,6 +287,7 @@
                   <div><dt>Tedarikçi / Manuel</dt><dd id="feedSourceCounts">0 / 0</dd></div>
                   <div><dt>Fiyat tipi</dt><dd>KDV dahil</dd></div>
                 </dl>
+                <div class="admin-feed-warning" id="feedWarnings" hidden></div>
                 <div class="admin-form-actions">
                   <a href="/api/feeds/akakce.xml" class="btn btn-primary" id="feedOpenBtn" target="_blank" rel="noopener">XML’i Görüntüle</a>
                   <button type="button" class="btn btn-outline" id="feedCopyBtn">Bağlantıyı Kopyala</button>
@@ -228,26 +296,6 @@
               </section>
             </div>
 
-            <section class="admin-card admin-supplier-catalog">
-              <div class="admin-card-head">
-                <div><span class="admin-eyebrow">XML ÜRÜNLERİ</span><h2>Tedarikçi ürün havuzu</h2><span class="admin-list-count" id="supplierVisibleCount">0 ürün</span></div>
-                <div class="admin-bulk-actions">
-                  <button type="button" class="btn btn-outline" id="supplierBulkEnable">Seçilenleri Aktif Et</button>
-                  <button type="button" class="btn btn-ghost" id="supplierBulkDisable">Pasif Et</button>
-                </div>
-              </div>
-              <div class="admin-product-toolbar">
-                <label class="admin-search"><span aria-hidden="true">⌕</span><input id="supplierSearch" type="search" placeholder="Stok kodu, ürün veya marka ara" /></label>
-                <select id="supplierStatusFilter" aria-label="XML ürün durum filtresi"><option value="">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="stock">Stokta</option></select>
-              </div>
-              <div class="admin-table-wrap">
-                <table class="admin-table">
-                  <thead><tr><th scope="col" class="admin-check-col"><input type="checkbox" id="supplierSelectAll" aria-label="Görünen tüm ürünleri seç" /></th><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">Tedarikçi fiyatı</th><th scope="col">Satış fiyatı</th><th scope="col">Stok</th><th scope="col">Yayın</th></tr></thead>
-                  <tbody id="supplierProductRows"><tr><td colspan="7" class="admin-table-empty">XML bağlantısını kaydedip ürünleri güncelleyin.</td></tr></tbody>
-                </table>
-              </div>
-              <p class="admin-note" id="supplierProductsNote" role="status"></p>
-            </section>
           </div>
         </section>
       </div>

@@ -55,7 +55,8 @@ Panel: `http://localhost:5173/admin.html`
 
 ## XML ve Akakçe
 
-- Tedarikçi XML bağlantısı paneldeki **XML Yönetimi** bölümünden sunucuya kaydedilir.
+- En fazla üç tedarikçi XML bağlantısı paneldeki **XML Yönetimi** bölümünden ayrı ayrı kaydedilir.
+- Manuel ve XML ürünleri, **Ürünler** bölümündeki iki ayrı alt sekmeden yönetilir.
 - XML ürünleri varsayılan olarak pasiftir. Aktif edilenler site kataloğuna ve Akakçe feed'ine eklenir.
 - Akakçe adresi: `/api/feeds/akakce.xml`
 - Tedarikçi IP yetkisi, canlı sunucunun çıkış IP adresine tanımlanmalıdır.

@@ -2,6 +2,51 @@
 (function () {
   "use strict";
 
+  const analyticsDisabled =
+    navigator.doNotTrack === "1" || window.doNotTrack === "1";
+  let analyticsSession = "";
+  if (!analyticsDisabled) {
+    try {
+      analyticsSession = sessionStorage.getItem("patygo_analytics_session") || "";
+      if (!analyticsSession) {
+        analyticsSession =
+          window.crypto?.randomUUID?.() ||
+          "s-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+        sessionStorage.setItem("patygo_analytics_session", analyticsSession);
+      }
+    } catch (_) {
+      analyticsSession = "s-" + Date.now().toString(36);
+    }
+  }
+
+  function trackAnalytics(type) {
+    if (analyticsDisabled || !analyticsSession) return;
+    const payload = JSON.stringify({
+      type,
+      path: location.pathname,
+      sessionId: analyticsSession,
+    });
+    try {
+      if (navigator.sendBeacon) {
+        const sent = navigator.sendBeacon(
+          "/api/analytics/event",
+          new Blob([payload], { type: "application/json" })
+        );
+        if (sent) return;
+      }
+      fetch("/api/analytics/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+        cache: "no-store",
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
+  window.PatygoAnalytics = { track: trackAnalytics };
+  trackAnalytics("page_view");
+
   const header = document.querySelector(".site-header");
   const onScroll = () => {
     if (header) header.classList.toggle("scrolled", window.scrollY > 8);
@@ -130,6 +175,7 @@
           "ok",
           "Teşekkürler! Talebiniz info@patygoteknoloji.com adresine iletildi. En kısa sürede dönüş yapacağız."
         );
+        trackAnalytics("lead_submitted");
         form.reset();
       } catch (err) {
         setNote(

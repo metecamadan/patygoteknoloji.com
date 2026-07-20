@@ -33,6 +33,7 @@
       if (found) found.qty = Math.min(99, (Number(found.qty) || 0) + q);
       else items.push({ id, qty: q });
       write(items);
+      if (window.PatygoAnalytics) window.PatygoAnalytics.track("add_to_cart");
       return items;
     },
     setQty(id, qty) {
