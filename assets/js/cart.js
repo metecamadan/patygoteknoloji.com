@@ -18,6 +18,41 @@
     window.dispatchEvent(new CustomEvent("patygo:cart"));
   }
 
+  function snapshotFrom(meta, existing) {
+    const src = meta && typeof meta === "object" ? meta : {};
+    const prev = existing || {};
+    return {
+      brand: String(src.brand != null ? src.brand : prev.brand || "").trim(),
+      name: String(src.name != null ? src.name : prev.name || "").trim(),
+      price: Math.max(0, Number(src.price != null ? src.price : prev.price) || 0),
+    };
+  }
+
+  function resolveProduct(item, catalogById) {
+    const catalog = catalogById && catalogById[item.id];
+    if (catalog) {
+      return {
+        id: catalog.id,
+        brand: catalog.brand,
+        name: catalog.name,
+        price: catalog.price,
+        category: catalog.category,
+        active: catalog.active,
+      };
+    }
+    if (item && item.name && Number(item.price) >= 0) {
+      return {
+        id: item.id,
+        brand: item.brand || "",
+        name: item.name,
+        price: Number(item.price) || 0,
+        category: "",
+        active: true,
+      };
+    }
+    return null;
+  }
+
   window.PatygoCart = {
     VAT,
     list() {
@@ -26,12 +61,16 @@
     count() {
       return read().reduce((n, i) => n + (Number(i.qty) || 0), 0);
     },
-    add(id, qty) {
+    add(id, qty, meta) {
       const q = Math.max(1, Math.min(99, Number(qty) || 1));
       const items = read();
       const found = items.find((i) => i.id === id);
-      if (found) found.qty = Math.min(99, (Number(found.qty) || 0) + q);
-      else items.push({ id, qty: q });
+      if (found) {
+        found.qty = Math.min(99, (Number(found.qty) || 0) + q);
+        Object.assign(found, snapshotFrom(meta, found));
+      } else {
+        items.push(Object.assign({ id, qty: q }, snapshotFrom(meta)));
+      }
       write(items);
       if (window.PatygoAnalytics) window.PatygoAnalytics.track("add_to_cart");
       return items;
@@ -56,7 +95,7 @@
       let sub = 0;
       const lines = [];
       items.forEach((i) => {
-        const p = catalogById[i.id];
+        const p = resolveProduct(i, catalogById || {});
         if (!p) return;
         const qty = Math.max(1, Number(i.qty) || 1);
         const line = p.price * qty;

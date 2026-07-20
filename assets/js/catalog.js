@@ -98,7 +98,11 @@
     cartBtn.textContent = "Sepete Ekle";
     cartBtn.addEventListener("click", () => {
       if (window.PatygoCart) {
-        window.PatygoCart.add(product.id, 1);
+        window.PatygoCart.add(product.id, 1, {
+          brand: product.brand,
+          name: product.name,
+          price: product.price,
+        });
         cartBtn.textContent = "Eklendi";
         setTimeout(() => {
           cartBtn.textContent = "Sepete Ekle";

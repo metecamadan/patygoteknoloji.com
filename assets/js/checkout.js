@@ -138,10 +138,15 @@
     return true;
   }
 
+  let booted = false;
+  let submitBound = false;
+  let calcFn = null;
+
   function boot(catalogById) {
     let mode = "cart";
     let lines = [];
     let product = null;
+    const cartCount = window.PatygoCart ? window.PatygoCart.count() : 0;
 
     if (directId && catalogById[directId]) {
       mode = "direct";
@@ -168,7 +173,7 @@
         if (els.grandTotal) els.grandTotal.textContent = formatTRY(total);
         return { qty, sub, vat, total, lines };
       }
-      const t = window.PatygoCart.totals(catalogById);
+      const t = window.PatygoCart.totals(window.PatygoCatalog.byId || catalogById || {});
       lines = t.lines;
       if (els.qtyLabel) {
         els.qtyLabel.textContent = String(t.lines.reduce((n, l) => n + l.qty, 0));
@@ -185,23 +190,27 @@
         lines: t.lines,
       };
     }
+    calcFn = calc;
 
     if (!lines.length && mode === "cart") {
-      if (els.name) els.name.textContent = "Sepetiniz boş";
+      if (els.name) {
+        els.name.textContent = cartCount > 0 ? "Ürünler yükleniyor…" : "Sepetiniz boş";
+      }
       if (els.note) {
         els.note.classList.add("err");
-        els.note.textContent = "Önce sepete ürün ekleyin veya ürün sayfasından Hemen Al seçin.";
+        els.note.textContent =
+          cartCount > 0
+            ? "Sepetinizde ürün var; katalog yükleniyor. Sayfa otomatik güncellenecek."
+            : "Önce sepete ürün ekleyin veya ürün sayfasından Hemen Al seçin.";
       }
-      if (els.form) {
-        const btn = els.form.querySelector('button[type="submit"]');
-        if (btn) btn.disabled = true;
-      }
-      return;
+      if (els.payBtn) els.payBtn.disabled = true;
+      // Katalog sonra gelirse yeniden dene
+      return false;
     }
 
     if (mode === "direct") {
-      els.brand.textContent = product.brand.slice(0, 8);
-      els.brandLabel.textContent = product.brand;
+      els.brand.textContent = (product.brand || "ÜRÜN").slice(0, 8);
+      els.brandLabel.textContent = product.brand || "—";
       els.name.textContent = product.name;
       if (els.qtyRow) els.qtyRow.hidden = false;
     } else {
@@ -212,111 +221,136 @@
       if (els.adet) els.adet.removeAttribute("required");
     }
 
-    els.orderIdPreview.textContent = makeOrderId();
-    calc();
-    if (window.PatygoAnalytics) window.PatygoAnalytics.track("checkout_started");
-
-    if (els.adet && mode === "direct") {
-      els.adet.addEventListener("input", calc);
-      els.adet.addEventListener("change", calc);
+    if (els.note) {
+      els.note.classList.remove("err");
+      if (!els.note.textContent.includes("Akbank")) els.note.textContent = "";
+    }
+    if (els.payBtn) {
+      els.payBtn.disabled = !posStatus.enabled;
+      els.payBtn.textContent = posStatus.enabled ? "Güvenli Ödemeye Geç" : "POS Yapılandırması Bekleniyor";
     }
 
-    els.form.addEventListener("submit", async (ev) => {
-      ev.preventDefault();
-      const ad = els.form.ad.value.trim();
-      const email = els.form.email.value.trim();
-      const tel = els.form.tel.value.trim();
-      if (!ad || !email || !tel) {
-        els.note.classList.remove("ok");
-        els.note.classList.add("err");
-        els.note.textContent = "Lütfen zorunlu alanları doldurun.";
-        return;
-      }
-      if (!isValidEmail(email)) {
-        els.note.classList.remove("ok");
-        els.note.classList.add("err");
-        els.note.textContent = "Geçerli bir e-posta adresi girin.";
-        return;
-      }
-      if (
-        !els.form.onayOnBilgi?.checked ||
-        !els.form.onayMesafeli?.checked ||
-        !els.form.onayIade?.checked
-      ) {
-        els.note.classList.remove("ok");
-        els.note.classList.add("err");
-        els.note.textContent =
-          "Devam etmek için Ön Bilgilendirme, Mesafeli Satış Sözleşmesi ve İade/Cayma koşullarını onaylayın.";
-        return;
-      }
+    if (!els.orderIdPreview.textContent || els.orderIdPreview.textContent === "—") {
+      els.orderIdPreview.textContent = makeOrderId();
+    }
+    calc();
+    if (!booted && window.PatygoAnalytics) window.PatygoAnalytics.track("checkout_started");
 
-      const totals = calc();
-      if (!totals.lines.length) {
-        els.note.classList.add("err");
-        els.note.textContent = "Sepet boş.";
-        return;
-      }
+    if (els.adet && mode === "direct" && !els.adet.dataset.bound) {
+      els.adet.dataset.bound = "1";
+      els.adet.addEventListener("input", () => calcFn && calcFn());
+      els.adet.addEventListener("change", () => calcFn && calcFn());
+    }
 
-      if (!posStatus.enabled) {
-        els.note.classList.add("err");
-        els.note.textContent = "Sanal POS henüz aktif değil. Anahtarları .env dosyasına ekleyin.";
-        return;
-      }
-
-      if (els.payBtn) {
-        els.payBtn.disabled = true;
-        els.payBtn.textContent = "Banka sayfasına yönlendiriliyor…";
-      }
-      els.note.classList.remove("err", "ok");
-      els.note.textContent = "Akbank güvenli ödeme sayfası açılıyor…";
-
-      try {
-        const res = await fetch("/api/payment/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: totals.lines.map((l) => ({
-              productId: l.product.id,
-              qty: l.qty,
-            })),
-            customer: {
-              name: ad,
-              company: els.form.firma.value.trim(),
-              email,
-              phone: tel,
-              taxId: (els.form.vergi && els.form.vergi.value.trim()) || "",
-              note: (els.form.not && els.form.not.value.trim()) || "",
-            },
-            contractsAccepted: true,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data.error || "Ödeme başlatılamadı.");
+    if (els.form && !submitBound) {
+      submitBound = true;
+      els.form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const ad = els.form.ad.value.trim();
+        const email = els.form.email.value.trim();
+        const tel = els.form.tel.value.trim();
+        if (!ad || !email || !tel) {
+          els.note.classList.remove("ok");
+          els.note.classList.add("err");
+          els.note.textContent = "Lütfen zorunlu alanları doldurun.";
+          return;
         }
-        if (els.orderIdPreview) els.orderIdPreview.textContent = data.orderId;
-        postToBank(data.action, data.fields);
-      } catch (err) {
-        els.note.classList.add("err");
-        els.note.textContent = err.message || "Ödeme başlatılamadı.";
+        if (!isValidEmail(email)) {
+          els.note.classList.remove("ok");
+          els.note.classList.add("err");
+          els.note.textContent = "Geçerli bir e-posta adresi girin.";
+          return;
+        }
+        if (
+          !els.form.onayOnBilgi?.checked ||
+          !els.form.onayMesafeli?.checked ||
+          !els.form.onayIade?.checked
+        ) {
+          els.note.classList.remove("ok");
+          els.note.classList.add("err");
+          els.note.textContent =
+            "Devam etmek için Ön Bilgilendirme, Mesafeli Satış Sözleşmesi ve İade/Cayma koşullarını onaylayın.";
+          return;
+        }
+
+        const totals = calcFn ? calcFn() : { lines: [] };
+        if (!totals.lines.length) {
+          els.note.classList.add("err");
+          els.note.textContent = "Sepet boş.";
+          return;
+        }
+
+        if (!posStatus.enabled) {
+          els.note.classList.add("err");
+          els.note.textContent = "Sanal POS henüz aktif değil. Anahtarları .env dosyasına ekleyin.";
+          return;
+        }
+
         if (els.payBtn) {
-          els.payBtn.disabled = false;
-          els.payBtn.textContent = "Güvenli Ödemeye Geç";
+          els.payBtn.disabled = true;
+          els.payBtn.textContent = "Banka sayfasına yönlendiriliyor…";
         }
-      }
-    });
+        els.note.classList.remove("err", "ok");
+        els.note.textContent = "Akbank güvenli ödeme sayfası açılıyor…";
+
+        try {
+          const res = await fetch("/api/payment/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: totals.lines.map((l) => ({
+                productId: l.product.id,
+                qty: l.qty,
+              })),
+              customer: {
+                name: ad,
+                company: els.form.firma.value.trim(),
+                email,
+                phone: tel,
+                taxId: (els.form.vergi && els.form.vergi.value.trim()) || "",
+                note: (els.form.not && els.form.not.value.trim()) || "",
+              },
+              contractsAccepted: true,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || "Ödeme başlatılamadı.");
+          }
+          if (els.orderIdPreview) els.orderIdPreview.textContent = data.orderId;
+          postToBank(data.action, data.fields);
+        } catch (err) {
+          els.note.classList.add("err");
+          els.note.textContent = err.message || "Ödeme başlatılamadı.";
+          if (els.payBtn) {
+            els.payBtn.disabled = false;
+            els.payBtn.textContent = "Güvenli Ödemeye Geç";
+          }
+        }
+      });
+    }
+
+    booted = true;
+    return true;
+  }
+
+  function tryBoot() {
+    boot(window.PatygoCatalog && window.PatygoCatalog.byId ? window.PatygoCatalog.byId : {});
   }
 
   async function start() {
     const handled = await hydratePaymentReturn();
-    await loadPosStatus();
     if (handled) return;
-    const run = () => boot(window.PatygoCatalog.byId || {});
+
+    // POS durumunu katalogdan bağımsız yükle
+    loadPosStatus();
+
+    // Sepet anlık görüntüsüyle hemen dene; katalog gelince yeniden dene
+    tryBoot();
     if (window.PatygoCatalog && window.PatygoCatalog.ready) {
-      window.PatygoCatalog.ready.then(run);
-    } else {
-      window.addEventListener("patygo:catalog", run, { once: true });
+      window.PatygoCatalog.ready.then(tryBoot).catch(tryBoot);
     }
+    window.addEventListener("patygo:catalog", tryBoot);
   }
 
   start();

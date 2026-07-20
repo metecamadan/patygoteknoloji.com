@@ -88,7 +88,11 @@
     add.className = "btn btn-primary btn-lg";
     add.textContent = "Sepete Ekle";
     add.addEventListener("click", () => {
-      window.PatygoCart.add(product.id, 1);
+      window.PatygoCart.add(product.id, 1, {
+        brand: product.brand,
+        name: product.name,
+        price: product.price,
+      });
       add.textContent = "Sepete eklendi";
     });
     const buy = document.createElement("a");
