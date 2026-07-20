@@ -162,104 +162,7 @@
           <button type="button" data-filter="kucuk-ev">Küçük Ev Aletleri</button>
           <button type="button" data-filter="beyaz-esya">Beyaz Eşya</button>
         </div>
-        <div class="product-grid">
-          <article class="product-card reveal" data-cat="bilgisayar">
-            <div class="visual"><span>APPLE</span></div>
-            <div class="body">
-              <span class="brand-tag">APPLE</span>
-              <h3>MacBook Air 13" M3 8/256GB</h3>
-              <div class="price">₺52.999 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=macbook-air-m3">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal d1" data-cat="bilgisayar">
-            <div class="visual"><span>LENOVO</span></div>
-            <div class="body">
-              <span class="brand-tag">LENOVO</span>
-              <h3>ThinkPad E16 i7 16/512GB</h3>
-              <div class="price">₺38.499 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=thinkpad-e16">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal d2" data-cat="bilgisayar">
-            <div class="visual"><span>HP</span></div>
-            <div class="body">
-              <span class="brand-tag">HP</span>
-              <h3>ProBook 450 G10 i5 16/512GB</h3>
-              <div class="price">₺29.999 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=probook-450">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal" data-cat="yazici">
-            <div class="visual"><span>EPSON</span></div>
-            <div class="body">
-              <span class="brand-tag">EPSON</span>
-              <h3>EcoTank L3560 Wi-Fi Tanklı</h3>
-              <div class="price">₺8.749 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=epson-l3560">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal" data-cat="kucuk-ev">
-            <div class="visual"><span>DYSON</span></div>
-            <div class="body">
-              <span class="brand-tag">DYSON</span>
-              <h3>V15 Detect Absolute Süpürge</h3>
-              <div class="price">₺27.499 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=dyson-v15">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal d1" data-cat="beyaz-esya">
-            <div class="visual"><span>ARÇELİK</span></div>
-            <div class="body">
-              <span class="brand-tag">ARÇELİK</span>
-              <h3>9103 NFY A++ No-Frost Buzdolabı</h3>
-              <div class="price">₺34.499 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=arcelik-9103">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal d2" data-cat="kucuk-ev">
-            <div class="visual"><span>PHILIPS</span></div>
-            <div class="body">
-              <span class="brand-tag">PHILIPS</span>
-              <h3>Airfryer XXL 5000 Series</h3>
-              <div class="price">₺9.999 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=philips-airfryer">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-          <article class="product-card reveal" data-cat="yazici">
-            <div class="visual"><span>HP</span></div>
-            <div class="body">
-              <span class="brand-tag">HP</span>
-              <h3>LaserJet Pro M404dn</h3>
-              <div class="price">₺12.499 <small>+KDV</small></div>
-              <div class="actions">
-                <a class="btn btn-buy" href="odeme.html?id=hp-m404dn">Satın Al</a>
-                <a class="btn btn-quote" href="#teklif">Teklif Al</a>
-              </div>
-            </div>
-          </article>
-        </div>
+        <div class="product-grid" data-catalog="featured" aria-live="polite"></div>
       </div>
     </section>
 
@@ -375,6 +278,8 @@
     <button class="top" aria-label="Yukarı" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
 
+  <script src="assets/js/products-data.js"></script>
+  <script src="assets/js/catalog.js"></script>
   <script src="assets/js/main.js"></script>
 </body>
 </html>

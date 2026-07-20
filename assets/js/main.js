@@ -49,22 +49,7 @@
     revealables.forEach((el) => el.classList.add("in"));
   }
 
-  /* Ürün sekmeleri */
-  const tabs = document.querySelectorAll(".product-tabs button");
-  const cards = document.querySelectorAll(".product-card");
-  if (tabs.length && cards.length) {
-    tabs.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        tabs.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        const filter = btn.dataset.filter;
-        cards.forEach((card) => {
-          const show = filter === "all" || card.dataset.cat === filter;
-          card.hidden = !show;
-        });
-      });
-    });
-  }
+  /* Ürün sekmeleri catalog.js tarafından bağlanır */
 
   document.querySelectorAll(".acc-head").forEach((head) => {
     head.addEventListener("click", () => {

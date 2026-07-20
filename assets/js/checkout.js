@@ -1,52 +1,10 @@
 (function () {
-  const CATALOG = {
-    "macbook-air-m3": {
-      brand: "APPLE",
-      name: 'MacBook Air 13" M3 8/256GB',
-      price: 52999,
-    },
-    "thinkpad-e16": {
-      brand: "LENOVO",
-      name: "ThinkPad E16 i7 16/512GB",
-      price: 38499,
-    },
-    "probook-450": {
-      brand: "HP",
-      name: "ProBook 450 G10 i5 16/512GB",
-      price: 29999,
-    },
-    "epson-l3560": {
-      brand: "EPSON",
-      name: "EcoTank L3560 Wi-Fi Tanklı",
-      price: 8749,
-    },
-    "dyson-v15": {
-      brand: "DYSON",
-      name: "V15 Detect Absolute Süpürge",
-      price: 27499,
-    },
-    "arcelik-9103": {
-      brand: "ARÇELİK",
-      name: "9103 NFY A++ No-Frost Buzdolabı",
-      price: 34499,
-    },
-    "philips-airfryer": {
-      brand: "PHILIPS",
-      name: "Airfryer XXL 5000 Series",
-      price: 9999,
-    },
-    "hp-m404dn": {
-      brand: "HP",
-      name: "LaserJet Pro M404dn",
-      price: 12499,
-    },
-  };
-
+  const catalog = (window.PatygoCatalog && window.PatygoCatalog.byId) || {};
   const VAT_RATE = 0.2;
 
   const params = new URLSearchParams(window.location.search);
   const productId = params.get("id") || "";
-  const product = CATALOG[productId] || null;
+  const product = catalog[productId] || null;
 
   const els = {
     brand: document.getElementById("orderBrand"),
