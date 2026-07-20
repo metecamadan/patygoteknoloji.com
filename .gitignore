@@ -26,3 +26,4 @@ credentials*.json
 node_modules/
 dist/
 .tmp/
+.runtime/

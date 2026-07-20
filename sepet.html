@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
-<body>
+<body class="cart-page">
   <header class="site-header">
     <div class="container">
       <nav class="nav" aria-label="Ana menü">
@@ -33,7 +33,7 @@
   </header>
 
   <main>
-    <section class="page-hero">
+    <section class="page-hero cart-hero">
       <div class="container">
         <div class="breadcrumb reveal"><a href="index.html">Ana Sayfa</a> <span>/</span> <span>Sepet</span></div>
         <h1 class="reveal">Sepetiniz</h1>
@@ -41,21 +41,46 @@
       </div>
     </section>
 
-    <section class="section" style="padding-top:0">
+    <section class="section cart-section">
       <div class="container cart-layout">
-        <div class="checkout-card reveal" id="cartLines"></div>
-        <aside class="checkout-card reveal d1" id="cartSummary">
-          <h2 style="font-size:1.15rem;margin-bottom:14px">Özet</h2>
+        <div class="checkout-card cart-products reveal" id="cartLines" aria-live="polite"></div>
+        <aside class="checkout-card cart-summary reveal d1" id="cartSummary">
+          <h2>Sipariş özeti</h2>
           <div class="checkout-sum"><span>Ara toplam (KDV hariç)</span><span id="cartSub">₺0</span></div>
           <div class="checkout-sum"><span>KDV (%20)</span><span id="cartVat">₺0</span></div>
           <div class="checkout-sum total"><span>Genel toplam</span><strong id="cartTotal">₺0</strong></div>
-          <a href="odeme.html" class="btn btn-primary btn-block btn-lg" id="cartCheckout" style="margin-top:16px">Ödemeye Geç</a>
-          <a href="urunler.html" class="btn btn-outline btn-block" style="margin-top:10px">Alışverişe devam</a>
-          <p class="form-note" id="cartNote" style="display:block;margin-top:12px"></p>
+          <a href="odeme.html" class="btn btn-primary btn-block btn-lg cart-checkout" id="cartCheckout">Sipariş talebine geç</a>
+          <a href="urunler.html" class="btn btn-ghost btn-block cart-continue">← Alışverişe devam et</a>
+          <p class="cart-note" id="cartNote" hidden></p>
         </aside>
       </div>
     </section>
   </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/img/patygo-logo.png" alt="Patygo Teknoloji" />
+          <p>Patygo Teknoloji ve Bilişim Ltd. Şti. — Elektronik marka ürünlerin kurumsal temin, tedarik ve satışı.</p>
+        </div>
+        <div class="footer-col"><h4>Kurumsal</h4><a href="kurumsal.html">Hakkımızda</a><a href="urunler.html">Ürünler</a><a href="markalar.html">Markalar</a><a href="iletisim.html">İletişim</a></div>
+        <div class="footer-col"><h4>Çözümler</h4><a href="hizmetler.html">Elektronik Tedarik</a><a href="hizmetler.html">Kurumsal BT</a><a href="hizmetler.html">Toplu Satış</a><a href="hizmetler.html">Danışmanlık</a></div>
+        <div class="footer-col"><h4>İletişim</h4><a class="footer-contact" href="tel:+905555070724"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.6A2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.5c.9.3 1.8.6 2.8.7a2 2 0 011.8 2z" stroke-linecap="round" stroke-linejoin="round"/></svg> 0555 507 07 24</a><a class="footer-contact" href="mailto:info@patygoteknoloji.com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6" stroke-linecap="round" stroke-linejoin="round"/></svg> info@patygoteknoloji.com</a></div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span data-year>2026</span> Patygo Teknoloji ve Bilişim Ltd. Şti. Tüm hakları saklıdır.</span>
+        <div class="legal-links">
+          <a href="kvkk.html">KVKK</a><a href="gizlilik.html">Gizlilik</a><a href="cerez.html">Çerez</a><a href="kullanim-kosullari.html">Kullanım Koşulları</a><a href="on-bilgilendirme-formu.html">Ön Bilgilendirme</a><a href="mesafeli-satis-sozlesmesi.html">Mesafeli Satış Sözleşmesi</a><a href="iade-ve-cayma.html">İade ve Cayma</a><a href="hizmet-sozlesmesi.html">Satış Sözleşmesi</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <div class="fab">
+    <a class="wa" href="https://wa.me/905555070724" target="_blank" rel="noopener" aria-label="WhatsApp ile yazın"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.2L2 22l4.9-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1-.7-.3-1.4-.6-2-1.3-.5-.5-.9-1.1-1-1.3-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3.2-.5 0-.2 0-.4 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3z"/></svg></a>
+    <button class="top" id="backTop" aria-label="Yukarı çık" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
 
   <script src="assets/js/cart.js"></script>
   <script src="assets/js/catalog.js"></script>

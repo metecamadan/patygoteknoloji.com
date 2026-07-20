@@ -39,16 +39,30 @@ Patygo Teknoloji ve Bilişim Ltd. Şti. için hazırlanan kurumsal tanıtım web
 
 ## Yerel Önizleme
 
-Herhangi bir statik sunucu ile çalışır. Örnek:
+Ürün kataloğu ve yönetim paneli için Node.js sunucusunu kullanın:
 
 ```bash
-python -m http.server 8080
-# ardından http://localhost:8080 adresini açın
+npm install
+copy .env.example .env
+npm start
 ```
+
+Site: `http://localhost:5173`
+
+Panel: `http://localhost:5173/admin.html`
+
+`.env` içinde en az `ADMIN_PASSWORD` ve `SITE_BASE_URL` değerlerini canlı ortama göre değiştirin.
+
+## XML ve Akakçe
+
+- Tedarikçi XML bağlantısı paneldeki **XML Yönetimi** bölümünden sunucuya kaydedilir.
+- XML ürünleri varsayılan olarak pasiftir. Aktif edilenler site kataloğuna ve Akakçe feed'ine eklenir.
+- Akakçe adresi: `/api/feeds/akakce.xml`
+- Tedarikçi IP yetkisi, canlı sunucunun çıkış IP adresine tanımlanmalıdır.
 
 ## Yayına Alma (Deploy)
 
-Statik hosting (GitHub Pages, Netlify, Vercel, cPanel vb.) ile yayınlanabilir. Alan adı: `patygoteknoloji.com`.
+Node.js çalıştırabilen bir sunucu gerekir. `.runtime/` klasörü kalıcı diskte tutulmalı; dışarıdan erişime açılmamalıdır. Alan adı: `patygoteknoloji.com`.
 
 ## Yapılacaklar / Notlar
 

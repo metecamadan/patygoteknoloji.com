@@ -5,6 +5,11 @@
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
   let products = [];
   let selectedIndex = -1;
+  let currentImages = [];
+  let supplierProducts = [];
+  let supplierStatus = null;
+  let feedStatus = null;
+  const selectedSupplierSkus = new Set();
 
   const loginView = document.getElementById("loginView");
   const panelView = document.getElementById("panelView");
@@ -16,6 +21,12 @@
   const formTitle = document.getElementById("formTitle");
   const productCount = document.getElementById("productCount");
   const imagePreview = document.getElementById("imagePreview");
+  const productSearch = document.getElementById("productSearch");
+  const productCategoryFilter = document.getElementById("productCategoryFilter");
+  const productStatusFilter = document.getElementById("productStatusFilter");
+  const supplierRows = document.getElementById("supplierProductRows");
+  const supplierSearch = document.getElementById("supplierSearch");
+  const supplierStatusFilter = document.getElementById("supplierStatusFilter");
 
   const fields = {
     editIndex: document.getElementById("editIndex"),
@@ -26,7 +37,6 @@
     category: document.getElementById("pCategory"),
     description: document.getElementById("pDescription"),
     details: document.getElementById("pDetails"),
-    image: document.getElementById("pImage"),
     imageFile: document.getElementById("pImageFile"),
     featured: document.getElementById("pFeatured"),
     active: document.getElementById("pActive"),
@@ -52,7 +62,10 @@
     if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
 
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
+    const timer = setTimeout(
+      () => ctrl.abort(),
+      Number(opts.timeout) || (path.includes("/supplier/refresh") ? 45000 : 12000)
+    );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
       const data = await res.json().catch(() => ({}));
@@ -79,6 +92,94 @@
     document.body.classList.toggle("admin-authed", !!on);
   }
 
+  function selectAdminTab(name, focus) {
+    const tabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
+    const pageMeta = {
+      overview: ["Genel Bakış", "Katalog ve yayın durumunu tek ekrandan yönetin."],
+      products: ["Ürünler", "Manuel ürün kataloğunu düzenleyin."],
+      xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
+    };
+    tabs.forEach((tab) => {
+      const selected = tab.dataset.adminTab === name;
+      tab.classList.toggle("active", selected);
+      if (selected) tab.setAttribute("aria-current", "page");
+      else tab.removeAttribute("aria-current");
+      const panel = document.getElementById(tab.getAttribute("aria-controls"));
+      if (panel) panel.hidden = !selected;
+      if (selected && focus) tab.focus();
+    });
+    const meta = pageMeta[name] || pageMeta.overview;
+    document.getElementById("adminPageTitle").textContent = meta[0];
+    document.getElementById("adminPageSubtitle").textContent = meta[1];
+    if (name === "xml" && token) loadSupplierData().catch(() => {});
+    try {
+      sessionStorage.setItem("patygo_admin_tab", name);
+    } catch (_) {}
+  }
+
+  document.querySelectorAll("[data-admin-tab]").forEach((tab) => {
+    tab.addEventListener("click", () => selectAdminTab(tab.dataset.adminTab, false));
+  });
+
+  document.querySelectorAll("[data-open-admin-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectAdminTab(button.dataset.openAdminTab, false);
+      if (button.dataset.openAdminTab === "products") emptyForm();
+    });
+  });
+
+  let initialAdminTab = "overview";
+  try {
+    const saved = sessionStorage.getItem("patygo_admin_tab");
+    if (["overview", "products", "xml"].includes(saved)) initialAdminTab = saved;
+  } catch (_) {}
+  selectAdminTab(initialAdminTab, false);
+
+  function renderImagePreviews() {
+    imagePreview.textContent = "";
+    imagePreview.hidden = currentImages.length === 0;
+    currentImages.forEach((url, index) => {
+      const item = document.createElement("div");
+      item.className = "admin-preview-item";
+      item.draggable = true;
+      item.dataset.index = String(index);
+
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Ürün görseli " + (index + 1);
+
+      const badge = document.createElement("span");
+      badge.textContent = index === 0 ? "Kapak" : String(index + 1);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Görseli kaldır");
+      remove.textContent = "×";
+      remove.addEventListener("click", () => {
+        currentImages.splice(index, 1);
+        renderImagePreviews();
+      });
+
+      item.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("text/plain", String(index));
+      });
+      item.addEventListener("dragover", (ev) => ev.preventDefault());
+      item.addEventListener("drop", (ev) => {
+        ev.preventDefault();
+        const from = Number(ev.dataTransfer.getData("text/plain"));
+        if (!Number.isInteger(from) || from === index || !currentImages[from]) return;
+        const moved = currentImages.splice(from, 1)[0];
+        currentImages.splice(index, 0, moved);
+        renderImagePreviews();
+      });
+
+      item.appendChild(img);
+      item.appendChild(badge);
+      item.appendChild(remove);
+      imagePreview.appendChild(item);
+    });
+  }
+
   function emptyForm() {
     selectedIndex = -1;
     fields.editIndex.value = "-1";
@@ -90,12 +191,12 @@
     fields.category.value = "bilgisayar";
     fields.description.value = "";
     fields.details.value = "";
-    fields.image.value = "";
+    currentImages = [];
     fields.imageFile.value = "";
     fields.featured.checked = true;
     fields.active.checked = true;
     imagePreview.hidden = true;
-    imagePreview.innerHTML = "";
+    renderImagePreviews();
     formTitle.textContent = "Yeni ürün";
     note(formNote, "", "");
   }
@@ -111,62 +212,350 @@
     fields.category.value = p.category || "bilgisayar";
     fields.description.value = p.description || "";
     fields.details.value = p.details || "";
-    fields.image.value = p.image || "";
+    currentImages = Array.isArray(p.images)
+      ? p.images.filter(Boolean).slice(0, 10)
+      : p.image
+        ? [p.image]
+        : [];
     fields.featured.checked = !!p.featured;
     fields.active.checked = p.active !== false;
     formTitle.textContent = "Ürünü düzenle";
-    if (p.image) {
-      imagePreview.hidden = false;
-      imagePreview.innerHTML = "";
-      const img = document.createElement("img");
-      img.src = p.image;
-      img.alt = p.name || "";
-      imagePreview.appendChild(img);
-    } else {
-      imagePreview.hidden = true;
-      imagePreview.innerHTML = "";
-    }
+    renderImagePreviews();
     note(formNote, "", "");
   }
 
   function renderList() {
-    productList.innerHTML = "";
-    productCount.textContent = products.length + " ürün";
-    products.forEach((p, index) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "admin-item" + (index === selectedIndex ? " active" : "");
-      const media = p.image
-        ? Object.assign(document.createElement("img"), { src: p.image, alt: "" })
+    productList.textContent = "";
+    const query = String(productSearch && productSearch.value ? productSearch.value : "")
+      .trim()
+      .toLocaleLowerCase("tr-TR");
+    const category = productCategoryFilter ? productCategoryFilter.value : "";
+    const status = productStatusFilter ? productStatusFilter.value : "";
+    const visible = products
+      .map((product, index) => ({ product, index }))
+      .filter(({ product }) => {
+        const haystack = [product.id, product.name, product.brand]
+          .join(" ")
+          .toLocaleLowerCase("tr-TR");
+        if (query && !haystack.includes(query)) return false;
+        if (category && product.category !== category) return false;
+        if (status === "active" && product.active === false) return false;
+        if (status === "inactive" && product.active !== false) return false;
+        return true;
+      });
+    productCount.textContent = visible.length + " / " + products.length + " ürün";
+    if (!visible.length) {
+      const empty = document.createElement("div");
+      empty.className = "admin-table-empty";
+      empty.textContent = products.length
+        ? "Filtrelere uygun ürün bulunamadı."
+        : "Henüz ürün yok. Yeni ürün ekleyebilir veya XML’den aktarabilirsiniz.";
+      productList.appendChild(empty);
+      updateDashboard();
+      return;
+    }
+    visible.forEach(({ product: p, index }) => {
+      const row = document.createElement("div");
+      row.className = "admin-item" + (index === selectedIndex ? " active" : "");
+      const primaryImage =
+        (Array.isArray(p.images) && p.images.find(Boolean)) || p.image || "";
+      const media = primaryImage
+        ? Object.assign(document.createElement("img"), { src: primaryImage, alt: p.name || "" })
         : Object.assign(document.createElement("div"), { className: "ph", textContent: "Görsel yok" });
-      const meta = document.createElement("div");
+      const meta = document.createElement("button");
+      meta.type = "button";
+      meta.className = "admin-item-meta";
       const strong = document.createElement("strong");
       strong.textContent = p.name;
       const small = document.createElement("small");
       small.textContent = p.brand + " · " + money(p.price) + " +KDV · " + p.category;
       meta.appendChild(strong);
       meta.appendChild(small);
-      const badges = document.createElement("div");
-      badges.className = "admin-badges";
-      const a = document.createElement("span");
-      a.className = "admin-badge " + (p.active !== false ? "on" : "off");
-      a.textContent = p.active !== false ? "Yayında" : "Gizli";
-      badges.appendChild(a);
-      if (p.featured) {
-        const f = document.createElement("span");
-        f.className = "admin-badge";
-        f.textContent = "Öne çıkan";
-        badges.appendChild(f);
-      }
-      btn.appendChild(media);
-      btn.appendChild(meta);
-      btn.appendChild(badges);
-      btn.addEventListener("click", () => {
+
+      const quick = document.createElement("div");
+      quick.className = "admin-item-quick";
+      const statusText = document.createElement("span");
+      statusText.className = "admin-badge " + (p.active !== false ? "on" : "off");
+      statusText.textContent = p.active !== false ? "Aktif" : "Pasif";
+      const toggleLabel = document.createElement("label");
+      toggleLabel.className = "admin-switch";
+      toggleLabel.setAttribute("aria-label", p.name + " yayın durumunu değiştir");
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = p.active !== false;
+      const track = document.createElement("span");
+      toggle.addEventListener("change", async () => {
+        toggle.disabled = true;
+        const next = products.slice();
+        next[index] = Object.assign({}, next[index], { active: toggle.checked });
+        try {
+          await persist(next, p.name + (toggle.checked ? " yayına alındı." : " pasife alındı."));
+        } catch (err) {
+          toggle.checked = !toggle.checked;
+          note(formNote, "err", err.message || "Durum güncellenemedi.");
+        } finally {
+          toggle.disabled = false;
+        }
+      });
+      toggleLabel.appendChild(toggle);
+      toggleLabel.appendChild(track);
+      quick.appendChild(statusText);
+      quick.appendChild(toggleLabel);
+
+      row.appendChild(media);
+      row.appendChild(meta);
+      row.appendChild(quick);
+      meta.addEventListener("click", () => {
         fillForm(p, index);
         renderList();
       });
-      productList.appendChild(btn);
+      productList.appendChild(row);
     });
+    updateDashboard();
+  }
+
+  function formatDate(value) {
+    if (!value) return "Henüz yok";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? "Henüz yok"
+      : date.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  function updateDashboard() {
+    const activeManual = products.filter((item) => item.active !== false).length;
+    const activeSupplier = supplierProducts.filter((item) => item.active).length;
+    document.getElementById("dashboardProductCount").textContent = String(products.length);
+    document.getElementById("dashboardActiveCount").textContent = String(
+      activeManual + activeSupplier
+    );
+    document.getElementById("dashboardSupplierCount").textContent = String(
+      supplierProducts.length
+    );
+    document.getElementById("dashboardFeedCount").textContent = String(
+      feedStatus ? feedStatus.activeCount : activeManual + activeSupplier
+    );
+    const badge = document.getElementById("dashboardXmlStatus");
+    const configured = supplierStatus && supplierStatus.configured;
+    const failed = supplierStatus && supplierStatus.lastFetchStatus === "error";
+    badge.className = "admin-status " + (failed ? "err" : configured ? "on" : "pending");
+    badge.textContent = failed ? "Bağlantı hatası" : configured ? "Bağlı" : "Yapılandırılmadı";
+    document.getElementById("dashboardLastSync").textContent = formatDate(
+      supplierStatus && supplierStatus.lastFetchAt
+    );
+    document.getElementById("dashboardXmlHost").textContent =
+      (supplierStatus && supplierStatus.host) || "Tanımlanmadı";
+    document.getElementById("dashboardMargin").textContent =
+      "%" + (supplierStatus ? supplierStatus.globalMarginPercent : 15);
+  }
+
+  function renderSupplierStatus() {
+    if (!supplierStatus) return;
+    const failed = supplierStatus.lastFetchStatus === "error";
+    const badge = document.getElementById("supplierConnectionBadge");
+    badge.className =
+      "admin-status " + (failed ? "err" : supplierStatus.configured ? "on" : "pending");
+    badge.textContent = failed
+      ? "Senkron hatası"
+      : supplierStatus.configured
+        ? "Bağlantı kayıtlı"
+        : "Yapılandırılmadı";
+    document.getElementById("supplierMaskedUrl").textContent =
+      supplierStatus.maskedUrl || "Tanımlanmadı";
+    document.getElementById("supplierLastSync").textContent = formatDate(
+      supplierStatus.lastFetchAt
+    );
+    document.getElementById("supplierItemCount").textContent = String(
+      supplierStatus.itemCount || supplierProducts.length
+    );
+    document.getElementById("supplierMargin").value = String(
+      supplierStatus.globalMarginPercent
+    );
+    if (failed && supplierStatus.lastError) {
+      note(document.getElementById("supplierConfigNote"), "err", supplierStatus.lastError);
+    } else {
+      note(document.getElementById("supplierConfigNote"), "", "");
+    }
+    if (feedStatus) {
+      document.getElementById("feedActiveCount").textContent = String(feedStatus.activeCount || 0);
+      document.getElementById("feedSourceCounts").textContent =
+        String(feedStatus.supplierActiveCount || 0) +
+        " / " +
+        String(feedStatus.manualActiveCount || 0);
+    }
+    const absoluteFeedUrl = location.origin + "/api/feeds/akakce.xml";
+    document.getElementById("feedUrl").textContent = absoluteFeedUrl;
+    document.getElementById("feedOpenBtn").href = absoluteFeedUrl;
+    updateDashboard();
+  }
+
+  function filteredSupplierProducts() {
+    const query = String(supplierSearch && supplierSearch.value ? supplierSearch.value : "")
+      .trim()
+      .toLocaleLowerCase("tr-TR");
+    const status = supplierStatusFilter ? supplierStatusFilter.value : "";
+    return supplierProducts.filter((item) => {
+      const haystack = [item.supplierSku, item.name, item.brand]
+        .join(" ")
+        .toLocaleLowerCase("tr-TR");
+      if (query && !haystack.includes(query)) return false;
+      if (status === "active" && !item.active) return false;
+      if (status === "inactive" && item.active) return false;
+      if (status === "stock" && !(item.stockQty === null || Number(item.stockQty) > 0)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  function renderSupplierProducts() {
+    supplierRows.textContent = "";
+    const visible = filteredSupplierProducts();
+    document.getElementById("supplierVisibleCount").textContent =
+      visible.length + " / " + supplierProducts.length + " ürün";
+    if (!visible.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 7;
+      cell.className = "admin-table-empty";
+      cell.textContent = supplierProducts.length
+        ? "Filtrelere uygun XML ürünü bulunamadı."
+        : "XML bağlantısını kaydedip ürünleri güncelleyin.";
+      row.appendChild(cell);
+      supplierRows.appendChild(row);
+      updateDashboard();
+      return;
+    }
+
+    visible.forEach((item) => {
+      const row = document.createElement("tr");
+      const checkCell = document.createElement("td");
+      checkCell.className = "admin-check-col";
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.checked = selectedSupplierSkus.has(item.supplierSku);
+      check.setAttribute("aria-label", item.name + " ürününü seç");
+      check.addEventListener("change", () => {
+        if (check.checked) selectedSupplierSkus.add(item.supplierSku);
+        else selectedSupplierSkus.delete(item.supplierSku);
+      });
+      checkCell.appendChild(check);
+
+      const productCell = document.createElement("td");
+      const product = document.createElement("div");
+      product.className = "admin-table-product";
+      const media = item.image
+        ? Object.assign(document.createElement("img"), {
+            src: item.image,
+            alt: item.name || "",
+            loading: "lazy",
+          })
+        : Object.assign(document.createElement("div"), {
+            className: "ph",
+            textContent: (item.brand || "?").slice(0, 3),
+          });
+      const text = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = item.name;
+      const brand = document.createElement("span");
+      brand.textContent = item.brand + " · " + item.category;
+      text.appendChild(title);
+      text.appendChild(brand);
+      product.appendChild(media);
+      product.appendChild(text);
+      productCell.appendChild(product);
+
+      const skuCell = document.createElement("td");
+      skuCell.textContent = item.supplierSku;
+      const costCell = document.createElement("td");
+      costCell.textContent = money(item.costPrice);
+      const saleCell = document.createElement("td");
+      const saleInput = document.createElement("input");
+      saleInput.className = "admin-price-input";
+      saleInput.type = "number";
+      saleInput.min = "0";
+      saleInput.step = "0.01";
+      saleInput.value = String(item.salePrice);
+      saleInput.title = "Boş bırakırsanız genel kâr oranı kullanılır";
+      saleInput.addEventListener("change", async () => {
+        saleInput.disabled = true;
+        try {
+          await updateSupplierProducts([
+            { supplierSku: item.supplierSku, salePrice: saleInput.value || null },
+          ]);
+          note(document.getElementById("supplierProductsNote"), "ok", "Özel satış fiyatı güncellendi.");
+        } catch (err) {
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        } finally {
+          saleInput.disabled = false;
+        }
+      });
+      saleCell.appendChild(saleInput);
+
+      const stockCell = document.createElement("td");
+      stockCell.textContent = item.stockQty === null ? "—" : String(item.stockQty);
+      const activeCell = document.createElement("td");
+      const toggleLabel = document.createElement("label");
+      toggleLabel.className = "admin-switch";
+      toggleLabel.setAttribute("aria-label", item.name + " yayın durumunu değiştir");
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = !!item.active;
+      const track = document.createElement("span");
+      toggle.addEventListener("change", async () => {
+        toggle.disabled = true;
+        try {
+          await updateSupplierProducts([
+            { supplierSku: item.supplierSku, active: toggle.checked },
+          ]);
+          notifySite();
+          note(
+            document.getElementById("supplierProductsNote"),
+            "ok",
+            toggle.checked
+              ? "Ürün site ve Akakçe XML’i için aktif edildi."
+              : "Ürün site ve Akakçe XML’inden kaldırıldı."
+          );
+        } catch (err) {
+          toggle.checked = !toggle.checked;
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        } finally {
+          toggle.disabled = false;
+        }
+      });
+      toggleLabel.appendChild(toggle);
+      toggleLabel.appendChild(track);
+      activeCell.appendChild(toggleLabel);
+
+      [checkCell, productCell, skuCell, costCell, saleCell, stockCell, activeCell].forEach(
+        (cell) => row.appendChild(cell)
+      );
+      supplierRows.appendChild(row);
+    });
+    updateDashboard();
+  }
+
+  async function loadSupplierData() {
+    const results = await Promise.all([
+      api("/api/admin/supplier/status"),
+      api("/api/admin/supplier/products"),
+    ]);
+    supplierStatus = results[0].status || null;
+    feedStatus = results[0].feed || null;
+    supplierProducts = Array.isArray(results[1].products) ? results[1].products : [];
+    if (results[1].status) supplierStatus = results[1].status;
+    renderSupplierStatus();
+    renderSupplierProducts();
+  }
+
+  async function updateSupplierProducts(updates) {
+    const data = await api("/api/admin/supplier/products", {
+      method: "PATCH",
+      body: JSON.stringify({ updates }),
+    });
+    supplierProducts = Array.isArray(data.products) ? data.products : supplierProducts;
+    await loadSupplierData();
+    renderSupplierProducts();
   }
 
   async function refresh() {
@@ -202,6 +591,149 @@
     );
   }
 
+  [productSearch, productCategoryFilter, productStatusFilter].forEach((control) => {
+    if (!control) return;
+    control.addEventListener(control.tagName === "INPUT" ? "input" : "change", renderList);
+  });
+  [supplierSearch, supplierStatusFilter].forEach((control) => {
+    if (!control) return;
+    control.addEventListener(
+      control.tagName === "INPUT" ? "input" : "change",
+      renderSupplierProducts
+    );
+  });
+
+  document.getElementById("supplierConfigForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const input = document.getElementById("supplierUrl");
+    const button = ev.currentTarget.querySelector('button[type="submit"]');
+    if (!input.value.trim()) {
+      note(document.getElementById("supplierConfigNote"), "err", "XML bağlantısını girin.");
+      return;
+    }
+    button.disabled = true;
+    note(document.getElementById("supplierConfigNote"), "", "Bağlantı güvenli şekilde kaydediliyor…");
+    try {
+      await api("/api/admin/supplier/config", {
+        method: "PUT",
+        body: JSON.stringify({ url: input.value.trim() }),
+      });
+      input.value = "";
+      await loadSupplierData();
+      note(
+        document.getElementById("supplierConfigNote"),
+        "ok",
+        "Bağlantı kaydedildi. Şimdi XML’i Güncelle seçeneğini kullanın."
+      );
+    } catch (err) {
+      note(document.getElementById("supplierConfigNote"), "err", err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("supplierRefreshBtn").addEventListener("click", async (ev) => {
+    const button = ev.currentTarget;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "XML alınıyor…";
+    note(document.getElementById("supplierProductsNote"), "", "Tedarikçi kataloğu güncelleniyor…");
+    try {
+      const data = await api("/api/admin/supplier/refresh", {
+        method: "POST",
+        body: JSON.stringify({}),
+        timeout: 45000,
+      });
+      supplierProducts = Array.isArray(data.products) ? data.products : [];
+      supplierStatus = data.status || supplierStatus;
+      selectedSupplierSkus.clear();
+      await loadSupplierData();
+      notifySite();
+      note(
+        document.getElementById("supplierProductsNote"),
+        "ok",
+        supplierProducts.length + " ürün XML’den güncellendi."
+      );
+    } catch (err) {
+      await loadSupplierData().catch(() => {});
+      note(document.getElementById("supplierProductsNote"), "err", err.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  });
+
+  document.getElementById("supplierSettingsForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const margin = Number(document.getElementById("supplierMargin").value);
+    const button = ev.currentTarget.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const data = await api("/api/admin/supplier/settings", {
+        method: "PUT",
+        body: JSON.stringify({ globalMarginPercent: margin }),
+      });
+      supplierProducts = Array.isArray(data.products) ? data.products : supplierProducts;
+      await loadSupplierData();
+      notifySite();
+      note(document.getElementById("feedNote"), "ok", "Genel kâr oranı güncellendi.");
+    } catch (err) {
+      note(document.getElementById("feedNote"), "err", err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("feedCopyBtn").addEventListener("click", async () => {
+    const url = location.origin + "/api/feeds/akakce.xml";
+    try {
+      await navigator.clipboard.writeText(url);
+      note(document.getElementById("feedNote"), "ok", "Akakçe XML bağlantısı kopyalandı.");
+    } catch (_) {
+      note(document.getElementById("feedNote"), "err", "Bağlantı kopyalanamadı: " + url);
+    }
+  });
+
+  document.getElementById("supplierSelectAll").addEventListener("change", (ev) => {
+    const checked = ev.currentTarget.checked;
+    filteredSupplierProducts().forEach((item) => {
+      if (checked) selectedSupplierSkus.add(item.supplierSku);
+      else selectedSupplierSkus.delete(item.supplierSku);
+    });
+    renderSupplierProducts();
+  });
+
+  async function bulkSupplierStatus(active) {
+    if (!selectedSupplierSkus.size) {
+      note(document.getElementById("supplierProductsNote"), "err", "Önce ürün seçin.");
+      return;
+    }
+    try {
+      await updateSupplierProducts(
+        Array.from(selectedSupplierSkus).map((supplierSku) => ({ supplierSku, active }))
+      );
+      selectedSupplierSkus.clear();
+      document.getElementById("supplierSelectAll").checked = false;
+      notifySite();
+      note(
+        document.getElementById("supplierProductsNote"),
+        "ok",
+        active
+          ? "Seçilen ürünler site ve Akakçe XML’i için aktif edildi."
+          : "Seçilen ürünler pasife alındı."
+      );
+    } catch (err) {
+      note(document.getElementById("supplierProductsNote"), "err", err.message);
+    }
+  }
+
+  document
+    .getElementById("supplierBulkEnable")
+    .addEventListener("click", () => bulkSupplierStatus(true));
+  document
+    .getElementById("supplierBulkDisable")
+    .addEventListener("click", () => bulkSupplierStatus(false));
+
   loginForm.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const btn = loginForm.querySelector('button[type="submit"]');
@@ -215,7 +747,7 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       showPanel(true);
-      await refresh();
+      await Promise.all([refresh(), loadSupplierData()]);
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {
@@ -233,33 +765,39 @@
   });
 
   document.getElementById("newProductBtn").addEventListener("click", () => {
+    selectAdminTab("products", false);
     emptyForm();
     renderList();
+    fields.name.focus();
   });
 
   fields.imageFile.addEventListener("change", async () => {
-    const file = fields.imageFile.files && fields.imageFile.files[0];
-    if (!file) return;
-    note(formNote, "", "Görsel yükleniyor…");
+    const files = Array.from(fields.imageFile.files || []).slice(
+      0,
+      Math.max(0, 10 - currentImages.length)
+    );
+    if (!files.length) return;
+    note(formNote, "", files.length + " görsel yükleniyor…");
     try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const uploaded = await api("/api/admin/upload", {
-        method: "POST",
-        body: JSON.stringify({ dataUrl, name: fields.id.value || file.name }),
-      });
-      fields.image.value = uploaded.url;
-      imagePreview.hidden = false;
-      imagePreview.innerHTML = "";
-      const img = document.createElement("img");
-      img.src = uploaded.url;
-      img.alt = "";
-      imagePreview.appendChild(img);
-      note(formNote, "ok", "Görsel yüklendi.");
+      for (const file of files) {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const uploaded = await api("/api/admin/upload", {
+          method: "POST",
+          body: JSON.stringify({
+            dataUrl,
+            name: fields.id.value || file.name,
+          }),
+        });
+        currentImages.push(uploaded.url);
+      }
+      fields.imageFile.value = "";
+      renderImagePreviews();
+      note(formNote, "ok", files.length + " görsel yüklendi.");
     } catch (err) {
       note(formNote, "err", err.message || "Görsel yüklenemedi");
     }
@@ -275,7 +813,8 @@
       category: fields.category.value,
       description: fields.description.value.trim(),
       details: fields.details.value.trim(),
-      image: fields.image.value.trim(),
+      image: currentImages[0] || "",
+      images: currentImages.slice(0, 10),
       featured: fields.featured.checked,
       active: fields.active.checked,
     };
@@ -319,7 +858,7 @@
 
   if (token) {
     showPanel(true);
-    refresh().catch(() => {
+    Promise.all([refresh(), loadSupplierData()]).catch(() => {
       token = "";
       sessionStorage.removeItem(TOKEN_KEY);
       showPanel(false);

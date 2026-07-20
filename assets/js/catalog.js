@@ -39,11 +39,15 @@
     article.dataset.cat = product.category || "";
 
     const brand = String(product.brand || "").toUpperCase();
+    const primaryImage =
+      (Array.isArray(product.images) && product.images.find(Boolean)) ||
+      product.image ||
+      "";
     const visual = document.createElement("div");
-    visual.className = "visual" + (product.image ? " has-image" : "");
-    if (product.image) {
+    visual.className = "visual" + (primaryImage ? " has-image" : "");
+    if (primaryImage) {
       const img = document.createElement("img");
-      img.src = product.image;
+      img.src = primaryImage;
       img.alt = product.name || brand;
       img.loading = "lazy";
       visual.appendChild(img);
@@ -168,7 +172,6 @@
 
   async function loadProducts() {
     const bust = "?t=" + Date.now();
-    // 1) Canlı API (panel ile aynı kaynak)
     try {
       const res = await fetch("/api/products" + bust, { cache: "no-store" });
       if (res.ok) {
@@ -177,15 +180,7 @@
         if (Array.isArray(data)) return data;
       }
     } catch (_) {}
-    // 2) Statik dosya yedek
-    try {
-      const res = await fetch("assets/data/products.json" + bust, { cache: "no-store" });
-      if (!res.ok) throw new Error("catalog");
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
-    } catch (_) {
-      return [];
-    }
+    return [];
   }
 
   async function reloadCatalog() {

@@ -16,15 +16,45 @@
     const grid = document.createElement("div");
     grid.className = "detail-grid reveal in";
 
+    const images = (
+      Array.isArray(product.images) ? product.images : [product.image]
+    ).filter(Boolean);
+    const gallery = document.createElement("div");
+    gallery.className = "detail-gallery";
     const media = document.createElement("div");
     media.className = "detail-media";
-    if (product.image) {
-      const img = document.createElement("img");
-      img.src = product.image;
-      img.alt = product.name;
-      media.appendChild(img);
+    if (images.length) {
+      const mainImage = document.createElement("img");
+      mainImage.src = images[0];
+      mainImage.alt = product.name;
+      media.appendChild(mainImage);
+      gallery.appendChild(media);
+
+      if (images.length > 1) {
+        const thumbs = document.createElement("div");
+        thumbs.className = "detail-thumbs";
+        images.forEach((url, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "detail-thumb" + (index === 0 ? " active" : "");
+          button.setAttribute("aria-label", "Görsel " + (index + 1));
+          const thumb = document.createElement("img");
+          thumb.src = url;
+          thumb.alt = "";
+          button.appendChild(thumb);
+          button.addEventListener("click", () => {
+            mainImage.src = url;
+            thumbs.querySelectorAll(".detail-thumb").forEach((item) => {
+              item.classList.toggle("active", item === button);
+            });
+          });
+          thumbs.appendChild(button);
+        });
+        gallery.appendChild(thumbs);
+      }
     } else {
       media.textContent = product.brand;
+      gallery.appendChild(media);
     }
 
     const info = document.createElement("div");
@@ -45,14 +75,6 @@
     const cat = document.createElement("p");
     cat.className = "detail-cat";
     cat.textContent = window.PatygoCatalog.categoryLabel(product.category);
-
-    const desc = document.createElement("p");
-    desc.className = "detail-desc";
-    desc.textContent = product.description || "";
-
-    const details = document.createElement("div");
-    details.className = "detail-body";
-    details.textContent = product.details || "";
 
     const price = document.createElement("div");
     price.className = "price";
@@ -80,14 +102,33 @@
     info.appendChild(tag);
     info.appendChild(h1);
     info.appendChild(cat);
-    if (product.description) info.appendChild(desc);
-    if (product.details) info.appendChild(details);
     info.appendChild(price);
     info.appendChild(actions);
 
-    grid.appendChild(media);
+    grid.appendChild(gallery);
     grid.appendChild(info);
     root.appendChild(grid);
+
+    if (product.description || product.details) {
+      const description = document.createElement("section");
+      description.className = "product-description reveal in";
+      const heading = document.createElement("h2");
+      heading.textContent = "Ürün Açıklaması";
+      description.appendChild(heading);
+      if (product.description) {
+        const intro = document.createElement("p");
+        intro.className = "detail-desc";
+        intro.textContent = product.description;
+        description.appendChild(intro);
+      }
+      if (product.details) {
+        const body = document.createElement("div");
+        body.className = "detail-body";
+        body.textContent = product.details;
+        description.appendChild(body);
+      }
+      root.appendChild(description);
+    }
   }
 
   window.PatygoCatalog.ready.then(() => {

@@ -8,28 +8,34 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
+const { createSupplierStore } = require("./lib/supplier");
+const { buildAkakceXml } = require("./lib/akakce");
 
 const ROOT = path.resolve(__dirname);
 const ROOT_PREFIX = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
 const PORT = Number(process.env.PORT || process.argv[2] || 5173);
 
-// Optional local .env (no dependency)
-try {
-  const envPath = path.join(ROOT, ".env");
-  if (fs.existsSync(envPath)) {
-    fs.readFileSync(envPath, "utf8")
-      .split(/\r?\n/)
-      .forEach((line) => {
-        const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line);
-        if (!m || process.env[m[1]]) return;
-        process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
-      });
-  }
-} catch (_) {}
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "patygo-admin";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? "" : "patygo-admin");
+if (!ADMIN_PASSWORD) {
+  throw new Error("Canlı ortamda ADMIN_PASSWORD tanımlanmalıdır.");
+}
 const PRODUCTS_FILE = path.join(ROOT, "assets", "data", "products.json");
 const PRODUCTS_IMG_DIR = path.join(ROOT, "assets", "img", "products");
+const SITE_BASE_URL = String(process.env.SITE_BASE_URL || `http://localhost:${PORT}`).replace(
+  /\/+$/,
+  ""
+);
+const VAT_RATE = 0.2;
+const supplierStore = createSupplierStore(ROOT, {
+  envUrl: process.env.SUPPLIER_XML_URL || "",
+  defaultMarginPercent: process.env.SUPPLIER_MARGIN_PERCENT || 15,
+  allowedHosts: String(process.env.SUPPLIER_ALLOWED_HOSTS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+});
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -60,6 +66,7 @@ const BLOCKED_FILES = new Set([
 
 const CATEGORIES = new Set(["bilgisayar", "yazici", "kucuk-ev", "beyaz-esya"]);
 const sessions = new Map(); // token -> expiresAt
+const loginAttempts = new Map(); // IP -> { count, resetAt }
 
 fs.mkdirSync(path.dirname(PRODUCTS_FILE), { recursive: true });
 fs.mkdirSync(PRODUCTS_IMG_DIR, { recursive: true });
@@ -112,6 +119,9 @@ function isBlocked(relPosix) {
   if (BLOCKED_FILES.has(path.basename(relPosix).toLowerCase())) return true;
   if (lower.startsWith(".git/") || lower.includes("/.git/")) return true;
   if (lower.startsWith(".env") || lower.includes("/.env")) return true;
+  if (lower.startsWith(".runtime/") || lower.includes("/.runtime/")) return true;
+  if (lower.startsWith("lib/") || lower.includes("/lib/")) return true;
+  if (lower.startsWith("assets/data/") || lower.includes("/assets/data/")) return true;
   if (lower.startsWith("scripts/") || lower.includes("/scripts/")) return true;
   if (lower.startsWith("node_modules/")) return true;
   if (lower.startsWith(".cursor/")) return true;
@@ -163,6 +173,12 @@ function normalizeProduct(p, fallbackId) {
   const id = slugify(p.id || p.name || fallbackId || crypto.randomBytes(4).toString("hex"));
   const category = CATEGORIES.has(p.category) ? p.category : "bilgisayar";
   const price = Math.max(0, Number(p.price) || 0);
+  const legacyImage = String(p.image || "").trim().slice(0, 260);
+  const images = (Array.isArray(p.images) ? p.images : [])
+    .map((value) => String(value || "").trim().slice(0, 260))
+    .filter(Boolean)
+    .slice(0, 10);
+  if (legacyImage && !images.includes(legacyImage)) images.unshift(legacyImage);
   return {
     id,
     brand: String(p.brand || "").trim().toUpperCase().slice(0, 40),
@@ -171,10 +187,45 @@ function normalizeProduct(p, fallbackId) {
     category,
     description: String(p.description || "").trim().slice(0, 280),
     details: String(p.details || "").trim().slice(0, 4000),
-    image: String(p.image || "").trim().slice(0, 260),
+    image: images[0] || "",
+    images,
     featured: Boolean(p.featured),
     active: p.active !== false,
   };
+}
+
+function mergedProducts(includeInactiveManual) {
+  const manual = loadProducts()
+    .map((item) => Object.assign({}, normalizeProduct(item), { source: "manual" }))
+    .filter((item) => includeInactiveManual || item.active !== false);
+  const ids = new Set(manual.map((item) => item.id));
+  const supplier = supplierStore
+    .listProducts()
+    .filter((item) => item.active)
+    .map((item) => {
+      const normalized = normalizeProduct({
+        id: item.id,
+        brand: item.brand,
+        name: item.name,
+        price: item.salePrice,
+        category: item.category,
+        description: item.description,
+        details: item.description,
+        image: item.image,
+        images: item.image ? [item.image] : [],
+        featured: false,
+        active: true,
+      });
+      return Object.assign(normalized, {
+        source: "supplier",
+        supplierSku: item.supplierSku,
+        barcode: item.barcode || "",
+        stockQty: item.stockQty,
+        costPrice: item.costPrice,
+      });
+    })
+    .filter((item) => !ids.has(item.id));
+  return manual.concat(supplier);
 }
 
 function authOk(req) {
@@ -191,21 +242,57 @@ function authOk(req) {
 
 async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/products") {
-    const all = loadProducts();
+    const all = mergedProducts(false);
+    const supplierStatus = supplierStore.status();
     return json(res, 200, {
-      products: all.filter((p) => p && p.active !== false),
-      updatedAt: fs.existsSync(PRODUCTS_FILE)
-        ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
-        : null,
+      products: all,
+      updatedAt:
+        supplierStatus.lastFetchAt ||
+        (fs.existsSync(PRODUCTS_FILE) ? fs.statSync(PRODUCTS_FILE).mtime.toISOString() : null),
     });
+  }
+
+  if (req.method === "GET" && urlPath === "/api/feeds/akakce.xml") {
+    const xml = buildAkakceXml(mergedProducts(false), {
+      siteBaseUrl: SITE_BASE_URL,
+      vatRate: VAT_RATE,
+    });
+    res.writeHead(
+      200,
+      securityHeaders({
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      })
+    );
+    return res.end(xml);
   }
 
   if (req.method === "POST" && urlPath === "/api/admin/login") {
     try {
+      const clientIp = (req.socket && req.socket.remoteAddress) || "unknown";
+      const now = Date.now();
+      const attempt = loginAttempts.get(clientIp);
+      if (attempt && attempt.resetAt > now && attempt.count >= 10) {
+        return json(res, 429, {
+          ok: false,
+          error: "Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.",
+        });
+      }
+      if (attempt && attempt.resetAt <= now) loginAttempts.delete(clientIp);
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
-      if (String(body.password || "") !== ADMIN_PASSWORD) {
+      const supplied = Buffer.from(String(body.password || ""));
+      const expected = Buffer.from(ADMIN_PASSWORD);
+      const matches =
+        supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+      if (!matches) {
+        const current = loginAttempts.get(clientIp);
+        loginAttempts.set(clientIp, {
+          count: current && current.resetAt > now ? current.count + 1 : 1,
+          resetAt: current && current.resetAt > now ? current.resetAt : now + 15 * 60 * 1000,
+        });
         return json(res, 401, { ok: false, error: "Şifre hatalı" });
       }
+      loginAttempts.delete(clientIp);
       const token = crypto.randomBytes(24).toString("hex");
       sessions.set(token, Date.now() + 12 * 60 * 60 * 1000);
       return json(res, 200, { ok: true, token });
@@ -220,6 +307,82 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/admin/products") {
     return json(res, 200, { products: loadProducts() });
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/supplier/status") {
+    const feedProducts = mergedProducts(false);
+    return json(res, 200, {
+      status: supplierStore.status(),
+      feed: {
+        path: "/api/feeds/akakce.xml",
+        activeCount: feedProducts.length,
+        supplierActiveCount: feedProducts.filter((item) => item.source === "supplier").length,
+        manualActiveCount: feedProducts.filter((item) => item.source === "manual").length,
+      },
+    });
+  }
+
+  if (req.method === "PUT" && urlPath === "/api/admin/supplier/config") {
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const config = await supplierStore.saveUrl(body.url);
+      return json(res, 200, { ok: true, config });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Bağlantı kaydedilemedi" });
+    }
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/supplier/refresh") {
+    try {
+      const result = await supplierStore.refresh();
+      return json(res, 200, {
+        ok: true,
+        result,
+        status: supplierStore.status(),
+        products: supplierStore.listProducts(),
+      });
+    } catch (err) {
+      return json(res, 502, { ok: false, error: err.message || "XML alınamadı" });
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
+    return json(res, 200, {
+      products: supplierStore.listProducts(),
+      status: supplierStore.status(),
+    });
+  }
+
+  if (req.method === "PUT" && urlPath === "/api/admin/supplier/settings") {
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const settings = supplierStore.setGlobalMargin(body.globalMarginPercent);
+      return json(res, 200, {
+        ok: true,
+        settings,
+        products: supplierStore.listProducts(),
+      });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Ayar kaydedilemedi" });
+    }
+  }
+
+  if (req.method === "PATCH" && urlPath === "/api/admin/supplier/products") {
+    try {
+      const body = JSON.parse((await readBody(req, 512 * 1024)).toString("utf8") || "{}");
+      const updates = Array.isArray(body.updates) ? body.updates.slice(0, 5000) : [];
+      if (!updates.length) {
+        return json(res, 422, { ok: false, error: "Güncellenecek ürün seçilmedi." });
+      }
+      supplierStore.updateOverrides(updates);
+      return json(res, 200, {
+        ok: true,
+        products: supplierStore.listProducts(),
+        feedCount: mergedProducts(false).length,
+      });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Ürünler güncellenemedi" });
+    }
   }
 
   if (req.method === "PUT" && urlPath === "/api/admin/products") {
