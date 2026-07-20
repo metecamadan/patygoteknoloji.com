@@ -1066,6 +1066,16 @@ h1, h2, h3, h4 {
   box-shadow: none;
 }
 .cta-block .btn-primary:hover { background: var(--brand-soft); }
+.cta-block .btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+  border-color: #25d366;
+}
+.cta-block .btn-whatsapp:hover {
+  background: #1ebe5d;
+  border-color: #1ebe5d;
+  transform: translateY(-1px);
+}
 
 .media {
   border-radius: var(--radius-lg);
