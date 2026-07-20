@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ürün Yönetimi | Patygo Admin</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="icon" type="image/png" href="assets/img/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/admin.css" />
+</head>
+<body class="admin-body">
+  <div id="loginView" class="admin-login">
+    <form id="loginForm" class="admin-login-card">
+      <img src="assets/img/patygo-logo.png" alt="Patygo" class="admin-logo" />
+      <h1>Ürün paneli</h1>
+      <p>Yalnızca yetkili kullanım içindir.</p>
+      <label for="password">Şifre</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password" />
+      <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
+      <p class="admin-note" id="loginNote" role="status"></p>
+    </form>
+  </div>
+
+  <div id="panelView" class="admin-panel" hidden>
+    <header class="admin-top">
+      <div>
+        <strong>Patygo Ürün Yönetimi</strong>
+        <span id="productCount"></span>
+      </div>
+      <div class="admin-top-actions">
+        <a href="urunler.html" class="btn btn-outline" target="_blank" rel="noopener">Siteyi Gör</a>
+        <button type="button" class="btn btn-ghost" id="logoutBtn">Çıkış</button>
+      </div>
+    </header>
+
+    <div class="admin-layout">
+      <section class="admin-card">
+        <div class="admin-card-head">
+          <h2>Ürünler</h2>
+          <button type="button" class="btn btn-primary" id="newProductBtn">+ Yeni Ürün</button>
+        </div>
+        <div id="productList" class="admin-list"></div>
+      </section>
+
+      <section class="admin-card">
+        <h2 id="formTitle">Ürün düzenle</h2>
+        <form id="productForm" class="admin-form">
+          <input type="hidden" id="editIndex" value="-1" />
+          <div class="form-row">
+            <div class="field">
+              <label for="pId">Ürün kodu (id) *</label>
+              <input id="pId" required placeholder="ornek-macbook-air" />
+            </div>
+            <div class="field">
+              <label for="pBrand">Marka *</label>
+              <input id="pBrand" required placeholder="APPLE" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="pName">Ürün adı *</label>
+            <input id="pName" required />
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="pPrice">Fiyat (KDV hariç) *</label>
+              <input id="pPrice" type="number" min="0" step="1" required />
+            </div>
+            <div class="field">
+              <label for="pCategory">Kategori *</label>
+              <select id="pCategory" required>
+                <option value="bilgisayar">Bilgisayar</option>
+                <option value="yazici">Yazıcı</option>
+                <option value="kucuk-ev">Küçük Ev Aletleri</option>
+                <option value="beyaz-esya">Beyaz Eşya</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="pDescription">Kısa açıklama</label>
+            <input id="pDescription" maxlength="280" placeholder="Liste kartında görünen kısa metin" />
+          </div>
+          <div class="field">
+            <label for="pDetails">Detay</label>
+            <textarea id="pDetails" rows="5" placeholder="Ürün detay sayfasında görünen açıklama"></textarea>
+          </div>
+          <div class="field">
+            <label for="pImageFile">Ürün görseli</label>
+            <input id="pImageFile" type="file" accept="image/png,image/jpeg,image/webp" />
+            <input type="hidden" id="pImage" />
+            <div id="imagePreview" class="admin-preview" hidden></div>
+          </div>
+          <div class="admin-checks">
+            <label><input type="checkbox" id="pFeatured" /> Ana sayfada göster (öne çıkan)</label>
+            <label><input type="checkbox" id="pActive" checked /> Yayında (aktif)</label>
+          </div>
+          <div class="admin-form-actions">
+            <button type="submit" class="btn btn-primary">Kaydet / Yayınla</button>
+            <button type="button" class="btn btn-outline" id="deleteBtn">Sil</button>
+          </div>
+          <p class="admin-note" id="formNote" role="status"></p>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

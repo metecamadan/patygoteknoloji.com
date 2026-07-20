@@ -1,12 +1,18 @@
-/* Patygo — ürün kataloğunu tek kaynaktan render eder */
+/* Patygo — ürün kataloğu (products.json) */
 (function () {
   "use strict";
 
-  const products = (window.PATYGO_PRODUCTS || []).filter((p) => p && p.active !== false);
+  const CATEGORY_LABELS = {
+    bilgisayar: "Bilgisayar",
+    yazici: "Yazıcı",
+    "kucuk-ev": "Küçük Ev Aletleri",
+    "beyaz-esya": "Beyaz Eşya",
+  };
 
   window.PatygoCatalog = {
-    list: products,
-    byId: Object.fromEntries(products.map((p) => [p.id, p])),
+    list: [],
+    byId: {},
+    ready: null,
     formatPrice(amount) {
       return (
         "₺" +
@@ -15,13 +21,14 @@
         })
       );
     },
+    categoryLabel(cat) {
+      return CATEGORY_LABELS[cat] || cat || "";
+    },
   };
 
   function quoteHref() {
     const path = (location.pathname || "").toLowerCase();
-    if (path.endsWith("/") || path.endsWith("index.html") || path === "") {
-      return "#teklif";
-    }
+    if (path.endsWith("/") || path.endsWith("index.html") || path === "") return "#teklif";
     return "index.html#teklif";
   }
 
@@ -32,12 +39,19 @@
     article.dataset.cat = product.category || "";
 
     const brand = String(product.brand || "").toUpperCase();
-
     const visual = document.createElement("div");
-    visual.className = "visual";
-    const brandSpan = document.createElement("span");
-    brandSpan.textContent = brand;
-    visual.appendChild(brandSpan);
+    visual.className = "visual" + (product.image ? " has-image" : "");
+    if (product.image) {
+      const img = document.createElement("img");
+      img.src = product.image;
+      img.alt = product.name || brand;
+      img.loading = "lazy";
+      visual.appendChild(img);
+    } else {
+      const brandSpan = document.createElement("span");
+      brandSpan.textContent = brand;
+      visual.appendChild(brandSpan);
+    }
 
     const body = document.createElement("div");
     body.className = "body";
@@ -47,11 +61,26 @@
     tag.textContent = brand;
 
     const title = document.createElement("h3");
-    title.textContent = product.name || "";
+    const titleLink = document.createElement("a");
+    titleLink.href = "urun-detay.html?id=" + encodeURIComponent(product.id);
+    titleLink.textContent = product.name || "";
+    title.appendChild(titleLink);
+
+    body.appendChild(tag);
+    body.appendChild(title);
+
+    if (product.description) {
+      const desc = document.createElement("p");
+      desc.className = "product-desc";
+      desc.textContent = product.description;
+      body.appendChild(desc);
+    }
 
     const price = document.createElement("div");
     price.className = "price";
-    price.appendChild(document.createTextNode(window.PatygoCatalog.formatPrice(product.price) + " "));
+    price.appendChild(
+      document.createTextNode(window.PatygoCatalog.formatPrice(product.price) + " ")
+    );
     const small = document.createElement("small");
     small.textContent = "+KDV";
     price.appendChild(small);
@@ -59,20 +88,33 @@
     const actions = document.createElement("div");
     actions.className = "actions";
 
+    const cartBtn = document.createElement("button");
+    cartBtn.type = "button";
+    cartBtn.className = "btn btn-buy";
+    cartBtn.textContent = "Sepete Ekle";
+    cartBtn.addEventListener("click", () => {
+      if (window.PatygoCart) {
+        window.PatygoCart.add(product.id, 1);
+        cartBtn.textContent = "Eklendi";
+        setTimeout(() => {
+          cartBtn.textContent = "Sepete Ekle";
+        }, 1200);
+      }
+    });
+
     const buy = document.createElement("a");
-    buy.className = "btn btn-buy";
+    buy.className = "btn btn-outline";
     buy.href = "odeme.html?id=" + encodeURIComponent(product.id);
-    buy.textContent = "Satın Al";
+    buy.textContent = "Hemen Al";
 
     const quote = document.createElement("a");
     quote.className = "btn btn-quote";
     quote.href = quoteHref();
     quote.textContent = "Teklif Al";
 
+    actions.appendChild(cartBtn);
     actions.appendChild(buy);
     actions.appendChild(quote);
-    body.appendChild(tag);
-    body.appendChild(title);
     body.appendChild(price);
     body.appendChild(actions);
     article.appendChild(visual);
@@ -80,8 +122,7 @@
     return article;
   }
 
-  function bindTabs(scope) {
-    const root = scope || document;
+  function bindTabs(root) {
     const tabs = root.querySelectorAll(".product-tabs button");
     const cards = root.querySelectorAll(".product-card");
     if (!tabs.length || !cards.length) return;
@@ -97,24 +138,42 @@
     });
   }
 
-  function renderGrid(grid) {
+  function renderGrid(grid, products) {
     const mode = grid.getAttribute("data-catalog") || "all";
     let list = products.slice();
     if (mode === "featured") list = list.filter((p) => p.featured);
-
     grid.textContent = "";
     if (!list.length) {
       const empty = document.createElement("p");
       empty.style.color = "var(--muted)";
       empty.style.gridColumn = "1 / -1";
-      empty.textContent =
-        "Henüz aktif ürün yok. assets/js/products-data.js dosyasına ürün ekleyin.";
+      empty.textContent = "Henüz yayınlanmış ürün yok.";
       grid.appendChild(empty);
       return;
     }
     list.forEach((product, index) => grid.appendChild(makeCard(product, index)));
   }
 
-  document.querySelectorAll(".product-grid[data-catalog]").forEach(renderGrid);
-  bindTabs(document);
+  async function loadProducts() {
+    try {
+      const res = await fetch("assets/data/products.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("catalog");
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch (_) {
+      return Array.isArray(window.PATYGO_PRODUCTS) ? window.PATYGO_PRODUCTS : [];
+    }
+  }
+
+  window.PatygoCatalog.ready = loadProducts().then((all) => {
+    const products = all.filter((p) => p && p.active !== false);
+    window.PatygoCatalog.list = products;
+    window.PatygoCatalog.byId = Object.fromEntries(products.map((p) => [p.id, p]));
+    document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
+      renderGrid(grid, products);
+    });
+    bindTabs(document);
+    window.dispatchEvent(new CustomEvent("patygo:catalog"));
+    return products;
+  });
 })();

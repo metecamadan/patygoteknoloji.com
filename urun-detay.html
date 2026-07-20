@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ürün Detayı | Patygo Teknoloji</title>
+  <link rel="icon" type="image/png" href="assets/img/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav" aria-label="Ana menü">
+        <a class="brand" href="index.html"><img src="assets/img/patygo-logo.png" alt="Patygo Teknoloji" /></a>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="hizmetler.html">Kurumsal Tedarik</a></li>
+          <li><a href="urunler.html" class="active">Ürünler</a></li>
+          <li><a href="markalar.html">Markalar</a></li>
+          <li><a href="kurumsal.html">Hakkımızda</a></li>
+          <li><a href="iletisim.html">İletişim</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a href="sepet.html" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
+          <a href="index.html#teklif" class="btn btn-primary">Teklif Al</a>
+          <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="container product-detail" id="detailRoot">
+        <p style="color:var(--muted)">Ürün yükleniyor…</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/js/cart.js"></script>
+  <script src="assets/js/catalog.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/urun-detay.js"></script>
+</body>
+</html>
