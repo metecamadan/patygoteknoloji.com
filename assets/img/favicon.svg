@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Patygo">
-  <rect width="64" height="64" rx="14" fill="#2563eb"/>
-  <!-- Logo wordmark'taki P harfi -->
-  <path fill="#ffffff" transform="translate(32 33) scale(2.05) translate(-10.75 11.2)" d="M10.02-7.72L7.61-7.72L7.61 0L2.56 0L2.56-22.41L10.47-22.41Q18.94-22.41 18.94-15.27Q18.94-11.89 16.51-9.80Q14.08-7.72 10.02-7.72M9.59-18.53L7.61-18.53L7.61-11.55L9.59-11.55Q13.63-11.55 13.63-15.08Q13.63-18.53 9.59-18.53"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 28" role="img" aria-label="Patygo P">
+  <path fill="#0875e1" d="M2.56 24V1.59h7.91c5.65 0 8.47 2.38 8.47 7.14 0 2.25-.81 4.08-2.43 5.47-1.62 1.39-3.78 2.08-6.49 2.08H7.61V24H2.56zm5.05-18.53v6.98h1.98c2.69 0 4.04-1.18 4.04-3.53 0-2.3-1.35-3.45-4.04-3.45H7.61z"/>
 </svg>
