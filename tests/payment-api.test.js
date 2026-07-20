@@ -112,4 +112,6 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   const orderBody = await order.json();
   assert.equal(orderBody.order.paymentTaken, true);
   assert.equal(orderBody.order.paymentStatus, "paid");
+  assert.equal(orderBody.order.bankResponse.responseCode, "VPS-0000");
+  assert.equal(orderBody.order.bankResponse.hashOk, true);
 });

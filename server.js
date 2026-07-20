@@ -466,6 +466,7 @@ async function handleApi(req, res, urlPath) {
     const orderId = String(requestUrl.searchParams.get("orderId") || "").slice(0, 64);
     const order = orderId ? orderStore.get(orderId) : null;
     if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı." });
+    const bank = order.bankResponse || null;
     return json(res, 200, {
       ok: true,
       order: {
@@ -477,6 +478,13 @@ async function handleApi(req, res, urlPath) {
         status: order.status,
         items: order.items,
         createdAt: order.createdAt,
+        bankResponse: bank
+          ? {
+              responseCode: String(bank.responseCode || "").slice(0, 40),
+              responseMessage: String(bank.responseMessage || "").slice(0, 200),
+              hashOk: Boolean(bank.hashOk),
+            }
+          : null,
       },
     });
   }

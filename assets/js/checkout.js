@@ -68,9 +68,18 @@
       els.successTitle.textContent = paid ? "Ödemeniz alındı" : "Ödeme tamamlanamadı";
     }
     if (els.successLead) {
-      els.successLead.textContent = paid
-        ? "Akbank güvenli ödeme ekranından işleminiz onaylandı. Siparişiniz işleme alındı."
-        : "Kart işlemi tamamlanmadı veya banka reddetti. Sepetten tekrar deneyebilirsiniz.";
+      if (paid) {
+        els.successLead.textContent =
+          "Akbank güvenli ödeme ekranından işleminiz onaylandı. Siparişiniz işleme alındı.";
+      } else {
+        const bankMsg =
+          order &&
+          order.bankResponse &&
+          (order.bankResponse.responseMessage || order.bankResponse.responseCode);
+        els.successLead.textContent = bankMsg
+          ? "Banka: " + bankMsg + " — Sepetten tekrar deneyebilirsiniz."
+          : "Kart işlemi tamamlanmadı veya banka reddetti. Sepetten tekrar deneyebilirsiniz.";
+      }
     }
     if (els.successOrderId) els.successOrderId.textContent = (order && order.id) || returnedOrderId || "—";
     if (els.successSummary) {
