@@ -154,26 +154,62 @@
     list.forEach((product, index) => grid.appendChild(makeCard(product, index)));
   }
 
-  async function loadProducts() {
-    try {
-      const res = await fetch("assets/data/products.json", { cache: "no-store" });
-      if (!res.ok) throw new Error("catalog");
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
-    } catch (_) {
-      return Array.isArray(window.PATYGO_PRODUCTS) ? window.PATYGO_PRODUCTS : [];
-    }
-  }
-
-  window.PatygoCatalog.ready = loadProducts().then((all) => {
-    const products = all.filter((p) => p && p.active !== false);
+  function applyCatalog(all) {
+    const products = (all || []).filter((p) => p && p.active !== false);
     window.PatygoCatalog.list = products;
     window.PatygoCatalog.byId = Object.fromEntries(products.map((p) => [p.id, p]));
     document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
       renderGrid(grid, products);
     });
     bindTabs(document);
-    window.dispatchEvent(new CustomEvent("patygo:catalog"));
+    window.dispatchEvent(new CustomEvent("patygo:catalog", { detail: { products } }));
     return products;
+  }
+
+  async function loadProducts() {
+    const bust = "?t=" + Date.now();
+    // 1) Canlı API (panel ile aynı kaynak)
+    try {
+      const res = await fetch("/api/products" + bust, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.products)) return data.products;
+        if (Array.isArray(data)) return data;
+      }
+    } catch (_) {}
+    // 2) Statik dosya yedek
+    try {
+      const res = await fetch("assets/data/products.json" + bust, { cache: "no-store" });
+      if (!res.ok) throw new Error("catalog");
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  async function reloadCatalog() {
+    const all = await loadProducts();
+    return applyCatalog(all);
+  }
+
+  window.PatygoCatalog.reload = reloadCatalog;
+
+  window.PatygoCatalog.ready = reloadCatalog();
+
+  // Panel kaydettiğinde açık site sekmeleri güncellensin
+  try {
+    const bc = new BroadcastChannel("patygo-catalog");
+    bc.onmessage = function (ev) {
+      if (ev && ev.data && ev.data.type === "updated") reloadCatalog();
+    };
+  } catch (_) {}
+
+  window.addEventListener("storage", (ev) => {
+    if (ev.key === "patygo_catalog_version") reloadCatalog();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") reloadCatalog();
   });
 })();

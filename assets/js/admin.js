@@ -175,6 +175,18 @@
     renderList();
   }
 
+  function notifySite() {
+    const stamp = String(Date.now());
+    try {
+      localStorage.setItem("patygo_catalog_version", stamp);
+    } catch (_) {}
+    try {
+      const bc = new BroadcastChannel("patygo-catalog");
+      bc.postMessage({ type: "updated", at: stamp });
+      bc.close();
+    } catch (_) {}
+  }
+
   async function persist(list, msg) {
     const data = await api("/api/admin/products", {
       method: "PUT",
@@ -182,7 +194,12 @@
     });
     products = data.products || list;
     renderList();
-    note(formNote, "ok", msg || "Kaydedildi ve yayınlandı.");
+    notifySite();
+    note(
+      formNote,
+      "ok",
+      (msg || "Kaydedildi.") + " Site ile senkron: ürünler / ana sayfa anında güncellenir."
+    );
   }
 
   loginForm.addEventListener("submit", async (ev) => {

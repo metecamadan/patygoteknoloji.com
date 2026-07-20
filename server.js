@@ -191,7 +191,13 @@ function authOk(req) {
 
 async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/products") {
-    return json(res, 200, { products: loadProducts().filter((p) => p.active !== false) });
+    const all = loadProducts();
+    return json(res, 200, {
+      products: all.filter((p) => p && p.active !== false),
+      updatedAt: fs.existsSync(PRODUCTS_FILE)
+        ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
+        : null,
+    });
   }
 
   if (req.method === "POST" && urlPath === "/api/admin/login") {
