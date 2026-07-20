@@ -8,7 +8,6 @@ function loadCart() {
   const code = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "cart.js"), "utf8");
   const store = new Map();
   const sandbox = {
-    window: {},
     document: {
       querySelectorAll() {
         return [];
@@ -27,6 +26,10 @@ function loadCart() {
       constructor(type) {
         this.type = type;
       }
+    },
+    addEventListener() {},
+    dispatchEvent() {
+      return true;
     },
   };
   sandbox.window = sandbox;
