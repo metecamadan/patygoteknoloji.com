@@ -2,6 +2,7 @@
   "use strict";
 
   const TOKEN_KEY = "patygo_admin_token";
+  const IDLE_MS = 30 * 60 * 1000;
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
   let products = [];
   let selectedIndex = -1;
@@ -9,6 +10,7 @@
   let supplierProducts = [];
   let supplierSlots = [];
   let feedStatus = null;
+  let idleTimer = null;
   const selectedSupplierSkus = new Set();
 
   const loginView = document.getElementById("loginView");
@@ -70,7 +72,12 @@
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && token && !path.includes("/api/admin/login")) {
+        endSession("Oturum süresi doldu. Tekrar giriş yapın.");
+        throw new Error("Oturum süresi doldu. Tekrar giriş yapın.");
+      }
       if (!res.ok) throw new Error(data.error || "İstek başarısız (" + res.status + ")");
+      touchActivity();
       return data;
     } catch (err) {
       if (err && err.name === "AbortError") {
@@ -85,12 +92,36 @@
     }
   }
 
+  function endSession(message) {
+    token = "";
+    sessionStorage.removeItem(TOKEN_KEY);
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+    showPanel(false);
+    if (message) note(loginNote, "err", message);
+  }
+
+  function touchActivity() {
+    if (!token) return;
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      endSession("Oturum 30 dakika işlem yapılmadığı için sonlandırıldı.");
+    }, IDLE_MS);
+  }
+
   function showPanel(on) {
     loginView.hidden = !!on;
     panelView.hidden = !on;
     loginView.classList.toggle("is-hidden", !!on);
     panelView.classList.toggle("is-hidden", !on);
     document.body.classList.toggle("admin-authed", !!on);
+    if (on) touchActivity();
+    else if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
   }
 
   function selectAdminTab(name, focus) {
@@ -1245,9 +1276,11 @@
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
-    token = "";
-    sessionStorage.removeItem(TOKEN_KEY);
-    showPanel(false);
+    endSession("");
+  });
+
+  ["pointerdown", "keydown", "mousemove", "touchstart", "scroll", "click"].forEach((eventName) => {
+    document.addEventListener(eventName, touchActivity, { passive: true });
   });
 
   document.getElementById("newProductBtn").addEventListener("click", () => {
@@ -1368,9 +1401,7 @@
   if (token) {
     showPanel(true);
     Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard()]).catch(() => {
-      token = "";
-      sessionStorage.removeItem(TOKEN_KEY);
-      showPanel(false);
+      endSession("Oturum geçersiz. Tekrar giriş yapın.");
     });
   }
 })();

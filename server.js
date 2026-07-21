@@ -37,6 +37,9 @@ const SITE_BASE_URL = String(process.env.SITE_BASE_URL || `http://localhost:${PO
   /\/+$/,
   ""
 );
+const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);
+const ADMIN_IDLE_MS =
+  Number.isFinite(rawIdleMs) && rawIdleMs > 0 ? rawIdleMs : 30 * 60 * 1000;
 const VAT_RATE = 0.2;
 const supplierAllowedHosts = String(
   process.env.SUPPLIER_ALLOWED_HOSTS || "www.bilgisayarim.com.tr"
@@ -377,6 +380,7 @@ function authOk(req) {
     sessions.delete(token);
     return false;
   }
+  sessions.set(token, Date.now() + ADMIN_IDLE_MS);
   return true;
 }
 
@@ -562,7 +566,7 @@ async function handleApi(req, res, urlPath) {
       }
       loginAttempts.delete(clientIp);
       const token = crypto.randomBytes(24).toString("hex");
-      sessions.set(token, Date.now() + 12 * 60 * 60 * 1000);
+      sessions.set(token, Date.now() + ADMIN_IDLE_MS);
       return json(res, 200, { ok: true, token });
     } catch (_) {
       return json(res, 400, { ok: false, error: "Geçersiz istek" });

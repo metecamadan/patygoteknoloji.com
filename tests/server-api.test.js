@@ -127,3 +127,42 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.match(feed.headers.get("content-type"), /application\/xml/);
   assert.match(await feed.text(), /^<\?xml version="1.0"/);
 });
+
+test("admin sessions expire after idle timeout and slide on activity", async (t) => {
+  const port = await getFreePort();
+  const password = "test-admin-password";
+  const child = spawn(process.execPath, ["server.js"], {
+    cwd: root,
+    env: Object.assign({}, process.env, {
+      PORT: String(port),
+      ADMIN_PASSWORD: password,
+      SITE_BASE_URL: `http://127.0.0.1:${port}`,
+      ADMIN_IDLE_MS: "120",
+      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+    }),
+    stdio: "ignore",
+  });
+  t.after(() => child.kill());
+  const baseUrl = `http://127.0.0.1:${port}`;
+  await waitForServer(baseUrl, child);
+
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  assert.equal(login.status, 200);
+  const session = await login.json();
+  const headers = { Authorization: "Bearer " + session.token };
+
+  const first = await fetch(baseUrl + "/api/admin/products", { headers });
+  assert.equal(first.status, 200);
+
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const refreshed = await fetch(baseUrl + "/api/admin/products", { headers });
+  assert.equal(refreshed.status, 200);
+
+  await new Promise((resolve) => setTimeout(resolve, 180));
+  const expired = await fetch(baseUrl + "/api/admin/products", { headers });
+  assert.equal(expired.status, 401);
+});

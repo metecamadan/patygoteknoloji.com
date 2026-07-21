@@ -21,6 +21,13 @@
   padding: 28px;
   box-shadow: var(--shadow);
 }
+.admin-login-brand {
+  display: inline-flex;
+  margin-bottom: 16px;
+}
+.admin-login-brand .admin-logo {
+  margin-bottom: 0;
+}
 .admin-logo {
   height: 40px;
   width: auto;
@@ -405,6 +412,11 @@
   gap: 8px;
   padding: 0 10px 22px;
   border-bottom: 1px solid var(--line-soft);
+  text-decoration: none;
+  color: inherit;
+}
+.admin-sidebar-brand:hover img {
+  opacity: 0.92;
 }
 .admin-sidebar-brand img { width: 112px; height: auto; }
 .admin-sidebar-brand span { color: var(--muted); font-size: 0.76rem; font-weight: 600; }

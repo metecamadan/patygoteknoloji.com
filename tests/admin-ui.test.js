@@ -53,6 +53,30 @@ test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {
   assert.match(script, /Katalogda feed/);
 });
 
+test("admin brand opens the public site in a new tab", () => {
+  assert.match(
+    html,
+    /href="\/" class="admin-sidebar-brand" target="_blank" rel="noopener"/
+  );
+  assert.match(
+    html,
+    /id="loginBrandLink" href="\/" class="admin-login-brand" target="_blank" rel="noopener"/
+  );
+  assert.match(html, /href="\/" target="_blank" rel="noopener">Siteyi görüntüle/);
+  assert.doesNotMatch(html, /href="[^"]*\.html"/);
+});
+
+test("admin ends session after 30 minutes of inactivity", () => {
+  assert.match(script, /IDLE_MS\s*=\s*30\s*\*\s*60\s*\*\s*1000/);
+  assert.match(script, /function endSession/);
+  assert.match(script, /idleTimer/);
+  assert.match(script, /mousemove/);
+  assert.match(script, /keydown/);
+  assert.match(script, /pointerdown/);
+  assert.match(script, /touchstart/);
+  assert.match(script, /30 dakika/);
+});
+
 test("admin never renders the default password as a login hint", () => {
   assert.doesNotMatch(html, /patygo-admin/);
   assert.match(html, /ADMIN_PASSWORD/);
