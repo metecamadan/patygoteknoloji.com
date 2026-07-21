@@ -1,0 +1,14 @@
+---
+description: Açık kalan iş — Akbank 3D_PAY_HOSTING hatırlatması
+alwaysApply: true
+---
+
+# Açık kalan konumuz
+
+Kullanıcıya anlamlı bir yanıtın **sonunda**, kısa bir satırla hatırlat (abartma, her cevaba uzun paragraf ekleme):
+
+**Açık konu:** Akbank üye işyerine `3D_PAY_HOSTING` tanımı bekleniyor (VPS-1071). Tanım gelince canlı ödeme testi yapılacak. Craftgate’e dönülmeyecek.
+
+- Kullanıcı “tanımlandı / açıldı / mail geldi” derse: hatırlatmayı bırak, test adımına geç.
+- Ödeme/POS dışı kısa “tamam” yanıtlarında bile tek cümlelik hatırlatma yeterli.
+- Secret / anahtar değerlerini sohbete yazdırma.

@@ -45,7 +45,6 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
-          script_stop: true
           script: |
             set -euo pipefail
             APP_DIR="/var/www/patygo"

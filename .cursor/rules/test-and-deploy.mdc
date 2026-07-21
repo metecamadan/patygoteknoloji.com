@@ -1,12 +1,40 @@
 ---
-description: Test kapısı ve GitHub Actions deploy kuralları
+description: Proje bütünlüğü, otomatik doğrulama, alan adı ile canlı kontrol
 alwaysApply: true
 ---
 
-# Test ve yayın
+# Proje bütünlüğü ve otomatik doğrulama
 
-- Anlamlı bir özellik, bugfix veya refactor bitince yerelde `npm test` çalıştır; kırmızıysa commit/push öncesi düzelt.
-- Canlıya giden tek yol: `main` branch + GitHub Actions (`CI and Deploy`). Actions önce testleri çalıştırır; geçmezse deploy olmaz.
+## Nasıl düşün
+
+- Her işte yalnızca dokunduğun dosyayı değil; site, admin, API, testler, deploy ve canlı davranış zincirini birlikte düşün.
+- UI’ye “sunucu online / canlı” gibi process-self-report metrikleri koyma veya bunlara güvenme. Dashboard API’sinin cevap vermesi process’in ayakta olduğunu kanıtlamaz; gerçek sağlık = test + deploy pipeline + endpoint davranışları.
+
+## Alan adı, IP değil
+
+- Canlı doğrulama, smoke ve kullanıcıya verilen adresler **alan adı** ile: `https://patygoteknoloji.com` (panel: `/admin`, feed: `/api/feeds/akakce.xml`).
+- VM genel IP’si veya `http://x.x.x.x` ile “düzeltildi/doğrulandı” deme; TLS, yönlendirme ve callback’ler alan adından geçer.
+- `SITE_BASE_URL` canlıda her zaman `https://patygoteknoloji.com` olmalı (ödeme callback, Akakçe ürün URL’leri, public feed). IP/localhost kabul edilmez.
+- `127.0.0.1` yalnızca yerel test süreci ve nginx→node loopback için uygundur; canlı kanıt değildir.
+
+## İnsan kontrolüne bırakma
+
+- “Sunucuda Ctrl+F5 yap”, “git pull et ve bak” gibi doğrulamayı kullanıcıya bırakma.
+- Kod yeni yapıya / `main`e / canlıya gitmeden önce agent kendisi doğrular:
+  1. Yerelde `npm test` (kırmızıysa dur; düzelt).
+  2. İlgili regression varsa ekle veya güncelle.
+  3. Commit + push (kullanıcı istediğinde veya özellik bitince mevcut akışa göre).
+  4. CI / Actions sonucunu kontrol et; kırmızıysa log’a bakıp düzelt, yeşil olmadan “bitti” deme.
+  5. Canlı smoke gerektiğinde `https://patygoteknoloji.com/...` üzerinden kontrol et (IP değil).
+- Deploy secret’ları yoksa veya Actions kırıkssa bunu açıkça söyle; yine de yerelde test kapısını atlama.
+
+## Sürekli / dinamik kontrol
+
+- Özellik veya bug fix bitince test kapısını tekrar çalıştır; “az önce geçmişti” ile yetinme.
+- Dashboard, ödeme, katalog, URL, admin gibi yüzeylerde değişiklik varsa ilgili test dosyalarını güncelle; manuel smoke’u varsayılan kapı yapma.
+- Canlıya giden tek yol: `main` + GitHub Actions (`CI and Deploy`). Actions önce test çalıştırır; geçmezse deploy olmaz.
+
+## Yayın ve güvenlik
+
 - Kullanıcı açıkça istemedikçe force push / `--no-verify` kullanma.
-- Sunucuya elle `git pull` artık gerekmez (Actions secret’ları kuruluysa). Secret’lar yoksa veya deploy kırmızısıysa kullanıcıya Actions log’unu ve secret kurulumunu hatırlat.
 - `.env`, private key ve secret değerlerini sohbete veya commit’e yazma.
