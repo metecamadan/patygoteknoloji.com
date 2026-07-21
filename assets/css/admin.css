@@ -243,6 +243,17 @@
   gap: 10px;
   margin-bottom: 14px;
 }
+.admin-card-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn-sm {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
 .admin-card h2 {
   font-size: 1.1rem;
   margin: 0 0 14px;

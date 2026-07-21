@@ -90,7 +90,12 @@
                 <ul class="admin-top-pages" id="dashTopPages"></ul>
               </section>
               <section class="admin-card">
-                <div class="admin-card-head"><div><span class="admin-eyebrow">SUNUCU</span><h2>Anlık durum</h2></div><span class="admin-status on" id="dashServerStatus">Online</span></div>
+                <div class="admin-card-head"><div><span class="admin-eyebrow">SUNUCU</span><h2>Anlık durum</h2></div>
+                  <div class="admin-card-head-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="dashRefreshBtn">Yenile</button>
+                    <span class="admin-status pending" id="dashServerStatus">Yükleniyor</span>
+                  </div>
+                </div>
                 <dl class="admin-xml-meta">
                   <div><dt>Uptime</dt><dd id="dashUptime">—</dd></div>
                   <div><dt>Bellek (RSS)</dt><dd id="dashMemory">—</dd></div>
@@ -98,6 +103,7 @@
                   <div><dt>POS</dt><dd id="dashPos">—</dd></div>
                   <div><dt>Kontrol</dt><dd id="dashCheckedAt">—</dd></div>
                 </dl>
+                <p class="admin-hint" id="dashServerNote" hidden></p>
               </section>
               <section class="admin-card">
                 <div class="admin-card-head"><div><span class="admin-eyebrow">DÖNÜŞÜM</span><h2>Funnel</h2></div></div>

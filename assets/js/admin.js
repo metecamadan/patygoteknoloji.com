@@ -432,6 +432,10 @@
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     };
+    const live =
+      (payload && payload.ok === true) ||
+      server.status === "online" ||
+      Boolean(server.checkedAt);
 
     setText("dashVisitors", String(analytics.visitors || 0));
     setText("dashPageViews", String(analytics.pageViews || 0));
@@ -463,26 +467,40 @@
 
     const status = document.getElementById("dashServerStatus");
     if (status) {
-      status.className = "admin-status " + (server.status === "online" ? "on" : "err");
-      status.textContent = server.status === "online" ? "Online" : "Kapalı";
+      status.className = "admin-status " + (live ? "on" : payload && payload.loadError ? "err" : "pending");
+      status.textContent = live ? "Online" : payload && payload.loadError ? "Veri alınamadı" : "Yükleniyor";
     }
-    setText("dashUptime", formatUptime(server.uptimeSec));
-    setText("dashMemory", (server.memoryMB != null ? server.memoryMB + " MB" : "—"));
-    setText("dashNode", server.node || "—");
+    const serverNote = document.getElementById("dashServerNote");
+    if (serverNote) {
+      if (payload && payload.loadError) {
+        serverNote.hidden = false;
+        serverNote.textContent =
+          "Site ayakta olabilir; panel özeti şu an çekilemedi: " + payload.loadError;
+      } else {
+        serverNote.hidden = true;
+        serverNote.textContent = "";
+      }
+    }
+    setText("dashUptime", live ? formatUptime(server.uptimeSec) : "—");
+    setText("dashMemory", live && server.memoryMB != null ? server.memoryMB + " MB" : "—");
+    setText("dashNode", live ? server.node || "—" : "—");
     const pos = server.pos || {};
     setText(
       "dashPos",
-      pos.enabled
-        ? "Akbank " + (pos.testMode ? "TEST" : "CANLI")
-        : "Yapılandırılmadı"
+      live
+        ? pos.enabled
+          ? "Akbank " + (pos.testMode ? "TEST" : "CANLI")
+          : "Yapılandırılmadı"
+        : "—"
     );
-    setText("dashCheckedAt", formatDate(server.checkedAt));
+    setText("dashCheckedAt", live ? formatDate(server.checkedAt) : "—");
 
     const spark = document.getElementById("dashSpark");
     if (spark) {
       spark.innerHTML = "";
       const daily = Array.isArray(analytics.daily) ? analytics.daily : [];
-      const max = Math.max(1, ...daily.map((d) => Number(d.pageViews) || 0));
+      const values = daily.map((d) => Number(d.pageViews) || 0);
+      const max = Math.max(1, values.length ? Math.max.apply(null, values) : 1);
       daily.slice(-21).forEach((day) => {
         const bar = document.createElement("span");
         const h = Math.max(4, Math.round(((Number(day.pageViews) || 0) / max) * 80));
@@ -503,12 +521,12 @@
       } else {
         pages.forEach((row) => {
           const li = document.createElement("li");
-          li.innerHTML =
-            "<span>" +
-            String(row.path || "/") +
-            "</span><strong>" +
-            String(row.views || 0) +
-            "</strong>";
+          const path = document.createElement("span");
+          path.textContent = String(row.path || "/");
+          const views = document.createElement("strong");
+          views.textContent = String(row.views || 0);
+          li.appendChild(path);
+          li.appendChild(views);
           top.appendChild(li);
         });
       }
@@ -518,15 +536,22 @@
   async function loadDigitalDashboard() {
     const period = document.getElementById("dashboardPeriod");
     const days = period ? period.value : "30";
+    const status = document.getElementById("dashServerStatus");
+    if (status) {
+      status.className = "admin-status pending";
+      status.textContent = "Yükleniyor";
+    }
     try {
       const data = await api("/api/admin/dashboard?days=" + encodeURIComponent(days));
       renderDigitalDashboard(data);
     } catch (err) {
       renderDigitalDashboard({
+        ok: false,
+        loadError: (err && err.message) || "Dashboard yüklenemedi.",
         analytics: {},
         commerce: {},
-        server: { status: "offline" },
-        leadsNote: err.message || "Dashboard yüklenemedi.",
+        server: { status: "unknown" },
+        leadsNote: (err && err.message) || "Dashboard yüklenemedi.",
       });
     }
   }
@@ -1174,6 +1199,11 @@
 
   document.getElementById("dashboardPeriod") &&
     document.getElementById("dashboardPeriod").addEventListener("change", () => {
+      loadDigitalDashboard().catch(() => {});
+    });
+
+  document.getElementById("dashRefreshBtn") &&
+    document.getElementById("dashRefreshBtn").addEventListener("click", () => {
       loadDigitalDashboard().catch(() => {});
     });
 
