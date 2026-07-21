@@ -45,6 +45,14 @@ test("admin overview exposes digital dashboard metrics", () => {
   assert.match(script, /topPurchasedProducts/);
 });
 
+test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {
+  assert.match(html, /id="feedCatalogActiveCount"/);
+  assert.match(html, /id="feedWarnings"/);
+  assert.match(script, /reasonCounts/);
+  assert.match(script, /publicUrl/);
+  assert.match(script, /Katalogda feed/);
+});
+
 test("admin never renders the default password as a login hint", () => {
   assert.doesNotMatch(html, /patygo-admin/);
   assert.match(html, /ADMIN_PASSWORD/);

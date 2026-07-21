@@ -733,33 +733,66 @@
     });
     if (feedStatus) {
       document.getElementById("feedActiveCount").textContent = String(feedStatus.activeCount || 0);
+      const catalogActive = document.getElementById("feedCatalogActiveCount");
+      if (catalogActive) {
+        catalogActive.textContent = String(
+          feedStatus.catalogActiveCount != null
+            ? feedStatus.catalogActiveCount
+            : (feedStatus.activeCount || 0) + (feedStatus.excludedCount || 0)
+        );
+      }
       document.getElementById("feedSourceCounts").textContent =
         String(feedStatus.supplierActiveCount || 0) +
         " / " +
         String(feedStatus.manualActiveCount || 0);
       const feedBadge = document.getElementById("feedStatusBadge");
+      const eligible = feedStatus.activeCount || 0;
+      const excluded = feedStatus.excludedCount || 0;
       feedBadge.className =
-        "admin-status " + (feedStatus.activeCount > 0 ? "on" : "pending");
+        "admin-status " + (eligible > 0 ? "on" : excluded > 0 ? "err" : "pending");
       feedBadge.textContent =
-        feedStatus.activeCount > 0 ? "Feed hazır" : "Uygun ürün yok";
+        eligible > 0
+          ? "Feed hazır"
+          : excluded > 0
+            ? excluded + " ürün feed dışı"
+            : "Uygun ürün yok";
       const warnings = document.getElementById("feedWarnings");
       warnings.textContent = "";
-      warnings.hidden = !(feedStatus.excludedCount > 0);
-      if (feedStatus.excludedCount > 0) {
+      const reasonCounts = feedStatus.reasonCounts || {};
+      const reasonEntries = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
+      const showDiagnostics = eligible === 0 || excluded > 0;
+      warnings.hidden = !showDiagnostics;
+      if (showDiagnostics) {
         const summary = document.createElement("strong");
-        summary.textContent =
-          feedStatus.excludedCount + " aktif ürün feed’e alınmadı.";
+        if (excluded > 0) {
+          summary.textContent =
+            excluded +
+            " aktif ürün feed’e alınmadı" +
+            (reasonEntries.length
+              ? " (" +
+                reasonEntries
+                  .map(([reason, count]) => reason + ": " + count)
+                  .join("; ") +
+                ")."
+              : ".");
+        } else {
+          summary.textContent =
+            "Katalogda feed’e uygun aktif ürün yok. Ürünleri aktif edin veya XML’den çekip yayınlayın.";
+        }
         warnings.appendChild(summary);
-        const list = document.createElement("ul");
-        (feedStatus.issues || []).slice(0, 3).forEach((issue) => {
-          const item = document.createElement("li");
-          item.textContent = issue.name + ": " + issue.reasons.join(", ");
-          list.appendChild(item);
-        });
-        warnings.appendChild(list);
+        if ((feedStatus.issues || []).length) {
+          const list = document.createElement("ul");
+          feedStatus.issues.slice(0, 5).forEach((issue) => {
+            const item = document.createElement("li");
+            item.textContent = issue.name + ": " + issue.reasons.join(", ");
+            list.appendChild(item);
+          });
+          warnings.appendChild(list);
+        }
       }
     }
-    const absoluteFeedUrl = location.origin + "/api/feeds/akakce.xml";
+    const absoluteFeedUrl =
+      (feedStatus && feedStatus.publicUrl) || location.origin + "/api/feeds/akakce.xml";
     document.getElementById("feedUrl").textContent = absoluteFeedUrl;
     document.getElementById("feedOpenBtn").href = absoluteFeedUrl;
     updateDashboard();
@@ -1129,7 +1162,8 @@
   });
 
   document.getElementById("feedCopyBtn").addEventListener("click", async () => {
-    const url = location.origin + "/api/feeds/akakce.xml";
+    const url =
+      (feedStatus && feedStatus.publicUrl) || location.origin + "/api/feeds/akakce.xml";
     try {
       await navigator.clipboard.writeText(url);
       note(document.getElementById("feedNote"), "ok", "Akakçe XML bağlantısı kopyalandı.");

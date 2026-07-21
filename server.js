@@ -10,7 +10,7 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
-const { analyzeAkakceProducts, buildAkakceXml } = require("./lib/akakce");
+const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { mergeCatalogProducts } = require("./lib/catalog");
 const { createAnalyticsStore } = require("./lib/analytics");
 const {
@@ -627,26 +627,13 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/supplier/status") {
-    const feedProducts = mergedProducts(false);
-    const feedAnalysis = analyzeAkakceProducts(feedProducts, {
-      siteBaseUrl: SITE_BASE_URL,
-    });
     const slots = supplierManager.listSlots();
     return json(res, 200, {
       slots,
       status: slots[0],
-      feed: {
-        path: "/api/feeds/akakce.xml",
-        activeCount: feedAnalysis.eligible.length,
-        excludedCount: feedAnalysis.excluded.length,
-        supplierActiveCount: feedAnalysis.eligible.filter(
-          (item) => item.source === "supplier"
-        ).length,
-        manualActiveCount: feedAnalysis.eligible.filter(
-          (item) => item.source === "manual"
-        ).length,
-        issues: feedAnalysis.excluded.slice(0, 20),
-      },
+      feed: buildAkakceFeedSummary(mergedProducts(false), {
+        siteBaseUrl: SITE_BASE_URL,
+      }),
     });
   }
 

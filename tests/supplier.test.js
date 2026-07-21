@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { parseSupplierXml, isPrivateIp } = require("../lib/supplier");
-const { analyzeAkakceProducts, buildAkakceXml } = require("../lib/akakce");
+const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("../lib/akakce");
 
 test("supplier XML products are normalized", () => {
   const xml = `<?xml version="1.0"?>
@@ -118,6 +118,17 @@ test("Akakce feed excludes out-of-stock and incomplete products with diagnostics
     analysis.excluded.map((item) => item.reasons[0]).sort(),
     ["Görsel eksik", "Stok yok"]
   );
+  assert.equal(analysis.reasonCounts["Görsel eksik"], 1);
+  assert.equal(analysis.reasonCounts["Stok yok"], 1);
+
+  const summary = buildAkakceFeedSummary(products, {
+    siteBaseUrl: "https://patygoteknoloji.com",
+  });
+  assert.equal(summary.activeCount, 1);
+  assert.equal(summary.excludedCount, 2);
+  assert.equal(summary.catalogActiveCount, 3);
+  assert.equal(summary.publicUrl, "https://patygoteknoloji.com/api/feeds/akakce.xml");
+  assert.equal(summary.reasonCounts["Görsel eksik"], 1);
 
   const xml = buildAkakceXml(products, {
     siteBaseUrl: "https://patygoteknoloji.com",

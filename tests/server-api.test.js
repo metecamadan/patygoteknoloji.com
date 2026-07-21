@@ -85,6 +85,10 @@ test("admin supplier APIs require authentication and return feed status", async 
   );
   assert.equal(typeof payload.feed.activeCount, "number");
   assert.ok(Array.isArray(payload.feed.issues));
+  assert.equal(typeof payload.feed.catalogActiveCount, "number");
+  assert.equal(typeof payload.feed.reasonCounts, "object");
+  assert.equal(payload.feed.publicUrl, baseUrl + "/api/feeds/akakce.xml");
+  assert.ok(payload.feed.catalogActiveCount >= payload.feed.activeCount);
 
   const analytics = await fetch(baseUrl + "/api/admin/analytics?days=30", {
     headers: { Authorization: "Bearer " + session.token },
