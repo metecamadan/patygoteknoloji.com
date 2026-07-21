@@ -21,6 +21,7 @@ const pc = [
   ["intel", "Intel", "İşlemci ve NUC çözümleri"],
   ["amd", "AMD", "İşlemci ve grafik çözümleri"],
   ["logitech", "Logitech", "Klavye, mouse ve konferans"],
+  ["everest", "Everest", "Yerli bilgisayar ve çevre birimleri"],
   ["razer", "Razer", "Gaming çevre birimleri"],
   ["corsair", "Corsair", "Bellek, kasa ve güç kaynakları"],
   ["kingston", "Kingston", "SSD, RAM ve bellek ürünleri"],

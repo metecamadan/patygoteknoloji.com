@@ -19,6 +19,7 @@ const brands = [
   ["intel", "intel", "#0071C5"],
   ["amd", "AMD", "#ED1C24"],
   ["logitech", "Logitech", "#00B8FC"],
+  ["everest", "Everest", "#1B4F9C"],
   ["razer", "RAZER", "#44D62C"],
   ["corsair", "CORSAIR", "#111111"],
   ["kingston", "KINGSTON", "#C8102E"],
