@@ -578,19 +578,26 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/admin/analytics") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const from = requestUrl.searchParams.get("from");
+    const to = requestUrl.searchParams.get("to");
+    const days = requestUrl.searchParams.get("days");
+    const range = from && to ? { from, to } : days;
     return json(res, 200, {
-      analytics: analyticsStore.summary(requestUrl.searchParams.get("days")),
+      analytics: analyticsStore.summary(range),
     });
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/dashboard") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const from = requestUrl.searchParams.get("from");
+    const to = requestUrl.searchParams.get("to");
     const days = requestUrl.searchParams.get("days");
+    const range = from && to ? { from, to } : days;
     const mem = process.memoryUsage();
     return json(res, 200, {
       ok: true,
-      analytics: analyticsStore.summary(days),
-      commerce: orderStore.commerceSummary(days),
+      analytics: analyticsStore.summary(range),
+      commerce: orderStore.commerceSummary(range),
       server: {
         status: "online",
         uptimeSec: Math.floor(process.uptime()),

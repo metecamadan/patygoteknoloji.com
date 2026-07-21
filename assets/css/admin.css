@@ -562,13 +562,31 @@
   font-size: 0.75rem;
   color: var(--muted);
 }
-.admin-period select {
+.admin-period select,
+.admin-period input[type="date"] {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 9px;
   padding: 0 10px;
   background: #fff;
   color: var(--ink-2);
+}
+.admin-period-box {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+.admin-period-presets,
+.admin-period-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+.admin-period-box .admin-hint {
+  margin: 0;
+  text-align: right;
 }
 .admin-kpis-digital {
   grid-template-columns: repeat(6, minmax(0, 1fr));

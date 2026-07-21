@@ -30,13 +30,16 @@ test("admin exposes three XML connections and source-specific margins", () => {
 });
 
 test("admin overview exposes digital dashboard metrics", () => {
-  assert.match(html, /id="dashboardPeriod"/);
+  assert.match(html, /id="dashFrom"/);
+  assert.match(html, /id="dashTo"/);
+  assert.match(html, /id="dashApplyPeriod"/);
   assert.match(html, /id="dashLeads"/);
   assert.match(html, /id="dashRevenue"/);
   assert.match(html, /id="dashAov"/);
   assert.match(html, /id="dashServerStatus"/);
   assert.match(script, /\/api\/admin\/dashboard/);
   assert.match(script, /loadDigitalDashboard/);
+  assert.match(script, /currentPeriodQuery/);
 });
 
 test("admin never renders the default password as a login hint", () => {

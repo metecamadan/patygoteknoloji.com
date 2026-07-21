@@ -533,16 +533,85 @@
     }
   }
 
+  const PERIOD_KEY = "patygo_admin_period";
+
+  function isoDate(date) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  function defaultPeriodRange(days) {
+    const to = new Date();
+    const from = new Date();
+    from.setUTCDate(from.getUTCDate() - (Math.max(1, Number(days) || 30) - 1));
+    return { from: isoDate(from), to: isoDate(to) };
+  }
+
+  function readSavedPeriod() {
+    try {
+      const raw = localStorage.getItem(PERIOD_KEY);
+      if (!raw) return defaultPeriodRange(30);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.from && parsed.to) return parsed;
+    } catch (_) {}
+    return defaultPeriodRange(30);
+  }
+
+  function savePeriod(from, to) {
+    try {
+      localStorage.setItem(PERIOD_KEY, JSON.stringify({ from, to }));
+    } catch (_) {}
+  }
+
+  function syncPeriodInputs(from, to) {
+    const fromEl = document.getElementById("dashFrom");
+    const toEl = document.getElementById("dashTo");
+    if (fromEl) fromEl.value = from;
+    if (toEl) toEl.value = to;
+  }
+
+  function currentPeriodQuery() {
+    const fromEl = document.getElementById("dashFrom");
+    const toEl = document.getElementById("dashTo");
+    let from = fromEl && fromEl.value;
+    let to = toEl && toEl.value;
+    if (!from || !to) {
+      const saved = readSavedPeriod();
+      from = saved.from;
+      to = saved.to;
+      syncPeriodInputs(from, to);
+    }
+    if (from > to) {
+      const swap = from;
+      from = to;
+      to = swap;
+      syncPeriodInputs(from, to);
+    }
+    savePeriod(from, to);
+    return "from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to);
+  }
+
   async function loadDigitalDashboard() {
-    const period = document.getElementById("dashboardPeriod");
-    const days = period ? period.value : "30";
     const status = document.getElementById("dashServerStatus");
     if (status) {
       status.className = "admin-status pending";
       status.textContent = "Yükleniyor";
     }
     try {
-      const data = await api("/api/admin/dashboard?days=" + encodeURIComponent(days));
+      const data = await api("/api/admin/dashboard?" + currentPeriodQuery());
+      if (data.analytics && data.analytics.from && data.analytics.to) {
+        syncPeriodInputs(data.analytics.from, data.analytics.to);
+        savePeriod(data.analytics.from, data.analytics.to);
+      }
+      const hint = document.getElementById("dashPeriodHint");
+      if (hint && data.analytics) {
+        hint.textContent =
+          (data.analytics.from || "") +
+          " → " +
+          (data.analytics.to || "") +
+          " (" +
+          (data.analytics.periodDays || 0) +
+          " gün). Trafik en fazla 90 gün saklanır.";
+      }
       renderDigitalDashboard(data);
     } catch (err) {
       renderDigitalDashboard({
@@ -1197,8 +1266,20 @@
     }
   });
 
-  document.getElementById("dashboardPeriod") &&
-    document.getElementById("dashboardPeriod").addEventListener("change", () => {
+  const savedPeriod = readSavedPeriod();
+  syncPeriodInputs(savedPeriod.from, savedPeriod.to);
+
+  document.querySelectorAll("[data-dash-days]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const range = defaultPeriodRange(button.getAttribute("data-dash-days"));
+      syncPeriodInputs(range.from, range.to);
+      savePeriod(range.from, range.to);
+      loadDigitalDashboard().catch(() => {});
+    });
+  });
+
+  document.getElementById("dashApplyPeriod") &&
+    document.getElementById("dashApplyPeriod").addEventListener("click", () => {
       loadDigitalDashboard().catch(() => {});
     });
 

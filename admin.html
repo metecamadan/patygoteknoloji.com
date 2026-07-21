@@ -63,14 +63,25 @@
                 <h2>Dijital özet</h2>
                 <p>Trafik, talepler, siparişler ve sunucu durumu.</p>
               </div>
-              <label class="admin-period">
-                <span>Dönem</span>
-                <select id="dashboardPeriod" aria-label="Analitik dönemi">
-                  <option value="7">Son 7 gün</option>
-                  <option value="30" selected>Son 30 gün</option>
-                  <option value="90">Son 90 gün</option>
-                </select>
-              </label>
+              <div class="admin-period-box">
+                <div class="admin-period-presets" role="group" aria-label="Hızlı dönem">
+                  <button type="button" class="btn btn-outline btn-sm" data-dash-days="7">7 gün</button>
+                  <button type="button" class="btn btn-outline btn-sm" data-dash-days="30">30 gün</button>
+                  <button type="button" class="btn btn-outline btn-sm" data-dash-days="90">90 gün</button>
+                </div>
+                <div class="admin-period-custom">
+                  <label class="admin-period">
+                    <span>Başlangıç</span>
+                    <input type="date" id="dashFrom" />
+                  </label>
+                  <label class="admin-period">
+                    <span>Bitiş</span>
+                    <input type="date" id="dashTo" />
+                  </label>
+                  <button type="button" class="btn btn-primary btn-sm" id="dashApplyPeriod">Uygula</button>
+                </div>
+                <p class="admin-hint" id="dashPeriodHint">En fazla 90 gün. Trafik verisi son 90 gün saklanır.</p>
+              </div>
             </div>
 
             <div class="admin-kpis admin-kpis-digital">

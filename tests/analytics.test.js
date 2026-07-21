@@ -35,6 +35,29 @@ test("analytics aggregates traffic, unique visitors and conversion rate", () => 
   }
 });
 
+test("analytics summary accepts custom from/to range", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-analytics-range-"));
+  let now = new Date("2026-07-20T12:00:00.000Z");
+  const store = createAnalyticsStore(root, { now: () => now });
+  try {
+    now = new Date("2026-07-10T12:00:00.000Z");
+    store.record({ type: "page_view", path: "/", sessionId: "a" });
+    now = new Date("2026-07-15T12:00:00.000Z");
+    store.record({ type: "page_view", path: "/urunler", sessionId: "b" });
+    now = new Date("2026-07-20T12:00:00.000Z");
+    store.record({ type: "page_view", path: "/sepet", sessionId: "c" });
+
+    const summary = store.summary({ from: "2026-07-14", to: "2026-07-16" });
+    assert.equal(summary.from, "2026-07-14");
+    assert.equal(summary.to, "2026-07-16");
+    assert.equal(summary.periodDays, 3);
+    assert.equal(summary.pageViews, 1);
+    assert.equal(summary.visitors, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("analytics reports current-period comparison and rejects unknown events", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-analytics-compare-"));
   let now = new Date("2026-06-15T12:00:00.000Z");
