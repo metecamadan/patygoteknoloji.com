@@ -58,7 +58,60 @@
 
         <section id="adminTabOverview" class="admin-tab-panel" aria-labelledby="overviewTab">
           <div class="admin-page">
-            <div class="admin-kpis">
+            <div class="admin-page-head admin-overview-head">
+              <div>
+                <h2>Dijital özet</h2>
+                <p>Trafik, talepler, siparişler ve sunucu durumu.</p>
+              </div>
+              <label class="admin-period">
+                <span>Dönem</span>
+                <select id="dashboardPeriod" aria-label="Analitik dönemi">
+                  <option value="7">Son 7 gün</option>
+                  <option value="30" selected>Son 30 gün</option>
+                  <option value="90">Son 90 gün</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="admin-kpis admin-kpis-digital">
+              <article class="admin-kpi"><span>Ziyaretçi</span><strong id="dashVisitors">0</strong><small id="dashVisitorsDelta">—</small></article>
+              <article class="admin-kpi"><span>Sayfa görüntüleme</span><strong id="dashPageViews">0</strong><small id="dashPageViewsDelta">—</small></article>
+              <article class="admin-kpi"><span>Talep (form)</span><strong id="dashLeads">0</strong><small>FormSubmit başarılı gönderim</small></article>
+              <article class="admin-kpi"><span>Ödenen sipariş</span><strong id="dashOrdersPaid">0</strong><small id="dashOrdersMeta">—</small></article>
+              <article class="admin-kpi"><span>Gelir</span><strong id="dashRevenue">₺0</strong><small>Ödenen siparişler</small></article>
+              <article class="admin-kpi"><span>AOV</span><strong id="dashAov">₺0</strong><small>Ortalama sipariş tutarı</small></article>
+            </div>
+            <p class="admin-hint" id="dashLeadsNote">Talep sayısı formun başarıyla iletildiği anları gösterir.</p>
+
+            <div class="admin-overview-grid admin-overview-grid-3">
+              <section class="admin-card">
+                <div class="admin-card-head"><div><span class="admin-eyebrow">TRAFİK</span><h2>Günlük trend</h2></div></div>
+                <div class="admin-spark" id="dashSpark" aria-hidden="true"></div>
+                <ul class="admin-top-pages" id="dashTopPages"></ul>
+              </section>
+              <section class="admin-card">
+                <div class="admin-card-head"><div><span class="admin-eyebrow">SUNUCU</span><h2>Anlık durum</h2></div><span class="admin-status on" id="dashServerStatus">Online</span></div>
+                <dl class="admin-xml-meta">
+                  <div><dt>Uptime</dt><dd id="dashUptime">—</dd></div>
+                  <div><dt>Bellek (RSS)</dt><dd id="dashMemory">—</dd></div>
+                  <div><dt>Node</dt><dd id="dashNode">—</dd></div>
+                  <div><dt>POS</dt><dd id="dashPos">—</dd></div>
+                  <div><dt>Kontrol</dt><dd id="dashCheckedAt">—</dd></div>
+                </dl>
+              </section>
+              <section class="admin-card">
+                <div class="admin-card-head"><div><span class="admin-eyebrow">DÖNÜŞÜM</span><h2>Funnel</h2></div></div>
+                <dl class="admin-xml-meta">
+                  <div><dt>Sepete ekleme</dt><dd id="dashAddToCart">0</dd></div>
+                  <div><dt>Ödeme başladı</dt><dd id="dashCheckoutStarted">0</dd></div>
+                  <div><dt>Başarısız ödeme</dt><dd id="dashOrdersFailed">0</dd></div>
+                  <div><dt>Bekleyen ödeme</dt><dd id="dashOrdersPending">0</dd></div>
+                  <div><dt>Dönüşüm oranı</dt><dd id="dashConversionRate">%0</dd></div>
+                </dl>
+              </section>
+            </div>
+
+            <div class="admin-kpis" style="margin-top:18px">
               <article class="admin-kpi"><span>Toplam ürün</span><strong id="dashboardProductCount">0</strong><small>Manuel katalog</small></article>
               <article class="admin-kpi"><span>Yayındaki ürün</span><strong id="dashboardActiveCount">0</strong><small>Site ve Akakçe</small></article>
               <article class="admin-kpi"><span>Tedarikçi ürünleri</span><strong id="dashboardSupplierCount">0</strong><small>Son XML senkronu</small></article>

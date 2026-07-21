@@ -96,7 +96,7 @@
   function selectAdminTab(name, focus) {
     const tabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
     const pageMeta = {
-      overview: ["Genel Bakış", "Katalog ve yayın durumunu tek ekrandan yönetin."],
+      overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
       products: ["Ürünler", "Manuel ürün kataloğunu düzenleyin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
     };
@@ -113,6 +113,7 @@
     document.getElementById("adminPageTitle").textContent = meta[0];
     document.getElementById("adminPageSubtitle").textContent = meta[1];
     if (name === "xml" && token) loadSupplierData().catch(() => {});
+    if (name === "overview" && token) loadDigitalDashboard().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -395,6 +396,139 @@
     return Number.isNaN(date.getTime())
       ? "Henüz yok"
       : date.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  function formatMoney(amount) {
+    return (
+      "₺" +
+      Math.round(Number(amount) || 0).toLocaleString("tr-TR", {
+        maximumFractionDigits: 0,
+      })
+    );
+  }
+
+  function formatDelta(percent) {
+    const value = Number(percent);
+    if (!Number.isFinite(value)) return "önceki döneme göre —";
+    const sign = value > 0 ? "+" : "";
+    return "önceki döneme göre " + sign + value + "%";
+  }
+
+  function formatUptime(sec) {
+    const s = Math.max(0, Number(sec) || 0);
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d) return d + "g " + h + "s";
+    if (h) return h + "s " + m + "dk";
+    return m + " dk";
+  }
+
+  function renderDigitalDashboard(payload) {
+    const analytics = (payload && payload.analytics) || {};
+    const commerce = (payload && payload.commerce) || {};
+    const server = (payload && payload.server) || {};
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+
+    setText("dashVisitors", String(analytics.visitors || 0));
+    setText("dashPageViews", String(analytics.pageViews || 0));
+    setText("dashVisitorsDelta", formatDelta(analytics.comparison && analytics.comparison.visitorsPercent));
+    setText("dashPageViewsDelta", formatDelta(analytics.comparison && analytics.comparison.pageViewsPercent));
+    setText("dashLeads", String(analytics.leads || 0));
+    setText("dashOrdersPaid", String(commerce.ordersPaid || 0));
+    setText(
+      "dashOrdersMeta",
+      "başarısız " +
+        (commerce.ordersFailed || 0) +
+        " · bekleyen " +
+        (commerce.ordersPending || 0)
+    );
+    setText("dashRevenue", formatMoney(commerce.revenue || 0));
+    setText("dashAov", formatMoney(commerce.aov || 0));
+    setText("dashAddToCart", String(analytics.addToCart || 0));
+    setText("dashCheckoutStarted", String(analytics.checkoutStarted || 0));
+    setText("dashOrdersFailed", String(commerce.ordersFailed || 0));
+    setText("dashOrdersPending", String(commerce.ordersPending || 0));
+    setText("dashConversionRate", "%" + (analytics.conversionRate || 0));
+
+    const noteEl = document.getElementById("dashLeadsNote");
+    if (noteEl) {
+      noteEl.textContent =
+        payload.leadsNote ||
+        "Talep sayısı, formun başarıyla gönderildiği anları sayar.";
+    }
+
+    const status = document.getElementById("dashServerStatus");
+    if (status) {
+      status.className = "admin-status " + (server.status === "online" ? "on" : "err");
+      status.textContent = server.status === "online" ? "Online" : "Kapalı";
+    }
+    setText("dashUptime", formatUptime(server.uptimeSec));
+    setText("dashMemory", (server.memoryMB != null ? server.memoryMB + " MB" : "—"));
+    setText("dashNode", server.node || "—");
+    const pos = server.pos || {};
+    setText(
+      "dashPos",
+      pos.enabled
+        ? "Akbank " + (pos.testMode ? "TEST" : "CANLI")
+        : "Yapılandırılmadı"
+    );
+    setText("dashCheckedAt", formatDate(server.checkedAt));
+
+    const spark = document.getElementById("dashSpark");
+    if (spark) {
+      spark.innerHTML = "";
+      const daily = Array.isArray(analytics.daily) ? analytics.daily : [];
+      const max = Math.max(1, ...daily.map((d) => Number(d.pageViews) || 0));
+      daily.slice(-21).forEach((day) => {
+        const bar = document.createElement("span");
+        const h = Math.max(4, Math.round(((Number(day.pageViews) || 0) / max) * 80));
+        bar.style.height = h + "px";
+        bar.title = day.date + ": " + (day.pageViews || 0) + " görüntüleme";
+        spark.appendChild(bar);
+      });
+    }
+
+    const top = document.getElementById("dashTopPages");
+    if (top) {
+      top.innerHTML = "";
+      const pages = Array.isArray(analytics.topPages) ? analytics.topPages : [];
+      if (!pages.length) {
+        const empty = document.createElement("li");
+        empty.innerHTML = "<span>Henüz sayfa verisi yok</span><strong>0</strong>";
+        top.appendChild(empty);
+      } else {
+        pages.forEach((row) => {
+          const li = document.createElement("li");
+          li.innerHTML =
+            "<span>" +
+            String(row.path || "/") +
+            "</span><strong>" +
+            String(row.views || 0) +
+            "</strong>";
+          top.appendChild(li);
+        });
+      }
+    }
+  }
+
+  async function loadDigitalDashboard() {
+    const period = document.getElementById("dashboardPeriod");
+    const days = period ? period.value : "30";
+    try {
+      const data = await api("/api/admin/dashboard?days=" + encodeURIComponent(days));
+      renderDigitalDashboard(data);
+    } catch (err) {
+      renderDigitalDashboard({
+        analytics: {},
+        commerce: {},
+        server: { status: "offline" },
+        leadsNote: err.message || "Dashboard yüklenemedi.",
+      });
+    }
   }
 
   function updateDashboard() {
@@ -928,7 +1062,7 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       showPanel(true);
-      await Promise.all([refresh(), loadSupplierData()]);
+      await Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard()]);
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {
@@ -1038,9 +1172,14 @@
     }
   });
 
+  document.getElementById("dashboardPeriod") &&
+    document.getElementById("dashboardPeriod").addEventListener("change", () => {
+      loadDigitalDashboard().catch(() => {});
+    });
+
   if (token) {
     showPanel(true);
-    Promise.all([refresh(), loadSupplierData()]).catch(() => {
+    Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard()]).catch(() => {
       token = "";
       sessionStorage.removeItem(TOKEN_KEY);
       showPanel(false);

@@ -583,6 +583,27 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/dashboard") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const days = requestUrl.searchParams.get("days");
+    const mem = process.memoryUsage();
+    return json(res, 200, {
+      ok: true,
+      analytics: analyticsStore.summary(days),
+      commerce: orderStore.commerceSummary(days),
+      server: {
+        status: "online",
+        uptimeSec: Math.floor(process.uptime()),
+        node: process.version,
+        memoryMB: Math.round((mem.rss / (1024 * 1024)) * 10) / 10,
+        pos: publicPosStatus(akbankConfig),
+        checkedAt: new Date().toISOString(),
+      },
+      leadsNote:
+        "Talep sayısı, formun FormSubmit ile başarıyla gönderildiği anları sayar. Posta kutusu teslimatı FormSubmit/e-posta sağlayıcısına bağlıdır.",
+    });
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/supplier/status") {
     const feedProducts = mergedProducts(false);
     const feedAnalysis = analyzeAkakceProducts(feedProducts, {

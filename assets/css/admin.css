@@ -532,6 +532,76 @@
   grid-template-columns: 1.2fr 0.8fr;
   gap: 18px;
 }
+.admin-overview-grid-3 {
+  grid-template-columns: 1.2fr 0.9fr 0.9fr;
+  margin-bottom: 8px;
+}
+.admin-overview-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.admin-overview-head h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.admin-overview-head p { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.admin-period {
+  display: grid;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.admin-period select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--ink-2);
+}
+.admin-kpis-digital {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.admin-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 88px;
+  margin-bottom: 14px;
+  padding: 8px 4px 0;
+}
+.admin-spark span {
+  flex: 1;
+  min-width: 0;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+  opacity: 0.85;
+}
+.admin-top-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.admin-top-pages li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+.admin-top-pages li span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.admin-hint {
+  margin: -4px 0 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
 .admin-quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .admin-quick-action {
   display: grid;
@@ -703,7 +773,9 @@
 }
 @media (max-width: 1100px) {
   .admin-kpis { grid-template-columns: 1fr 1fr; }
-  .admin-overview-grid { grid-template-columns: 1fr; }
+  .admin-kpis-digital { grid-template-columns: 1fr 1fr 1fr; }
+  .admin-overview-grid,
+  .admin-overview-grid-3 { grid-template-columns: 1fr; }
   .admin-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 800px) {

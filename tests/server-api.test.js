@@ -94,6 +94,18 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.ok(analyticsPayload.analytics.pageViews >= 1);
   assert.equal(analyticsPayload.analytics.periodDays, 30);
 
+  const dashboard = await fetch(baseUrl + "/api/admin/dashboard?days=30", {
+    headers: { Authorization: "Bearer " + session.token },
+  });
+  assert.equal(dashboard.status, 200);
+  const dash = await dashboard.json();
+  assert.equal(dash.ok, true);
+  assert.ok(dash.analytics.pageViews >= 1);
+  assert.equal(typeof dash.commerce.revenue, "number");
+  assert.equal(typeof dash.commerce.aov, "number");
+  assert.equal(dash.server.status, "online");
+  assert.ok(dash.leadsNote);
+
   const privateData = await fetch(baseUrl + "/assets/data/products.json");
   assert.equal(privateData.status, 404);
   assert.equal(privateData.headers.get("x-frame-options"), "DENY");

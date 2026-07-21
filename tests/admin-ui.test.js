@@ -29,6 +29,16 @@ test("admin exposes three XML connections and source-specific margins", () => {
   assert.match(script, /supplierSlot:\s*item\.supplierSlot/);
 });
 
+test("admin overview exposes digital dashboard metrics", () => {
+  assert.match(html, /id="dashboardPeriod"/);
+  assert.match(html, /id="dashLeads"/);
+  assert.match(html, /id="dashRevenue"/);
+  assert.match(html, /id="dashAov"/);
+  assert.match(html, /id="dashServerStatus"/);
+  assert.match(script, /\/api\/admin\/dashboard/);
+  assert.match(script, /loadDigitalDashboard/);
+});
+
 test("admin never renders the default password as a login hint", () => {
   assert.doesNotMatch(html, /patygo-admin/);
   assert.match(html, /ADMIN_PASSWORD/);
