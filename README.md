@@ -84,11 +84,11 @@ Script’in yazdırdığı private key’i GitHub’da repo → **Settings → S
 
 | Secret | Değer |
 |--------|--------|
-| `DEPLOY_HOST` | Sunucu IP (ör. `8.229.158.154`) |
+| `DEPLOY_HOST` | Alan adı veya sunucu IP (`patygoteknoloji.com` tercih) |
 | `DEPLOY_USER` | SSH kullanıcı adı |
 | `DEPLOY_SSH_KEY` | Script’in ürettiği private key (tümü) |
 
-Sonraki yayınlar: kodu `main`’e push etmek yeterli. Durum: repo → **Actions** sekmesi.
+Deploy Actions kırmızıysa önce bu üç secret’ın dolu olduğunu kontrol edin. SSH host olarak IP yerine alan adı kullanılabilir.
 
 ## Yapılacaklar / Notlar
 

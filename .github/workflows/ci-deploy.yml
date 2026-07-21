@@ -38,6 +38,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Verify deploy secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          missing=0
+          [ -n "$DEPLOY_HOST" ] || { echo "Missing secret: DEPLOY_HOST"; missing=1; }
+          [ -n "$DEPLOY_USER" ] || { echo "Missing secret: DEPLOY_USER"; missing=1; }
+          [ -n "$DEPLOY_SSH_KEY" ] || { echo "Missing secret: DEPLOY_SSH_KEY"; missing=1; }
+          if [ "$missing" -ne 0 ]; then
+            echo "GitHub → Settings → Secrets and variables → Actions altına secret'ları ekleyin."
+            echo "DEPLOY_HOST için patygoteknoloji.com (alan adı) tercih edin."
+            exit 1
+          fi
+          echo "Deploy secrets present (host=$DEPLOY_HOST user=$DEPLOY_USER)."
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.2
         with:
