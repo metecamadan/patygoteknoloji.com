@@ -494,7 +494,8 @@ async function handleApi(req, res, urlPath) {
       const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
       analyticsStore.record({
         type: String(body.type || "").slice(0, 40),
-        path: String(body.path || "/").slice(0, 200),
+        path: String(body.path || "/").slice(0, 220),
+        productId: String(body.productId || "").slice(0, 80),
         sessionId: String(body.sessionId || "").slice(0, 120),
       });
       return json(res, 202, { ok: true });
@@ -594,10 +595,24 @@ async function handleApi(req, res, urlPath) {
     const days = requestUrl.searchParams.get("days");
     const range = from && to ? { from, to } : days;
     const mem = process.memoryUsage();
+    const analytics = analyticsStore.summary(range);
+    const commerce = orderStore.commerceSummary(range);
+    const catalogById = Object.fromEntries(
+      mergedProducts(true).map((product) => [product.id, product])
+    );
+    const topViewedProducts = (analytics.topViewedProducts || []).map((row) => {
+      const product = catalogById[row.productId];
+      return {
+        productId: row.productId,
+        views: row.views,
+        name: product ? product.name : row.productId,
+        brand: product ? product.brand : "",
+      };
+    });
     return json(res, 200, {
       ok: true,
-      analytics: analyticsStore.summary(range),
-      commerce: orderStore.commerceSummary(range),
+      analytics: Object.assign({}, analytics, { topViewedProducts }),
+      commerce,
       server: {
         status: "online",
         uptimeSec: Math.floor(process.uptime()),

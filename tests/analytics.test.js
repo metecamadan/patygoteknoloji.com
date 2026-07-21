@@ -35,6 +35,37 @@ test("analytics aggregates traffic, unique visitors and conversion rate", () => 
   }
 });
 
+test("analytics tracks product detail views into topViewedProducts", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-analytics-products-"));
+  const store = createAnalyticsStore(root, {
+    now: () => new Date("2026-07-20T12:00:00.000Z"),
+  });
+  try {
+    store.record({
+      type: "page_view",
+      path: "/urun-detay?id=thinkpad-e16",
+      sessionId: "s1",
+    });
+    store.record({
+      type: "page_view",
+      path: "/urun-detay",
+      productId: "thinkpad-e16",
+      sessionId: "s2",
+    });
+    store.record({
+      type: "page_view",
+      path: "/urun-detay?id=macbook",
+      sessionId: "s3",
+    });
+    const summary = store.summary(7);
+    assert.equal(summary.topViewedProducts[0].productId, "thinkpad-e16");
+    assert.equal(summary.topViewedProducts[0].views, 2);
+    assert.equal(summary.topViewedProducts[1].productId, "macbook");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("analytics summary accepts custom from/to range", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-analytics-range-"));
   let now = new Date("2026-07-20T12:00:00.000Z");

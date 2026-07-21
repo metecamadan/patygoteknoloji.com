@@ -19,11 +19,13 @@
     }
   }
 
-  function trackAnalytics(type) {
+  function trackAnalytics(type, meta) {
     if (analyticsDisabled || !analyticsSession) return;
+    const extra = meta && typeof meta === "object" ? meta : {};
     const payload = JSON.stringify({
       type,
-      path: location.pathname,
+      path: location.pathname + (location.search || ""),
+      productId: extra.productId || "",
       sessionId: analyticsSession,
     });
     try {
@@ -45,7 +47,11 @@
   }
 
   window.PatygoAnalytics = { track: trackAnalytics };
-  trackAnalytics("page_view");
+  const detailId = new URLSearchParams(location.search).get("id") || "";
+  trackAnalytics(
+    "page_view",
+    /urun-detay/i.test(location.pathname) && detailId ? { productId: detailId } : undefined
+  );
 
   const header = document.querySelector(".site-header");
   const onScroll = () => {

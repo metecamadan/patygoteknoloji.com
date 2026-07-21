@@ -39,7 +39,10 @@ test("admin overview exposes digital dashboard metrics", () => {
   assert.match(html, /id="dashServerStatus"/);
   assert.match(script, /\/api\/admin\/dashboard/);
   assert.match(script, /loadDigitalDashboard/);
-  assert.match(script, /currentPeriodQuery/);
+  assert.match(html, /id="dashTopViewed"/);
+  assert.match(html, /id="dashTopPurchased"/);
+  assert.match(script, /topViewedProducts/);
+  assert.match(script, /topPurchasedProducts/);
 });
 
 test("admin never renders the default password as a login hint", () => {

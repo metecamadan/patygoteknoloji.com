@@ -531,6 +531,49 @@
         });
       }
     }
+
+    function fillRankList(elementId, rows, valueKey, formatValue) {
+      const list = document.getElementById(elementId);
+      if (!list) return;
+      list.textContent = "";
+      if (!rows.length) {
+        const empty = document.createElement("li");
+        empty.innerHTML =
+          '<div class="rank-meta"><strong>Henüz veri yok</strong><span>Seçili dönemde kayıt bulunamadı</span></div><span class="rank-value">—</span>';
+        list.appendChild(empty);
+        return;
+      }
+      rows.forEach((row) => {
+        const li = document.createElement("li");
+        const meta = document.createElement("div");
+        meta.className = "rank-meta";
+        const title = document.createElement("strong");
+        title.textContent = row.name || row.productId || "Ürün";
+        const sub = document.createElement("span");
+        sub.textContent = [row.brand, row.productId].filter(Boolean).join(" · ");
+        meta.appendChild(title);
+        meta.appendChild(sub);
+        const value = document.createElement("span");
+        value.className = "rank-value";
+        value.textContent = formatValue(row[valueKey], row);
+        li.appendChild(meta);
+        li.appendChild(value);
+        list.appendChild(li);
+      });
+    }
+
+    fillRankList(
+      "dashTopViewed",
+      Array.isArray(analytics.topViewedProducts) ? analytics.topViewedProducts : [],
+      "views",
+      (views) => String(views || 0) + " görüntüleme"
+    );
+    fillRankList(
+      "dashTopPurchased",
+      Array.isArray(commerce.topPurchasedProducts) ? commerce.topPurchasedProducts : [],
+      "qty",
+      (qty, row) => String(qty || 0) + " adet · " + formatMoney(row.revenue || 0)
+    );
   }
 
   const PERIOD_KEY = "patygo_admin_period";

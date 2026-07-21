@@ -9,7 +9,8 @@ const cart = fs.readFileSync(path.join(root, "assets", "js", "cart.js"), "utf8")
 const checkout = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
 
 test("public pages track anonymous page views and successful leads", () => {
-  assert.match(main, /trackAnalytics\("page_view"\)/);
+  assert.match(main, /trackAnalytics\(\s*"page_view"/);
+  assert.match(main, /productId/);
   assert.match(main, /trackAnalytics\("lead_submitted"\)/);
   assert.match(main, /navigator\.doNotTrack/);
   assert.match(main, /sessionStorage/);
