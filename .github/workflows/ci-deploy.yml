@@ -54,7 +54,21 @@ jobs:
             echo "Prefer DEPLOY_HOST=patygoteknoloji.com"
             exit 1
           fi
-          echo "Deploy secrets present (host=$DEPLOY_HOST user=$DEPLOY_USER)."
+          # appleboy "attempted methods [none]" → key parse edilemedi
+          if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
+            echo "DEPLOY_SSH_KEY format invalid: must include -----BEGIN OPENSSH PRIVATE KEY-----"
+            exit 1
+          fi
+          if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -q "END OPENSSH PRIVATE KEY"; then
+            echo "DEPLOY_SSH_KEY format invalid: must include -----END OPENSSH PRIVATE KEY-----"
+            exit 1
+          fi
+          key_lines="$(printf '%s\n' "$DEPLOY_SSH_KEY" | wc -l | tr -d ' ')"
+          if [ "$key_lines" -lt 3 ]; then
+            echo "DEPLOY_SSH_KEY looks truncated (lines=$key_lines). Re-paste full private key."
+            exit 1
+          fi
+          echo "Deploy secrets present (host=$DEPLOY_HOST user=$DEPLOY_USER key_lines=$key_lines)."
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.2

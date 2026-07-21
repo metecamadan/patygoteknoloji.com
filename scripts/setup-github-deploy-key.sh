@@ -26,13 +26,16 @@ fi
 
 echo
 echo "===== GitHub Secrets ====="
-echo "DEPLOY_HOST = $(curl -fsS ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
+echo "DEPLOY_HOST = patygoteknoloji.com"
 echo "DEPLOY_USER = $(whoami)"
-echo "DEPLOY_SSH_KEY = (aşağıdaki private key'in tamamı)"
+echo "DEPLOY_SSH_KEY = sadece aşağıdaki OpenSSH bloğu (tırnak yok)"
 echo
-echo "----- BEGIN PRIVATE KEY (DEPLOY_SSH_KEY) -----"
+echo "Kopyala: cat ${KEY_PATH}"
+echo "İlk satır şöyle olmalı: -----BEGIN OPENSSH PRIVATE KEY-----"
+echo "Son satır şöyle olmalı: -----END OPENSSH PRIVATE KEY-----"
+echo
 cat "${KEY_PATH}"
-echo "----- END PRIVATE KEY -----"
 echo
 echo "Repo → Settings → Secrets and variables → Actions → New repository secret"
 echo "  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY"
+echo "Not: Script etiketlerini (DEPLOY_SSH_KEY yazısı vb.) secret'a ekleme."
