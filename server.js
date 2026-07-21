@@ -21,6 +21,7 @@ const {
   publicPosStatus,
 } = require("./lib/akbank-pos");
 const { createOrderStore } = require("./lib/orders");
+const { resolveSiteBaseUrl } = require("./lib/site-url");
 
 const ROOT = path.resolve(__dirname);
 const ROOT_PREFIX = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
@@ -33,10 +34,7 @@ if (!ADMIN_PASSWORD) {
 }
 const PRODUCTS_FILE = path.join(ROOT, "assets", "data", "products.json");
 const PRODUCTS_IMG_DIR = path.join(ROOT, "assets", "img", "products");
-const SITE_BASE_URL = String(process.env.SITE_BASE_URL || `http://localhost:${PORT}`).replace(
-  /\/+$/,
-  ""
-);
+const SITE_BASE_URL = resolveSiteBaseUrl(process.env.SITE_BASE_URL, PORT, IS_PRODUCTION);
 const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);
 const ADMIN_IDLE_MS =
   Number.isFinite(rawIdleMs) && rawIdleMs > 0 ? rawIdleMs : 30 * 60 * 1000;

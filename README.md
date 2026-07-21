@@ -51,7 +51,7 @@ Site: `http://localhost:5173`
 
 Panel: `http://localhost:5173/admin` (temiz URL; `.html` uzantılı eski adresler 301 ile yönlenir)
 
-`.env` içinde en az `ADMIN_PASSWORD` ve `SITE_BASE_URL` değerlerini canlı ortama göre değiştirin.
+`.env` içinde en az `ADMIN_PASSWORD` ve `SITE_BASE_URL=https://patygoteknoloji.com` değerlerini canlıya göre ayarlayın. Canlıda IP veya `localhost` kullanmayın; ödeme callback ve Akakçe adresleri alan adından üretilir.
 
 ## XML ve Akakçe
 
