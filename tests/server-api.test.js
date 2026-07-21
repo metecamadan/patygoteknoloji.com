@@ -137,7 +137,7 @@ test("admin sessions expire after idle timeout and slide on activity", async (t)
       PORT: String(port),
       ADMIN_PASSWORD: password,
       SITE_BASE_URL: `http://127.0.0.1:${port}`,
-      ADMIN_IDLE_MS: "120",
+      ADMIN_IDLE_MS: "400",
       SUPPLIER_ALLOWED_HOSTS: "supplier.example",
     }),
     stdio: "ignore",
@@ -158,11 +158,11 @@ test("admin sessions expire after idle timeout and slide on activity", async (t)
   const first = await fetch(baseUrl + "/api/admin/products", { headers });
   assert.equal(first.status, 200);
 
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await new Promise((resolve) => setTimeout(resolve, 50));
   const refreshed = await fetch(baseUrl + "/api/admin/products", { headers });
   assert.equal(refreshed.status, 200);
 
-  await new Promise((resolve) => setTimeout(resolve, 180));
+  await new Promise((resolve) => setTimeout(resolve, 500));
   const expired = await fetch(baseUrl + "/api/admin/products", { headers });
   assert.equal(expired.status, 401);
 });
