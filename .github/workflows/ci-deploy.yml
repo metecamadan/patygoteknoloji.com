@@ -49,8 +49,9 @@ jobs:
           [ -n "$DEPLOY_USER" ] || { echo "Missing secret: DEPLOY_USER"; missing=1; }
           [ -n "$DEPLOY_SSH_KEY" ] || { echo "Missing secret: DEPLOY_SSH_KEY"; missing=1; }
           if [ "$missing" -ne 0 ]; then
-            echo "GitHub → Settings → Secrets and variables → Actions altına secret'ları ekleyin."
-            echo "DEPLOY_HOST için patygoteknoloji.com (alan adı) tercih edin."
+            echo "Missing GitHub Actions repository secrets."
+            echo "Add DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY under Settings > Secrets > Actions."
+            echo "Prefer DEPLOY_HOST=patygoteknoloji.com"
             exit 1
           fi
           echo "Deploy secrets present (host=$DEPLOY_HOST user=$DEPLOY_USER)."
@@ -62,6 +63,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
+          debug: true
+          command_timeout: 3m
           script: |
             set -euo pipefail
             APP_DIR="/var/www/patygo"
