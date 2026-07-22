@@ -112,24 +112,7 @@
     });
   });
 
-  /* Teklif / iletişim formları → info@patygoteknoloji.com */
-  const MAIL_ENDPOINT =
-    "https://formsubmit.co/ajax/info@patygoteknoloji.com";
-  const MAIL_ALLOWED = [
-    "firma",
-    "vkn",
-    "email",
-    "tel",
-    "urun",
-    "kategori",
-    "konu",
-    "mesaj",
-    "_subject",
-    "_template",
-    "_honey",
-    "_replyto",
-  ];
-
+  /* Teklif / iletişim formları → /api/contact → info@patygoteknoloji.com */
   document.querySelectorAll("form#contact-form").forEach((form) => {
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
@@ -148,14 +131,18 @@
       }
 
       const raw = new FormData(form);
-      const data = {};
-      MAIL_ALLOWED.forEach((key) => {
-        if (raw.has(key)) data[key] = String(raw.get(key) || "").trim();
-      });
-      if (!data._subject) data._subject = "Patygo Teklif / İletişim Talebi";
-      data._template = "table";
-      data._replyto = data.email || "";
-      // Honeypot (_honey) bilinçli gönderilir; bot doldurursa FormSubmit engeller.
+      const data = {
+        firma: String(raw.get("firma") || "").trim(),
+        vkn: String(raw.get("vkn") || "").trim(),
+        email: String(raw.get("email") || "").trim(),
+        tel: String(raw.get("tel") || "").trim(),
+        urun: String(raw.get("urun") || "").trim(),
+        kategori: String(raw.get("kategori") || "").trim(),
+        konu: String(raw.get("konu") || "").trim(),
+        mesaj: String(raw.get("mesaj") || "").trim(),
+        _subject: String(raw.get("_subject") || "Patygo Teklif / İletişim Talebi").trim(),
+        _honey: String(raw.get("_honey") || ""),
+      };
 
       if (btn) {
         btn.disabled = true;
@@ -165,7 +152,7 @@
       setNote("", "Talebiniz gönderiliyor…");
 
       try {
-        const res = await fetch(MAIL_ENDPOINT, {
+        const res = await fetch("/api/contact", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -174,8 +161,8 @@
           body: JSON.stringify(data),
         });
         const json = await res.json().catch(() => ({}));
-        if (!res.ok || json.success === "false" || json.success === false) {
-          throw new Error(json.message || "Gönderim başarısız");
+        if (!res.ok || json.ok === false) {
+          throw new Error(json.error || "Gönderim başarısız");
         }
         setNote(
           "ok",
@@ -186,7 +173,8 @@
       } catch (err) {
         setNote(
           "err",
-          "Gönderim şu an tamamlanamadı. Lütfen doğrudan info@patygoteknoloji.com adresine yazın veya WhatsApp’tan ulaşın."
+          (err && err.message) ||
+            "Gönderim şu an tamamlanamadı. Lütfen doğrudan info@patygoteknoloji.com adresine yazın veya WhatsApp’tan ulaşın."
         );
       } finally {
         if (btn) {

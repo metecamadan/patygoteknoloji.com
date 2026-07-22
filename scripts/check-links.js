@@ -105,6 +105,7 @@ async function main() {
     paths.add("/robots.txt");
 
     for (const p of [...paths].sort()) {
+      if (p.startsWith("/api/")) continue;
       const url = base + (p.startsWith("/") ? p : "/" + p);
       try {
         const res = await fetch(url, { redirect: "manual" });

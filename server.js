@@ -22,6 +22,12 @@ const {
 } = require("./lib/akbank-pos");
 const { createOrderStore } = require("./lib/orders");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
+const {
+  createContactStore,
+  normalizeContactPayload,
+  validateContactPayload,
+  deliverContactMail,
+} = require("./lib/contact");
 
 const ROOT = path.resolve(__dirname);
 const ROOT_PREFIX = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
@@ -71,8 +77,10 @@ const supplierManager = createMultiSupplierManager(ROOT, {
 });
 const analyticsStore = createAnalyticsStore(ROOT);
 const orderStore = createOrderStore(ROOT);
+const contactStore = createContactStore(ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
+const contactAttempts = new Map(); // IP -> { count, resetAt }
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -121,7 +129,7 @@ function securityHeaders(extra) {
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
         "script-src 'self'; style-src 'self' 'unsafe-inline' https:; " +
         "img-src 'self' data: https: http:; font-src 'self' data: https:; " +
-        "connect-src 'self'; form-action 'self' https://formsubmit.co " +
+        "connect-src 'self'; form-action 'self'; " +
         "https://virtualpospaymentgatewaypre.akbank.com https://virtualpospaymentgateway.akbank.com",
     },
     extra || {}
@@ -385,6 +393,59 @@ function authOk(req) {
 async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/payment/status") {
     return json(res, 200, publicPosStatus(akbankConfig));
+  }
+
+  if (req.method === "POST" && urlPath === "/api/contact") {
+    try {
+      const ip = clientIp(req);
+      if (rateLimited(contactAttempts, ip, 8, 15 * 60 * 1000)) {
+        return json(res, 429, {
+          ok: false,
+          error: "Çok fazla istek. Lütfen daha sonra tekrar deneyin.",
+        });
+      }
+      const body = JSON.parse((await readBody(req, 32 * 1024)).toString("utf8") || "{}");
+      const data = normalizeContactPayload(body);
+      const check = validateContactPayload(data);
+      if (!check.ok) return json(res, 400, { ok: false, error: check.error });
+
+      const lead = {
+        id: "LEAD-" + Date.now().toString(36).toUpperCase(),
+        createdAt: new Date().toISOString(),
+        ip,
+        firma: data.firma,
+        vkn: data.vkn,
+        email: data.email,
+        tel: data.tel,
+        konu: data.konu || "",
+        urun: data.urun || "",
+        kategori: data.kategori || "",
+        mesaj: data.mesaj,
+        spam: Boolean(check.spam),
+      };
+      contactStore.append(lead);
+
+      if (check.spam) {
+        return json(res, 200, { ok: true, delivered: false });
+      }
+
+      const delivery = await deliverContactMail(data);
+      try {
+        analyticsStore.record({ type: "lead_submitted" });
+      } catch (_) {}
+      return json(res, 200, {
+        ok: true,
+        delivered: true,
+        to: delivery.to,
+      });
+    } catch (err) {
+      return json(res, 502, {
+        ok: false,
+        error:
+          (err && err.message) ||
+          "Talebiniz kaydedildi ancak e-posta iletilemedi. Lütfen info@patygoteknoloji.com adresine yazın.",
+      });
+    }
   }
 
   if (req.method === "POST" && urlPath === "/api/payment/start") {

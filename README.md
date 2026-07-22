@@ -92,10 +92,9 @@ Deploy Actions kırmızıysa önce bu üç secret’ın dolu olduğunu kontrol e
 
 ## Yapılacaklar / Notlar
 
-- Telefon numarası ve WhatsApp hattı gerçek numarayla güncellenmeli (`wa.me/900000000000`).
-- Sosyal medya bağlantıları (`#`) güncellenmeli.
+- Sosyal medya bağlantıları gerektiğinde güncellenecek.
 - Yasal metinler yayın öncesi bir hukuk danışmanınca gözden geçirilmelidir.
-- İletişim formu şu an demo (istemci taraflı); canlıda bir form servisi/backend'e bağlanmalıdır.
+- İletişim formu `/api/contact` üzerinden `info@patygoteknoloji.com` adresine iletilir (SMTP veya FormSubmit yedek kanalı).
 
 ## Şirket Bilgileri
 
