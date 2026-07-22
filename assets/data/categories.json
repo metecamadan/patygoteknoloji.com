@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "slug": "bilgisayar-tablet",
+      "name": "Bilgisayar / Tablet",
+      "children": [
+        { "slug": "notebook", "name": "Notebook" },
+        { "slug": "masaustu", "name": "Masaüstü Bilgisayarlar" },
+        { "slug": "tablet", "name": "Tablet" },
+        { "slug": "klavye", "name": "Klavye" },
+        { "slug": "mouse", "name": "Mouse" },
+        { "slug": "klavye-mouse-set", "name": "Klavye Mouse Set" },
+        { "slug": "monitor", "name": "Monitör" },
+        { "slug": "ram", "name": "Ram" },
+        { "slug": "ekran-karti", "name": "Ekran Kartı" },
+        { "slug": "islemci", "name": "İşlemci" },
+        { "slug": "kasa", "name": "Kasa" }
+      ]
+    },
+    {
+      "slug": "cevre-birimleri",
+      "name": "Çevre Birimleri",
+      "children": [
+        { "slug": "modem", "name": "Modem" },
+        { "slug": "router", "name": "Router" },
+        { "slug": "usb-bellek", "name": "USB Bellekler" },
+        { "slug": "laser-yazici", "name": "Laser Yazıcılar" },
+        { "slug": "inkjet-yazici", "name": "Inkjet Yazıcılar" },
+        { "slug": "tarayici", "name": "Tarayıcılar" },
+        { "slug": "notebook-canta", "name": "Notebook Çantaları" }
+      ]
+    }
+  ]
+}

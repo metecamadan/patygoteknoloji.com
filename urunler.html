@@ -17,13 +17,7 @@
     <div class="container">
       <nav class="nav" aria-label="Ana menü">
         <a class="brand" href="/" aria-label="Patygo Teknoloji ana sayfa"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" width="120" height="38" /></a>
-        <ul class="nav-links" id="navLinks">
-          <li><a href="/hizmetler">Kurumsal Tedarik</a></li>
-          <li><a href="/urunler" class="active">Ürünler</a></li>
-          <li><a href="/markalar">Markalar</a></li>
-          <li><a href="/kurumsal">Hakkımızda</a></li>
-          <li><a href="/iletisim">İletişim</a></li>
-        </ul>
+        <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
           <a href="/#teklif" class="btn btn-primary">Teklif Al</a>
@@ -38,9 +32,9 @@
   <main>
     <section class="page-hero products-hero">
       <div class="container">
-        <div class="breadcrumb reveal"><a href="/">Ana Sayfa</a> <span>/</span> <span>Ürünler</span></div>
-        <h1 class="reveal">Ürün kataloğu</h1>
-        <p class="reveal d1">Bilgisayardan beyaz eşyaya öne çıkan ürünleri inceleyin; Satın Al ile siparişe geçin veya Teklif Al ile kurumsal fiyat isteyin.</p>
+        <div class="breadcrumb reveal"><a href="/">Ana Sayfa</a> <span>/</span> <span data-catalog-crumb>Ürünler</span></div>
+        <h1 class="reveal" data-catalog-title>Ürün kataloğu</h1>
+        <p class="reveal d1" data-catalog-lead>Bilgisayardan beyaz eşyaya öne çıkan ürünleri inceleyin; Satın Al ile siparişe geçin veya Teklif Al ile kurumsal fiyat isteyin.</p>
       </div>
     </section>
 
@@ -121,6 +115,7 @@
 
   <script src="/assets/js/cart.js"></script>
   <script src="/assets/js/catalog.js"></script>
+  <script src="/assets/js/nav.js"></script>
   <script src="/assets/js/main.js"></script>
 </body>
 </html>

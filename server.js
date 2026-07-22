@@ -297,7 +297,12 @@ function isBlocked(relPosix) {
   if (lower.startsWith(".env") || lower.includes("/.env")) return true;
   if (lower.startsWith(".runtime/") || lower.includes("/.runtime/")) return true;
   if (lower.startsWith("lib/") || lower.includes("/lib/")) return true;
-  if (lower.startsWith("assets/data/") || lower.includes("/assets/data/")) return true;
+  if (lower.startsWith("assets/data/") || lower.includes("/assets/data/")) {
+    if (lower === "assets/data/categories.json" || lower.endsWith("/assets/data/categories.json")) {
+      return false;
+    }
+    return true;
+  }
   if (lower.startsWith("scripts/") || lower.includes("/scripts/")) return true;
   if (lower.startsWith("node_modules/")) return true;
   if (lower.startsWith(".cursor/")) return true;

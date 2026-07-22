@@ -32,6 +32,74 @@
     return "/#teklif";
   }
 
+  function readCategoryQuery() {
+    const params = new URLSearchParams(location.search || "");
+    return {
+      parent: String(params.get("kategori") || "").trim(),
+      child: String(params.get("alt") || "").trim(),
+    };
+  }
+
+  function resolveCategoryLabels(categories, query) {
+    const parents = Array.isArray(categories) ? categories : [];
+    const parent = parents.find((cat) => cat.slug === query.parent) || null;
+    if (!parent) return null;
+    const child =
+      query.child && Array.isArray(parent.children)
+        ? parent.children.find((row) => row.slug === query.child) || null
+        : null;
+    if (query.child && !child) return null;
+    return { parent, child };
+  }
+
+  function applyCategoryHeading(resolved) {
+    const crumb = document.querySelector("[data-catalog-crumb]");
+    const title = document.querySelector("[data-catalog-title]");
+    const lead = document.querySelector("[data-catalog-lead]");
+    if (!resolved) return;
+    const label = resolved.child ? resolved.child.name : resolved.parent.name;
+    if (crumb) crumb.textContent = label;
+    if (title) title.textContent = label;
+    if (lead) {
+      lead.textContent = resolved.child
+        ? resolved.parent.name + " / " + resolved.child.name + " kategorisindeki ürünler."
+        : resolved.parent.name + " kategorisindeki ürünler.";
+    }
+    document.title = label + " | Patygo Teknoloji";
+  }
+
+  function renderCategoryEmpty(grid, resolved) {
+    grid.textContent = "";
+    const empty = document.createElement("div");
+    empty.className = "catalog-empty";
+    empty.style.gridColumn = "1 / -1";
+    const heading = document.createElement("h2");
+    heading.textContent = "Bu kategori yakında";
+    const text = document.createElement("p");
+    text.style.color = "var(--muted)";
+    text.textContent = resolved
+      ? (resolved.child ? resolved.child.name : resolved.parent.name) +
+        " için ürünler hazırlanıyor. Tüm kataloğu inceleyebilir veya teklif talebi gönderebilirsiniz."
+      : "Seçilen kategori için ürünler hazırlanıyor.";
+    const actions = document.createElement("div");
+    actions.className = "hero-cta";
+    actions.style.marginTop = "16px";
+    const all = document.createElement("a");
+    all.className = "btn btn-outline";
+    all.href = "/urunler";
+    all.textContent = "Tüm ürünler";
+    const quote = document.createElement("a");
+    quote.className = "btn btn-primary";
+    quote.href = quoteHref();
+    quote.textContent = "Teklif Al";
+    actions.appendChild(all);
+    actions.appendChild(quote);
+    empty.appendChild(heading);
+    empty.appendChild(text);
+    empty.appendChild(actions);
+    grid.appendChild(empty);
+  }
+
   function makeCard(product, index) {
     const article = document.createElement("article");
     const delay = index % 3 === 1 ? " d1" : index % 3 === 2 ? " d2" : "";
@@ -146,11 +214,16 @@
     });
   }
 
-  function renderGrid(grid, products) {
+  function renderGrid(grid, products, options) {
+    const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
     let list = products.slice();
     if (mode === "featured") list = list.filter((p) => p.featured);
     grid.textContent = "";
+    if (opts.categoryResolved) {
+      renderCategoryEmpty(grid, opts.categoryResolved);
+      return;
+    }
     if (!list.length) {
       const empty = document.createElement("p");
       empty.style.color = "var(--muted)";
@@ -162,14 +235,15 @@
     list.forEach((product, index) => grid.appendChild(makeCard(product, index)));
   }
 
-  function applyCatalog(all) {
+  function applyCatalog(all, options) {
+    const opts = options || {};
     const products = (all || []).filter((p) => p && p.active !== false);
     window.PatygoCatalog.list = products;
     window.PatygoCatalog.byId = Object.fromEntries(products.map((p) => [p.id, p]));
     document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
-      renderGrid(grid, products);
+      renderGrid(grid, products, opts);
     });
-    bindTabs(document);
+    if (!opts.categoryResolved) bindTabs(document);
     window.dispatchEvent(new CustomEvent("patygo:catalog", { detail: { products } }));
     return products;
   }
@@ -187,14 +261,44 @@
     return [];
   }
 
+  async function loadCategories() {
+    if (window.PatygoNav && Array.isArray(window.PatygoNav.categories)) {
+      return window.PatygoNav.categories;
+    }
+    try {
+      const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.categories) ? data.categories : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   async function reloadCatalog() {
-    const all = await loadProducts();
-    return applyCatalog(all);
+    const query = readCategoryQuery();
+    const onProductsPage = /\/urunler\/?$/i.test(location.pathname || "");
+    const wantsCategory = onProductsPage && (query.parent || query.child);
+    const [all, categories] = await Promise.all([loadProducts(), loadCategories()]);
+    let categoryResolved = null;
+    if (wantsCategory) {
+      categoryResolved = resolveCategoryLabels(categories, query);
+      if (categoryResolved) applyCategoryHeading(categoryResolved);
+    }
+    return applyCatalog(all, {
+      categoryResolved: wantsCategory ? categoryResolved || { parent: { name: "Kategori" }, child: null } : null,
+    });
   }
 
   window.PatygoCatalog.reload = reloadCatalog;
 
   window.PatygoCatalog.ready = reloadCatalog();
+
+  document.addEventListener("patygo:nav-ready", () => {
+    if (/\/urunler\/?$/i.test(location.pathname || "") && location.search) {
+      reloadCatalog();
+    }
+  });
 
   // Panel kaydettiğinde açık site sekmeleri güncellensin
   try {

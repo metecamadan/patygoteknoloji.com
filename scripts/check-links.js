@@ -103,6 +103,8 @@ async function main() {
     paths.add("/urunler.html"); // should 301
     paths.add("/sitemap.xml");
     paths.add("/robots.txt");
+    paths.add("/assets/data/categories.json");
+    paths.add("/urunler?kategori=bilgisayar-tablet&alt=notebook");
 
     for (const p of [...paths].sort()) {
       if (p.startsWith("/api/")) continue;

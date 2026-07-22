@@ -176,6 +176,85 @@ h1, h2, h3, h4 {
 .nav-toggle.open span:nth-child(2) { opacity: 0; }
 .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
+/* ---------- Mega nav ---------- */
+.nav-mega {
+  position: relative;
+}
+.nav-mega-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.925rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color var(--t), background var(--t);
+}
+.nav-mega-toggle:hover,
+.nav-mega.open > .nav-mega-toggle {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+.nav-mega-caret {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  transition: transform var(--t);
+}
+.nav-mega.open > .nav-mega-toggle .nav-mega-caret {
+  transform: rotate(180deg);
+}
+.nav-mega-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 280px;
+  max-width: min(520px, 92vw);
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  z-index: 120;
+}
+.nav-mega.open > .nav-mega-panel {
+  display: block;
+}
+.nav-mega-parent {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--brand);
+}
+.nav-mega-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nav-mega-list a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.nav-mega-list a:hover {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
 /* ---------- Hero ---------- */
 .hero {
   position: relative;
@@ -1286,6 +1365,34 @@ h1, h2, h3, h4 {
     visibility: visible;
   }
   .nav-links a { padding: 14px 12px; font-size: 1rem; }
+  .nav-mega-toggle {
+    width: 100%;
+    justify-content: space-between;
+    padding: 14px 12px;
+    font-size: 1rem;
+  }
+  .nav-mega-panel {
+    position: static;
+    display: none;
+    min-width: 0;
+    max-width: none;
+    margin: 0 0 8px;
+    padding: 0 0 8px 8px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .nav-mega.open > .nav-mega-panel {
+    display: block;
+  }
+  .nav-mega-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .nav-mega-list a {
+    padding: 10px 12px;
+  }
   .nav-toggle { display: flex; position: relative; z-index: 101; }
   .nav-actions { gap: 8px; }
   .nav-actions .btn-outline { display: none; }

@@ -70,13 +70,21 @@
       toggle.classList.toggle("open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
       document.body.style.overflow = open ? "hidden" : "";
+      if (!open) {
+        links.querySelectorAll(".nav-mega.open").forEach((item) => {
+          item.classList.remove("open");
+          const btn = item.querySelector(".nav-mega-toggle");
+          if (btn) btn.setAttribute("aria-expanded", "false");
+        });
+      }
     };
     toggle.addEventListener("click", () => {
       setMenu(!links.classList.contains("open"));
     });
-    links.querySelectorAll("a").forEach((a) =>
-      a.addEventListener("click", () => setMenu(false))
-    );
+    links.addEventListener("click", (ev) => {
+      const a = ev.target.closest("a");
+      if (a && links.contains(a)) setMenu(false);
+    });
     window.addEventListener("resize", () => {
       if (window.innerWidth > 860) setMenu(false);
     });
