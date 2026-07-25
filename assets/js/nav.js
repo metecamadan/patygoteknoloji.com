@@ -12,41 +12,12 @@
     return q ? "/urunler?" + q : "/urunler";
   }
 
-  function currentPath() {
-    return (location.pathname || "/").replace(/\/$/, "") || "/";
-  }
-
-  function isActivePage(href) {
-    const path = currentPath();
-    if (href === "/") return path === "/";
-    return path === href || path.startsWith(href);
-  }
-
   function closeAllMega(root) {
     root.querySelectorAll(".nav-mega").forEach((item) => {
       item.classList.remove("open");
       const btn = item.querySelector(".nav-mega-toggle");
       if (btn) btn.setAttribute("aria-expanded", "false");
     });
-  }
-
-  function buildSecondaryLinks() {
-    const frag = document.createDocumentFragment();
-    const links = [
-      { href: "/markalar", label: "Markalar" },
-      { href: "/kurumsal", label: "Kurumsal" },
-      { href: "/iletisim", label: "İletişim" },
-    ];
-    links.forEach((row) => {
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.href = row.href;
-      a.textContent = row.label;
-      if (isActivePage(row.href)) a.classList.add("active");
-      li.appendChild(a);
-      frag.appendChild(li);
-    });
-    return frag;
   }
 
   function buildMegaItem(category) {
@@ -118,7 +89,6 @@
   function renderNav(root, categories) {
     root.textContent = "";
     (categories || []).forEach((cat) => root.appendChild(buildMegaItem(cat)));
-    root.appendChild(buildSecondaryLinks());
   }
 
   function bindChrome(root) {
@@ -152,7 +122,6 @@
       })
       .catch(() => {
         root.textContent = "";
-        root.appendChild(buildSecondaryLinks());
       });
   }
 
