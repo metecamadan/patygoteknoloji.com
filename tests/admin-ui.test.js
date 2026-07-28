@@ -81,3 +81,10 @@ test("admin never renders the default password as a login hint", () => {
   assert.doesNotMatch(html, /patygo-admin/);
   assert.match(html, /ADMIN_PASSWORD/);
 });
+
+test("admin XML refresh errors mention supplier access not generic /admin path", () => {
+  assert.doesNotMatch(script, /API'ye ulaşılamadı\. Sunucu çalışıyor mu\? Adres: \/admin/);
+  assert.match(script, /XML çekimi zaman aşımına uğradı/);
+  assert.match(script, /IP whitelist/);
+  assert.match(script, /slot\.lastError/);
+});

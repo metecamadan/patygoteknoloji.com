@@ -65,9 +65,10 @@
     if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
 
     const ctrl = new AbortController();
+    const isSupplierRefresh = path.includes("/supplier/refresh");
     const timer = setTimeout(
       () => ctrl.abort(),
-      Number(opts.timeout) || (path.includes("/supplier/refresh") ? 45000 : 12000)
+      Number(opts.timeout) || (isSupplierRefresh ? 60000 : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -81,10 +82,18 @@
       return data;
     } catch (err) {
       if (err && err.name === "AbortError") {
-        throw new Error("Sunucu yanıt vermedi. node server.js çalışıyor mu?");
+        throw new Error(
+          isSupplierRefresh
+            ? "XML çekimi zaman aşımına uğradı. Tedarikçi IP whitelist / firewall ayarını kontrol edin."
+            : "İstek zaman aşımına uğradı. Lütfen tekrar deneyin."
+        );
       }
-      if (err && err.message && /Failed to fetch|NetworkError|fetch/i.test(err.message)) {
-        throw new Error("API'ye ulaşılamadı. Sunucu çalışıyor mu? Adres: /admin");
+      if (err && err.message && /Failed to fetch|NetworkError|Load failed|fetch/i.test(err.message)) {
+        throw new Error(
+          isSupplierRefresh
+            ? "XML bağlantısı kesildi. Sunucu tedarikçiye bağlanamıyor olabilir (IP whitelist)."
+            : "API isteği başarısız oldu (" + path + "). Sayfayı yenileyip tekrar deneyin."
+        );
       }
       throw err;
     } finally {
@@ -1150,7 +1159,7 @@
         await api("/api/admin/supplier/refresh", {
           method: "POST",
           body: JSON.stringify({ slotId }),
-          timeout: 45000,
+          timeout: 60000,
         });
         selectedSupplierSkus.clear();
         await loadSupplierData();
@@ -1159,7 +1168,9 @@
         note(statusNote, "ok", count + " ürün bu XML kaynağından güncellendi.");
       } catch (err) {
         await loadSupplierData().catch(() => {});
-        note(statusNote, "err", err.message);
+        const slot = supplierSlots.find((item) => item.id === slotId);
+        const serverError = slot && slot.lastError ? String(slot.lastError) : "";
+        note(statusNote, "err", serverError || err.message);
       } finally {
         button.disabled = false;
         button.textContent = original;
