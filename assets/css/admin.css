@@ -330,6 +330,10 @@
   font-size: 0.78rem;
   margin: 6px 0 0;
 }
+.admin-field-help.err {
+  color: #b91c1c;
+  font-weight: 600;
+}
 .admin-preview-list {
   margin-top: 10px;
   display: grid;

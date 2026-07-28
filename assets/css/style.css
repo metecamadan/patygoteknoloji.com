@@ -813,6 +813,18 @@ h1, h2, h3, h4 {
   color: var(--brand);
   font-size: 0.75rem;
   flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+.checkout-product .visual.has-image {
+  background: #f8fafc;
+  padding: 6px;
+}
+.checkout-product .visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .checkout-product h3 { font-size: 1rem; margin-bottom: 4px; }
 .checkout-product .brand-tag {

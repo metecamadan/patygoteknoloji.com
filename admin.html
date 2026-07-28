@@ -235,9 +235,10 @@
             <textarea id="pDetails" rows="5" placeholder="Ürün detay sayfasında görünen açıklama"></textarea>
           </div>
           <div class="field">
-            <label for="pImageFile">Ürün görselleri (en fazla 10)</label>
+            <label for="pImageFile">Ürün görselleri (en az 5, en fazla 10)</label>
             <input id="pImageFile" type="file" accept="image/png,image/jpeg,image/webp" multiple />
-            <p class="admin-field-help">İlk görsel kapak olur. Görselleri yükledikten sonra sürükleyerek sıralayabilirsiniz.</p>
+            <p class="admin-field-help">Ürün kaydı için en az 5 görsel zorunludur. İlk görsel kapak olur; küçük önizlemeleri sürükleyerek sıralayabilirsiniz.</p>
+            <p id="imageCountHint" class="admin-field-help" aria-live="polite">0 / 5 görsel</p>
             <div id="imagePreview" class="admin-preview-list" hidden></div>
           </div>
           <div class="admin-checks">

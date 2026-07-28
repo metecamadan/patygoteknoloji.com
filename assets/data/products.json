@@ -8,7 +8,13 @@
     "description": "İnce, sessiz ve tüm gün dayanan M3 çipli MacBook Air. Ofis, tasarım ve mobil ekipler için hazır.",
     "details": "Apple M3 çip, 8 GB birleşik bellek, 256 GB SSD depolama, 13.6\" Liquid Retina ekran, MagSafe şarj ve fansız sessiz çalışma. Wi‑Fi 6E, iki Thunderbolt portu. Kurumsal e-posta, doküman ve görüntülü toplantılar için ideal demo ürünüdür.",
     "image": "/assets/img/products/macbook-air-m3.svg",
-    "images": ["/assets/img/products/macbook-air-m3.svg"],
+    "images": [
+      "/assets/img/products/macbook-air-m3.svg",
+      "/assets/img/products/macbook-air-m3-2.svg",
+      "/assets/img/products/macbook-air-m3-3.svg",
+      "/assets/img/products/macbook-air-m3-4.svg",
+      "/assets/img/products/macbook-air-m3-5.svg"
+    ],
     "featured": true,
     "active": true
   },
@@ -21,7 +27,13 @@
     "description": "Klasik ThinkPad dayanıklılığı ve klavye konforuyla 16\" iş notebook’u.",
     "details": "Intel Core i7 işlemci, 16 GB RAM, 512 GB SSD, 16\" FHD ekran, Askeri standartlara yakın şasi testleri, fingerprint okuyucu ve dolu port seti. Muhasebe, saha satış ve yönetim ekipleri için demo katalog ürünü.",
     "image": "/assets/img/products/thinkpad-e16.svg",
-    "images": ["/assets/img/products/thinkpad-e16.svg"],
+    "images": [
+      "/assets/img/products/thinkpad-e16.svg",
+      "/assets/img/products/thinkpad-e16-2.svg",
+      "/assets/img/products/thinkpad-e16-3.svg",
+      "/assets/img/products/thinkpad-e16-4.svg",
+      "/assets/img/products/thinkpad-e16-5.svg"
+    ],
     "featured": true,
     "active": true
   },
@@ -34,7 +46,13 @@
     "description": "Toplu alımlara uygun, dengeli performanslı HP ProBook iş bilgisayarı.",
     "details": "Intel Core i5, 16 GB RAM, 512 GB NVMe SSD, 15.6\" ekran, HP Sure Start güvenlik özellikleri. Eğitim, KOBİ ve çağrı merkezi filoları için fiyat/performans odaklı demo üründür.",
     "image": "/assets/img/products/probook-450.svg",
-    "images": ["/assets/img/products/probook-450.svg"],
+    "images": [
+      "/assets/img/products/probook-450.svg",
+      "/assets/img/products/probook-450-2.svg",
+      "/assets/img/products/probook-450-3.svg",
+      "/assets/img/products/probook-450-4.svg",
+      "/assets/img/products/probook-450-5.svg"
+    ],
     "featured": true,
     "active": true
   },
@@ -47,7 +65,13 @@
     "description": "Yazdır, tara, kopyala — Wi‑Fi’li tanklı yazıcı ile düşük baskı maliyeti.",
     "details": "Epson EcoTank mürekkep tankı sistemi, kablosuz baskı, düz yataklı tarayıcı ve renkli kopyalama. Küçük ofis ve mağaza kullanımında kartuş maliyetini düşüren demo yazıcı modelidir.",
     "image": "/assets/img/products/epson-l3560.svg",
-    "images": ["/assets/img/products/epson-l3560.svg"],
+    "images": [
+      "/assets/img/products/epson-l3560.svg",
+      "/assets/img/products/epson-l3560-2.svg",
+      "/assets/img/products/epson-l3560-3.svg",
+      "/assets/img/products/epson-l3560-4.svg",
+      "/assets/img/products/epson-l3560-5.svg"
+    ],
     "featured": true,
     "active": true
   },
@@ -60,7 +84,13 @@
     "description": "No-Frost teknolojili, A++ enerjili geniş hacimli buzdolabı.",
     "details": "No-Frost soğutma, A++ enerji sınıfı, geniş dondurucu bölmesi ve sessiz çalışma. Personel mutfağı, lojman ve ofis sosyal alanları için demo beyaz eşya ürünüdür.",
     "image": "/assets/img/products/arcelik-9103.svg",
-    "images": ["/assets/img/products/arcelik-9103.svg"],
+    "images": [
+      "/assets/img/products/arcelik-9103.svg",
+      "/assets/img/products/arcelik-9103-2.svg",
+      "/assets/img/products/arcelik-9103-3.svg",
+      "/assets/img/products/arcelik-9103-4.svg",
+      "/assets/img/products/arcelik-9103-5.svg"
+    ],
     "featured": true,
     "active": true
   },
@@ -73,7 +103,13 @@
     "description": "Yoğun ofisler için hızlı, çift yönlü siyah-beyaz lazer yazıcı.",
     "details": "Yüksek baskı hızı, otomatik çift yönlü baskı, Ethernet bağlantısı ve düşük sayfa maliyeti. Muhasebe ve operasyon ekiplerinin yoğun çıktı ihtiyacı için demo LaserJet modelidir.",
     "image": "/assets/img/products/hp-m404dn.svg",
-    "images": ["/assets/img/products/hp-m404dn.svg"],
+    "images": [
+      "/assets/img/products/hp-m404dn.svg",
+      "/assets/img/products/hp-m404dn-2.svg",
+      "/assets/img/products/hp-m404dn-3.svg",
+      "/assets/img/products/hp-m404dn-4.svg",
+      "/assets/img/products/hp-m404dn-5.svg"
+    ],
     "featured": true,
     "active": true
   }

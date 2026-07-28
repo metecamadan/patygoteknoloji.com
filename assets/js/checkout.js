@@ -233,12 +233,40 @@
     }
 
     if (mode === "direct") {
-      els.brand.textContent = (product.brand || "ÜRÜN").slice(0, 8);
+      els.brand.textContent = "";
+      const primaryImage =
+        (Array.isArray(product.images) && product.images.find(Boolean)) ||
+        product.image ||
+        "";
+      if (primaryImage) {
+        const img = document.createElement("img");
+        img.src = primaryImage;
+        img.alt = product.name || "";
+        els.brand.appendChild(img);
+        els.brand.classList.add("has-image");
+      } else {
+        els.brand.classList.remove("has-image");
+        els.brand.textContent = (product.brand || "ÜRÜN").slice(0, 8);
+      }
       els.brandLabel.textContent = product.brand || "—";
       els.name.textContent = product.name;
       if (els.qtyRow) els.qtyRow.hidden = false;
     } else {
-      els.brand.textContent = "SEPET";
+      const first = lines[0] && lines[0].product;
+      const cartImage =
+        first &&
+        ((Array.isArray(first.images) && first.images.find(Boolean)) || first.image || "");
+      els.brand.textContent = "";
+      if (cartImage) {
+        const img = document.createElement("img");
+        img.src = cartImage;
+        img.alt = first.name || "Sepet";
+        els.brand.appendChild(img);
+        els.brand.classList.add("has-image");
+      } else {
+        els.brand.classList.remove("has-image");
+        els.brand.textContent = "SEPET";
+      }
       els.brandLabel.textContent = "SEPET";
       els.name.textContent = lines.map((l) => l.product.name + " × " + l.qty).join(", ");
       if (els.qtyRow) els.qtyRow.hidden = true;

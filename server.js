@@ -374,15 +374,25 @@ function slugify(input) {
     .slice(0, 60);
 }
 
+const MIN_PRODUCT_IMAGES = 5;
+const MAX_PRODUCT_IMAGES = 10;
+
+function normalizeImageUrl(value) {
+  const raw = String(value || "").trim().slice(0, 260);
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("data:")) return raw;
+  return raw.startsWith("/") ? raw : "/" + raw;
+}
+
 function normalizeProduct(p, fallbackId) {
   const id = slugify(p.id || p.name || fallbackId || crypto.randomBytes(4).toString("hex"));
   const category = CATEGORIES.has(p.category) ? p.category : "bilgisayar";
   const price = Math.max(0, Number(p.price) || 0);
-  const legacyImage = String(p.image || "").trim().slice(0, 260);
+  const legacyImage = normalizeImageUrl(p.image);
   const images = (Array.isArray(p.images) ? p.images : [])
-    .map((value) => String(value || "").trim().slice(0, 260))
+    .map((value) => normalizeImageUrl(value))
     .filter(Boolean)
-    .slice(0, 10);
+    .slice(0, MAX_PRODUCT_IMAGES);
   if (legacyImage && !images.includes(legacyImage)) images.unshift(legacyImage);
   return {
     id,
@@ -393,7 +403,7 @@ function normalizeProduct(p, fallbackId) {
     description: String(p.description || "").trim().slice(0, 280),
     details: String(p.details || "").trim().slice(0, 4000),
     image: images[0] || "",
-    images,
+    images: images.slice(0, MAX_PRODUCT_IMAGES),
     featured: Boolean(p.featured),
     active: p.active !== false,
   };
@@ -803,6 +813,18 @@ async function handleApi(req, res, urlPath) {
         const p = normalizeProduct(item);
         if (!p.id || !p.name || !p.brand) continue;
         if (seen.has(p.id)) continue;
+        if (p.images.length < MIN_PRODUCT_IMAGES) {
+          return json(res, 422, {
+            ok: false,
+            error:
+              p.name +
+              ": en az " +
+              MIN_PRODUCT_IMAGES +
+              " görsel zorunlu (şu an " +
+              p.images.length +
+              ").",
+          });
+        }
         seen.add(p.id);
         normalized.push(p);
       }
@@ -832,7 +854,7 @@ async function handleApi(req, res, urlPath) {
         ext;
       const out = path.join(PRODUCTS_IMG_DIR, name);
       fs.writeFileSync(out, buf);
-      return json(res, 200, { ok: true, url: "assets/img/products/" + name });
+      return json(res, 200, { ok: true, url: "/assets/img/products/" + name });
     } catch (err) {
       return json(res, 400, { ok: false, error: err.message || "Yükleme başarısız" });
     }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-label="Arçelik buzdolab1 demo">
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-label="9103 NFY Kapak">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#f8fafc"/>
@@ -7,13 +7,12 @@
     </linearGradient>
   </defs>
   <rect width="640" height="480" fill="url(#bg)"/>
-  <rect x="210" y="55" width="220" height="340" rx="18" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>
-  <line x1="210" y1="175" x2="430" y2="175" stroke="#94a3b8" stroke-width="3"/>
-  <rect x="230" y="80" width="180" height="70" rx="8" fill="#cbd5e1"/>
-  <rect x="230" y="200" width="180" height="160" rx="8" fill="#cbd5e1"/>
-  <rect x="400" y="95" width="10" height="50" rx="4" fill="#64748b"/>
-  <rect x="400" y="240" width="10" height="90" rx="4" fill="#64748b"/>
-  <circle cx="320" cy="380" r="6" fill="#64748b"/>
-  <text x="320" y="430" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">9103 NFY No-Frost</text>
-  <text x="320" y="454" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" fill="#64748b">Demo görsel · Arçelik</text>
+  
+  <rect x="210" y="60" width="220" height="340" rx="18" fill="#e2e8f0" stroke="#0f766e" stroke-width="6"/>
+  <line x1="210" y1="220" x2="430" y2="220" stroke="#94a3b8" stroke-width="3"/>
+  <rect x="400" y="120" width="12" height="70" rx="4" fill="#0f766e"/>
+  <rect x="400" y="260" width="12" height="70" rx="4" fill="#0f766e"/>
+
+  <text x="320" y="430" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#0f172a">9103 NFY</text>
+  <text x="320" y="454" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#64748b">Demo On gorunum · Arcelik</text>
 </svg>

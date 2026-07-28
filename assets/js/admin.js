@@ -12,6 +12,9 @@
   let feedStatus = null;
   let idleTimer = null;
   const selectedSupplierSkus = new Set();
+  const MIN_PRODUCT_IMAGES = 5;
+  const MAX_PRODUCT_IMAGES = 10;
+  const imageCountHint = document.getElementById("imageCountHint");
 
   const loginView = document.getElementById("loginView");
   const panelView = document.getElementById("panelView");
@@ -217,6 +220,20 @@
   function renderImagePreviews() {
     imagePreview.textContent = "";
     imagePreview.hidden = currentImages.length === 0;
+    if (imageCountHint) {
+      const count = currentImages.length;
+      imageCountHint.textContent =
+        count +
+        " / " +
+        MIN_PRODUCT_IMAGES +
+        " görsel" +
+        (count < MIN_PRODUCT_IMAGES
+          ? " — en az " + (MIN_PRODUCT_IMAGES - count) + " görsel daha ekleyin"
+          : count > MAX_PRODUCT_IMAGES
+            ? " — en fazla " + MAX_PRODUCT_IMAGES + " görsel"
+            : " — hazır");
+      imageCountHint.classList.toggle("err", count < MIN_PRODUCT_IMAGES);
+    }
     currentImages.forEach((url, index) => {
       const item = document.createElement("div");
       item.className = "admin-preview-item";
@@ -292,7 +309,7 @@
     fields.description.value = p.description || "";
     fields.details.value = p.details || "";
     currentImages = Array.isArray(p.images)
-      ? p.images.filter(Boolean).slice(0, 10)
+      ? p.images.filter(Boolean).slice(0, MAX_PRODUCT_IMAGES)
       : p.image
         ? [p.image]
         : [];
@@ -1305,7 +1322,7 @@
   fields.imageFile.addEventListener("change", async () => {
     const files = Array.from(fields.imageFile.files || []).slice(
       0,
-      Math.max(0, 10 - currentImages.length)
+      Math.max(0, MAX_PRODUCT_IMAGES - currentImages.length)
     );
     if (!files.length) return;
     note(formNote, "", files.length + " görsel yükleniyor…");
@@ -1324,7 +1341,8 @@
             name: fields.id.value || file.name,
           }),
         });
-        currentImages.push(uploaded.url);
+        const url = String(uploaded.url || "");
+        currentImages.push(url.startsWith("/") || /^https?:\/\//i.test(url) ? url : "/" + url);
       }
       fields.imageFile.value = "";
       renderImagePreviews();
@@ -1336,6 +1354,14 @@
 
   productForm.addEventListener("submit", async (ev) => {
     ev.preventDefault();
+    if (currentImages.filter(Boolean).length < MIN_PRODUCT_IMAGES) {
+      note(
+        formNote,
+        "err",
+        "Ürün kaydı için en az " + MIN_PRODUCT_IMAGES + " görsel ekleyin."
+      );
+      return;
+    }
     const item = {
       id: fields.id.value.trim(),
       brand: fields.brand.value.trim(),
@@ -1345,7 +1371,7 @@
       description: fields.description.value.trim(),
       details: fields.details.value.trim(),
       image: currentImages[0] || "",
-      images: currentImages.slice(0, 10),
+      images: currentImages.slice(0, MAX_PRODUCT_IMAGES),
       featured: fields.featured.checked,
       active: fields.active.checked,
     };
