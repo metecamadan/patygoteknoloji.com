@@ -53,22 +53,78 @@ test("supplier fetch rejects oversized responses before reading the body", async
   );
 });
 
-test("supplier fetch aborts when the timeout is exceeded", async () => {
-  const fetchImpl = (_url, options) =>
-    new Promise((_resolve, reject) => {
-      options.signal.addEventListener("abort", () => {
-        const error = new Error("aborted");
-        error.name = "AbortError";
-        reject(error);
-      });
-    });
+test("supplier fetch upgrades http to https before request", async () => {
+  let seen = "";
+  const fetchImpl = async (url) => {
+    seen = String(url);
+    return {
+      status: 200,
+      ok: true,
+      headers: { get: () => null },
+      body: null,
+      text: async () => SAMPLE_XML,
+    };
+  };
+  const xml = await fetchSupplierXml(new URL("http://supplier.example/feed.xml"), {
+    fetchImpl,
+    allowedHosts: ["supplier.example"],
+    maxBytes: 2048,
+  });
+  assert.equal(seen, "https://supplier.example/feed.xml");
+  assert.match(xml, /SKU-1/);
+});
+
+test("supplier fetch follows same-host redirects", async () => {
+  let calls = 0;
+  const fetchImpl = async (url) => {
+    calls += 1;
+    if (String(url).endsWith("/old.xml")) {
+      return {
+        status: 301,
+        ok: false,
+        headers: { get: (name) => (name === "location" ? "https://supplier.example/feed.xml" : null) },
+        body: null,
+      };
+    }
+    return {
+      status: 200,
+      ok: true,
+      headers: { get: () => null },
+      body: null,
+      text: async () => SAMPLE_XML,
+    };
+  };
+  const xml = await fetchSupplierXml(new URL("https://supplier.example/old.xml"), {
+    fetchImpl,
+    allowedHosts: ["supplier.example"],
+    maxBytes: 2048,
+  });
+  assert.equal(calls, 2);
+  assert.match(xml, /SKU-1/);
+});
+
+test("supplier fetch rejects redirects outside allowlist", async () => {
+  const fetchImpl = async () => ({
+    status: 302,
+    ok: false,
+    headers: { get: (name) => (name === "location" ? "https://evil.example/feed.xml" : null) },
+    body: null,
+  });
   await assert.rejects(
     fetchSupplierXml(new URL("https://supplier.example/feed.xml"), {
       fetchImpl,
-      timeoutMs: 10,
+      allowedHosts: ["supplier.example"],
       maxBytes: 2048,
     }),
-    /zaman aşımına uğradı/i
+    /izin verilen alan adları dışında/i
+  );
+});
+
+test("normalizeSupplierFeedUrl upgrades http to https", () => {
+  const { normalizeSupplierFeedUrl } = require("../lib/supplier");
+  assert.equal(
+    normalizeSupplierFeedUrl("http://www.bilgisayarim.com.tr/feed").href,
+    "https://www.bilgisayarim.com.tr/feed"
   );
 });
 
