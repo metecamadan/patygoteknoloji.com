@@ -91,6 +91,14 @@ Script’in yazdırdığı private key’i GitHub’da repo → **Settings → S
 
 Deploy Actions kırmızıysa önce bu üç secret’ın dolu olduğunu kontrol edin. SSH host olarak IP yerine alan adı kullanılabilir.
 
+**Workflow dosyası push edilemiyorsa** (`workflow scope` hatası):
+
+```bash
+bash scripts/setup-github-workflow-auth.sh
+```
+
+GitHub cihaz kodunu onaylayın; ardından `.github/workflows/*` değişiklikleri push edilebilir.
+
 ## Yapılacaklar / Notlar
 
 - Sosyal medya bağlantıları gerektiğinde güncellenecek.
