@@ -567,7 +567,7 @@
         <nav class="rail-nav">
           <button type="button" class="active" data-view="overview"><span class="ico">⌂</span><span>Genel Bakış</span></button>
           <button type="button" data-view="products"><span class="ico">▣</span><span>Ürünler</span></button>
-          <button type="button" data-view="xml"><span class="ico">↕</span><span>XML</span></button>
+          <button type="button" data-view="xml"><span class="ico">↕</span><span>Tedarikçi</span></button>
           <button type="button" data-view="feed"><span class="ico">◎</span><span>Akakçe</span></button>
         </nav>
         <div class="rail-foot">
@@ -640,7 +640,7 @@
                 <div class="card-h"><div><span class="eyebrow">Hızlı</span><h2>İşlemler</h2></div></div>
                 <div class="card-b" style="display:grid;gap:6px">
                   <button class="btn btn-outline btn-sm" data-view-jump="products">Manuel ürün ekle</button>
-                  <button class="btn btn-outline btn-sm" data-view-jump="xml">XML güncelle</button>
+                  <button class="btn btn-outline btn-sm" data-view-jump="xml">Tedarikçi güncelle</button>
                   <button class="btn btn-outline btn-sm" data-view-jump="feed">Akakçe feed</button>
                 </div>
               </section>
@@ -649,7 +649,7 @@
                 <div class="card-b">
                   <ul class="list-dense">
                     <li><div>Manuel aktif</div><span>6</span></li>
-                    <li><div>XML pasif</div><span>128</span></li>
+                    <li><div>Tedarikçi pasif</div><span>128</span></li>
                     <li><div>Görsel &lt;5</div><span class="badge warn">0</span></li>
                   </ul>
                 </div>
@@ -657,7 +657,7 @@
               <section class="card">
                 <div class="card-h"><div><span class="eyebrow">Not</span><h2>v2 hedefi</h2></div></div>
                 <div class="card-b hint">
-                  Daha az kaydırma, split ürün düzeni, sticky kaydet, XML kartları yan yana, mobil rail sekmeleri.
+                  Daha az kaydırma, split ürün düzeni, sticky kaydet, Tedarikçi kartları yan yana, mobil rail sekmeleri.
                 </div>
               </section>
             </div>
@@ -668,7 +668,7 @@
             <div class="toolbar">
               <div class="seg">
                 <button type="button" class="active">Manuel</button>
-                <button type="button">XML</button>
+                <button type="button">Tedarikçi</button>
               </div>
               <label class="search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Ürün, marka, kod ara" /></label>
               <select aria-label="Kategori">
@@ -751,7 +751,7 @@
             </div>
           </section>
 
-          <!-- XML -->
+          <!-- Tedarikçi -->
           <section class="view" id="view-xml" hidden>
             <p class="hint" style="margin-bottom:10px">Üç kaynak yan yana · durum noktası + tek tık yenileme</p>
             <div class="grid-3">
@@ -759,11 +759,11 @@
                 <div class="card-h"><div><span class="eyebrow">Kaynak 1</span><h2>bilgisayarim</h2></div><span class="badge warn">Timeout</span></div>
                 <div class="card-b">
                   <div class="status-row"><span><i class="dot warn"></i>TR IP gerekli</span><small class="hint">2s önce</small></div>
-                  <div class="field"><label>XML URL</label><input value="https://www.bilgisayarim.com.tr/…" /></div>
+                  <div class="field"><label>Kaynak URL</label><input value="https://www.bilgisayarim.com.tr/…" /></div>
                   <div class="field"><label>Genel kâr %</label><input type="number" value="15" /></div>
                   <div class="xml-actions">
                     <button class="btn btn-outline btn-sm">Kaydet</button>
-                    <button class="btn btn-primary btn-sm">XML Güncelle</button>
+                    <button class="btn btn-primary btn-sm">Güncelle</button>
                   </div>
                 </div>
               </section>
@@ -771,11 +771,11 @@
                 <div class="card-h"><div><span class="eyebrow">Kaynak 2</span><h2>Boş slot</h2></div><span class="badge off">Kapalı</span></div>
                 <div class="card-b">
                   <div class="status-row"><span><i class="dot off"></i>Tanımsız</span></div>
-                  <div class="field"><label>XML URL</label><input placeholder="https://…" /></div>
+                  <div class="field"><label>Kaynak URL</label><input placeholder="https://…" /></div>
                   <div class="field"><label>Genel kâr %</label><input type="number" value="15" /></div>
                   <div class="xml-actions">
                     <button class="btn btn-outline btn-sm">Kaydet</button>
-                    <button class="btn btn-primary btn-sm" disabled>XML Güncelle</button>
+                    <button class="btn btn-primary btn-sm" disabled>Güncelle</button>
                   </div>
                 </div>
               </section>
@@ -783,11 +783,11 @@
                 <div class="card-h"><div><span class="eyebrow">Kaynak 3</span><h2>Boş slot</h2></div><span class="badge off">Kapalı</span></div>
                 <div class="card-b">
                   <div class="status-row"><span><i class="dot off"></i>Tanımsız</span></div>
-                  <div class="field"><label>XML URL</label><input placeholder="https://…" /></div>
+                  <div class="field"><label>Kaynak URL</label><input placeholder="https://…" /></div>
                   <div class="field"><label>Genel kâr %</label><input type="number" value="15" /></div>
                   <div class="xml-actions">
                     <button class="btn btn-outline btn-sm">Kaydet</button>
-                    <button class="btn btn-primary btn-sm" disabled>XML Güncelle</button>
+                    <button class="btn btn-primary btn-sm" disabled>Güncelle</button>
                   </div>
                 </div>
               </section>
@@ -826,7 +826,7 @@
       const titles = {
         overview: ["Genel Bakış", "Kompakt özet · tek bakışta durum"],
         products: ["Ürünler", "Sol liste · sağ düzenleme · sticky kaydet"],
-        xml: ["XML Yönetimi", "3 kaynak · durum · yenile"],
+        xml: ["Tedarikçi Yönetimi", "3 kaynak · durum · yenile"],
         feed: ["Akakçe Feed", "Yayın URL ve uygunluk özeti"],
       };
 

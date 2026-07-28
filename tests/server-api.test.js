@@ -122,6 +122,17 @@ test("admin supplier APIs require authentication and return feed status", async 
     /max-age=/
   );
 
+  const publicCatalog = await fetch(baseUrl + "/api/products");
+  assert.equal(publicCatalog.status, 200);
+  const publicPayload = await publicCatalog.json();
+  assert.ok(Array.isArray(publicPayload.products));
+  for (const product of publicPayload.products) {
+    assert.equal(Object.prototype.hasOwnProperty.call(product, "source"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(product, "costPrice"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(product, "supplierSku"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(product, "stockQty"), false);
+  }
+
   const feed = await fetch(baseUrl + "/api/feeds/akakce.xml");
   assert.equal(feed.status, 200);
   assert.match(feed.headers.get("content-type"), /application\/xml/);

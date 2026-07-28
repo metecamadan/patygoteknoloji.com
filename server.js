@@ -11,7 +11,7 @@ const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
-const { mergeCatalogProducts } = require("./lib/catalog");
+const { mergeCatalogProducts, toPublicProduct } = require("./lib/catalog");
 const { createAnalyticsStore } = require("./lib/analytics");
 const {
   createAkbankConfig,
@@ -607,18 +607,13 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/products") {
-    const all = mergedProducts(false);
-    const supplierStatuses = supplierManager.listSlots();
-    const lastSupplierFetch = supplierStatuses
-      .map((status) => status.lastFetchAt)
-      .filter(Boolean)
-      .sort()
-      .at(-1);
+    const all = mergedProducts(false).map(toPublicProduct);
+    const updatedAt = fs.existsSync(PRODUCTS_FILE)
+      ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
+      : null;
     return json(res, 200, {
       products: all,
-      updatedAt:
-        lastSupplierFetch ||
-        (fs.existsSync(PRODUCTS_FILE) ? fs.statSync(PRODUCTS_FILE).mtime.toISOString() : null),
+      updatedAt,
     });
   }
 

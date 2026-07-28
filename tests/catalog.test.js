@@ -59,6 +59,44 @@ test("manual and active supplier products form one public catalog", () => {
   assert.equal(result[1].stockQty, 5);
 });
 
+test("toPublicProduct strips supplier internals and cost", () => {
+  const { toPublicProduct } = require("../lib/catalog");
+  const publicProduct = toPublicProduct({
+    id: "sup-1",
+    brand: "TEDARİKÇİ",
+    name: "Ürün",
+    price: 200,
+    category: "bilgisayar",
+    description: "Açıklama",
+    details: "Detay",
+    image: "https://cdn.example/a.jpg",
+    images: ["https://cdn.example/a.jpg", "https://cdn.example/b.jpg"],
+    featured: false,
+    active: true,
+    source: "supplier",
+    supplierSku: "SUP-1",
+    barcode: "869000",
+    stockQty: 5,
+    costPrice: 150,
+  });
+  assert.deepEqual(publicProduct, {
+    id: "sup-1",
+    brand: "TEDARİKÇİ",
+    name: "Ürün",
+    price: 200,
+    category: "bilgisayar",
+    description: "Açıklama",
+    details: "Detay",
+    image: "https://cdn.example/a.jpg",
+    images: ["https://cdn.example/a.jpg", "https://cdn.example/b.jpg"],
+    featured: false,
+    active: true,
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "source"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "costPrice"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "supplierSku"), false);
+});
+
 test("supplier IDs cannot overwrite manual products", () => {
   const result = mergeCatalogProducts(
     [

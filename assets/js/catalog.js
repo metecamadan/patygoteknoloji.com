@@ -37,7 +37,7 @@
     text.style.color = "var(--muted)";
     text.textContent = resolved
       ? (resolved.child ? resolved.child.name : resolved.parent.name) +
-        " için ürünler XML kataloğuna ekleniyor. Diğer kategorilere göz atabilirsiniz."
+        " için ürünler yakında eklenecek. Diğer kategorilere göz atabilirsiniz."
       : "Seçilen kategori için ürünler hazırlanıyor.";
     const actions = document.createElement("div");
     actions.className = "hero-cta";

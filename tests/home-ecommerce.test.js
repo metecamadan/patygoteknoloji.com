@@ -31,3 +31,29 @@ test("nav renders animated hero orbit icons from categories json", () => {
   assert.match(navJs, /hero-orbit-chip/);
   assert.match(navJs, /HERO_ORBIT_LAYOUT/);
 });
+
+test("public storefront copy does not mention XML catalog sourcing", () => {
+  const publicFiles = [
+    "index.html",
+    "urunler.html",
+    "urun-detay.html",
+    "sepet.html",
+    "odeme.html",
+    "assets/js/catalog.js",
+    "assets/js/cart.js",
+    "assets/js/nav.js",
+    "assets/js/urun-detay.js",
+    "assets/js/sepet.js",
+    "assets/js/checkout.js",
+    "assets/js/main.js",
+    "assets/js/markalar.js",
+  ];
+  for (const rel of publicFiles) {
+    const filePath = path.join(root, rel);
+    if (!fs.existsSync(filePath)) continue;
+    const text = fs.readFileSync(filePath, "utf8").replace(/image\/svg\+xml/gi, "");
+    assert.doesNotMatch(text, /\bXML\b/i, rel + " should not mention XML to shoppers");
+  }
+  assert.doesNotMatch(indexHtml, /Güncel Katalog/);
+  assert.doesNotMatch(catalogJs, /XML katalog/i);
+});
