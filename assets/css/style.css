@@ -326,52 +326,129 @@ h1, h2, h3, h4 {
   font-weight: 500;
 }
 
-/* Hero category showcase */
-.hero-visual { position: relative; }
-.hero-shop-card {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  padding: 22px;
+/* Hero animated category orbit */
+.hero-visual {
   position: relative;
-  z-index: 1;
+  min-height: clamp(280px, 36vw, 420px);
 }
-.hero-shop-label {
-  margin: 0 0 14px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
+.hero-orbit {
+  position: relative;
+  width: min(100%, 420px);
+  aspect-ratio: 1;
+  margin: 0 auto;
 }
-.hero-category-grid {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 16px;
+.hero-orbit-glow {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0) 68%);
+  animation: hero-orbit-pulse 5s ease-in-out infinite;
 }
-.hero-category-tile {
+.hero-orbit-ring {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 1px dashed rgba(37, 99, 235, 0.18);
+}
+.hero-orbit-ring--outer {
+  inset: 4%;
+  animation: hero-orbit-spin 48s linear infinite;
+}
+.hero-orbit-ring--inner {
+  inset: 22%;
+  animation: hero-orbit-spin 32s linear infinite reverse;
+}
+.hero-orbit-track {
+  position: absolute;
+  inset: 0;
+}
+.hero-orbit-chip {
+  --chip-top: 50%;
+  --chip-left: 50%;
+  --float-delay: 0s;
+  --float-dur: 4s;
+  --chip-hue: 220;
+  position: absolute;
+  top: var(--chip-top);
+  left: var(--chip-left);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--surface-soft, #f8fafc);
-  transition: border-color var(--t), background var(--t), transform var(--t);
+  align-items: center;
+  gap: 6px;
+  width: 72px;
+  margin: -36px 0 0 -36px;
+  text-decoration: none;
+  animation: hero-orbit-float var(--float-dur) ease-in-out infinite;
+  animation-delay: var(--float-delay);
+  transition: transform 0.25s ease, filter 0.25s ease;
 }
-.hero-category-tile:hover {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-  transform: translateY(-1px);
+.hero-orbit-chip:hover {
+  animation-play-state: paused;
+  transform: translateY(-6px) scale(1.06);
+  filter: drop-shadow(0 8px 16px rgba(37, 99, 235, 0.22));
+  z-index: 2;
 }
-.hero-category-tile strong {
-  font-size: 0.98rem;
-  color: var(--ink);
+.hero-orbit-chip-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(
+    145deg,
+    hsl(var(--chip-hue) 85% 97%) 0%,
+    hsl(var(--chip-hue) 70% 92%) 100%
+  );
+  border: 1px solid hsl(var(--chip-hue) 55% 88%);
+  color: hsl(var(--chip-hue) 65% 42%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
-.hero-category-tile span {
-  font-size: 0.82rem;
-  color: var(--muted);
+.hero-orbit-chip-icon svg {
+  width: 26px;
+  height: 26px;
+}
+.hero-orbit-chip-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink-2);
+  max-width: 76px;
+}
+@keyframes hero-orbit-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes hero-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes hero-orbit-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit-glow,
+  .hero-orbit-ring,
+  .hero-orbit-chip {
+    animation: none !important;
+  }
 }
 
 /* Legacy quote card (removed from homepage) */

@@ -12,7 +12,10 @@ test("homepage positions as e-commerce store not quote request", () => {
   assert.doesNotMatch(indexHtml, /quote-card/);
   assert.doesNotMatch(indexHtml, /id="teklif"/);
   assert.doesNotMatch(indexHtml, /Teklif Talebi/);
-  assert.match(indexHtml, /data-hero-categories/);
+  assert.match(indexHtml, /data-hero-orbit/);
+  assert.match(indexHtml, /hero-orbit/);
+  assert.doesNotMatch(indexHtml, /hero-shop-card/);
+  assert.doesNotMatch(indexHtml, /Popüler kategoriler/);
   assert.match(indexHtml, /Alışverişe Başla/);
 });
 
@@ -23,7 +26,8 @@ test("catalog product cards use cart flow without quote button", () => {
   assert.match(catalogJs, /Hemen Al/);
 });
 
-test("nav renders hero category tiles from categories json", () => {
-  assert.match(navJs, /renderHeroCategories/);
-  assert.match(navJs, /hero-category-tile/);
+test("nav renders animated hero orbit icons from categories json", () => {
+  assert.match(navJs, /renderHeroOrbit/);
+  assert.match(navJs, /hero-orbit-chip/);
+  assert.match(navJs, /HERO_ORBIT_LAYOUT/);
 });

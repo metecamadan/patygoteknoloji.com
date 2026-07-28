@@ -98,24 +98,85 @@
   function renderNav(root, categories) {
     root.textContent = "";
     (categories || []).forEach((cat) => root.appendChild(buildMegaItem(cat)));
-    renderHeroCategories(categories);
+    renderHeroOrbit(categories);
   }
 
-  function renderHeroCategories(categories) {
-    const root = document.querySelector("[data-hero-categories]");
+  const HERO_ICON_SVG = {
+    notebook:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M2 19h20" stroke-linecap="round"/></svg>',
+    masaustu:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 20h8M12 17v3" stroke-linecap="round"/></svg>',
+    tablet:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01" stroke-linecap="round"/></svg>',
+    klavye:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" stroke-linecap="round"/></svg>',
+    mouse:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="7" y="2" width="10" height="18" rx="5"/><path d="M12 6v4" stroke-linecap="round"/></svg>',
+    monitor:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 20h8M12 17v3" stroke-linecap="round"/></svg>',
+    "ekran-karti":
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2" stroke-linecap="round"/><path d="M17 8v8l3-4-3-4z" stroke-linejoin="round"/></svg>',
+    islemci:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke-linecap="round"/></svg>',
+    "laser-yazici":
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="8" width="16" height="10" rx="1"/><path d="M6 8V5h12v3M8 14h8" stroke-linecap="round"/></svg>',
+    router:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 14h16M6 10c2.5-3 9.5-3 12 0M8 6c1.5-2 6.5-2 8 0" stroke-linecap="round"/><circle cx="12" cy="16" r="1.5" fill="currentColor" stroke="none"/></svg>',
+    modem:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="9" width="18" height="10" rx="2"/><path d="M7 13h2M11 13h2M15 13h2" stroke-linecap="round"/><path d="M8 5c2-2 6-2 8 0" stroke-linecap="round"/></svg>',
+    "usb-bellek":
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 3h6v18H9z" stroke-linejoin="round"/><path d="M12 7v4" stroke-linecap="round"/></svg>',
+    tarayici:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14h18M7 18h10" stroke-linecap="round"/></svg>',
+    "notebook-canta":
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 8h12v12H6z" stroke-linejoin="round"/><path d="M9 8V6a3 3 0 016 0v2" stroke-linecap="round"/></svg>',
+    default:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16v12H4z" stroke-linejoin="round"/><path d="M9 7V5h6v2" stroke-linecap="round"/></svg>',
+  };
+
+  const HERO_ORBIT_LAYOUT = [
+    { slug: "notebook", top: 6, left: 8, delay: 0, dur: 4.2 },
+    { slug: "tablet", top: 14, left: 62, delay: 0.5, dur: 3.8 },
+    { slug: "monitor", top: 38, left: 78, delay: 1.1, dur: 4.6 },
+    { slug: "klavye", top: 58, left: 4, delay: 0.3, dur: 3.6 },
+    { slug: "mouse", top: 52, left: 42, delay: 0.9, dur: 4.1 },
+    { slug: "ekran-karti", top: 72, left: 68, delay: 1.4, dur: 3.9 },
+    { slug: "laser-yazici", top: 78, left: 22, delay: 0.7, dur: 4.4 },
+    { slug: "router", top: 24, left: 32, delay: 1.2, dur: 3.7 },
+    { slug: "usb-bellek", top: 8, left: 44, delay: 0.2, dur: 4.0 },
+    { slug: "modem", top: 64, left: 52, delay: 1.6, dur: 4.3 },
+  ];
+
+  function findChildCategory(categories, slug) {
+    for (const parent of categories || []) {
+      const child = (parent.children || []).find((row) => row.slug === slug);
+      if (child) return { parent, child };
+    }
+    return null;
+  }
+
+  function renderHeroOrbit(categories) {
+    const root = document.querySelector("[data-hero-orbit]");
     if (!root) return;
     root.textContent = "";
-    (categories || []).forEach((cat) => {
+    HERO_ORBIT_LAYOUT.forEach((slot, index) => {
+      const match = findChildCategory(categories, slot.slug);
+      if (!match) return;
       const link = document.createElement("a");
-      link.className = "hero-category-tile";
-      link.href = categoryHref(cat.slug);
-      const count = Array.isArray(cat.children) ? cat.children.length : 0;
+      link.className = "hero-orbit-chip";
+      link.href = categoryHref(match.parent.slug, match.child.slug);
+      link.style.setProperty("--chip-top", slot.top + "%");
+      link.style.setProperty("--chip-left", slot.left + "%");
+      link.style.setProperty("--float-delay", slot.delay + "s");
+      link.style.setProperty("--float-dur", slot.dur + "s");
+      link.style.setProperty("--chip-hue", String((index * 47 + 210) % 360));
+      link.setAttribute("aria-label", match.child.name);
       link.innerHTML =
-        "<strong>" +
-        cat.name +
-        "</strong><span>" +
-        count +
-        " alt kategori</span>";
+        '<span class="hero-orbit-chip-icon">' +
+        (HERO_ICON_SVG[slot.slug] || HERO_ICON_SVG.default) +
+        '</span><span class="hero-orbit-chip-label">' +
+        match.child.name +
+        "</span>";
       root.appendChild(link);
     });
   }
