@@ -223,6 +223,7 @@ h1, h2, h3, h4 {
   min-width: 0;
   box-sizing: border-box;
   padding: 18px 20px 20px;
+  margin-top: -1px;
   border-radius: 0 0 16px 16px;
   background: #fff;
   border: 1px solid var(--line-soft);
@@ -230,16 +231,21 @@ h1, h2, h3, h4 {
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
   z-index: 120;
 }
-.nav-mega.open > .nav-mega-panel {
+.nav-mega-panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+}
+.nav-mega.open > .nav-mega-panel,
+.nav-mega:hover > .nav-mega-panel {
   display: block;
 }
-.nav-mega-parent {
-  display: inline-block;
-  margin-bottom: 12px;
-  padding: 4px 0;
-  font-size: 0.8rem;
-  font-weight: 600;
+.nav-mega:hover > .nav-mega-toggle {
   color: var(--brand);
+  background: var(--brand-soft);
 }
 .nav-mega-list {
   display: grid;

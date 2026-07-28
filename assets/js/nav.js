@@ -39,12 +39,6 @@
     panel.setAttribute("role", "region");
     panel.setAttribute("aria-label", category.name + " alt kategorileri");
 
-    const heading = document.createElement("a");
-    heading.className = "nav-mega-parent";
-    heading.href = categoryHref(category.slug);
-    heading.textContent = "Tümü: " + category.name;
-    panel.appendChild(heading);
-
     const list = document.createElement("ul");
     list.className = "nav-mega-list";
     (category.children || []).forEach((child) => {
@@ -66,20 +60,35 @@
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
     });
 
-    li.addEventListener("mouseenter", () => {
-      if (window.matchMedia("(min-width: 861px)").matches) {
-        const root = li.closest(".nav-links");
-        if (root) closeAllMega(root);
-        li.classList.add("open");
-        toggle.setAttribute("aria-expanded", "true");
-      }
-    });
-    li.addEventListener("mouseleave", () => {
-      if (window.matchMedia("(min-width: 861px)").matches) {
+    let hoverCloseTimer = null;
+    const isDesktopNav = () => window.matchMedia("(min-width: 861px)").matches;
+    const openMega = () => {
+      if (!isDesktopNav()) return;
+      clearTimeout(hoverCloseTimer);
+      const root = li.closest(".nav-links");
+      if (root) closeAllMega(root);
+      li.classList.add("open");
+      toggle.setAttribute("aria-expanded", "true");
+    };
+    const scheduleHoverClose = () => {
+      if (!isDesktopNav()) return;
+      clearTimeout(hoverCloseTimer);
+      hoverCloseTimer = setTimeout(() => {
         li.classList.remove("open");
         toggle.setAttribute("aria-expanded", "false");
-      }
-    });
+      }, 140);
+    };
+    const onHoverLeave = (ev) => {
+      if (!isDesktopNav()) return;
+      const next = ev.relatedTarget;
+      if (next && li.contains(next)) return;
+      scheduleHoverClose();
+    };
+
+    li.addEventListener("mouseenter", openMega);
+    panel.addEventListener("mouseenter", openMega);
+    li.addEventListener("mouseleave", onHoverLeave);
+    panel.addEventListener("mouseleave", onHoverLeave);
 
     li.appendChild(toggle);
     li.appendChild(panel);
