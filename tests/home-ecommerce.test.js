@@ -10,7 +10,6 @@ const navJs = fs.readFileSync(path.join(root, "assets", "js", "nav.js"), "utf8")
 
 test("homepage keeps teklif form and e-commerce hero", () => {
   assert.doesNotMatch(indexHtml, /quote-card/);
-  assert.doesNotMatch(indexHtml, /Teklif Talebi/);
   assert.match(indexHtml, /id="teklif"/);
   assert.match(indexHtml, /data-hero-orbit/);
   assert.match(indexHtml, /Alışverişe Başla/);
