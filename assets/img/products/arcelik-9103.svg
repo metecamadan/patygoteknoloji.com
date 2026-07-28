@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Arçelik buzdolab1 demo">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-label="ArÃ§elik buzdolab1 demo">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#f8fafc"/>
@@ -14,5 +15,5 @@
   <rect x="400" y="240" width="10" height="90" rx="4" fill="#64748b"/>
   <circle cx="320" cy="380" r="6" fill="#64748b"/>
   <text x="320" y="430" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">9103 NFY No-Frost</text>
-  <text x="320" y="454" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" fill="#64748b">Demo görsel · Arçelik</text>
+  <text x="320" y="454" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" fill="#64748b">Demo gÃ¶rsel Â· ArÃ§elik</text>
 </svg>
