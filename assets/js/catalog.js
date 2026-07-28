@@ -26,10 +26,31 @@
     },
   };
 
-  function quoteHref() {
-    const path = (location.pathname || "").toLowerCase();
-    if (path === "/" || path === "") return "#teklif";
-    return "/#teklif";
+  function renderCategoryEmpty(grid, resolved) {
+    grid.textContent = "";
+    const empty = document.createElement("div");
+    empty.className = "catalog-empty";
+    empty.style.gridColumn = "1 / -1";
+    const heading = document.createElement("h2");
+    heading.textContent = "Bu kategori yakında";
+    const text = document.createElement("p");
+    text.style.color = "var(--muted)";
+    text.textContent = resolved
+      ? (resolved.child ? resolved.child.name : resolved.parent.name) +
+        " için ürünler XML kataloğuna ekleniyor. Diğer kategorilere göz atabilirsiniz."
+      : "Seçilen kategori için ürünler hazırlanıyor.";
+    const actions = document.createElement("div");
+    actions.className = "hero-cta";
+    actions.style.marginTop = "16px";
+    const all = document.createElement("a");
+    all.className = "btn btn-primary";
+    all.href = "/urunler";
+    all.textContent = "Tüm ürünler";
+    actions.appendChild(all);
+    empty.appendChild(heading);
+    empty.appendChild(text);
+    empty.appendChild(actions);
+    grid.appendChild(empty);
   }
 
   function readCategoryQuery() {
@@ -66,38 +87,6 @@
         : resolved.parent.name + " kategorisindeki ürünler.";
     }
     document.title = label + " | Patygo Teknoloji";
-  }
-
-  function renderCategoryEmpty(grid, resolved) {
-    grid.textContent = "";
-    const empty = document.createElement("div");
-    empty.className = "catalog-empty";
-    empty.style.gridColumn = "1 / -1";
-    const heading = document.createElement("h2");
-    heading.textContent = "Bu kategori yakında";
-    const text = document.createElement("p");
-    text.style.color = "var(--muted)";
-    text.textContent = resolved
-      ? (resolved.child ? resolved.child.name : resolved.parent.name) +
-        " için ürünler hazırlanıyor. Tüm kataloğu inceleyebilir veya teklif talebi gönderebilirsiniz."
-      : "Seçilen kategori için ürünler hazırlanıyor.";
-    const actions = document.createElement("div");
-    actions.className = "hero-cta";
-    actions.style.marginTop = "16px";
-    const all = document.createElement("a");
-    all.className = "btn btn-outline";
-    all.href = "/urunler";
-    all.textContent = "Tüm ürünler";
-    const quote = document.createElement("a");
-    quote.className = "btn btn-primary";
-    quote.href = quoteHref();
-    quote.textContent = "Teklif Al";
-    actions.appendChild(all);
-    actions.appendChild(quote);
-    empty.appendChild(heading);
-    empty.appendChild(text);
-    empty.appendChild(actions);
-    grid.appendChild(empty);
   }
 
   function makeCard(product, index) {
@@ -183,14 +172,8 @@
     buy.href = "/odeme?id=" + encodeURIComponent(product.id);
     buy.textContent = "Hemen Al";
 
-    const quote = document.createElement("a");
-    quote.className = "btn btn-quote";
-    quote.href = quoteHref();
-    quote.textContent = "Teklif Al";
-
     actions.appendChild(cartBtn);
     actions.appendChild(buy);
-    actions.appendChild(quote);
     body.appendChild(price);
     body.appendChild(actions);
     article.appendChild(visual);

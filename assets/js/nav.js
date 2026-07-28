@@ -98,6 +98,26 @@
   function renderNav(root, categories) {
     root.textContent = "";
     (categories || []).forEach((cat) => root.appendChild(buildMegaItem(cat)));
+    renderHeroCategories(categories);
+  }
+
+  function renderHeroCategories(categories) {
+    const root = document.querySelector("[data-hero-categories]");
+    if (!root) return;
+    root.textContent = "";
+    (categories || []).forEach((cat) => {
+      const link = document.createElement("a");
+      link.className = "hero-category-tile";
+      link.href = categoryHref(cat.slug);
+      const count = Array.isArray(cat.children) ? cat.children.length : 0;
+      link.innerHTML =
+        "<strong>" +
+        cat.name +
+        "</strong><span>" +
+        count +
+        " alt kategori</span>";
+      root.appendChild(link);
+    });
   }
 
   function bindChrome(root) {

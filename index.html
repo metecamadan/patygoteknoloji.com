@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Patygo Teknoloji | Kurumsal Elektronik Ürün Tedarik ve Satış</title>
-  <meta name="description" content="Patygo Teknoloji; Apple, Arçelik, Philips, Korkmaz, Lenovo ve HP başta olmak üzere elektronik marka ürünlerin kurumsal firmalara temin, tedarik ve satışını sağlar." />
+  <title>Patygo Teknoloji | Online Elektronik Mağaza</title>
+  <meta name="description" content="Patygo Teknoloji online mağazası: bilgisayar, tablet, çevre birimleri ve elektronik ürünlerde güvenli alışveriş, sepet ve online ödeme." />
   <link rel="canonical" href="https://patygoteknoloji.com/" />
-  <meta property="og:title" content="Patygo Teknoloji | Kurumsal Elektronik Tedarik" />
-  <meta property="og:description" content="Kurumsal teknoloji tedarikinde tek yetkili muhatabınız." />
+  <meta property="og:title" content="Patygo Teknoloji | Online Elektronik Mağaza" />
+  <meta property="og:description" content="Kategorilere göz atın, sepete ekleyin ve güvenle satın alın." />
   <meta property="og:url" content="https://patygoteknoloji.com/" />
   <meta property="og:image" content="https://patygoteknoloji.com/assets/img/patygo-logo.png" />
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg" />
@@ -26,7 +26,7 @@
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
-          <a href="#teklif" class="btn btn-primary">Teklif Al</a>
+          <a href="/urunler" class="btn btn-primary">Mağaza</a>
           <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks">
             <span></span><span></span><span></span>
           </button>
@@ -40,51 +40,24 @@
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-copy reveal">
-          <h1>Kurumsal teknoloji tedarikinde <em>tek yetkili muhatabınız.</em></h1>
-          <p class="lead">Apple, Arçelik, Philips, Korkmaz, Lenovo ve HP başta olmak üzere tüm elektronik marka ürünleri kurumsal firmalara temin ediyor, tedarik ediyor ve satıyoruz.</p>
+          <h1>Elektronik alışverişin <em>güvenilir adresi.</em></h1>
+          <p class="lead">Bilgisayar, tablet ve çevre birimlerinden binlerce ürüne kategoriler üzerinden ulaşın; sepete ekleyin, güvenle online ödeme yapın.</p>
           <div class="hero-cta">
-            <a href="/urunler" class="btn btn-primary btn-lg">Ürünlerimizi İncele</a>
-            <a href="#teklif" class="btn btn-outline btn-lg">Teklif Talebi Gönder</a>
+            <a href="/urunler" class="btn btn-primary btn-lg">Alışverişe Başla</a>
+            <a href="/sepet" class="btn btn-outline btn-lg">Sepetim</a>
           </div>
           <div class="hero-stats">
-            <div><strong>43+</strong><span>Global Marka</span></div>
-            <div><strong>B2B</strong><span>Kurumsal Satış</span></div>
-            <div><strong>İstanbul</strong><span>Merkez</span></div>
+            <div><strong>43+</strong><span>Marka</span></div>
+            <div><strong>Güvenli</strong><span>Online Ödeme</span></div>
+            <div><strong>XML</strong><span>Güncel Katalog</span></div>
           </div>
         </div>
 
         <div class="hero-visual reveal d1">
-          <div class="quote-card">
-            <div class="quote-card-head">
-              <h3>Teklif Talebi</h3>
-              <span class="quote-badge">Örnek</span>
-            </div>
-            <div class="quote-row">
-              <div class="left">
-                <div class="thumb">HP</div>
-                <div class="meta"><strong>HP EliteBook 840</strong><span>Dizüstü · 5 adet</span></div>
-              </div>
-              <div class="price">Teklif</div>
-            </div>
-            <div class="quote-row">
-              <div class="left">
-                <div class="thumb">LEN</div>
-                <div class="meta"><strong>Lenovo ThinkPad T14</strong><span>Dizüstü · 10 adet</span></div>
-              </div>
-              <div class="price">Teklif</div>
-            </div>
-            <div class="quote-row">
-              <div class="left">
-                <div class="thumb">APL</div>
-                <div class="meta"><strong>Apple MacBook Air</strong><span>Dizüstü · 3 adet</span></div>
-              </div>
-              <div class="price">Teklif</div>
-            </div>
-            <div class="quote-total">
-              <span>Kurumsal teklif</span>
-              <strong>Hazırlanıyor</strong>
-            </div>
-            <a href="#teklif" class="btn btn-primary btn-block" style="margin-top:14px">Teklif Talebi Oluştur</a>
+          <div class="hero-shop-card">
+            <p class="hero-shop-label">Popüler kategoriler</p>
+            <div class="hero-category-grid" data-hero-categories aria-label="Ürün kategorileri"></div>
+            <a href="/urunler" class="btn btn-primary btn-block">Tüm Ürünleri Gör</a>
           </div>
         </div>
       </div>
@@ -106,7 +79,7 @@
       <div class="container">
         <div class="section-head reveal">
           <h2>Öne çıkan ürünler</h2>
-          <p>Satın Al ile ödeme formuna geçin; toplu veya özel ihtiyaçlar için Teklif Al ile e-posta, WhatsApp veya telefon üzerinden iletişime geçin. <a href="/urunler" style="color:var(--brand);font-weight:600">Tüm ürünler →</a></p>
+          <p>Güncel fiyatlarla sepete ekleyin, online ödeme ile siparişinizi tamamlayın. <a href="/urunler" style="color:var(--brand);font-weight:600">Tüm ürünler →</a></p>
         </div>
         <div class="product-tabs reveal" role="tablist">
           <button type="button" class="active" data-filter="all">Tümü</button>
@@ -123,39 +96,39 @@
     <section class="section">
       <div class="container">
         <div class="section-head reveal">
-          <h2>Kurumsal tedariki tek noktadan yönetin</h2>
-          <p>Elektronik ürün ihtiyacınızı hızlı, faturalı ve şeffaf bir süreçle karşılıyoruz.</p>
+          <h2>Online alışverişi kolaylaştıran deneyim</h2>
+          <p>Kategorilere göre gezinin, ürünleri karşılaştırın ve birkaç adımda sipariş verin.</p>
         </div>
         <div class="feature-grid">
           <article class="feature-card reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" stroke-linecap="round"/></svg></div>
-            <h3>Geniş ürün yelpazesi</h3>
-            <p>Bilgisayardan beyaz eşyaya, tüm elektronik marka ürünlerde kurumsal tedarik.</p>
+            <h3>Kategori bazlı gezinme</h3>
+            <p>Navigasyon menüsünden ana ve alt kategorilere hızlıca ulaşın; XML ile güncellenen ürünler.</p>
           </article>
           <article class="feature-card reveal d1">
-            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke-linecap="round"/></svg></div>
-            <h3>Hızlı teklif süreci</h3>
-            <p>İhtiyacınızı iletin; size özel kurumsal fiyat teklifini hızla hazırlayalım.</p>
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 01-8 0" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Sepet ve hızlı sipariş</h3>
+            <p>Ürünleri sepete ekleyin, ödeme adımına geçin; süreci tek ekrandan tamamlayın.</p>
           </article>
           <article class="feature-card reveal d2">
-            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4M12 3l7 4v5c0 4-3 7.5-7 9-4-1.5-7-5-7-9V7l7-4z" stroke-linejoin="round"/></svg></div>
-            <h3>Faturalı kurumsal satış</h3>
-            <p>Resmî fatura, sözleşme ve KVKK uyumlu süreçlerle güvenli alışveriş.</p>
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke-linecap="round"/></svg></div>
+            <h3>Güvenli online ödeme</h3>
+            <p>3D Secure destekli ödeme altyapısı ile güvenli alışveriş deneyimi.</p>
           </article>
           <article class="feature-card reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8" stroke-linecap="round"/></svg></div>
-            <h3>Toplu &amp; filo tedariki</h3>
-            <p>Proje, ihale ve cihaz filosu ihtiyaçlarına özel toplu satış çözümleri.</p>
+            <h3>Faturalı satış</h3>
+            <p>Kurumsal ve bireysel alışverişlerde faturalı, şeffaf ticari süreç.</p>
           </article>
           <article class="feature-card reveal d1">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg></div>
-            <h3>Marka çeşitliliği</h3>
-            <p>Apple, Arçelik, Philips, Korkmaz, Lenovo, HP ve daha fazlası tek noktada.</p>
+            <h3>Geniş marka portföyü</h3>
+            <p>Apple, Lenovo, HP, Samsung ve daha birçok markada zengin ürün seçkisi.</p>
           </article>
           <article class="feature-card reveal d2">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linejoin="round"/></svg></div>
-            <h3>Ürün danışmanlığı</h3>
-            <p>İhtiyacınıza en uygun ürünü birlikte seçelim; satın alma sürecinizi kolaylaştıralım.</p>
+            <h3>Müşteri desteği</h3>
+            <p>Sipariş ve ürün sorularınız için telefon, e-posta ve WhatsApp desteği.</p>
           </article>
         </div>
       </div>
@@ -165,60 +138,29 @@
     <section class="dark-band">
       <div class="container dark-band-grid">
         <div class="reveal">
-          <h2>İstanbul’dan kurumsal firmalara elektronik tedarik</h2>
-          <p>Patygo Teknoloji; Gaziosmanpaşa merkezli olarak tüm elektronik marka ürünlerde kurumsal temin, tedarik ve satış hizmeti sunar.</p>
+          <h2>Türkiye geneline elektronik e-ticaret</h2>
+          <p>Patygo Teknoloji online mağazasında kategorilere göre ürün keşfedin; XML entegrasyonu ile güncel stok ve fiyatlar.</p>
         </div>
         <div class="stat-grid reveal d1">
-          <div class="stat-box"><strong>43+</strong><span>Marka Portföyü</span></div>
+          <div class="stat-box"><strong>43+</strong><span>Marka</span></div>
           <div class="stat-box"><strong>100%</strong><span>Faturalı Satış</span></div>
-          <div class="stat-box"><strong>B2B</strong><span>Kurumsal Odak</span></div>
-          <div class="stat-box"><strong>7/24</strong><span>Talep Desteği</span></div>
+          <div class="stat-box"><strong>Online</strong><span>Mağaza</span></div>
+          <div class="stat-box"><strong>7/24</strong><span>Destek</span></div>
         </div>
       </div>
     </section>
 
-    <!-- FORM -->
-    <section class="section" id="teklif">
+    <!-- DESTEK -->
+    <section class="section" id="destek">
       <div class="container">
-        <div class="section-head reveal">
-          <h2>Teklif Al</h2>
-          <p>Formu doldurun; ekibimiz e-posta, WhatsApp veya telefon üzerinden sizinle iletişime geçerek özel teklifinizi hazırlasın.</p>
+        <div class="cta-block reveal">
+          <h2>Sipariş veya ürün desteği mi lazım?</h2>
+          <p>Ödeme, kargo veya ürün bilgisi için müşteri hizmetlerimizle iletişime geçin.</p>
+          <div class="hero-cta">
+            <a href="/iletisim" class="btn btn-primary btn-lg">İletişim</a>
+            <a href="https://wa.me/905555070724" class="btn btn-outline btn-lg" target="_blank" rel="noopener">WhatsApp</a>
+          </div>
         </div>
-        <form class="form-wrap reveal" id="contact-form" action="/api/contact" method="POST">
-          <input type="hidden" name="_subject" value="Patygo Teklif Talebi" />
-          <input type="text" name="_honey" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true" />
-          <div class="form-row">
-            <div class="field"><label for="firma">Firma Adı *</label><input id="firma" name="firma" required autocomplete="organization" /></div>
-            <div class="field"><label for="vkn">VKN *</label><input id="vkn" name="vkn" required inputmode="numeric" autocomplete="off" maxlength="11" placeholder="10 haneli vergi no" /></div>
-          </div>
-          <div class="form-row">
-            <div class="field"><label for="email">E-posta *</label><input id="email" name="email" type="email" required autocomplete="email" /></div>
-            <div class="field"><label for="tel">Telefon *</label><input id="tel" name="tel" type="tel" required autocomplete="tel" /></div>
-          </div>
-          <div class="form-row">
-            <div class="field"><label for="urun">Ürün / Marka</label><input id="urun" name="urun" placeholder="Örn. Lenovo ThinkPad, 10 adet" /></div>
-            <div class="field">
-              <label for="kategori">Kategori</label>
-              <select id="kategori" name="kategori">
-                <option>Bilgisayar / BT</option>
-                <option>Mobil / Tablet</option>
-                <option>Yazıcı / Çevre Birimi</option>
-                <option>Beyaz Eşya / Ev Aleti</option>
-                <option>Diğer</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="mesaj">Mesajınız *</label>
-            <textarea id="mesaj" name="mesaj" required placeholder="İhtiyacınız olan ürün, adet ve teslimat beklentinizi yazın."></textarea>
-          </div>
-          <div class="check-inline">
-            <input type="checkbox" id="onay" name="onay" required />
-            <label for="onay"><a href="/kvkk" style="color:var(--brand)">KVKK Aydınlatma Metni</a>’ni okudum; verilerimin teklif sürecinde işlenmesini kabul ediyorum. *</label>
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-block">Teklif Talebi Gönder</button>
-          <div class="form-note" role="status" aria-live="polite"></div>
-        </form>
       </div>
     </section>
   </main>
