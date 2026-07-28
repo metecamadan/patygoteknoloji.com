@@ -1843,9 +1843,11 @@ h1, h2, h3, h4 {
   gap: clamp(20px, 4vw, 40px);
   align-items: start;
 }
-.detail-gallery { min-width: 0; }
+.detail-gallery { min-width: 0; max-width: 420px; }
 .detail-media {
   position: relative;
+  width: 100%;
+  max-width: 420px;
   aspect-ratio: 1;
   border-radius: 18px;
   background: linear-gradient(145deg, #eff6ff, #e2e8f0);
@@ -1855,20 +1857,28 @@ h1, h2, h3, h4 {
   font-weight: 800;
   color: var(--brand);
   font-size: 1.4rem;
+  cursor: default;
 }
 .detail-media img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  transform: none !important;
 }
 .detail-thumbs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 82px));
+  grid-template-columns: repeat(auto-fill, minmax(64px, 72px));
   gap: 10px;
   margin-top: 12px;
+  max-width: 420px;
 }
 .detail-thumb {
   position: relative;
@@ -1891,6 +1901,10 @@ h1, h2, h3, h4 {
   height: calc(100% - 8px);
   object-fit: contain;
   display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  transform: none !important;
 }
 .detail-info .brand-tag { margin-bottom: 10px; }
 .detail-info h1 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 8px 0; }
@@ -1912,11 +1926,34 @@ h1, h2, h3, h4 {
 .product-description h2 { margin: 0 0 16px; }
 .product-description .detail-desc { font-weight: 600; }
 .product-description .detail-body { margin-bottom: 0; }
+
+/* Ürün detay: içerik SEO için HTML'de kalır; kullanıcı kopyalayamaz */
+.product-detail-page .no-copy,
+.product-detail-page .product-description,
+.product-detail-page .detail-info h1,
+.product-detail-page .detail-info .detail-cat,
+.product-detail-page .detail-info .price,
+.product-detail-page .detail-info .brand-tag,
+.product-detail-page .detail-desc,
+.product-detail-page .detail-body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.product-detail-page .no-copy a,
+.product-detail-page .no-copy button,
+.product-detail-page .detail-info .actions {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .detail-info .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 @media (max-width: 900px) {
   .cart-layout,
   .detail-grid { grid-template-columns: 1fr; }
   .cart-summary { position: static; }
+  .detail-gallery { max-width: 100%; }
+  .detail-media { max-width: 100%; }
 }
 @media (max-width: 700px) {
   .cart-hero { padding-bottom: 32px; }

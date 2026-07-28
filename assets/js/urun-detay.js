@@ -3,8 +3,36 @@
   const root = document.getElementById("detailRoot");
   const id = new URLSearchParams(location.search).get("id") || "";
 
+  function protectMedia(img) {
+    img.setAttribute("draggable", "false");
+    img.addEventListener("dragstart", (ev) => ev.preventDefault());
+  }
+
+  function bindCopyGuard(scope) {
+    if (!scope || scope.dataset.copyGuard === "1") return;
+    scope.dataset.copyGuard = "1";
+    const block = (ev) => {
+      const tag = (ev.target && ev.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      ev.preventDefault();
+    };
+    ["copy", "cut", "contextmenu"].forEach((type) => {
+      scope.addEventListener(type, block, true);
+    });
+    scope.addEventListener(
+      "selectstart",
+      (ev) => {
+        const tag = (ev.target && ev.target.tagName) || "";
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        ev.preventDefault();
+      },
+      true
+    );
+  }
+
   function render(product) {
     root.textContent = "";
+    root.classList.add("no-copy");
     if (!product) {
       root.innerHTML =
         '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürünlere dön</a></p>';
@@ -12,6 +40,18 @@
     }
 
     document.title = product.name + " | Patygo Teknoloji";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const seoBlurb = String(product.description || product.details || product.name)
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 160);
+    if (metaDesc) metaDesc.setAttribute("content", seoBlurb);
+    else {
+      const meta = document.createElement("meta");
+      meta.name = "description";
+      meta.content = seoBlurb;
+      document.head.appendChild(meta);
+    }
 
     const grid = document.createElement("div");
     grid.className = "detail-grid reveal in";
@@ -27,6 +67,7 @@
       const mainImage = document.createElement("img");
       mainImage.src = images[0];
       mainImage.alt = product.name;
+      protectMedia(mainImage);
       media.appendChild(mainImage);
       gallery.appendChild(media);
 
@@ -41,6 +82,7 @@
           const thumb = document.createElement("img");
           thumb.src = url;
           thumb.alt = "";
+          protectMedia(thumb);
           button.appendChild(thumb);
           button.addEventListener("click", () => {
             mainImage.src = url;
@@ -115,7 +157,7 @@
 
     if (product.description || product.details) {
       const description = document.createElement("section");
-      description.className = "product-description reveal in";
+      description.className = "product-description reveal in no-copy";
       const heading = document.createElement("h2");
       heading.textContent = "Ürün Açıklaması";
       description.appendChild(heading);
@@ -132,7 +174,10 @@
         description.appendChild(body);
       }
       root.appendChild(description);
+      bindCopyGuard(description);
     }
+
+    bindCopyGuard(root);
   }
 
   window.PatygoCatalog.ready.then(() => {
