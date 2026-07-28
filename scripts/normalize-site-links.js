@@ -12,7 +12,7 @@ const CONTACT_SVG_MAIL =
 const FOOTER_GRID = `
       <div class="footer-grid">
         <div class="footer-brand">
-          <img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" />
+          <img src="/assets/img/patygo-logo-on-dark.svg" alt="Patygo Teknoloji" />
           <p>Patygo Teknoloji ve Bilişim Ltd. Şti. — Elektronik marka ürünlerin kurumsal temin, tedarik ve satışı.</p>
         </div>
         <div class="footer-col">
