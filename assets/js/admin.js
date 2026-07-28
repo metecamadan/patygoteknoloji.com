@@ -15,7 +15,40 @@
   const MIN_PRODUCT_IMAGES = 5;
   const MAX_PRODUCT_IMAGES = 10;
   const imageCountHint = document.getElementById("imageCountHint");
+  const saveProductBtn = document.getElementById("saveProductBtn");
 
+  function countProductImages(product) {
+    const list = Array.isArray(product && product.images)
+      ? product.images.filter(Boolean)
+      : product && product.image
+        ? [product.image]
+        : [];
+    return list.length;
+  }
+
+  function assertManualProductsHaveGallery(list) {
+    const bad = (list || []).find(
+      (product) => countProductImages(product) < MIN_PRODUCT_IMAGES
+    );
+    if (!bad) return;
+    throw new Error(
+      (bad.name || bad.id || "Ürün") +
+        ": panelden manuel kayıt için en az " +
+        MIN_PRODUCT_IMAGES +
+        " görsel zorunlu (şu an " +
+        countProductImages(bad) +
+        ")."
+    );
+  }
+
+  function syncSaveButtonState() {
+    if (!saveProductBtn) return;
+    const ready = currentImages.filter(Boolean).length >= MIN_PRODUCT_IMAGES;
+    saveProductBtn.disabled = !ready;
+    saveProductBtn.title = ready
+      ? ""
+      : "Kaydetmek için en az " + MIN_PRODUCT_IMAGES + " görsel yükleyin";
+  }
   const loginView = document.getElementById("loginView");
   const panelView = document.getElementById("panelView");
   const loginForm = document.getElementById("loginForm");
@@ -234,6 +267,7 @@
             : " — hazır");
       imageCountHint.classList.toggle("err", count < MIN_PRODUCT_IMAGES);
     }
+    syncSaveButtonState();
     currentImages.forEach((url, index) => {
       const item = document.createElement("div");
       item.className = "admin-preview-item";
@@ -1100,6 +1134,7 @@
   }
 
   async function persist(list, msg) {
+    assertManualProductsHaveGallery(list);
     const data = await api("/api/admin/products", {
       method: "PUT",
       body: JSON.stringify({ products: list }),
@@ -1358,8 +1393,9 @@
       note(
         formNote,
         "err",
-        "Ürün kaydı için en az " + MIN_PRODUCT_IMAGES + " görsel ekleyin."
+        "Panelden manuel ürün kaydı için en az " + MIN_PRODUCT_IMAGES + " görsel ekleyin."
       );
+      syncSaveButtonState();
       return;
     }
     const item = {

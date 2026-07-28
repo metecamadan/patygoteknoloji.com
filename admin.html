@@ -237,7 +237,7 @@
           <div class="field">
             <label for="pImageFile">Ürün görselleri (en az 5, en fazla 10)</label>
             <input id="pImageFile" type="file" accept="image/png,image/jpeg,image/webp" multiple />
-            <p class="admin-field-help">Ürün kaydı için en az 5 görsel zorunludur. İlk görsel kapak olur; küçük önizlemeleri sürükleyerek sıralayabilirsiniz.</p>
+            <p class="admin-field-help">Manuel ürün eklerken / düzenlerken en az 5 görsel zorunludur (XML ürünleri hariç). İlk görsel kapak olur; küçük önizlemeleri sürükleyerek sıralayabilirsiniz.</p>
             <p id="imageCountHint" class="admin-field-help" aria-live="polite">0 / 5 görsel</p>
             <div id="imagePreview" class="admin-preview-list" hidden></div>
           </div>
@@ -246,7 +246,7 @@
             <label><input type="checkbox" id="pActive" checked /> Yayında (aktif)</label>
           </div>
           <div class="admin-form-actions">
-            <button type="submit" class="btn btn-primary">Kaydet / Yayınla</button>
+            <button type="submit" class="btn btn-primary" id="saveProductBtn" disabled>Kaydet / Yayınla</button>
             <button type="button" class="btn btn-outline" id="deleteBtn">Sil</button>
           </div>
           <p class="admin-note" id="formNote" role="status"></p>
