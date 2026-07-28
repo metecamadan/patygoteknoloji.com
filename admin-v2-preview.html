@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel v2 — Önizleme | Patygo</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --brand: #2563eb;
+      --brand-deep: #1d4ed8;
+      --brand-soft: #eff6ff;
+      --ink: #0f172a;
+      --ink-2: #1e293b;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f1f5f9;
+      --panel: #ffffff;
+      --rail: #0b1220;
+      --rail-2: #111827;
+      --ok: #059669;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --radius: 10px;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 20px rgba(15, 23, 42, 0.04);
+      --font: "Inter", system-ui, sans-serif;
+      --rail-w: 196px;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+      min-height: 100vh;
+      font-size: 13.5px;
+      line-height: 1.45;
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    .preview-banner {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 12.5px;
+      font-weight: 500;
+    }
+    .preview-banner strong { color: #fff; }
+    .preview-banner .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip-btn {
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 5px 11px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .chip-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .chip-btn.ghost { background: transparent; }
+
+    /* ----- Login ----- */
+    .screen[hidden] { display: none !important; }
+    .login-screen {
+      min-height: calc(100vh - 40px);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(900px 420px at 10% -10%, rgba(37, 99, 235, 0.12), transparent 60%),
+        var(--bg);
+    }
+    .login-card {
+      width: min(100%, 380px);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px 26px;
+      box-shadow: var(--shadow);
+    }
+    .login-card img { height: 28px; margin-bottom: 18px; }
+    .login-card h1 { font-size: 1.25rem; margin-bottom: 4px; }
+    .login-card p { color: var(--muted); margin-bottom: 18px; }
+    .field { display: grid; gap: 5px; margin-bottom: 12px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: 2px solid rgba(37, 99, 235, 0.25);
+      border-color: var(--brand);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      color: var(--ink);
+    }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-deep); }
+    .btn-outline { border-color: var(--line); }
+    .btn-outline:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+    .btn-ghost { background: transparent; color: var(--muted); }
+    .btn-ghost:hover { color: var(--brand); background: var(--brand-soft); }
+    .btn-sm { padding: 5px 9px; font-size: 12px; }
+    .btn-block { width: 100%; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ----- Shell ----- */
+    .shell {
+      display: grid;
+      grid-template-columns: var(--rail-w) 1fr;
+      min-height: calc(100vh - 40px);
+    }
+    .rail {
+      background: linear-gradient(180deg, var(--rail) 0%, var(--rail-2) 100%);
+      color: #cbd5e1;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: sticky;
+      top: 40px;
+      height: calc(100vh - 40px);
+    }
+    .rail-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    .rail-brand img { height: 22px; filter: brightness(1.1); }
+    .rail-brand span {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .rail-nav { display: grid; gap: 4px; flex: 1; }
+    .rail-nav button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: 9px 10px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .rail-nav button .ico {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: rgba(148, 163, 184, 0.08);
+      color: #cbd5e1;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .rail-nav button.active {
+      background: rgba(37, 99, 235, 0.18);
+      color: #fff;
+    }
+    .rail-nav button.active .ico { background: var(--brand); color: #fff; }
+    .rail-nav button:hover:not(.active) { background: rgba(148, 163, 184, 0.08); color: #e2e8f0; }
+    .rail-foot {
+      display: grid;
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(148, 163, 184, 0.15);
+    }
+    .rail-foot a, .rail-foot button {
+      color: #94a3b8;
+      background: none;
+      border: 0;
+      text-align: left;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .rail-foot a:hover, .rail-foot button:hover { color: #fff; }
+
+    .main { min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 18px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 40px;
+      z-index: 20;
+    }
+    .topbar h1 { font-size: 1.05rem; font-weight: 700; }
+    .topbar p { color: var(--muted); font-size: 12px; margin-top: 1px; }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+    .health {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ok);
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 999px;
+      padding: 4px 9px;
+    }
+    .health i {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+    }
+    .avatar {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--brand-soft); color: var(--brand);
+      display: grid; place-items: center; font-weight: 700; font-size: 11px;
+    }
+    .content { padding: 14px 18px 28px; }
+    .view[hidden] { display: none !important; }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .kpi {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      min-width: 0;
+    }
+    .kpi span { display: block; color: var(--muted); font-size: 11px; font-weight: 600; }
+    .kpi strong { display: block; font-size: 1.15rem; margin-top: 2px; letter-spacing: -0.02em; }
+    .kpi small { color: var(--muted); font-size: 11px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 10px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card-h {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .card-h h2 { font-size: 13px; font-weight: 700; }
+    .card-h .eyebrow {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .card-b { padding: 10px 12px; }
+    .list-dense { list-style: none; display: grid; gap: 6px; }
+    .list-dense li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 7px;
+      background: #f8fafc;
+      font-size: 12.5px;
+    }
+    .list-dense li span { color: var(--muted); }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .meta-grid div {
+      background: #f8fafc;
+      border-radius: 7px;
+      padding: 8px;
+    }
+    .meta-grid dt { color: var(--muted); font-size: 11px; font-weight: 600; }
+    .meta-grid dd { font-weight: 700; margin-top: 2px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .search {
+      flex: 1;
+      min-width: 180px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+    }
+    .search input {
+      border: 0;
+      outline: none;
+      width: 100%;
+      padding: 8px 0;
+      background: transparent;
+    }
+    .seg {
+      display: inline-flex;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .seg button {
+      border: 0;
+      background: transparent;
+      padding: 7px 11px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .seg button.active { background: var(--brand-soft); color: var(--brand); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.95fr) minmax(320px, 1.05fr);
+      gap: 10px;
+      align-items: start;
+    }
+    .product-list { max-height: calc(100vh - 210px); overflow: auto; }
+    .product-row {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      background: #fff;
+    }
+    .product-row:hover { background: #f8fafc; }
+    .product-row.active { background: var(--brand-soft); }
+    .thumb {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: linear-gradient(145deg, #eff6ff, #e2e8f0);
+      object-fit: contain; border: 1px solid var(--line);
+    }
+    .product-row strong { display: block; font-size: 12.5px; }
+    .product-row small { color: var(--muted); font-size: 11px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+    .badge.on { background: #ecfdf5; color: var(--ok); }
+    .badge.off { background: #fef2f2; color: var(--danger); }
+    .badge.warn { background: #fffbeb; color: var(--warn); }
+
+    .editor { position: sticky; top: 100px; }
+    .editor .card-b { display: grid; gap: 10px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .checks { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; }
+    .checks label { display: inline-flex; gap: 6px; align-items: center; }
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .img-slot {
+      aspect-ratio: 1;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      overflow: hidden;
+      position: relative;
+    }
+    .img-slot.filled {
+      border-style: solid;
+      background: #fff;
+    }
+    .img-slot img { width: 100%; height: 100%; object-fit: contain; }
+    .img-slot .cap {
+      position: absolute; left: 4px; top: 4px;
+      background: var(--brand); color: #fff;
+      font-size: 9px; padding: 1px 5px; border-radius: 999px;
+    }
+    .sticky-save {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+      position: sticky;
+      bottom: 0;
+    }
+    .count-pill {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--warn);
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+    .count-pill.ok { color: var(--ok); background: #ecfdf5; border-color: #a7f3d0; }
+
+    .xml-card .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
+    }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.off { background: #94a3b8; }
+    .xml-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+    .feed-box {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .feed-box code {
+      flex: 1;
+      font-size: 11.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink-2);
+    }
+
+    .hint { color: var(--muted); font-size: 11.5px; }
+
+    @media (max-width: 1100px) {
+      .kpi-strip { grid-template-columns: repeat(3, 1fr); }
+      .workspace { grid-template-columns: 1fr; }
+      .editor { position: static; }
+      .product-list { max-height: 320px; }
+    }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail {
+        position: sticky;
+        top: 40px;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+      }
+      .rail-brand { border: 0; padding: 0 8px 0 0; }
+      .rail-brand span { display: none; }
+      .rail-nav {
+        display: flex;
+        flex: 1;
+        overflow-x: auto;
+        gap: 4px;
+      }
+      .rail-nav button { white-space: nowrap; padding: 7px 9px; }
+      .rail-nav button span:not(.ico) { display: none; }
+      .rail-foot { display: none; }
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .grid-2, .grid-3, .form-row { grid-template-columns: 1fr; }
+      .img-grid { grid-template-columns: repeat(3, 1fr); }
+      .topbar { top: auto; position: static; }
+      .content { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-banner">
+    <div><strong>Admin Panel v2 — Önizleme</strong> · Canlıya bağlı değil · Onay sonrası uygulama yapılacak</div>
+    <div class="actions">
+      <button type="button" class="chip-btn active" data-screen="panel">Panel</button>
+      <button type="button" class="chip-btn" data-screen="login">Giriş ekranı</button>
+      <a class="chip-btn ghost" href="/admin" target="_blank" rel="noopener">Mevcut paneli aç</a>
+    </div>
+  </div>
+
+  <div id="loginScreen" class="screen login-screen" hidden>
+    <form class="login-card" onsubmit="return false;">
+      <img src="/assets/img/patygo-logo.png" alt="Patygo" />
+      <h1>Yönetim girişi</h1>
+      <p>Compact v2 giriş — yalnızca yetkili kullanım.</p>
+      <div class="field">
+        <label for="pw">Şifre</label>
+        <input id="pw" type="password" placeholder="••••" autocomplete="current-password" />
+      </div>
+      <button class="btn btn-primary btn-block" type="button" data-screen-jump="panel">Giriş Yap (önizleme)</button>
+      <p class="hint" style="margin-top:10px">Bu ekran tasarımdır; gerçek auth mevcut /admin üzerinden çalışır.</p>
+    </form>
+  </div>
+
+  <div id="panelScreen" class="screen">
+    <div class="shell">
+      <aside class="rail" aria-label="Panel menü">
+        <a class="rail-brand" href="/" target="_blank" rel="noopener">
+          <img src="/assets/img/patygo-logo.png" alt="Patygo" />
+          <span>Yönetim</span>
+        </a>
+        <nav class="rail-nav">
+          <button type="button" class="active" data-view="overview"><span class="ico">⌂</span><span>Genel Bakış</span></button>
+          <button type="button" data-view="products"><span class="ico">▣</span><span>Ürünler</span></button>
+          <button type="button" data-view="xml"><span class="ico">↕</span><span>XML</span></button>
+          <button type="button" data-view="feed"><span class="ico">◎</span><span>Akakçe</span></button>
+        </nav>
+        <div class="rail-foot">
+          <a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a>
+          <button type="button" data-screen-jump="login">Çıkış (önizleme)</button>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="pageTitle">Genel Bakış</h1>
+            <p id="pageSub">Kompakt özet · tek bakışta durum</p>
+          </div>
+          <div class="topbar-actions">
+            <span class="health"><i></i> Hazır</span>
+            <button type="button" class="btn btn-outline btn-sm" data-view-jump="products">+ Ürün</button>
+            <div class="avatar" aria-hidden="true">PT</div>
+          </div>
+        </header>
+
+        <div class="content">
+          <!-- OVERVIEW -->
+          <section class="view" id="view-overview">
+            <div class="toolbar">
+              <div class="seg" role="group" aria-label="Dönem">
+                <button type="button" class="active">7g</button>
+                <button type="button">30g</button>
+                <button type="button">90g</button>
+              </div>
+              <span class="hint">Örnek veri — canlı API bağlanınca gerçekleşir</span>
+            </div>
+            <div class="kpi-strip">
+              <article class="kpi"><span>Ziyaretçi</span><strong>1.284</strong><small>+12%</small></article>
+              <article class="kpi"><span>Sayfa</span><strong>4.902</strong><small>+8%</small></article>
+              <article class="kpi"><span>Talep</span><strong>37</strong><small>form</small></article>
+              <article class="kpi"><span>Sipariş</span><strong>14</strong><small>ödenen</small></article>
+              <article class="kpi"><span>Gelir</span><strong>₺186K</strong><small>KDV hariç</small></article>
+              <article class="kpi"><span>AOV</span><strong>₺13.3K</strong><small>ortalama</small></article>
+            </div>
+            <div class="grid-2">
+              <section class="card">
+                <div class="card-h"><div><span class="eyebrow">Trafik</span><h2>En çok görüntülenen</h2></div></div>
+                <div class="card-b">
+                  <ul class="list-dense">
+                    <li><div>MacBook Air M3</div><span>412</span></li>
+                    <li><div>ThinkPad E16</div><span>287</span></li>
+                    <li><div>Ürünler listesi</div><span>198</span></li>
+                    <li><div>EcoTank L3560</div><span>154</span></li>
+                  </ul>
+                </div>
+              </section>
+              <section class="card">
+                <div class="card-h">
+                  <div><span class="eyebrow">Sunucu</span><h2>Anlık</h2></div>
+                  <span class="badge on">Online</span>
+                </div>
+                <div class="card-b">
+                  <dl class="meta-grid">
+                    <div><dt>Uptime</dt><dd>14s 6dk</dd></div>
+                    <div><dt>Bellek</dt><dd>86 MB</dd></div>
+                    <div><dt>Node</dt><dd>v20</dd></div>
+                    <div><dt>POS</dt><dd>Test</dd></div>
+                  </dl>
+                </div>
+              </section>
+            </div>
+            <div class="grid-3" style="margin-top:10px">
+              <section class="card">
+                <div class="card-h"><div><span class="eyebrow">Hızlı</span><h2>İşlemler</h2></div></div>
+                <div class="card-b" style="display:grid;gap:6px">
+                  <button class="btn btn-outline btn-sm" data-view-jump="products">Manuel ürün ekle</button>
+                  <button class="btn btn-outline btn-sm" data-view-jump="xml">XML güncelle</button>
+                  <button class="btn btn-outline btn-sm" data-view-jump="feed">Akakçe feed</button>
+                </div>
+              </section>
+              <section class="card">
+                <div class="card-h"><div><span class="eyebrow">Katalog</span><h2>Durum</h2></div></div>
+                <div class="card-b">
+                  <ul class="list-dense">
+                    <li><div>Manuel aktif</div><span>6</span></li>
+                    <li><div>XML pasif</div><span>128</span></li>
+                    <li><div>Görsel &lt;5</div><span class="badge warn">0</span></li>
+                  </ul>
+                </div>
+              </section>
+              <section class="card">
+                <div class="card-h"><div><span class="eyebrow">Not</span><h2>v2 hedefi</h2></div></div>
+                <div class="card-b hint">
+                  Daha az kaydırma, split ürün düzeni, sticky kaydet, XML kartları yan yana, mobil rail sekmeleri.
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <!-- PRODUCTS -->
+          <section class="view" id="view-products" hidden>
+            <div class="toolbar">
+              <div class="seg">
+                <button type="button" class="active">Manuel</button>
+                <button type="button">XML</button>
+              </div>
+              <label class="search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Ürün, marka, kod ara" /></label>
+              <select aria-label="Kategori">
+                <option>Tüm kategoriler</option>
+                <option>Bilgisayar</option>
+                <option>Yazıcı</option>
+              </select>
+              <button class="btn btn-primary btn-sm">Yeni ürün</button>
+            </div>
+            <div class="workspace">
+              <section class="card product-list">
+                <div class="card-h"><div><span class="eyebrow">Liste</span><h2>6 / 6 ürün</h2></div></div>
+                <article class="product-row active">
+                  <img class="thumb" src="/assets/img/products/macbook-air-m3.svg" alt="" />
+                  <div><strong>MacBook Air 13" M3</strong><small>APPLE · ₺52.999</small></div>
+                  <span class="badge on">Aktif</span>
+                </article>
+                <article class="product-row">
+                  <img class="thumb" src="/assets/img/products/thinkpad-e16.svg" alt="" />
+                  <div><strong>ThinkPad E16</strong><small>LENOVO · ₺38.499</small></div>
+                  <span class="badge on">Aktif</span>
+                </article>
+                <article class="product-row">
+                  <img class="thumb" src="/assets/img/products/epson-l3560.svg" alt="" />
+                  <div><strong>EcoTank L3560</strong><small>EPSON · ₺8.749</small></div>
+                  <span class="badge on">Aktif</span>
+                </article>
+                <article class="product-row">
+                  <img class="thumb" src="/assets/img/products/hp-m404dn.svg" alt="" />
+                  <div><strong>LaserJet M404dn</strong><small>HP · ₺12.499</small></div>
+                  <span class="badge off">Pasif</span>
+                </article>
+              </section>
+
+              <section class="card editor">
+                <div class="card-h">
+                  <div><span class="eyebrow">Düzenle</span><h2>MacBook Air 13" M3</h2></div>
+                  <span class="count-pill ok" id="imgCount">5 / 5 görsel</span>
+                </div>
+                <div class="card-b">
+                  <div class="form-row">
+                    <div class="field"><label>Ürün kodu</label><input value="macbook-air-m3" readonly /></div>
+                    <div class="field"><label>Marka</label><input value="APPLE" /></div>
+                  </div>
+                  <div class="field"><label>Ürün adı</label><input value='MacBook Air 13" M3 8/256GB' /></div>
+                  <div class="form-row">
+                    <div class="field"><label>Fiyat (KDV hariç)</label><input type="number" value="52999" /></div>
+                    <div class="field"><label>Kategori</label>
+                      <select><option>Bilgisayar</option><option>Yazıcı</option></select>
+                    </div>
+                  </div>
+                  <div class="field"><label>Kısa açıklama</label><input value="İnce, sessiz ve tüm gün dayanan M3 çipli MacBook Air." /></div>
+                  <div class="field"><label>Detay</label><textarea rows="3">Apple M3 çip, 8 GB bellek, 256 GB SSD…</textarea></div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                      <label style="font-weight:600;font-size:12px">Görseller (min 5)</label>
+                      <button type="button" class="btn btn-outline btn-sm">Yükle</button>
+                    </div>
+                    <div class="img-grid">
+                      <div class="img-slot filled"><span class="cap">Kapak</span><img src="/assets/img/products/macbook-air-m3.svg" alt="" /></div>
+                      <div class="img-slot filled"><img src="/assets/img/products/macbook-air-m3-2.svg" alt="" /></div>
+                      <div class="img-slot filled"><img src="/assets/img/products/macbook-air-m3-3.svg" alt="" /></div>
+                      <div class="img-slot filled"><img src="/assets/img/products/macbook-air-m3-4.svg" alt="" /></div>
+                      <div class="img-slot filled"><img src="/assets/img/products/macbook-air-m3-5.svg" alt="" /></div>
+                    </div>
+                  </div>
+                  <div class="checks">
+                    <label><input type="checkbox" checked /> Öne çıkan</label>
+                    <label><input type="checkbox" checked /> Yayında</label>
+                  </div>
+                </div>
+                <div class="sticky-save">
+                  <span class="hint">Değişiklikler sitede anında yayınlanır</span>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-ghost btn-sm">Sil</button>
+                    <button class="btn btn-primary btn-sm">Kaydet / Yayınla</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <!-- XML -->
+          <section class="view" id="view-xml" hidden>
+            <p class="hint" style="margin-bottom:10px">Üç kaynak yan yana · durum noktası + tek tık yenileme</p>
+            <div class="grid-3">
+              <section class="card xml-card">
+                <div class="card-h"><div><span class="eyebrow">Kaynak 1</span><h2>bilgisayarim</h2></div><span class="badge warn">Timeout</span></div>
+                <div class="card-b">
+                  <div class="status-row"><span><i class="dot warn"></i>TR IP gerekli</span><small class="hint">2s önce</small></div>
+                  <div class="field"><label>XML URL</label><input value="https://www.bilgisayarim.com.tr/…" /></div>
+                  <div class="field"><label>Genel kâr %</label><input type="number" value="15" /></div>
+                  <div class="xml-actions">
+                    <button class="btn btn-outline btn-sm">Kaydet</button>
+                    <button class="btn btn-primary btn-sm">XML Güncelle</button>
+                  </div>
+                </div>
+              </section>
+              <section class="card xml-card">
+                <div class="card-h"><div><span class="eyebrow">Kaynak 2</span><h2>Boş slot</h2></div><span class="badge off">Kapalı</span></div>
+                <div class="card-b">
+                  <div class="status-row"><span><i class="dot off"></i>Tanımsız</span></div>
+                  <div class="field"><label>XML URL</label><input placeholder="https://…" /></div>
+                  <div class="field"><label>Genel kâr %</label><input type="number" value="15" /></div>
+                  <div class="xml-actions">
+                    <button class="btn btn-outline btn-sm">Kaydet</button>
+                    <button class="btn btn-primary btn-sm" disabled>XML Güncelle</button>
+                  </div>
+                </div>
+              </section>
+              <section class="card xml-card">
+                <div class="card-h"><div><span class="eyebrow">Kaynak 3</span><h2>Boş slot</h2></div><span class="badge off">Kapalı</span></div>
+                <div class="card-b">
+                  <div class="status-row"><span><i class="dot off"></i>Tanımsız</span></div>
+                  <div class="field"><label>XML URL</label><input placeholder="https://…" /></div>
+                  <div class="field"><label>Genel kâr %</label><input type="number" value="15" /></div>
+                  <div class="xml-actions">
+                    <button class="btn btn-outline btn-sm">Kaydet</button>
+                    <button class="btn btn-primary btn-sm" disabled>XML Güncelle</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <!-- FEED -->
+          <section class="view" id="view-feed" hidden>
+            <section class="card">
+              <div class="card-h">
+                <div><span class="eyebrow">Akakçe</span><h2>Feed durumu</h2></div>
+                <span class="badge on">6 ürün uygun</span>
+              </div>
+              <div class="card-b" style="display:grid;gap:10px">
+                <div class="feed-box">
+                  <code>https://patygoteknoloji.com/api/feeds/akakce.xml</code>
+                  <button class="btn btn-outline btn-sm">Kopyala</button>
+                  <a class="btn btn-primary btn-sm" href="/api/feeds/akakce.xml" target="_blank" rel="noopener">Aç</a>
+                </div>
+                <ul class="list-dense">
+                  <li><div>Aktif katalog</div><span>6</span></li>
+                  <li><div>Feed’e giren</div><span>6</span></li>
+                  <li><div>Görsel eksik</div><span>0</span></li>
+                  <li><div>Stok dışı</div><span>0</span></li>
+                </ul>
+              </div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const titles = {
+        overview: ["Genel Bakış", "Kompakt özet · tek bakışta durum"],
+        products: ["Ürünler", "Sol liste · sağ düzenleme · sticky kaydet"],
+        xml: ["XML Yönetimi", "3 kaynak · durum · yenile"],
+        feed: ["Akakçe Feed", "Yayın URL ve uygunluk özeti"],
+      };
+
+      function showScreen(name) {
+        document.getElementById("loginScreen").hidden = name !== "login";
+        document.getElementById("panelScreen").hidden = name !== "panel";
+        document.querySelectorAll("[data-screen]").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.screen === name);
+        });
+      }
+
+      function showView(name) {
+        document.querySelectorAll(".view").forEach((el) => {
+          el.hidden = el.id !== "view-" + name;
+        });
+        document.querySelectorAll(".rail-nav button").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.view === name);
+        });
+        const t = titles[name] || titles.overview;
+        document.getElementById("pageTitle").textContent = t[0];
+        document.getElementById("pageSub").textContent = t[1];
+      }
+
+      document.querySelectorAll("[data-screen]").forEach((btn) => {
+        btn.addEventListener("click", () => showScreen(btn.dataset.screen));
+      });
+      document.querySelectorAll("[data-screen-jump]").forEach((btn) => {
+        btn.addEventListener("click", () => showScreen(btn.dataset.screenJump));
+      });
+      document.querySelectorAll("[data-view]").forEach((btn) => {
+        btn.addEventListener("click", () => showView(btn.dataset.view));
+      });
+      document.querySelectorAll("[data-view-jump]").forEach((btn) => {
+        btn.addEventListener("click", () => showView(btn.dataset.viewJump));
+      });
+      document.querySelectorAll(".product-row").forEach((row) => {
+        row.addEventListener("click", () => {
+          document.querySelectorAll(".product-row").forEach((r) => r.classList.remove("active"));
+          row.classList.add("active");
+        });
+      });
+      document.querySelectorAll(".seg").forEach((seg) => {
+        seg.querySelectorAll("button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            seg.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+          });
+        });
+      });
+
+      showScreen("panel");
+      showView("overview");
+    })();
+  </script>
+</body>
+</html>
