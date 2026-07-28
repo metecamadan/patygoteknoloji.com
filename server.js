@@ -111,7 +111,6 @@ const BLOCKED_FILES = new Set([
 
 const CATEGORIES = new Set(["bilgisayar", "yazici", "kucuk-ev", "beyaz-esya"]);
 const sessions = new Map(); // token -> expiresAt
-const loginAttempts = new Map(); // IP -> { count, resetAt }
 
 fs.mkdirSync(path.dirname(PRODUCTS_FILE), { recursive: true });
 fs.mkdirSync(PRODUCTS_IMG_DIR, { recursive: true });
@@ -607,31 +606,17 @@ async function handleApi(req, res, urlPath) {
     try {
       const clientIp = (req.socket && req.socket.remoteAddress) || "unknown";
       const now = Date.now();
-      const attempt = loginAttempts.get(clientIp);
-      if (attempt && attempt.resetAt > now && attempt.count >= 10) {
-        return json(res, 429, {
-          ok: false,
-          error: "Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.",
-        });
-      }
-      if (attempt && attempt.resetAt <= now) loginAttempts.delete(clientIp);
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
       const supplied = Buffer.from(String(body.password || ""));
       const expected = Buffer.from(ADMIN_PASSWORD);
       const matches =
         supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
-      if (!matches) {
-        const current = loginAttempts.get(clientIp);
-        loginAttempts.set(clientIp, {
-          count: current && current.resetAt > now ? current.count + 1 : 1,
-          resetAt: current && current.resetAt > now ? current.resetAt : now + 15 * 60 * 1000,
-        });
-        return json(res, 401, { ok: false, error: "Şifre hatalı" });
+      if (matches) {
+        const token = crypto.randomBytes(24).toString("hex");
+        sessions.set(token, Date.now() + ADMIN_IDLE_MS);
+        return json(res, 200, { ok: true, token });
       }
-      loginAttempts.delete(clientIp);
-      const token = crypto.randomBytes(24).toString("hex");
-      sessions.set(token, Date.now() + ADMIN_IDLE_MS);
-      return json(res, 200, { ok: true, token });
+      return json(res, 401, { ok: false, error: "Şifre hatalı" });
     } catch (_) {
       return json(res, 400, { ok: false, error: "Geçersiz istek" });
     }

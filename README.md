@@ -87,6 +87,7 @@ Script’in yazdırdığı private key’i GitHub’da repo → **Settings → S
 | `DEPLOY_HOST` | Alan adı veya sunucu IP (`patygoteknoloji.com` tercih) |
 | `DEPLOY_USER` | SSH kullanıcı adı |
 | `DEPLOY_SSH_KEY` | Script’in ürettiği private key (tümü) |
+| `ADMIN_PASSWORD` | Admin panel şifresi (deploy sırasında sunucu `.env` ile senkronize edilir) |
 
 Deploy Actions kırmızıysa önce bu üç secret’ın dolu olduğunu kontrol edin. SSH host olarak IP yerine alan adı kullanılabilir.
 

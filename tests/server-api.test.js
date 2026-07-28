@@ -166,3 +166,39 @@ test("admin sessions expire after idle timeout and slide on activity", async (t)
   const expired = await fetch(baseUrl + "/api/admin/products", { headers });
   assert.equal(expired.status, 401);
 });
+
+test("admin login does not lock out after repeated wrong attempts", async (t) => {
+  const port = await getFreePort();
+  const password = "1234";
+  const child = spawn(process.execPath, ["server.js"], {
+    cwd: root,
+    env: Object.assign({}, process.env, {
+      PORT: String(port),
+      ADMIN_PASSWORD: password,
+      SITE_BASE_URL: `http://127.0.0.1:${port}`,
+      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+    }),
+    stdio: "ignore",
+  });
+  t.after(() => child.kill());
+  const baseUrl = `http://127.0.0.1:${port}`;
+  await waitForServer(baseUrl, child);
+
+  for (let i = 0; i < 10; i += 1) {
+    const wrong = await fetch(baseUrl + "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "wrong-password" }),
+    });
+    assert.equal(wrong.status, 401);
+  }
+
+  const correct = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  assert.equal(correct.status, 200);
+  const session = await correct.json();
+  assert.match(session.token, /^[a-f0-9]{48}$/);
+});
