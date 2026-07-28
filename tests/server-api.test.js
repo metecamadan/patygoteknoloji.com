@@ -203,15 +203,14 @@ test("admin login does not lock out after repeated wrong attempts", async (t) =>
   assert.match(session.token, /^[a-f0-9]{48}$/);
 });
 
-test("production maps legacy patygo-admin env password to 1234", async (t) => {
+test("legacy patygo-admin env password maps to 1234 for login", async (t) => {
   const port = await getFreePort();
   const child = spawn(process.execPath, ["server.js"], {
     cwd: root,
     env: Object.assign({}, process.env, {
-      NODE_ENV: "production",
       PORT: String(port),
       ADMIN_PASSWORD: "patygo-admin",
-      SITE_BASE_URL: "https://patygoteknoloji.com",
+      SITE_BASE_URL: `http://127.0.0.1:${port}`,
       SUPPLIER_ALLOWED_HOSTS: "supplier.example",
     }),
     stdio: "ignore",

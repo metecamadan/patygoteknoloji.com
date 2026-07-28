@@ -39,7 +39,7 @@ const LEGACY_ADMIN_PASSWORD = "patygo-admin";
 const DEFAULT_ADMIN_PASSWORD = "1234";
 
 function migrateLegacyAdminPassword() {
-  if (!IS_PRODUCTION || process.env.ADMIN_PASSWORD !== LEGACY_ADMIN_PASSWORD) return;
+  if (process.env.ADMIN_PASSWORD !== LEGACY_ADMIN_PASSWORD) return;
   try {
     if (!fs.existsSync(ENV_FILE)) return;
     const content = fs.readFileSync(ENV_FILE, "utf8");
@@ -57,7 +57,7 @@ function migrateLegacyAdminPassword() {
 migrateLegacyAdminPassword();
 
 const ADMIN_PASSWORD =
-  IS_PRODUCTION && process.env.ADMIN_PASSWORD === LEGACY_ADMIN_PASSWORD
+  process.env.ADMIN_PASSWORD === LEGACY_ADMIN_PASSWORD
     ? DEFAULT_ADMIN_PASSWORD
     : process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? "" : LEGACY_ADMIN_PASSWORD);
 if (!ADMIN_PASSWORD) {
