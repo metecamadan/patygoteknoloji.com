@@ -37,7 +37,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 * { margin: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-h) + 12px);
+}
 body {
   font-family: var(--font);
   color: var(--ink);
@@ -239,9 +243,13 @@ h1, h2, h3, h4 {
   top: -12px;
   height: 12px;
 }
-.nav-mega.open > .nav-mega-panel,
-.nav-mega:hover > .nav-mega-panel {
+.nav-mega.open > .nav-mega-panel {
   display: block;
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 861px) {
+  .nav-mega:hover > .nav-mega-panel {
+    display: block;
+  }
 }
 .nav-mega:hover > .nav-mega-toggle {
   color: var(--brand);
@@ -801,6 +809,10 @@ h1, h2, h3, h4 {
   background: var(--bg-soft);
   border: 1px solid var(--line-soft);
   margin-bottom: 22px;
+  min-width: 0;
+}
+.checkout-product > div:last-child {
+  min-width: 0;
 }
 .checkout-product .visual {
   width: 72px;
@@ -826,7 +838,11 @@ h1, h2, h3, h4 {
   object-fit: contain;
   display: block;
 }
-.checkout-product h3 { font-size: 1rem; margin-bottom: 4px; }
+.checkout-product h3 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
 .checkout-product .brand-tag {
   font-size: 0.7rem;
   font-weight: 700;
@@ -1011,6 +1027,7 @@ h1, h2, h3, h4 {
 .page-hero p { color: var(--muted); max-width: 52ch; font-size: 1.05rem; }
 .breadcrumb {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   font-size: 0.85rem;
@@ -1018,6 +1035,10 @@ h1, h2, h3, h4 {
   font-weight: 500;
 }
 .breadcrumb a:hover { color: var(--brand); }
+.breadcrumb span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 /* ---------- Generic cards / prose / tables ---------- */
 .grid { display: grid; gap: 18px; }
@@ -1542,6 +1563,9 @@ h1, h2, h3, h4 {
     box-shadow: none;
     background: transparent;
   }
+  .nav-mega:hover > .nav-mega-panel {
+    display: none;
+  }
   .nav-mega.open > .nav-mega-panel {
     display: block;
   }
@@ -1554,7 +1578,15 @@ h1, h2, h3, h4 {
   }
   .nav-toggle { display: flex; position: relative; z-index: 101; }
   .nav-actions { gap: 8px; }
-  .nav-actions .btn-outline { display: none; }
+  .nav-actions .btn-outline:not(.cart-link) { display: none; }
+  .nav-actions .cart-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+    position: relative;
+    z-index: 101;
+  }
   .nav-actions .btn-primary {
     display: inline-flex;
     padding: 9px 12px;
@@ -1566,6 +1598,15 @@ h1, h2, h3, h4 {
   .hero-copy h1 { max-width: none; font-size: clamp(1.85rem, 8vw, 2.4rem); }
   .hero-cta .btn { width: 100%; justify-content: center; }
   .hero-stats { gap: 16px 20px; }
+  .hero-orbit-chip { animation-duration: 5.5s; }
+  @keyframes hero-orbit-float-mobile {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .hero-orbit-chip {
+    animation-name: hero-orbit-float-mobile;
+  }
+  .product-card .actions { grid-template-columns: 1fr; }
   .product-tabs {
     justify-content: flex-start;
     flex-wrap: nowrap;
@@ -1596,7 +1637,6 @@ h1, h2, h3, h4 {
   .checkout-card { padding-right: clamp(28px, 8vw, 40px); }
   main { padding-bottom: 72px; }
   .footer-bottom .legal-links { gap: 10px 14px; }
-  html { scroll-padding-top: calc(var(--header-h) + 12px); }
 }
 
 @media (max-width: 620px) {
@@ -1908,6 +1948,21 @@ h1, h2, h3, h4 {
 }
 .detail-info .brand-tag { margin-bottom: 10px; }
 .detail-info h1 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 8px 0; }
+.detail-info .price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 10px 0 4px;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.detail-info .price small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-2);
+}
 .detail-cat { color: var(--muted); margin-bottom: 12px; }
 .detail-desc { font-size: 1.02rem; margin-bottom: 12px; }
 .detail-body {
@@ -1952,8 +2007,16 @@ h1, h2, h3, h4 {
   .cart-layout,
   .detail-grid { grid-template-columns: 1fr; }
   .cart-summary { position: static; }
-  .detail-gallery { max-width: 100%; }
-  .detail-media { max-width: 100%; }
+  .detail-gallery,
+  .detail-media,
+  .detail-thumbs {
+    max-width: min(100%, 420px);
+    margin-inline: auto;
+  }
+  .detail-info .actions .btn {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
 }
 @media (max-width: 700px) {
   .cart-hero { padding-bottom: 32px; }
