@@ -34,7 +34,32 @@ const ROOT_PREFIX = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
 const PORT = Number(process.env.PORT || process.argv[2] || 5173);
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? "" : "patygo-admin");
+const ENV_FILE = path.join(ROOT, ".env");
+const LEGACY_ADMIN_PASSWORD = "patygo-admin";
+const DEFAULT_ADMIN_PASSWORD = "1234";
+
+function migrateLegacyAdminPassword() {
+  if (!IS_PRODUCTION || process.env.ADMIN_PASSWORD !== LEGACY_ADMIN_PASSWORD) return;
+  try {
+    if (!fs.existsSync(ENV_FILE)) return;
+    const content = fs.readFileSync(ENV_FILE, "utf8");
+    if (!/^ADMIN_PASSWORD=patygo-admin\s*$/m.test(content)) return;
+    fs.writeFileSync(
+      ENV_FILE,
+      content.replace(/^ADMIN_PASSWORD=patygo-admin\s*$/m, `ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}`),
+      "utf8"
+    );
+    console.log(`ADMIN_PASSWORD .env dosyasında ${DEFAULT_ADMIN_PASSWORD} olarak güncellendi.`);
+  } catch (err) {
+    console.warn("ADMIN_PASSWORD migration skipped:", err.message);
+  }
+}
+migrateLegacyAdminPassword();
+
+const ADMIN_PASSWORD =
+  IS_PRODUCTION && process.env.ADMIN_PASSWORD === LEGACY_ADMIN_PASSWORD
+    ? DEFAULT_ADMIN_PASSWORD
+    : process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? "" : LEGACY_ADMIN_PASSWORD);
 if (!ADMIN_PASSWORD) {
   throw new Error("Canlı ortamda ADMIN_PASSWORD tanımlanmalıdır.");
 }
