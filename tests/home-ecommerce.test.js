@@ -8,15 +8,13 @@ const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const catalogJs = fs.readFileSync(path.join(root, "assets", "js", "catalog.js"), "utf8");
 const navJs = fs.readFileSync(path.join(root, "assets", "js", "nav.js"), "utf8");
 
-test("homepage positions as e-commerce store not quote request", () => {
+test("homepage keeps teklif form and e-commerce hero", () => {
   assert.doesNotMatch(indexHtml, /quote-card/);
-  assert.doesNotMatch(indexHtml, /id="teklif"/);
   assert.doesNotMatch(indexHtml, /Teklif Talebi/);
+  assert.match(indexHtml, /id="teklif"/);
   assert.match(indexHtml, /data-hero-orbit/);
-  assert.match(indexHtml, /hero-orbit/);
-  assert.doesNotMatch(indexHtml, /hero-shop-card/);
-  assert.doesNotMatch(indexHtml, /Popüler kategoriler/);
   assert.match(indexHtml, /Alışverişe Başla/);
+  assert.match(indexHtml, /Teklif Al/);
 });
 
 test("catalog product cards use cart flow without quote button", () => {

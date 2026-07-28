@@ -26,7 +26,7 @@
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
-          <a href="/urunler" class="btn btn-primary">Mağaza</a>
+          <a href="#teklif" class="btn btn-primary">Teklif Al</a>
           <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks">
             <span></span><span></span><span></span>
           </button>
@@ -151,17 +151,48 @@
       </div>
     </section>
 
-    <!-- DESTEK -->
-    <section class="section" id="destek">
+    <!-- TEKLİF -->
+    <section class="section" id="teklif">
       <div class="container">
-        <div class="cta-block reveal">
-          <h2>Sipariş veya ürün desteği mi lazım?</h2>
-          <p>Ödeme, kargo veya ürün bilgisi için müşteri hizmetlerimizle iletişime geçin.</p>
-          <div class="hero-cta">
-            <a href="/iletisim" class="btn btn-primary btn-lg">İletişim</a>
-            <a href="https://wa.me/905555070724" class="btn btn-outline btn-lg" target="_blank" rel="noopener">WhatsApp</a>
-          </div>
+        <div class="section-head reveal">
+          <h2>Teklif Al</h2>
+          <p>Formu doldurun; ekibimiz e-posta, WhatsApp veya telefon üzerinden sizinle iletişime geçerek özel teklifinizi hazırlasın.</p>
         </div>
+        <form class="form-wrap reveal" id="contact-form" action="/api/contact" method="POST">
+          <input type="hidden" name="_subject" value="Patygo Teklif Talebi" />
+          <input type="text" name="_honey" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <div class="form-row">
+            <div class="field"><label for="firma">Firma Adı *</label><input id="firma" name="firma" required autocomplete="organization" /></div>
+            <div class="field"><label for="vkn">VKN *</label><input id="vkn" name="vkn" required inputmode="numeric" autocomplete="off" maxlength="11" placeholder="10 haneli vergi no" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label for="email">E-posta *</label><input id="email" name="email" type="email" required autocomplete="email" /></div>
+            <div class="field"><label for="tel">Telefon *</label><input id="tel" name="tel" type="tel" required autocomplete="tel" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label for="urun">Ürün / Marka</label><input id="urun" name="urun" placeholder="Örn. Lenovo ThinkPad, 10 adet" /></div>
+            <div class="field">
+              <label for="kategori">Kategori</label>
+              <select id="kategori" name="kategori">
+                <option>Bilgisayar / BT</option>
+                <option>Mobil / Tablet</option>
+                <option>Yazıcı / Çevre Birimi</option>
+                <option>Beyaz Eşya / Ev Aleti</option>
+                <option>Diğer</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="mesaj">Mesajınız *</label>
+            <textarea id="mesaj" name="mesaj" required placeholder="İhtiyacınız olan ürün, adet ve teslimat beklentinizi yazın."></textarea>
+          </div>
+          <div class="check-inline">
+            <input type="checkbox" id="onay" name="onay" required />
+            <label for="onay"><a href="/kvkk" style="color:var(--brand)">KVKK Aydınlatma Metni</a>’ni okudum; verilerimin teklif sürecinde işlenmesini kabul ediyorum. *</label>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">Teklif Talebi Gönder</button>
+          <div class="form-note" role="status" aria-live="polite"></div>
+        </form>
       </div>
     </section>
   </main>
