@@ -9,18 +9,22 @@ const adminHtml = fs.readFileSync(path.join(root, "admin.html"), "utf8");
 const styleCss = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
 const logoPng = path.join(root, "assets", "img", "patygo-logo.png");
 const logoSvg = path.join(root, "assets", "img", "patygo-logo.svg");
+const logoOnDark = path.join(root, "assets", "img", "patygo-logo-on-dark.svg");
 
 test("site and admin use the original PNG logo asset", () => {
   assert.ok(fs.existsSync(logoPng));
   assert.ok(fs.existsSync(logoSvg));
+  assert.ok(fs.existsSync(logoOnDark));
   assert.match(indexHtml, /class="brand"[\s\S]*patygo-logo\.png/);
   assert.match(adminHtml, /admin-logo[\s\S]*patygo-logo\.png|patygo-logo\.png[\s\S]*admin-logo/);
   assert.match(adminHtml, /src="\/assets\/img\/patygo-logo\.png"/);
-  assert.doesNotMatch(indexHtml, /patygo-logo-on-dark\.svg/);
 });
 
-test("footer uses same PNG logo as header with white invert", () => {
+test("footer uses dedicated on-dark SVG without invert filter", () => {
   assert.match(indexHtml, /footer-brand[\s\S]*patygo-logo\.png/);
-  assert.match(styleCss, /footer-brand img[\s\S]{0,220}filter:\s*brightness\(0\)\s*invert\(1\)/);
-  assert.doesNotMatch(styleCss, /footer-brand img[\s\S]{0,120}content:\s*url\(/);
+  assert.match(styleCss, /footer-brand img[\s\S]{0,160}content:\s*url\("\.\.\/img\/patygo-logo-on-dark\.svg"\)/);
+  assert.doesNotMatch(styleCss, /footer-brand img[\s\S]{0,220}filter:\s*brightness\(0\)\s*invert\(1\)/);
+  const onDark = fs.readFileSync(logoOnDark, "utf8");
+  assert.match(onDark, /#ffffff/i);
+  assert.doesNotMatch(onDark, /#2563eb/i);
 });
