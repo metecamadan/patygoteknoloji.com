@@ -108,7 +108,9 @@
   const productList = document.getElementById("productList");
   const productForm = document.getElementById("productForm");
   const formNote = document.getElementById("formNote");
+  const catalogNote = document.getElementById("catalogNote");
   const formTitle = document.getElementById("formTitle");
+  const productFormModal = document.getElementById("productFormModal");
   const productCount = document.getElementById("productCount");
   const imagePreview = document.getElementById("imagePreview");
   const productSearch = document.getElementById("productSearch");
@@ -118,6 +120,22 @@
   const supplierSearch = document.getElementById("supplierSearch");
   const supplierStatusFilter = document.getElementById("supplierStatusFilter");
   const supplierSlotFilter = document.getElementById("supplierSlotFilter");
+
+  function openProductModal() {
+    if (!productFormModal) return;
+    productFormModal.hidden = false;
+    document.body.classList.add("admin-modal-open");
+  }
+
+  function closeProductModal() {
+    if (!productFormModal) return;
+    productFormModal.hidden = true;
+    document.body.classList.remove("admin-modal-open");
+  }
+
+  function isProductModalOpen() {
+    return productFormModal && !productFormModal.hidden;
+  }
 
   const fields = {
     editIndex: document.getElementById("editIndex"),
@@ -597,7 +615,7 @@
             ]);
             notifySite();
             note(
-              formNote,
+              catalogNote || formNote,
               "ok",
               p.name + (toggle.checked ? " yayına alındı." : " pasife alındı.")
             );
@@ -611,7 +629,7 @@
           }
         } catch (err) {
           toggle.checked = !toggle.checked;
-          note(formNote, "err", err.message || "Durum güncellenemedi.");
+          note(catalogNote || formNote, "err", err.message || "Durum güncellenemedi.");
         } finally {
           toggle.disabled = false;
         }
@@ -632,6 +650,7 @@
           renderSupplierProducts();
         } else {
           fillForm(p, index);
+          openProductModal();
           renderList();
         }
       });
@@ -1362,8 +1381,9 @@
     products = data.products || list;
     renderList();
     notifySite();
+    const target = isProductModalOpen() ? formNote : catalogNote;
     note(
-      formNote,
+      target || formNote,
       "ok",
       (msg || "Kaydedildi.") + " Site ile senkron: ürünler / ana sayfa anında güncellenir."
     );
@@ -1575,9 +1595,28 @@
     selectAdminTab("products", false);
     selectProductsView("manual", false);
     emptyForm();
+    openProductModal();
     renderList();
-    fields.name.focus();
+    if (fields.name) fields.name.focus();
   });
+
+  function wireProductModalClose() {
+    const closers = [
+      document.getElementById("closeProductModalBtn"),
+      document.getElementById("cancelProductModalBtn"),
+      ...document.querySelectorAll("[data-close-product-modal]"),
+    ];
+    closers.forEach((el) => {
+      if (!el) return;
+      el.addEventListener("click", () => closeProductModal());
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && isProductModalOpen()) {
+        closeProductModal();
+      }
+    });
+  }
+  wireProductModalClose();
 
   fields.category.addEventListener("change", () => {
     applyCategoryDefaults(true);
@@ -1696,6 +1735,7 @@
     try {
       await persist(next, "Ürün silindi.");
       emptyForm();
+      closeProductModal();
       renderList();
     } catch (err) {
       note(formNote, "err", err.message || "Silinemedi");

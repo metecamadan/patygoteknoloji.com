@@ -6,6 +6,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "admin.html"), "utf8");
 const script = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
+const css = fs.readFileSync(path.join(root, "assets", "css", "admin.css"), "utf8");
 
 test("admin markup has unique element IDs", () => {
   const ids = Array.from(html.matchAll(/\sid="([^"]+)"/g), (match) => match[1]);
@@ -25,6 +26,18 @@ test("products tab separates manual and XML product areas", () => {
   assert.match(script, /productsNavChildren/);
   assert.match(script, /\.admin-nav > \[data-admin-tab\]/);
   assert.doesNotMatch(script, /\.admin-subtabs/);
+});
+
+test("manual product form opens in a modal over full-width catalog", () => {
+  assert.match(html, /id="productFormModal"/);
+  assert.match(html, /class="admin-layout admin-layout--catalog"/);
+  assert.match(html, /id="productForm"/);
+  assert.match(html, /id="newProductBtn"/);
+  assert.match(css, /\.admin-modal/);
+  assert.match(css, /\.admin-layout--catalog/);
+  assert.match(script, /openProductModal/);
+  assert.match(script, /closeProductModal/);
+  assert.match(script, /newProductBtn[\s\S]*openProductModal/);
 });
 
 test("admin exposes three XML connections and source-specific margins", () => {

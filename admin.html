@@ -214,17 +214,24 @@
               <select id="productCategoryFilter" aria-label="Kategori filtresi"><option value="">Tüm kategoriler</option><option value="bilgisayar">Bilgisayar</option><option value="yazici">Yazıcı</option><option value="kucuk-ev">Küçük Ev Aletleri</option><option value="beyaz-esya">Beyaz Eşya</option></select>
               <select id="productStatusFilter" aria-label="Durum filtresi"><option value="">Tüm durumlar</option><option value="active">Yayında</option><option value="inactive">Pasif</option></select>
             </div>
-      <div class="admin-layout">
-      <section class="admin-card">
+      <div class="admin-layout admin-layout--catalog">
+      <section class="admin-card admin-catalog-card">
         <div class="admin-card-head">
           <div><h2>Ürün kataloğu</h2><span class="admin-list-count" id="productCount"></span></div>
         </div>
         <div id="productList" class="admin-list"></div>
+        <p class="admin-note" id="catalogNote" role="status"></p>
       </section>
+      </div>
 
-      <section class="admin-card">
-        <h2 id="formTitle">Ürün düzenle</h2>
-        <form id="productForm" class="admin-form">
+      <div id="productFormModal" class="admin-modal" hidden>
+        <div class="admin-modal-backdrop" data-close-product-modal tabindex="-1"></div>
+        <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+          <div class="admin-modal-head">
+            <h2 id="formTitle">Yeni ürün</h2>
+            <button type="button" class="admin-modal-close" id="closeProductModalBtn" aria-label="Formu kapat">×</button>
+          </div>
+          <form id="productForm" class="admin-form admin-modal-form">
           <input type="hidden" id="editIndex" value="-1" />
           <div class="form-row">
             <div class="field">
@@ -341,10 +348,11 @@
           <div class="admin-form-actions">
             <button type="submit" class="btn btn-primary" id="saveProductBtn" disabled>Kaydet / Yayınla</button>
             <button type="button" class="btn btn-outline" id="deleteBtn">Sil</button>
+            <button type="button" class="btn btn-ghost" id="cancelProductModalBtn">İptal</button>
           </div>
           <p class="admin-note" id="formNote" role="status"></p>
         </form>
-      </section>
+        </div>
       </div>
             </section>
 
