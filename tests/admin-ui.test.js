@@ -34,7 +34,10 @@ test("manual product form opens in a modal over full-width catalog", () => {
   assert.match(html, /admin-page--flush/);
   assert.match(html, /id="productForm"/);
   assert.match(html, /id="newProductBtn"/);
-  assert.match(html, /admin-top-actions[\s\S]*id="newProductBtn"/);
+  assert.match(html, /admin-product-toolbar[\s\S]*?id="newProductBtn"/);
+  const topActions = html.match(/class="admin-top-actions"[\s\S]*?<\/div>/);
+  assert.ok(topActions);
+  assert.doesNotMatch(topActions[0], /id="newProductBtn"/);
   assert.match(css, /\.admin-modal/);
   assert.match(css, /\.admin-layout--catalog/);
   assert.match(script, /openProductModal/);
