@@ -2,7 +2,12 @@
 (function () {
   "use strict";
   const KEY = "patygo_cart";
-  const VAT = 0.2;
+  const ALLOWED_VAT = [1, 8, 10, 20];
+
+  function normalizeVatPercent(value) {
+    const n = Number(value);
+    return ALLOWED_VAT.includes(n) ? n : 20;
+  }
 
   function read() {
     try {
@@ -25,6 +30,9 @@
       brand: String(src.brand != null ? src.brand : prev.brand || "").trim(),
       name: String(src.name != null ? src.name : prev.name || "").trim(),
       price: Math.max(0, Number(src.price != null ? src.price : prev.price) || 0),
+      vatPercent: normalizeVatPercent(
+        src.vatPercent != null ? src.vatPercent : prev.vatPercent
+      ),
     };
   }
 
@@ -36,7 +44,10 @@
         brand: catalog.brand,
         name: catalog.name,
         price: catalog.price,
+        vatPercent: normalizeVatPercent(catalog.vatPercent),
         category: catalog.category,
+        image: catalog.image,
+        images: catalog.images,
         active: catalog.active,
       };
     }
@@ -46,6 +57,7 @@
         brand: item.brand || "",
         name: item.name,
         price: Number(item.price) || 0,
+        vatPercent: normalizeVatPercent(item.vatPercent),
         category: "",
         active: true,
       };
@@ -54,7 +66,8 @@
   }
 
   window.PatygoCart = {
-    VAT,
+    ALLOWED_VAT,
+    normalizeVatPercent,
     list() {
       return read();
     },
@@ -93,17 +106,28 @@
     totals(catalogById) {
       const items = read();
       let sub = 0;
+      let vat = 0;
       const lines = [];
       items.forEach((i) => {
         const p = resolveProduct(i, catalogById || {});
         if (!p) return;
         const qty = Math.max(1, Number(i.qty) || 1);
-        const line = p.price * qty;
+        const line = Math.round(p.price * qty * 100) / 100;
+        const lineVat =
+          Math.round(line * (normalizeVatPercent(p.vatPercent) / 100) * 100) / 100;
         sub += line;
-        lines.push({ product: p, qty, line });
+        vat += lineVat;
+        lines.push({
+          product: p,
+          qty,
+          line,
+          lineVat,
+          lineIncl: Math.round((line + lineVat) * 100) / 100,
+        });
       });
-      const vat = sub * VAT;
-      return { lines, sub, vat, total: sub + vat };
+      sub = Math.round(sub * 100) / 100;
+      vat = Math.round(vat * 100) / 100;
+      return { lines, sub, vat, total: Math.round((sub + vat) * 100) / 100 };
     },
   };
 

@@ -12,7 +12,12 @@ require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { mergeCatalogProducts, toPublicProduct } = require("./lib/catalog");
-const { CATEGORY_FEED_DEFAULTS, validateManualFeedFields } = require("./lib/product-fields");
+const {
+  CATEGORY_FEED_DEFAULTS,
+  validateManualFeedFields,
+  normalizeVatPercent,
+  vatAmountFromNet,
+} = require("./lib/product-fields");
 const { createAnalyticsStore } = require("./lib/analytics");
 const {
   createAkbankConfig,
@@ -70,7 +75,6 @@ const SITE_BASE_URL = resolveSiteBaseUrl(process.env.SITE_BASE_URL, PORT, IS_PRO
 const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);
 const ADMIN_IDLE_MS =
   Number.isFinite(rawIdleMs) && rawIdleMs > 0 ? rawIdleMs : 30 * 60 * 1000;
-const VAT_RATE = 0.2;
 const supplierAllowedHosts = String(
   process.env.SUPPLIER_ALLOWED_HOSTS || "www.bilgisayarim.com.tr"
 )
@@ -237,25 +241,33 @@ function buildCheckoutOrder(body) {
 
   const items = [];
   let subtotal = 0;
+  let vat = 0;
   for (const row of rawItems.slice(0, 40)) {
     const product = byId[String(row.productId || "")];
     if (!product || product.active === false) {
       throw new Error("Sepette geçersiz ürün var.");
     }
     const qty = Math.max(1, Math.min(99, Number(row.qty) || 1));
-    const line = product.price * qty;
+    const vatPercent = normalizeVatPercent(product.vatPercent);
+    const unitPrice = product.price;
+    const line = Math.round(unitPrice * qty * 100) / 100;
+    const lineVat = vatAmountFromNet(line, vatPercent);
     subtotal += line;
+    vat += lineVat;
     items.push({
       productId: product.id,
       brand: product.brand,
       name: product.name,
-      unitPrice: product.price,
+      unitPrice,
+      vatPercent,
       qty,
       line,
+      lineVat,
     });
   }
 
-  const vat = Math.round(subtotal * VAT_RATE * 100) / 100;
+  subtotal = Math.round(subtotal * 100) / 100;
+  vat = Math.round(vat * 100) / 100;
   const total = Math.round((subtotal + vat) * 100) / 100;
   const customer = (body && body.customer) || {};
   const name = String(customer.name || "").trim().slice(0, 120);
@@ -396,7 +408,6 @@ function normalizeProduct(p, fallbackId) {
     .slice(0, MAX_PRODUCT_IMAGES);
   if (legacyImage && !images.includes(legacyImage)) images.unshift(legacyImage);
   const tree = CATEGORY_FEED_DEFAULTS[category] || CATEGORY_FEED_DEFAULTS.bilgisayar;
-  const vatPercent = Number(p.vatPercent);
   const stockQty = Number(p.stockQty);
   return {
     id,
@@ -418,7 +429,7 @@ function normalizeProduct(p, fallbackId) {
     midCategory: String(p.midCategory || tree.midCategory).trim().slice(0, 80),
     subCategory: String(p.subCategory || tree.subCategory).trim().slice(0, 80),
     stockQty: Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0,
-    vatPercent: Number.isFinite(vatPercent) ? Math.max(0, Math.min(100, vatPercent)) : 20,
+    vatPercent: normalizeVatPercent(p.vatPercent),
     currency: String(p.currency || "TRY").trim().toUpperCase().slice(0, 8) || "TRY",
     unit: String(p.unit || "ADET").trim().toUpperCase().slice(0, 20) || "ADET",
   };
@@ -636,7 +647,6 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/feeds/akakce.xml") {
     const xml = buildAkakceXml(mergedProducts(false), {
       siteBaseUrl: SITE_BASE_URL,
-      vatRate: VAT_RATE,
     });
     res.writeHead(
       200,

@@ -84,6 +84,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
     brand: "TEDARİKÇİ",
     name: "Ürün",
     price: 200,
+    vatPercent: 20,
     category: "bilgisayar",
     description: "Açıklama",
     details: "Detay",

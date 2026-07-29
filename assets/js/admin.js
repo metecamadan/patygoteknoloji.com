@@ -53,7 +53,7 @@
         product.midCategory &&
         product.subCategory &&
         Number.isFinite(Number(product.stockQty)) &&
-        Number.isFinite(Number(product.vatPercent)) &&
+        [1, 8, 10, 20].includes(Number(product.vatPercent)) &&
         product.currency &&
         product.unit &&
         product.description &&
@@ -447,7 +447,9 @@
     fields.gtip.value = p.gtipCode || "";
     fields.specialCode.value = p.specialCode || "";
     fields.stock.value = Number.isFinite(Number(p.stockQty)) ? Number(p.stockQty) : 0;
-    fields.vat.value = Number.isFinite(Number(p.vatPercent)) ? Number(p.vatPercent) : 20;
+    fields.vat.value = [1, 8, 10, 20].includes(Number(p.vatPercent))
+      ? String(Number(p.vatPercent))
+      : "20";
     fields.currency.value = p.currency || "TRY";
     fields.unit.value = p.unit || "ADET";
     fields.mainCategory.value = p.mainCategory || "";
@@ -521,7 +523,9 @@
         p.brand +
         " · " +
         money(p.price) +
-        " +KDV · " +
+        " (hariç) · %" +
+        (Number.isFinite(Number(p.vatPercent)) ? Number(p.vatPercent) : 20) +
+        " KDV · " +
         p.category;
       meta.appendChild(strong);
       meta.appendChild(small);

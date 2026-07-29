@@ -121,7 +121,8 @@
     const price = document.createElement("div");
     price.className = "price";
     price.innerHTML =
-      window.PatygoCatalog.formatPrice(product.price) + " <small>+KDV</small>";
+      window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
+      " <small>KDV dahil</small>";
 
     const actions = document.createElement("div");
     actions.className = "actions";
@@ -134,6 +135,7 @@
         brand: product.brand,
         name: product.name,
         price: product.price,
+        vatPercent: product.vatPercent,
       });
       add.textContent = "Sepete eklendi";
     });

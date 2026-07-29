@@ -65,7 +65,7 @@
     header.appendChild(clear);
     linesEl.appendChild(header);
 
-    totals.lines.forEach(({ product, qty, line }) => {
+    totals.lines.forEach(({ product, qty, line, lineIncl }) => {
       const row = document.createElement("div");
       row.className = "cart-line";
 
@@ -98,7 +98,8 @@
       name.appendChild(nameLink);
       const unit = document.createElement("p");
       unit.className = "cart-unit";
-      unit.textContent = money(product.price) + " + KDV / adet";
+      unit.textContent =
+        money(window.PatygoCatalog.priceInclVat(product)) + " KDV dahil / adet";
       meta.appendChild(brand);
       meta.appendChild(name);
       meta.appendChild(unit);
@@ -153,7 +154,7 @@
       const sumLabel = document.createElement("span");
       sumLabel.textContent = "Toplam";
       const sumValue = document.createElement("strong");
-      sumValue.textContent = money(line);
+      sumValue.textContent = money(lineIncl != null ? lineIncl : line);
       sum.appendChild(sumLabel);
       sum.appendChild(sumValue);
 

@@ -13,6 +13,24 @@
     list: [],
     byId: {},
     ready: null,
+    ALLOWED_VAT: [1, 8, 10, 20],
+    normalizeVatPercent(value) {
+      const n = Number(value);
+      return this.ALLOWED_VAT.includes(n) ? n : 20;
+    },
+    /** Stored price is KDV hariç; returns KDV dahil tutar. */
+    priceInclVat(productOrPrice, vatPercent) {
+      let net;
+      let vat;
+      if (productOrPrice && typeof productOrPrice === "object") {
+        net = Number(productOrPrice.price) || 0;
+        vat = this.normalizeVatPercent(productOrPrice.vatPercent);
+      } else {
+        net = Number(productOrPrice) || 0;
+        vat = this.normalizeVatPercent(vatPercent);
+      }
+      return Math.round(net * (1 + vat / 100) * 100) / 100;
+    },
     formatPrice(amount) {
       return (
         "₺" +
@@ -140,10 +158,12 @@
     const price = document.createElement("div");
     price.className = "price";
     price.appendChild(
-      document.createTextNode(window.PatygoCatalog.formatPrice(product.price) + " ")
+      document.createTextNode(
+        window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) + " "
+      )
     );
     const small = document.createElement("small");
-    small.textContent = "+KDV";
+    small.textContent = "KDV dahil";
     price.appendChild(small);
 
     const actions = document.createElement("div");
@@ -159,6 +179,7 @@
           brand: product.brand,
           name: product.name,
           price: product.price,
+          vatPercent: product.vatPercent,
         });
         cartBtn.textContent = "Eklendi";
         setTimeout(() => {

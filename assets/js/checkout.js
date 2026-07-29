@@ -1,9 +1,27 @@
 (function () {
-  const VAT_RATE = (window.PatygoCart && window.PatygoCart.VAT) || 0.2;
   const params = new URLSearchParams(window.location.search);
   const directId = params.get("id") || "";
   const paymentResult = params.get("payment") || "";
   const returnedOrderId = params.get("orderId") || "";
+
+  function vatOf(product) {
+    if (window.PatygoCart && window.PatygoCart.normalizeVatPercent) {
+      return window.PatygoCart.normalizeVatPercent(product && product.vatPercent);
+    }
+    if (window.PatygoCatalog && window.PatygoCatalog.normalizeVatPercent) {
+      return window.PatygoCatalog.normalizeVatPercent(product && product.vatPercent);
+    }
+    const n = Number(product && product.vatPercent);
+    return [1, 8, 10, 20].includes(n) ? n : 20;
+  }
+
+  function priceIncl(product) {
+    if (window.PatygoCatalog && window.PatygoCatalog.priceInclVat) {
+      return window.PatygoCatalog.priceInclVat(product);
+    }
+    const net = Number(product && product.price) || 0;
+    return Math.round(net * (1 + vatOf(product) / 100) * 100) / 100;
+  }
 
   const els = {
     brand: document.getElementById("orderBrand"),
@@ -186,12 +204,13 @@
       if (mode === "direct" && product) {
         const qty = Math.max(1, Math.min(99, Number(els.adet.value) || 1));
         els.adet.value = String(qty);
-        const sub = product.price * qty;
-        const vat = sub * VAT_RATE;
-        const total = sub + vat;
-        lines = [{ product, qty, line: sub }];
+        const sub = Math.round(product.price * qty * 100) / 100;
+        const vat =
+          Math.round(sub * (vatOf(product) / 100) * 100) / 100;
+        const total = Math.round((sub + vat) * 100) / 100;
+        lines = [{ product, qty, line: sub, lineVat: vat, lineIncl: total }];
         if (els.qtyLabel) els.qtyLabel.textContent = String(qty);
-        if (els.unitPrice) els.unitPrice.textContent = formatTRY(product.price);
+        if (els.unitPrice) els.unitPrice.textContent = formatTRY(priceIncl(product));
         if (els.subtotal) els.subtotal.textContent = formatTRY(sub);
         if (els.vatAmount) els.vatAmount.textContent = formatTRY(vat);
         if (els.grandTotal) els.grandTotal.textContent = formatTRY(total);
