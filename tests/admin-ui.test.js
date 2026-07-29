@@ -60,6 +60,17 @@ test("admin calendar tab supports reminders and notes", () => {
   assert.match(script, /"calendar"/);
 });
 
+test("admin panel exposes dark theme toggle in the top bar", () => {
+  assert.match(html, /id="adminThemeToggle"/);
+  assert.match(html, /admin-theme-toggle/);
+  assert.match(html, /patygo_admin_theme/);
+  assert.match(css, /html\.admin-theme-dark/);
+  assert.match(css, /\.admin-theme-toggle/);
+  assert.match(script, /THEME_KEY/);
+  assert.match(script, /applyAdminTheme/);
+  assert.match(script, /adminThemeToggle/);
+});
+
 test("admin exposes three XML connections and source-specific margins", () => {
   assert.equal((html.match(/data-supplier-card="supplier-/g) || []).length, 3);
   assert.match(html, /id="supplierSlotFilter"/);

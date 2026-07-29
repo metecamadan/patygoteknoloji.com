@@ -11,6 +11,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css" />
   <link rel="stylesheet" href="/assets/css/admin.css" />
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("patygo_admin_theme") === "dark") {
+          document.documentElement.classList.add("admin-theme-dark");
+        }
+      } catch (_) {}
+    })();
+  </script>
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
@@ -58,6 +67,10 @@
             <p id="adminPageSubtitle">Katalog ve yayın durumunu tek ekrandan yönetin.</p>
           </div>
           <div class="admin-top-actions">
+            <button type="button" class="admin-theme-toggle" id="adminThemeToggle" aria-pressed="false" title="Koyu / açık tema">
+              <span class="admin-theme-toggle-icon" aria-hidden="true">◐</span>
+              <span class="admin-theme-toggle-label">Dark</span>
+            </button>
             <span class="admin-health"><i></i> Sistem hazır</span>
             <div class="admin-avatar" aria-hidden="true">PT</div>
           </div>

@@ -1,6 +1,35 @@
 .admin-body {
   background: #f1f5f9;
   min-height: 100vh;
+  color: var(--ink);
+}
+.admin-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.admin-theme-toggle:hover {
+  border-color: #bfdbfe;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+.admin-theme-toggle[aria-pressed="true"] {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(37, 99, 235, 0.16);
+  color: #93c5fd;
+}
+.admin-theme-toggle-icon {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 .admin-login[hidden],
 .admin-panel[hidden],
@@ -1171,4 +1200,167 @@ body.admin-modal-open {
   .admin-input-action { grid-template-columns: 1fr; }
   .admin-input-action.compact { grid-template-columns: 1fr auto; }
   .admin-supplier-catalog > .admin-card-head { align-items: flex-start; }
+}
+
+/* ---------- Dark theme (admin only) ---------- */
+html.admin-theme-dark {
+  color-scheme: dark;
+  --brand: #60a5fa;
+  --brand-deep: #93c5fd;
+  --brand-soft: rgba(96, 165, 250, 0.16);
+  --brand-50: rgba(96, 165, 250, 0.08);
+  --ink: #e8eef7;
+  --ink-2: #d5deea;
+  --muted: #9aa8bc;
+  --muted-2: #7b8ba3;
+  --line: #2c384c;
+  --line-soft: #1c2636;
+  --bg: #0b1220;
+  --bg-soft: #121a2a;
+  --navy: #e8eef7;
+  --navy-2: #d5deea;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+html.admin-theme-dark .admin-body,
+html.admin-theme-dark.admin-body {
+  background: #0b1220;
+  color: var(--ink);
+}
+
+html.admin-theme-dark .admin-login-card,
+html.admin-theme-dark .admin-top,
+html.admin-theme-dark .admin-sidebar,
+html.admin-theme-dark .admin-card,
+html.admin-theme-dark .admin-kpi,
+html.admin-theme-dark .admin-item,
+html.admin-theme-dark .admin-quick-action,
+html.admin-theme-dark .admin-calendar-day,
+html.admin-theme-dark .admin-calendar-entry,
+html.admin-theme-dark .admin-modal-panel,
+html.admin-theme-dark .admin-theme-toggle,
+html.admin-theme-dark .admin-product-toolbar select,
+html.admin-theme-dark .admin-search,
+html.admin-theme-dark .admin-feed-url-input,
+html.admin-theme-dark .admin-period input,
+html.admin-theme-dark .admin-form input,
+html.admin-theme-dark .admin-form select,
+html.admin-theme-dark .admin-form textarea,
+html.admin-theme-dark .admin-login-card input {
+  background: #121a2a;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+html.admin-theme-dark .admin-body {
+  background: #0b1220;
+}
+
+html.admin-theme-dark .admin-hint,
+html.admin-theme-dark .admin-nav-item:hover,
+html.admin-theme-dark .admin-nav-subitem:hover,
+html.admin-theme-dark .admin-table th,
+html.admin-theme-dark .admin-supplier-catalog > .admin-product-toolbar,
+html.admin-theme-dark .admin-preview-list,
+html.admin-theme-dark .admin-item .ph {
+  background: #182234;
+  color: var(--ink);
+}
+
+html.admin-theme-dark .admin-nav-item.active {
+  background: #1b2740;
+  color: var(--ink);
+}
+
+html.admin-theme-dark .admin-nav-subitem.active,
+html.admin-theme-dark .admin-item.active,
+html.admin-theme-dark .admin-calendar-day.is-selected,
+html.admin-theme-dark .admin-calendar-entry.is-active,
+html.admin-theme-dark .admin-calendar-day:hover,
+html.admin-theme-dark .admin-calendar-entry:hover,
+html.admin-theme-dark .admin-xml-flow li,
+html.admin-theme-dark .admin-feed-box {
+  background: var(--brand-soft);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: var(--ink);
+}
+
+html.admin-theme-dark .admin-health {
+  background: #121a2a !important;
+  border-color: var(--line) !important;
+  color: var(--muted) !important;
+}
+
+html.admin-theme-dark .admin-avatar {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+html.admin-theme-dark .btn-outline {
+  background: #121a2a;
+  color: var(--brand);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+html.admin-theme-dark .btn-outline:hover,
+html.admin-theme-dark .btn-ghost:hover {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+html.admin-theme-dark .btn-primary {
+  color: #0b1220;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+html.admin-theme-dark .admin-note.err { color: #fca5a5; }
+html.admin-theme-dark .admin-note.ok { color: #86efac; }
+
+html.admin-theme-dark .admin-badge {
+  background: #243247;
+  color: #cbd5e1;
+}
+html.admin-theme-dark .admin-badge.on { background: #14532d; color: #86efac; }
+html.admin-theme-dark .admin-badge.off { background: #7f1d1d; color: #fecaca; }
+html.admin-theme-dark .admin-status.pending { background: #422006; color: #fcd34d; }
+html.admin-theme-dark .admin-status.on { background: #14532d; color: #86efac; }
+html.admin-theme-dark .admin-status.err { background: #7f1d1d; color: #fecaca; }
+
+html.admin-theme-dark .admin-table {
+  color: var(--ink);
+}
+html.admin-theme-dark .admin-table td,
+html.admin-theme-dark .admin-table th {
+  border-color: var(--line);
+}
+html.admin-theme-dark .admin-table-empty {
+  color: var(--muted);
+}
+
+html.admin-theme-dark .admin-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+html.admin-theme-dark .admin-feed-warning {
+  background: #431407;
+  color: #fdba74;
+}
+
+html.admin-theme-dark .admin-calendar-badge.reminder { background: rgba(96, 165, 250, 0.2); color: #93c5fd; }
+html.admin-theme-dark .admin-calendar-badge.note { background: rgba(45, 212, 191, 0.16); color: #5eead4; }
+html.admin-theme-dark .admin-calendar-day.is-today {
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.35);
+}
+
+html.admin-theme-dark .admin-switch span {
+  background: #334155;
+}
+html.admin-theme-dark .admin-sidebar-brand img,
+html.admin-theme-dark .admin-login-brand img {
+  filter: brightness(1.08) contrast(1.05);
+}
+
+@media (max-width: 560px) {
+  html.admin-theme-dark .admin-theme-toggle-label { display: none; }
 }
