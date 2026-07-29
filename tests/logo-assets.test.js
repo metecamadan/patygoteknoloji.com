@@ -23,8 +23,17 @@ function pngHasAlpha(filePath) {
 test("site and admin use the original PNG logo asset", () => {
   assert.ok(fs.existsSync(logoPng));
   assert.match(indexHtml, /class="brand"[\s\S]*patygo-logo\.png/);
-  assert.match(adminHtml, /src="\/assets\/img\/patygo-logo\.png"/);
+  assert.match(adminHtml, /admin-login-brand[\s\S]*src="\/assets\/img\/patygo-logo\.png"/);
+  assert.match(adminHtml, /admin-sidebar-brand[\s\S]*src="\/assets\/img\/patygo-logo\.png"/);
   assert.ok(pngHasAlpha(logoPng), "header logo should be RGBA with transparent background");
+});
+
+test("admin panel logo matches site header sizing", () => {
+  const adminCss = fs.readFileSync(path.join(root, "assets", "css", "admin.css"), "utf8");
+  assert.match(adminCss, /\.admin-logo\s*\{[^}]*height:\s*48px/);
+  assert.match(adminCss, /\.admin-sidebar-brand img\s*\{[\s\S]*?height:\s*48px/);
+  assert.doesNotMatch(adminCss, /admin-logo[\s\S]{0,120}filter:/);
+  assert.doesNotMatch(adminCss, /admin-sidebar-brand img[\s\S]{0,160}content:\s*url\(/);
 });
 
 test("footer uses white transparent PNG derived from same logo", () => {

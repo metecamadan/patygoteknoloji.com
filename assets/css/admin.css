@@ -29,9 +29,13 @@
   margin-bottom: 0;
 }
 .admin-logo {
-  height: 40px;
+  height: 48px;
   width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  display: block;
   margin-bottom: 16px;
+  background: transparent;
 }
 .admin-login-card h1 {
   font-size: 1.35rem;
@@ -443,7 +447,14 @@
 .admin-sidebar-brand:hover img {
   opacity: 0.92;
 }
-.admin-sidebar-brand img { width: 112px; height: auto; }
+.admin-sidebar-brand img {
+  width: auto;
+  height: 48px;
+  max-width: 168px;
+  object-fit: contain;
+  display: block;
+  background: transparent;
+}
 .admin-sidebar-brand span { color: var(--muted); font-size: 0.76rem; font-weight: 600; }
 .admin-nav { display: grid; gap: 5px; padding-top: 18px; }
 .admin-nav-item {
@@ -903,7 +914,7 @@
     border-bottom: 1px solid var(--line);
   }
   .admin-sidebar-brand { display: flex; align-items: center; justify-content: space-between; padding: 0 0 10px; }
-  .admin-sidebar-brand img { width: 92px; }
+  .admin-sidebar-brand img { width: auto; height: 40px; max-width: 140px; }
   .admin-nav { display: flex; overflow-x: auto; padding-top: 10px; }
   .admin-nav-item { width: auto; flex: 0 0 auto; }
   .admin-sidebar-foot { display: none; }
