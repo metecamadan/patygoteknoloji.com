@@ -20,7 +20,7 @@ test("products tab separates manual and XML product areas", () => {
   assert.match(html, /id="productsNavChildren"/);
   assert.match(html, /id="manualProductsNav"/);
   assert.match(html, /id="xmlProductsNav"/);
-  assert.match(html, /id="productsPageTitle"/);
+  assert.doesNotMatch(html, /id="productsPageTitle"|id="productsPageSubtitle"/);
   assert.doesNotMatch(html, /admin-subtabs|manualProductsSubtab|xmlProductsSubtab/);
   assert.match(script, /selectProductsView/);
   assert.match(script, /productsNavChildren/);
@@ -31,8 +31,10 @@ test("products tab separates manual and XML product areas", () => {
 test("manual product form opens in a modal over full-width catalog", () => {
   assert.match(html, /id="productFormModal"/);
   assert.match(html, /class="admin-layout admin-layout--catalog"/);
+  assert.match(html, /admin-page--flush/);
   assert.match(html, /id="productForm"/);
   assert.match(html, /id="newProductBtn"/);
+  assert.match(html, /admin-top-actions[\s\S]*id="newProductBtn"/);
   assert.match(css, /\.admin-modal/);
   assert.match(css, /\.admin-layout--catalog/);
   assert.match(script, /openProductModal/);

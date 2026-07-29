@@ -57,6 +57,7 @@
             <p id="adminPageSubtitle">Katalog ve yayın durumunu tek ekrandan yönetin.</p>
           </div>
           <div class="admin-top-actions">
+            <button type="button" class="btn btn-primary" id="newProductBtn" hidden>+ Yeni Ürün</button>
             <span class="admin-health"><i></i> Sistem hazır</span>
             <div class="admin-avatar" aria-hidden="true">PT</div>
           </div>
@@ -200,14 +201,7 @@
         </section>
 
         <section id="adminTabProducts" class="admin-tab-panel" aria-labelledby="productsTab" hidden>
-          <div class="admin-page">
-            <div class="admin-page-head">
-              <div>
-                <h2 id="productsPageTitle">Manuel Ürünler</h2>
-                <p id="productsPageSubtitle">Katalogdaki manuel ürünleri ekleyin ve düzenleyin.</p>
-              </div>
-              <button type="button" class="btn btn-primary" id="newProductBtn">+ Yeni Ürün</button>
-            </div>
+          <div class="admin-page admin-page--flush">
             <section id="manualProductsView" class="admin-products-view" aria-labelledby="manualProductsNav">
             <div class="admin-product-toolbar">
               <label class="admin-search"><span aria-hidden="true">⌕</span><input id="productSearch" type="search" placeholder="Ürün, marka veya kod ara" /></label>

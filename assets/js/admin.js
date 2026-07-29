@@ -316,6 +316,8 @@
     }
     document.getElementById("adminPageTitle").textContent = meta[0];
     document.getElementById("adminPageSubtitle").textContent = meta[1];
+    const newProductBtn = document.getElementById("newProductBtn");
+    if (newProductBtn && name !== "products") newProductBtn.hidden = true;
     if (name === "xml" && token) loadSupplierData().catch(() => {});
     if (name === "overview" && token) loadDigitalDashboard().catch(() => {});
     try {
@@ -369,13 +371,10 @@
     if (manualView) manualView.hidden = view !== "manual";
     if (xmlView) xmlView.hidden = view !== "xml";
     const meta = viewMeta[view];
-    const pageTitle = document.getElementById("productsPageTitle");
-    const pageSubtitle = document.getElementById("productsPageSubtitle");
-    if (pageTitle) pageTitle.textContent = meta[0];
-    if (pageSubtitle) pageSubtitle.textContent = meta[1];
     document.getElementById("adminPageTitle").textContent = meta[0];
     document.getElementById("adminPageSubtitle").textContent = meta[1];
-    document.getElementById("newProductBtn").hidden = view !== "manual";
+    const newProductBtn = document.getElementById("newProductBtn");
+    if (newProductBtn) newProductBtn.hidden = view !== "manual";
     if (view === "xml") {
       renderSupplierProducts();
       if (token) loadSupplierData().catch(() => {});
