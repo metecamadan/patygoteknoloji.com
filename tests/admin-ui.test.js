@@ -18,7 +18,12 @@ test("products tab separates manual and XML product areas", () => {
   assert.match(html, /id="xmlProductsSubtab"/);
   assert.match(html, /id="manualProductsView"/);
   assert.match(html, /id="xmlProductsView"/);
+  assert.match(html, /id="productsNavChildren"/);
+  assert.match(html, /id="manualProductsNav"/);
+  assert.match(html, /id="xmlProductsNav"/);
   assert.match(script, /selectProductsView/);
+  assert.match(script, /productsNavChildren/);
+  assert.match(script, /\.admin-nav > \[data-admin-tab\]/);
 });
 
 test("admin exposes three XML connections and source-specific margins", () => {
