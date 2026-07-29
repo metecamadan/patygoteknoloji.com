@@ -66,3 +66,17 @@ test("commerce contracts state storefront prices include VAT", () => {
   assert.match(mesafeli, /KDV dahildir/);
   assert.match(onBilgi, /KDV dahil/);
 });
+
+test("return and distance sale contracts exclude cartridge toner battery returns", () => {
+  const iade = fs.readFileSync(path.join(root, "iade-ve-cayma.html"), "utf8");
+  const mesafeli = fs.readFileSync(path.join(root, "mesafeli-satis-sozlesmesi.html"), "utf8");
+  for (const [label, text] of [
+    ["iade-ve-cayma.html", iade],
+    ["mesafeli-satis-sozlesmesi.html", mesafeli],
+  ]) {
+    assert.match(text, /kartuş/i, label);
+    assert.match(text, /toner/i, label);
+    assert.match(text, /pil/i, label);
+    assert.match(text, /iade (kabul )?edilmez|iade edilmez/i, label);
+  }
+});
