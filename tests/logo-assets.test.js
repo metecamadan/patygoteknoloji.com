@@ -15,7 +15,8 @@ function pngHasAlpha(filePath) {
   const buf = fs.readFileSync(filePath);
   const ihdr = buf.indexOf(Buffer.from("IHDR"));
   assert.notEqual(ihdr, -1, filePath + " missing IHDR");
-  const colorType = buf[ihdr + 14];
+  // IHDR data: width(4) height(4) bitDepth(1) colorType(1) ...
+  const colorType = buf[ihdr + 13];
   return colorType === 4 || colorType === 6;
 }
 
