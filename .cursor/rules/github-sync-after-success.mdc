@@ -1,0 +1,47 @@
+---
+description: Başarılı test akışından sonra GitHub güncelleme zorunluluğu
+alwaysApply: true
+---
+
+# GitHub senkronizasyonu (başarılı akış sonrası)
+
+Özellik, düzeltme veya refactor **başarılı test kapısından** geçtikten sonra GitHub güncellenir.
+
+## Zorunlu sıra
+
+1. `npm test` yeşil (kırmızıysa commit/push yok).
+2. İlgili dosyaları stage et; secret (`.env`, key) commit etme.
+3. Anlamlı commit mesajı (neden odaklı, Türkçe veya İngilizce tutarlı).
+4. `git push origin main` (veya feature branch → PR).
+5. GitHub Actions sonucunu kontrol et; deploy job kırmızıysa düzelt.
+
+## Onay sorma — varsayılan canlıya al
+
+- İş bitti + `npm test` yeşil → **sormadan** commit + `main`'e push + Actions takip.
+- Deploy / commit / canlıya alma onayı sorma; test kapısı yeterlidir.
+- Yalnızca kullanıcı açıkça "commit etme / push etme / canlıya alma" dediyse dur.
+
+## Ne zaman push yapılır
+
+- Özellik veya düzeltme tamamlandıysa ve test yeşilse (otomatik).
+- Küçük ara commit'ler: mantıksal parça bittiğinde (test yeşil).
+
+## Ne zaman push yapılmaz
+
+- Test kırmızı.
+- Sadece planlama / soru-cevap (kod değişmedi).
+- Kullanıcı "commit etme" / "push etme" / "canlıya alma" dedi.
+- `.env` veya credential içeren dosyalar stage'de.
+
+## Branch stratejisi
+
+- Küçük düzeltmeler: doğrudan `main` (mevcut repo akışı).
+- Büyük özellikler: `feature/...` branch + PR; CI yeşil olmadan merge yok.
+
+## Örnek commit
+
+```
+fix(checkout): ödeme callback URL alan adına sabitlendi
+
+SITE_BASE_URL doğrulaması canlıda IP kabul etmiyor; regression test eklendi.
+```
