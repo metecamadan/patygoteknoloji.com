@@ -155,6 +155,7 @@
                 <div class="admin-quick-actions">
                   <button type="button" data-open-admin-tab="products" data-open-products-view="manual" class="admin-quick-action"><strong>Yeni ürün ekle</strong><span>Manuel ürün oluşturun veya düzenleyin.</span></button>
                   <button type="button" data-open-admin-tab="products" data-open-products-view="xml" class="admin-quick-action"><strong>XML ürünlerini yönet</strong><span>Tedarikçi ürünlerini görüntüleyin ve yayınlayın.</span></button>
+                  <button type="button" data-open-admin-tab="xml" class="admin-quick-action"><strong>Akakçe XML linki</strong><span>Canlı feed adresini görüntüle ve kopyala.</span></button>
                 </div>
               </section>
               <section class="admin-card">
@@ -166,6 +167,31 @@
                 </dl>
               </section>
             </div>
+
+            <section class="admin-card admin-akakce-card" style="margin-top:18px">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">AKAKÇE</span>
+                  <h2>XML feed adresi</h2>
+                </div>
+                <span class="admin-status on" id="dashboardFeedBadge">Hazır</span>
+              </div>
+              <p class="admin-hint" style="margin-top:0">Bu bağlantıyı Akakçe satıcı panelinize yapıştırın. Yalnızca yayındaki (aktif) uygun ürünler listelenir.</p>
+              <div class="admin-feed-box">
+                <span>Akakçe’ye verilecek canlı XML linki</span>
+                <input id="dashboardFeedUrl" class="admin-feed-url-input" type="text" readonly value="https://patygoteknoloji.com/api/feeds/akakce.xml" aria-label="Akakçe XML adresi" />
+              </div>
+              <dl class="admin-xml-meta">
+                <div><dt>Feed’deki ürün</dt><dd id="dashboardFeedUrlCount">0</dd></div>
+                <div><dt>Durum</dt><dd id="dashboardFeedUrlStatus">Yükleniyor…</dd></div>
+              </dl>
+              <div class="admin-form-actions">
+                <a href="https://patygoteknoloji.com/api/feeds/akakce.xml" class="btn btn-primary" id="dashboardFeedOpenBtn" target="_blank" rel="noopener">XML’i Aç</a>
+                <button type="button" class="btn btn-outline" id="dashboardFeedCopyBtn">Bağlantıyı Kopyala</button>
+                <button type="button" class="btn btn-ghost" data-open-admin-tab="xml">XML Yönetimi</button>
+              </div>
+              <p class="admin-note" id="dashboardFeedNote" role="status"></p>
+            </section>
           </div>
         </section>
 
@@ -364,9 +390,10 @@
                   <div><span class="admin-eyebrow">AKAKÇE FEED</span><h2>Satış ve yayın özeti</h2></div>
                   <span class="admin-status on" id="feedStatusBadge">Feed hazır</span>
                 </div>
+                <p class="admin-hint" style="margin-top:0">Akakçe paneline tek bir ürün feed URL’si tanımlayın. Adres alan adı üzerinden olmalıdır.</p>
                 <div class="admin-feed-box">
-                  <span>Akakçe XML adresi</span>
-                  <code id="feedUrl">/api/feeds/akakce.xml</code>
+                  <span>Akakçe’ye verilecek canlı XML linki</span>
+                  <input id="feedUrl" class="admin-feed-url-input" type="text" readonly value="https://patygoteknoloji.com/api/feeds/akakce.xml" aria-label="Akakçe XML adresi" />
                 </div>
                 <dl class="admin-xml-meta">
                   <div><dt>Feed’e uygun</dt><dd id="feedActiveCount">0</dd></div>
@@ -376,7 +403,7 @@
                 </dl>
                 <div class="admin-feed-warning" id="feedWarnings" hidden></div>
                 <div class="admin-form-actions">
-                  <a href="/api/feeds/akakce.xml" class="btn btn-primary" id="feedOpenBtn" target="_blank" rel="noopener">XML’i Görüntüle</a>
+                  <a href="https://patygoteknoloji.com/api/feeds/akakce.xml" class="btn btn-primary" id="feedOpenBtn" target="_blank" rel="noopener">XML’i Görüntüle</a>
                   <button type="button" class="btn btn-outline" id="feedCopyBtn">Bağlantıyı Kopyala</button>
                 </div>
                 <p class="admin-note" id="feedNote" role="status"></p>

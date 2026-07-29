@@ -48,8 +48,14 @@ test("admin overview exposes digital dashboard metrics", () => {
 test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {
   assert.match(html, /id="feedCatalogActiveCount"/);
   assert.match(html, /id="feedWarnings"/);
+  assert.match(html, /id="dashboardFeedUrl"/);
+  assert.match(html, /id="dashboardFeedCopyBtn"/);
+  assert.match(html, /Akakçe’ye verilecek canlı XML linki/);
+  assert.match(html, /https:\/\/patygoteknoloji\.com\/api\/feeds\/akakce\.xml/);
   assert.match(script, /reasonCounts/);
   assert.match(script, /publicUrl/);
+  assert.match(script, /syncFeedUrlUi/);
+  assert.match(script, /copyFeedUrl/);
   assert.match(script, /Katalogda feed/);
 });
 

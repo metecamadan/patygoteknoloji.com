@@ -759,6 +759,69 @@
     }
   }
 
+  function resolveFeedUrl() {
+    return (
+      (feedStatus && feedStatus.publicUrl) ||
+      location.origin + "/api/feeds/akakce.xml"
+    );
+  }
+
+  async function copyFeedUrl(noteEl) {
+    const url = resolveFeedUrl();
+    const input =
+      document.getElementById("feedUrl") ||
+      document.getElementById("dashboardFeedUrl");
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else if (input) {
+        input.focus();
+        input.select();
+        document.execCommand("copy");
+      } else {
+        throw new Error("clipboard unavailable");
+      }
+      note(noteEl, "ok", "Akakçe XML bağlantısı kopyalandı.");
+    } catch (_) {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      note(noteEl, "err", "Bağlantı kopyalanamadı: " + url);
+    }
+  }
+
+  function syncFeedUrlUi() {
+    const absoluteFeedUrl = resolveFeedUrl();
+    const feedUrlInput = document.getElementById("feedUrl");
+    if (feedUrlInput) {
+      feedUrlInput.value = absoluteFeedUrl;
+    }
+    const feedOpenBtn = document.getElementById("feedOpenBtn");
+    if (feedOpenBtn) feedOpenBtn.href = absoluteFeedUrl;
+
+    const dashUrl = document.getElementById("dashboardFeedUrl");
+    if (dashUrl) dashUrl.value = absoluteFeedUrl;
+    const dashOpen = document.getElementById("dashboardFeedOpenBtn");
+    if (dashOpen) dashOpen.href = absoluteFeedUrl;
+
+    const count = feedStatus ? feedStatus.activeCount || 0 : 0;
+    const dashCount = document.getElementById("dashboardFeedUrlCount");
+    if (dashCount) dashCount.textContent = String(count);
+    const dashStatus = document.getElementById("dashboardFeedUrlStatus");
+    const dashBadge = document.getElementById("dashboardFeedBadge");
+    if (dashStatus) {
+      dashStatus.textContent =
+        count > 0
+          ? count + " ürün yayında"
+          : "Feed hazır · henüz uygun ürün yok";
+    }
+    if (dashBadge) {
+      dashBadge.className = "admin-status " + (count > 0 ? "on" : "pending");
+      dashBadge.textContent = count > 0 ? "Yayında" : "Hazır";
+    }
+  }
+
   function updateDashboard() {
     const activeManual = products.filter((item) => item.active !== false).length;
     const activeSupplier = supplierProducts.filter((item) => item.active).length;
@@ -795,6 +858,7 @@
       configuredSlots.length
         ? configuredSlots.map((slot) => "%" + slot.globalMarginPercent).join(" · ")
         : "%15";
+    syncFeedUrlUi();
   }
 
   function renderSupplierStatus() {
@@ -882,10 +946,7 @@
         }
       }
     }
-    const absoluteFeedUrl =
-      (feedStatus && feedStatus.publicUrl) || location.origin + "/api/feeds/akakce.xml";
-    document.getElementById("feedUrl").textContent = absoluteFeedUrl;
-    document.getElementById("feedOpenBtn").href = absoluteFeedUrl;
+    syncFeedUrlUi();
     updateDashboard();
   }
 
@@ -1255,15 +1316,20 @@
     });
   });
 
-  document.getElementById("feedCopyBtn").addEventListener("click", async () => {
-    const url =
-      (feedStatus && feedStatus.publicUrl) || location.origin + "/api/feeds/akakce.xml";
-    try {
-      await navigator.clipboard.writeText(url);
-      note(document.getElementById("feedNote"), "ok", "Akakçe XML bağlantısı kopyalandı.");
-    } catch (_) {
-      note(document.getElementById("feedNote"), "err", "Bağlantı kopyalanamadı: " + url);
-    }
+  document.getElementById("feedCopyBtn").addEventListener("click", () => {
+    copyFeedUrl(document.getElementById("feedNote"));
+  });
+  const dashboardFeedCopyBtn = document.getElementById("dashboardFeedCopyBtn");
+  if (dashboardFeedCopyBtn) {
+    dashboardFeedCopyBtn.addEventListener("click", () => {
+      copyFeedUrl(document.getElementById("dashboardFeedNote"));
+    });
+  }
+  ["feedUrl", "dashboardFeedUrl"].forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.addEventListener("focus", () => input.select());
+    input.addEventListener("click", () => input.select());
   });
 
   document.getElementById("supplierSelectAll").addEventListener("change", (ev) => {

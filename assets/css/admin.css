@@ -221,7 +221,28 @@
   background: var(--brand-soft);
 }
 .admin-feed-box span { color: var(--muted); font-size: 0.75rem; }
-.admin-feed-box code { color: var(--brand-deep); font-size: 0.88rem; overflow-wrap: anywhere; }
+.admin-feed-box code,
+.admin-feed-url-input {
+  color: var(--brand-deep);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.admin-feed-url-input {
+  width: 100%;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 12px;
+  color: var(--ink);
+}
+.admin-feed-url-input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.admin-akakce-card .admin-form-actions {
+  margin-top: 12px;
+}
 .admin-feed-warning {
   margin-top: 14px;
   padding: 11px 12px;
