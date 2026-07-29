@@ -284,6 +284,7 @@
     const tabs = Array.from(document.querySelectorAll(".admin-nav > [data-admin-tab]"));
     const pageMeta = {
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
+      calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
     };
@@ -320,6 +321,7 @@
     if (newProductBtn && name !== "products") newProductBtn.hidden = true;
     if (name === "xml" && token) loadSupplierData().catch(() => {});
     if (name === "overview" && token) loadDigitalDashboard().catch(() => {});
+    if (name === "calendar" && token) loadCalendarMonth().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -353,7 +355,7 @@
   let initialAdminTab = "overview";
   try {
     const saved = sessionStorage.getItem("patygo_admin_tab");
-    if (["overview", "products", "xml"].includes(saved)) initialAdminTab = saved;
+    if (["overview", "calendar", "products", "xml"].includes(saved)) initialAdminTab = saved;
   } catch (_) {}
   selectAdminTab(initialAdminTab, false);
 
@@ -1571,7 +1573,7 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       showPanel(true);
-      await Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard()]);
+      await Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth()]);
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {
@@ -1741,6 +1743,260 @@
     }
   });
 
+  const calendarGrid = document.getElementById("calendarGrid");
+  const calendarMonthLabel = document.getElementById("calendarMonthLabel");
+  const calendarSelectedLabel = document.getElementById("calendarSelectedLabel");
+  const calendarEntryList = document.getElementById("calendarEntryList");
+  const calendarEntryForm = document.getElementById("calendarEntryForm");
+  const calendarNote = document.getElementById("calendarNote");
+  const calendarEditId = document.getElementById("calendarEditId");
+  const calendarEntryType = document.getElementById("calendarEntryType");
+  const calendarEntryTime = document.getElementById("calendarEntryTime");
+  const calendarEntryTitle = document.getElementById("calendarEntryTitle");
+  const calendarEntryBody = document.getElementById("calendarEntryBody");
+  const calendarDeleteBtn = document.getElementById("calendarDeleteBtn");
+
+  let calendarCursor = new Date();
+  calendarCursor.setDate(1);
+  calendarCursor.setHours(12, 0, 0, 0);
+  let calendarSelectedDate = toIsoDate(new Date());
+  let calendarEntries = [];
+
+  function toIsoDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  }
+
+  function parseIsoDate(value) {
+    const parts = String(value || "").split("-").map(Number);
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return new Date();
+    return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0, 0);
+  }
+
+  function monthBounds(cursor) {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const from = toIsoDate(new Date(year, month, 1, 12));
+    const to = toIsoDate(new Date(year, month + 1, 0, 12));
+    return { from, to };
+  }
+
+  function resetCalendarForm() {
+    if (!calendarEntryForm) return;
+    calendarEditId.value = "";
+    calendarEntryType.value = "reminder";
+    calendarEntryTime.value = "";
+    calendarEntryTitle.value = "";
+    calendarEntryBody.value = "";
+    if (calendarDeleteBtn) calendarDeleteBtn.hidden = true;
+    note(calendarNote, "", "");
+  }
+
+  function fillCalendarForm(entry) {
+    calendarEditId.value = entry.id || "";
+    calendarEntryType.value = entry.type === "note" ? "note" : "reminder";
+    calendarEntryTime.value = entry.time || "";
+    calendarEntryTitle.value = entry.title || "";
+    calendarEntryBody.value = entry.body || "";
+    if (calendarDeleteBtn) calendarDeleteBtn.hidden = !entry.id;
+  }
+
+  function entriesForDate(dateKey) {
+    return calendarEntries.filter((entry) => entry.date === dateKey);
+  }
+
+  function renderCalendarEntries() {
+    if (!calendarEntryList || !calendarSelectedLabel) return;
+    const day = parseIsoDate(calendarSelectedDate);
+    calendarSelectedLabel.textContent = day.toLocaleDateString("tr-TR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    calendarEntryList.textContent = "";
+    const dayEntries = entriesForDate(calendarSelectedDate);
+    if (!dayEntries.length) {
+      const empty = document.createElement("li");
+      empty.className = "admin-table-empty";
+      empty.textContent = "Bu gün için kayıt yok. Aşağıdan ekleyin.";
+      calendarEntryList.appendChild(empty);
+      return;
+    }
+    dayEntries.forEach((entry) => {
+      const item = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "admin-calendar-entry" +
+        (calendarEditId && calendarEditId.value === entry.id ? " is-active" : "") +
+        (entry.done ? " is-done" : "");
+      const badge = document.createElement("span");
+      badge.className = "admin-calendar-badge " + (entry.type === "note" ? "note" : "reminder");
+      badge.textContent = entry.type === "note" ? "Not" : "Hatırlatıcı";
+      const strong = document.createElement("strong");
+      strong.textContent = entry.title;
+      const small = document.createElement("small");
+      small.textContent =
+        (entry.time ? entry.time + " · " : "") +
+        (entry.body ? entry.body.slice(0, 80) : "Detay yok");
+      btn.appendChild(badge);
+      btn.appendChild(strong);
+      btn.appendChild(small);
+      btn.addEventListener("click", () => {
+        fillCalendarForm(entry);
+        renderCalendarEntries();
+      });
+      item.appendChild(btn);
+      calendarEntryList.appendChild(item);
+    });
+  }
+
+  function renderCalendarGrid() {
+    if (!calendarGrid || !calendarMonthLabel) return;
+    const year = calendarCursor.getFullYear();
+    const month = calendarCursor.getMonth();
+    calendarMonthLabel.textContent = calendarCursor.toLocaleDateString("tr-TR", {
+      month: "long",
+      year: "numeric",
+    });
+    const first = new Date(year, month, 1, 12);
+    const startOffset = (first.getDay() + 6) % 7; // Monday-first
+    const start = new Date(year, month, 1 - startOffset, 12);
+    const todayKey = toIsoDate(new Date());
+    calendarGrid.textContent = "";
+    for (let i = 0; i < 42; i += 1) {
+      const cellDate = new Date(start);
+      cellDate.setDate(start.getDate() + i);
+      const key = toIsoDate(cellDate);
+      const inMonth = cellDate.getMonth() === month;
+      const dayEntries = entriesForDate(key);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "admin-calendar-day" +
+        (inMonth ? "" : " is-muted") +
+        (key === todayKey ? " is-today" : "") +
+        (key === calendarSelectedDate ? " is-selected" : "");
+      btn.setAttribute("role", "gridcell");
+      btn.setAttribute("aria-label", key);
+      const num = document.createElement("span");
+      num.className = "admin-calendar-day-num";
+      num.textContent = String(cellDate.getDate());
+      btn.appendChild(num);
+      if (dayEntries.length) {
+        const dots = document.createElement("span");
+        dots.className = "admin-calendar-dots";
+        const shown = dayEntries.slice(0, 4);
+        shown.forEach((entry) => {
+          const dot = document.createElement("span");
+          dot.className = "admin-calendar-dot " + (entry.type === "note" ? "note" : "reminder");
+          dots.appendChild(dot);
+        });
+        btn.appendChild(dots);
+        if (dayEntries.length > 1) {
+          const count = document.createElement("span");
+          count.className = "admin-calendar-day-count";
+          count.textContent = dayEntries.length + " kayıt";
+          btn.appendChild(count);
+        }
+      }
+      btn.addEventListener("click", () => {
+        calendarSelectedDate = key;
+        resetCalendarForm();
+        renderCalendarGrid();
+        renderCalendarEntries();
+      });
+      calendarGrid.appendChild(btn);
+    }
+  }
+
+  async function loadCalendarMonth() {
+    if (!calendarGrid) return;
+    const { from, to } = monthBounds(calendarCursor);
+    const data = await api(
+      "/api/admin/calendar?from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to)
+    );
+    calendarEntries = Array.isArray(data.entries) ? data.entries : [];
+    const selectedMonth = calendarSelectedDate.slice(0, 7);
+    const cursorMonth =
+      calendarCursor.getFullYear() +
+      "-" +
+      String(calendarCursor.getMonth() + 1).padStart(2, "0");
+    if (selectedMonth !== cursorMonth) {
+      calendarSelectedDate = from;
+    }
+    renderCalendarGrid();
+    renderCalendarEntries();
+  }
+
+  if (calendarEntryForm) {
+    document.getElementById("calendarPrevMonth").addEventListener("click", () => {
+      calendarCursor.setMonth(calendarCursor.getMonth() - 1);
+      loadCalendarMonth().catch((err) => note(calendarNote, "err", err.message || "Yüklenemedi"));
+    });
+    document.getElementById("calendarNextMonth").addEventListener("click", () => {
+      calendarCursor.setMonth(calendarCursor.getMonth() + 1);
+      loadCalendarMonth().catch((err) => note(calendarNote, "err", err.message || "Yüklenemedi"));
+    });
+    document.getElementById("calendarTodayBtn").addEventListener("click", () => {
+      const now = new Date();
+      calendarCursor = new Date(now.getFullYear(), now.getMonth(), 1, 12);
+      calendarSelectedDate = toIsoDate(now);
+      resetCalendarForm();
+      loadCalendarMonth().catch((err) => note(calendarNote, "err", err.message || "Yüklenemedi"));
+    });
+    document.getElementById("calendarResetBtn").addEventListener("click", () => {
+      resetCalendarForm();
+      renderCalendarEntries();
+    });
+    calendarDeleteBtn.addEventListener("click", async () => {
+      const id = calendarEditId.value;
+      if (!id) return;
+      if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+      try {
+        await api("/api/admin/calendar/" + id, { method: "DELETE" });
+        resetCalendarForm();
+        await loadCalendarMonth();
+        note(calendarNote, "ok", "Kayıt silindi.");
+      } catch (err) {
+        note(calendarNote, "err", err.message || "Silinemedi");
+      }
+    });
+    calendarEntryForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const payload = {
+        date: calendarSelectedDate,
+        type: calendarEntryType.value,
+        title: calendarEntryTitle.value.trim(),
+        body: calendarEntryBody.value.trim(),
+        time: calendarEntryTime.value || null,
+      };
+      try {
+        const editId = calendarEditId.value;
+        if (editId) {
+          await api("/api/admin/calendar/" + editId, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          });
+          note(calendarNote, "ok", "Kayıt güncellendi.");
+        } else {
+          await api("/api/admin/calendar", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          note(calendarNote, "ok", "Kayıt eklendi.");
+        }
+        resetCalendarForm();
+        await loadCalendarMonth();
+      } catch (err) {
+        note(calendarNote, "err", err.message || "Kaydedilemedi");
+      }
+    });
+  }
+
   const savedPeriod = readSavedPeriod();
   syncPeriodInputs(savedPeriod.from, savedPeriod.to);
 
@@ -1765,7 +2021,7 @@
 
   if (token) {
     showPanel(true);
-    Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard()]).catch(() => {
+    Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth()]).catch(() => {
       endSession("Oturum geçersiz. Tekrar giriş yapın.");
     });
   }

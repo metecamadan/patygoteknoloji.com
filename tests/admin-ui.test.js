@@ -45,6 +45,21 @@ test("manual product form opens in a modal over full-width catalog", () => {
   assert.match(script, /newProductBtn[\s\S]*openProductModal/);
 });
 
+test("admin calendar tab supports reminders and notes", () => {
+  assert.match(html, /id="calendarTab"/);
+  assert.match(html, /id="adminTabCalendar"/);
+  assert.match(html, /id="calendarGrid"/);
+  assert.match(html, /id="calendarEntryForm"/);
+  assert.match(html, /id="calendarEntryType"/);
+  assert.match(html, /value="reminder"/);
+  assert.match(html, /value="note"/);
+  assert.match(css, /\.admin-calendar-shell/);
+  assert.match(css, /\.admin-calendar-grid/);
+  assert.match(script, /loadCalendarMonth/);
+  assert.match(script, /\/api\/admin\/calendar/);
+  assert.match(script, /"calendar"/);
+});
+
 test("admin exposes three XML connections and source-specific margins", () => {
   assert.equal((html.match(/data-supplier-card="supplier-/g) || []).length, 3);
   assert.match(html, /id="supplierSlotFilter"/);

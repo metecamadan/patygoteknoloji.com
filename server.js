@@ -28,6 +28,7 @@ const {
   publicPosStatus,
 } = require("./lib/akbank-pos");
 const { createOrderStore } = require("./lib/orders");
+const { createCalendarStore } = require("./lib/calendar");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
 const {
   createContactStore,
@@ -108,6 +109,7 @@ const supplierManager = createMultiSupplierManager(ROOT, {
 });
 const analyticsStore = createAnalyticsStore(ROOT);
 const orderStore = createOrderStore(ROOT);
+const calendarStore = createCalendarStore(ROOT);
 const contactStore = createContactStore(ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
@@ -896,6 +898,43 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, { ok: true, url: "/assets/img/products/" + name });
     } catch (err) {
       return json(res, 400, { ok: false, error: err.message || "Yükleme başarısız" });
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/calendar") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const from = requestUrl.searchParams.get("from");
+    const to = requestUrl.searchParams.get("to");
+    return json(res, 200, { ok: true, entries: calendarStore.list(from, to) });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/calendar") {
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const entry = calendarStore.create(body);
+      return json(res, 200, { ok: true, entry });
+    } catch (err) {
+      return json(res, 400, { ok: false, error: err.message || "Kayıt başarısız" });
+    }
+  }
+
+  const calendarEntryMatch = /^\/api\/admin\/calendar\/([a-f0-9]{16})$/.exec(urlPath);
+  if (calendarEntryMatch) {
+    const entryId = calendarEntryMatch[1];
+    if (req.method === "PUT") {
+      try {
+        const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+        const entry = calendarStore.update(entryId, body);
+        if (!entry) return json(res, 404, { ok: false, error: "Kayıt bulunamadı" });
+        return json(res, 200, { ok: true, entry });
+      } catch (err) {
+        return json(res, 400, { ok: false, error: err.message || "Güncelleme başarısız" });
+      }
+    }
+    if (req.method === "DELETE") {
+      const removed = calendarStore.remove(entryId);
+      if (!removed) return json(res, 404, { ok: false, error: "Kayıt bulunamadı" });
+      return json(res, 200, { ok: true });
     }
   }
 

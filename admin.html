@@ -37,6 +37,7 @@
         </a>
         <nav class="admin-nav" aria-label="Admin bölümleri">
           <button type="button" class="admin-nav-item active" id="overviewTab" aria-current="page" aria-controls="adminTabOverview" data-admin-tab="overview"><span class="admin-nav-icon">⌂</span>Genel Bakış</button>
+          <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
           <button type="button" class="admin-nav-item" id="productsTab" aria-controls="adminTabProducts" data-admin-tab="products" aria-expanded="false"><span class="admin-nav-icon">▣</span>Ürünler</button>
           <div class="admin-nav-children" id="productsNavChildren" hidden>
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
@@ -196,6 +197,67 @@
               </div>
               <p class="admin-note" id="dashboardFeedNote" role="status"></p>
             </section>
+          </div>
+        </section>
+
+        <section id="adminTabCalendar" class="admin-tab-panel" aria-labelledby="calendarTab" hidden>
+          <div class="admin-page admin-page--flush admin-page--calendar">
+            <div class="admin-calendar-shell">
+              <section class="admin-card admin-calendar-board">
+                <div class="admin-calendar-toolbar">
+                  <div class="admin-calendar-nav">
+                    <button type="button" class="btn btn-outline btn-sm" id="calendarPrevMonth" aria-label="Önceki ay">‹</button>
+                    <h2 id="calendarMonthLabel">—</h2>
+                    <button type="button" class="btn btn-outline btn-sm" id="calendarNextMonth" aria-label="Sonraki ay">›</button>
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" id="calendarTodayBtn">Bugün</button>
+                </div>
+                <div class="admin-calendar-weekdays" aria-hidden="true">
+                  <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span>
+                </div>
+                <div id="calendarGrid" class="admin-calendar-grid" role="grid" aria-labelledby="calendarMonthLabel"></div>
+              </section>
+
+              <aside class="admin-card admin-calendar-side" aria-live="polite">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">GÜN DETAYI</span>
+                    <h2 id="calendarSelectedLabel">Bir gün seçin</h2>
+                  </div>
+                </div>
+                <ul id="calendarEntryList" class="admin-calendar-entries"></ul>
+                <form id="calendarEntryForm" class="admin-form admin-calendar-form">
+                  <input type="hidden" id="calendarEditId" value="" />
+                  <div class="form-row">
+                    <div class="field">
+                      <label for="calendarEntryType">Tür *</label>
+                      <select id="calendarEntryType" required>
+                        <option value="reminder">Hatırlatıcı</option>
+                        <option value="note">Not</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="calendarEntryTime">Saat</label>
+                      <input id="calendarEntryTime" type="time" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="calendarEntryTitle">Başlık *</label>
+                    <input id="calendarEntryTitle" type="text" maxlength="160" required placeholder="Örn. Stok güncellemesi" />
+                  </div>
+                  <div class="field">
+                    <label for="calendarEntryBody">Açıklama</label>
+                    <textarea id="calendarEntryBody" rows="4" maxlength="4000" placeholder="Not veya hatırlatıcı detayı"></textarea>
+                  </div>
+                  <div class="admin-form-actions">
+                    <button type="submit" class="btn btn-primary" id="calendarSaveBtn">Kaydet</button>
+                    <button type="button" class="btn btn-outline" id="calendarResetBtn">Temizle</button>
+                    <button type="button" class="btn btn-ghost" id="calendarDeleteBtn" hidden>Sil</button>
+                  </div>
+                  <p class="admin-note" id="calendarNote" role="status"></p>
+                </form>
+              </aside>
+            </div>
           </div>
         </section>
 
