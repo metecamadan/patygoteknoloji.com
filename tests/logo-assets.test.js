@@ -19,7 +19,8 @@ test("site and admin use the original PNG logo asset", () => {
   assert.doesNotMatch(indexHtml, /patygo-logo-on-dark\.svg/);
 });
 
-test("footer keeps white inverted logo treatment on dark background", () => {
+test("footer uses same PNG logo as header with white invert", () => {
+  assert.match(indexHtml, /footer-brand[\s\S]*patygo-logo\.png/);
   assert.match(styleCss, /footer-brand img[\s\S]{0,220}filter:\s*brightness\(0\)\s*invert\(1\)/);
-  assert.match(styleCss, /content:\s*url\("\.\.\/img\/patygo-logo\.svg"\)/);
+  assert.doesNotMatch(styleCss, /footer-brand img[\s\S]{0,120}content:\s*url\(/);
 });

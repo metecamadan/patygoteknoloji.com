@@ -1413,7 +1413,6 @@ h1, h2, h3, h4 {
   gap: clamp(24px, 4vw, 40px);
 }
 .footer-brand img {
-  content: url("../img/patygo-logo.svg");
   height: 52px;
   width: auto;
   margin-bottom: 14px;
