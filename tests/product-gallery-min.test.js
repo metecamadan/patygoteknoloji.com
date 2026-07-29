@@ -107,6 +107,7 @@ test("PUT /api/admin/products rejects products with fewer than 5 images", async 
           brand: "TEST",
           name: "Eksik Galeri",
           price: 1000,
+          vatPercent: 20,
           category: "bilgisayar",
           images: ["/assets/img/products/macbook-air-m3.svg"],
         },

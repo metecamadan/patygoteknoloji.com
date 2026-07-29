@@ -50,14 +50,29 @@ test("manual feed validation rejects invalid VAT", () => {
   assert.ok(validateManualFeedFields(Object.assign({}, base, { vatPercent: 18 })).includes("KDV"));
 });
 
-test("admin VAT field is a 1/8/10/20 select", () => {
+test("admin VAT field is a required 1/8/10/20 select", () => {
   const html = fs.readFileSync(path.join(root, "admin.html"), "utf8");
   assert.match(html, /id="pVat"/);
-  assert.match(html, /<select id="pVat"/);
+  assert.match(html, /<select id="pVat" required>/);
+  assert.match(html, /value="" selected disabled>Seçiniz</);
   assert.match(html, /value="1"/);
   assert.match(html, /value="8"/);
   assert.match(html, /value="10"/);
   assert.match(html, /value="20"/);
+  assert.doesNotMatch(html, /value="20" selected/);
+});
+
+test("admin client requires VAT before save", () => {
+  const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
+  assert.match(adminJs, /KDV oranı zorunludur/);
+  assert.match(adminJs, /fields\.vat\.value = ""/);
+  assert.match(adminJs, /vatOk/);
+});
+
+test("admin products API rejects missing or invalid VAT before save", () => {
+  const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  assert.match(serverJs, /isAllowedVatPercent\(item && item\.vatPercent\)/);
+  assert.match(serverJs, /KDV oranı zorunludur \(1, 8, 10 veya 20\)/);
 });
 
 test("storefront shows KDV dahil prices", () => {

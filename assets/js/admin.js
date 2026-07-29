@@ -90,13 +90,16 @@
     ];
     const feedReady = requiredText.every((el) => el && String(el.value || "").trim() !== "");
     const priceOk = Number(fields.price && fields.price.value) > 0;
-    const ready = imagesReady && feedReady && priceOk;
+    const vatOk = [1, 8, 10, 20].includes(Number(fields.vat && fields.vat.value));
+    const ready = imagesReady && feedReady && priceOk && vatOk;
     saveProductBtn.disabled = !ready;
     saveProductBtn.title = ready
       ? ""
       : !imagesReady
         ? "Kaydetmek için en az " + MIN_PRODUCT_IMAGES + " görsel yükleyin"
-        : "Feed için zorunlu alanları doldurun";
+        : !vatOk
+          ? "KDV oranı seçin (1, 8, 10 veya 20)"
+          : "Feed için zorunlu alanları doldurun";
   }
   const loginView = document.getElementById("loginView");
   const panelView = document.getElementById("panelView");
@@ -416,7 +419,7 @@
     fields.gtip.value = "";
     fields.specialCode.value = "";
     fields.stock.value = "0";
-    fields.vat.value = "20";
+    fields.vat.value = "";
     fields.currency.value = "TRY";
     fields.unit.value = "ADET";
     applyCategoryDefaults(true);
@@ -449,7 +452,7 @@
     fields.stock.value = Number.isFinite(Number(p.stockQty)) ? Number(p.stockQty) : 0;
     fields.vat.value = [1, 8, 10, 20].includes(Number(p.vatPercent))
       ? String(Number(p.vatPercent))
-      : "20";
+      : "";
     fields.currency.value = p.currency || "TRY";
     fields.unit.value = p.unit || "ADET";
     fields.mainCategory.value = p.mainCategory || "";
@@ -1591,6 +1594,13 @@
       syncSaveButtonState();
       return;
     }
+    const vatPercent = Number(fields.vat.value);
+    if (![1, 8, 10, 20].includes(vatPercent)) {
+      note(formNote, "err", "KDV oranı zorunludur. 1, 8, 10 veya 20 seçin.");
+      if (fields.vat) fields.vat.focus();
+      syncSaveButtonState();
+      return;
+    }
     const item = {
       id: fields.id.value.trim(),
       brand: fields.brand.value.trim(),
@@ -1608,7 +1618,7 @@
       gtipCode: fields.gtip.value.trim(),
       specialCode: fields.specialCode.value.trim(),
       stockQty: Number(fields.stock.value),
-      vatPercent: Number(fields.vat.value),
+      vatPercent,
       currency: fields.currency.value,
       unit: fields.unit.value.trim() || "ADET",
       mainCategory: fields.mainCategory.value.trim(),

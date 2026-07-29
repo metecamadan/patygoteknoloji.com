@@ -16,6 +16,7 @@ const {
   CATEGORY_FEED_DEFAULTS,
   validateManualFeedFields,
   normalizeVatPercent,
+  isAllowedVatPercent,
   vatAmountFromNet,
 } = require("./lib/product-fields");
 const { createAnalyticsStore } = require("./lib/analytics");
@@ -831,6 +832,13 @@ async function handleApi(req, res, urlPath) {
       const seen = new Set();
       const normalized = [];
       for (const item of list) {
+        if (!isAllowedVatPercent(item && item.vatPercent)) {
+          const label = String((item && (item.name || item.id)) || "Ürün");
+          return json(res, 422, {
+            ok: false,
+            error: label + ": KDV oranı zorunludur (1, 8, 10 veya 20).",
+          });
+        }
         const p = normalizeProduct(item);
         if (!p.id || !p.name || !p.brand) continue;
         if (seen.has(p.id)) continue;
