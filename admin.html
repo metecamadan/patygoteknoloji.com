@@ -202,14 +202,13 @@
         <section id="adminTabProducts" class="admin-tab-panel" aria-labelledby="productsTab" hidden>
           <div class="admin-page">
             <div class="admin-page-head">
-              <div><h2>Ürünler</h2><p>Manuel ve XML ürünlerini ayrı alanlardan yönetin.</p></div>
+              <div>
+                <h2 id="productsPageTitle">Manuel Ürünler</h2>
+                <p id="productsPageSubtitle">Katalogdaki manuel ürünleri ekleyin ve düzenleyin.</p>
+              </div>
               <button type="button" class="btn btn-primary" id="newProductBtn">+ Yeni Ürün</button>
             </div>
-            <nav class="admin-subtabs" aria-label="Ürün kaynakları" role="tablist">
-              <button type="button" class="admin-subtab active" id="manualProductsSubtab" role="tab" aria-selected="true" aria-controls="manualProductsView" data-products-view="manual">Manuel Ürünler</button>
-              <button type="button" class="admin-subtab" id="xmlProductsSubtab" role="tab" aria-selected="false" aria-controls="xmlProductsView" data-products-view="xml">XML Ürünleri</button>
-            </nav>
-            <section id="manualProductsView" class="admin-products-view" role="tabpanel" aria-labelledby="manualProductsSubtab">
+            <section id="manualProductsView" class="admin-products-view" aria-labelledby="manualProductsNav">
             <div class="admin-product-toolbar">
               <label class="admin-search"><span aria-hidden="true">⌕</span><input id="productSearch" type="search" placeholder="Ürün, marka veya kod ara" /></label>
               <select id="productCategoryFilter" aria-label="Kategori filtresi"><option value="">Tüm kategoriler</option><option value="bilgisayar">Bilgisayar</option><option value="yazici">Yazıcı</option><option value="kucuk-ev">Küçük Ev Aletleri</option><option value="beyaz-esya">Beyaz Eşya</option></select>
@@ -349,7 +348,7 @@
       </div>
             </section>
 
-            <section id="xmlProductsView" class="admin-products-view" role="tabpanel" aria-labelledby="xmlProductsSubtab" hidden>
+            <section id="xmlProductsView" class="admin-products-view" aria-labelledby="xmlProductsNav" hidden>
               <section class="admin-card admin-supplier-catalog">
                 <div class="admin-card-head">
                   <div><span class="admin-eyebrow">XML ÜRÜNLERİ</span><h2>Tedarikçi ürün havuzu</h2><span class="admin-list-count" id="supplierVisibleCount">0 ürün</span></div>

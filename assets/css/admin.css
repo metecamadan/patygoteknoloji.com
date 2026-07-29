@@ -569,25 +569,6 @@
 }
 .admin-page-head h2 { font-size: 1.25rem; }
 .admin-page-head p { margin-top: 5px; color: var(--muted); font-size: 0.84rem; }
-.admin-subtabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-.admin-subtab {
-  min-height: 38px;
-  padding: 8px 16px;
-  border-radius: 7px;
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-.admin-subtab:hover { color: var(--ink); background: #f8fafc; }
-.admin-subtab.active { color: #fff; background: var(--brand); }
 .admin-products-view[hidden] { display: none !important; }
 .admin-kpis {
   display: grid;

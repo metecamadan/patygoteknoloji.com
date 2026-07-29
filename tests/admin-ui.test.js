@@ -14,16 +14,17 @@ test("admin markup has unique element IDs", () => {
 });
 
 test("products tab separates manual and XML product areas", () => {
-  assert.match(html, /id="manualProductsSubtab"/);
-  assert.match(html, /id="xmlProductsSubtab"/);
   assert.match(html, /id="manualProductsView"/);
   assert.match(html, /id="xmlProductsView"/);
   assert.match(html, /id="productsNavChildren"/);
   assert.match(html, /id="manualProductsNav"/);
   assert.match(html, /id="xmlProductsNav"/);
+  assert.match(html, /id="productsPageTitle"/);
+  assert.doesNotMatch(html, /admin-subtabs|manualProductsSubtab|xmlProductsSubtab/);
   assert.match(script, /selectProductsView/);
   assert.match(script, /productsNavChildren/);
   assert.match(script, /\.admin-nav > \[data-admin-tab\]/);
+  assert.doesNotMatch(script, /\.admin-subtabs/);
 });
 
 test("admin exposes three XML connections and source-specific margins", () => {

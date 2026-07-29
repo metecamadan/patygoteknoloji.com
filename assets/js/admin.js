@@ -266,8 +266,12 @@
     const tabs = Array.from(document.querySelectorAll(".admin-nav > [data-admin-tab]"));
     const pageMeta = {
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
-      products: ["Ürünler", "Manuel ve XML ürünlerini alt menüden yönetin."],
+      products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
+    };
+    const productsMeta = {
+      manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
+      xml: ["XML Ürünleri", "Tedarikçi XML havuzundaki ürünleri yönetin."],
     };
     tabs.forEach((tab) => {
       const selected = tab.dataset.adminTab === name;
@@ -283,7 +287,15 @@
     const productsTabBtn = document.getElementById("productsTab");
     if (productsChildren) productsChildren.hidden = name !== "products";
     if (productsTabBtn) productsTabBtn.setAttribute("aria-expanded", String(name === "products"));
-    const meta = pageMeta[name] || pageMeta.overview;
+    let meta = pageMeta[name] || pageMeta.overview;
+    if (name === "products") {
+      let view = "manual";
+      try {
+        const saved = sessionStorage.getItem("patygo_products_view");
+        if (saved === "manual" || saved === "xml") view = saved;
+      } catch (_) {}
+      meta = productsMeta[view] || productsMeta.manual;
+    }
     document.getElementById("adminPageTitle").textContent = meta[0];
     document.getElementById("adminPageSubtitle").textContent = meta[1];
     if (name === "xml" && token) loadSupplierData().catch(() => {});
@@ -325,44 +337,40 @@
   } catch (_) {}
   selectAdminTab(initialAdminTab, false);
 
-  function selectProductsView(name, focus) {
-    document.querySelectorAll("[data-products-view]").forEach((tab) => {
-      const selected = tab.dataset.productsView === name;
-      tab.classList.toggle("active", selected);
-      if (tab.getAttribute("role") === "tab") {
-        tab.setAttribute("aria-selected", String(selected));
-        tab.tabIndex = selected ? 0 : -1;
-      }
-      const panelId = tab.getAttribute("aria-controls");
-      if (panelId) {
-        const panel = document.getElementById(panelId);
-        if (panel) panel.hidden = !selected;
-      }
-      if (selected && focus && tab.classList.contains("admin-subtab")) tab.focus();
+  function selectProductsView(name) {
+    const view = name === "xml" ? "xml" : "manual";
+    const viewMeta = {
+      manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
+      xml: ["XML Ürünleri", "Tedarikçi XML havuzundaki ürünleri yönetin."],
+    };
+    document.querySelectorAll(".admin-nav-children [data-products-view]").forEach((tab) => {
+      tab.classList.toggle("active", tab.dataset.productsView === view);
     });
-    document.getElementById("newProductBtn").hidden = name !== "manual";
-    if (name === "xml") {
+    const manualView = document.getElementById("manualProductsView");
+    const xmlView = document.getElementById("xmlProductsView");
+    if (manualView) manualView.hidden = view !== "manual";
+    if (xmlView) xmlView.hidden = view !== "xml";
+    const meta = viewMeta[view];
+    const pageTitle = document.getElementById("productsPageTitle");
+    const pageSubtitle = document.getElementById("productsPageSubtitle");
+    if (pageTitle) pageTitle.textContent = meta[0];
+    if (pageSubtitle) pageSubtitle.textContent = meta[1];
+    document.getElementById("adminPageTitle").textContent = meta[0];
+    document.getElementById("adminPageSubtitle").textContent = meta[1];
+    document.getElementById("newProductBtn").hidden = view !== "manual";
+    if (view === "xml") {
       renderSupplierProducts();
       if (token) loadSupplierData().catch(() => {});
     }
     try {
-      sessionStorage.setItem("patygo_products_view", name);
+      sessionStorage.setItem("patygo_products_view", view);
     } catch (_) {}
   }
-
-  document.querySelectorAll(".admin-subtabs [data-products-view]").forEach((tab) => {
-    tab.addEventListener("click", () => selectProductsView(tab.dataset.productsView, false));
-    tab.addEventListener("keydown", (ev) => {
-      if (!["ArrowLeft", "ArrowRight"].includes(ev.key)) return;
-      ev.preventDefault();
-      selectProductsView(tab.dataset.productsView === "manual" ? "xml" : "manual", true);
-    });
-  });
 
   document.querySelectorAll(".admin-nav-children [data-products-view]").forEach((tab) => {
     tab.addEventListener("click", () => {
       selectAdminTab("products", false);
-      selectProductsView(tab.dataset.productsView, false);
+      selectProductsView(tab.dataset.productsView);
     });
   });
 
@@ -372,7 +380,7 @@
       initialProductsView = "xml";
     }
   } catch (_) {}
-  selectProductsView(initialProductsView, false);
+  selectProductsView(initialProductsView);
 
   function renderImagePreviews() {
     imagePreview.textContent = "";
