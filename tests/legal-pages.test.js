@@ -80,3 +80,10 @@ test("return and distance sale contracts exclude cartridge toner battery returns
     assert.match(text, /iade (kabul )?edilmez|iade edilmez/i, label);
   }
 });
+
+test("legal/prose pages use compact hero and section spacing", () => {
+  const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
+  assert.match(css, /\.page-hero:has\(\+\s*\.section\s+\.prose\)/);
+  assert.match(css, /\.page-hero\s*\+\s*\.section:has\(\.prose\)/);
+  assert.match(css, /\.page-hero\s*\+\s*\.section\s+\.prose[\s\S]{0,80}max-width:\s*min\(920px/);
+});
