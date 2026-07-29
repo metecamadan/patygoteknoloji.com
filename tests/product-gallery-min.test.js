@@ -54,12 +54,18 @@ test("admin and server enforce minimum 5 product images", () => {
   assert.match(adminHtml, /id="imageCountHint"/);
   assert.match(adminHtml, /id="saveProductBtn"/);
   assert.match(adminHtml, /Manuel ürün eklerken/);
+  assert.match(adminHtml, /id="pBarcode"/);
+  assert.match(adminHtml, /id="pManufacturerCode"/);
+  assert.match(adminHtml, /id="pMainCategory"/);
+  assert.match(adminHtml, /id="pStock"/);
   assert.match(adminJs, /MIN_PRODUCT_IMAGES\s*=\s*5/);
   assert.match(adminJs, /assertManualProductsHaveGallery/);
   assert.match(adminJs, /syncSaveButtonState/);
+  assert.match(adminJs, /CATEGORY_FEED_DEFAULTS/);
   assert.match(adminJs, /panelden manuel/);
   assert.match(serverJs, /MIN_PRODUCT_IMAGES\s*=\s*5/);
   assert.match(serverJs, /images\.length < MIN_PRODUCT_IMAGES/);
+  assert.match(serverJs, /validateManualFeedFields/);
   assert.match(checkoutJs, /has-image/);
   assert.match(checkoutJs, /product\.images/);
 });

@@ -16,7 +16,18 @@
       "/assets/img/products/macbook-air-m3-5.svg"
     ],
     "featured": true,
-    "active": true
+    "active": true,
+    "manufacturerCode": "MACBOOKAIRM3",
+    "barcode": "8691000000000",
+    "gtipCode": "84.71.30.00.00.00",
+    "specialCode": "bilgisayar",
+    "mainCategory": "KİŞİSEL BİLGİSAYARLAR",
+    "midCategory": "Taşınabilir Bilgisayarlar",
+    "subCategory": "Notebooklar",
+    "stockQty": 25,
+    "vatPercent": 20,
+    "currency": "TRY",
+    "unit": "ADET"
   },
   {
     "id": "thinkpad-e16",
@@ -35,7 +46,18 @@
       "/assets/img/products/thinkpad-e16-5.svg"
     ],
     "featured": true,
-    "active": true
+    "active": true,
+    "manufacturerCode": "THINKPADE16",
+    "barcode": "8691000000001",
+    "gtipCode": "84.71.30.00.00.00",
+    "specialCode": "bilgisayar",
+    "mainCategory": "KİŞİSEL BİLGİSAYARLAR",
+    "midCategory": "Taşınabilir Bilgisayarlar",
+    "subCategory": "Notebooklar",
+    "stockQty": 25,
+    "vatPercent": 20,
+    "currency": "TRY",
+    "unit": "ADET"
   },
   {
     "id": "probook-450",
@@ -54,7 +76,18 @@
       "/assets/img/products/probook-450-5.svg"
     ],
     "featured": true,
-    "active": true
+    "active": true,
+    "manufacturerCode": "PROBOOK450",
+    "barcode": "8691000000002",
+    "gtipCode": "84.71.30.00.00.00",
+    "specialCode": "bilgisayar",
+    "mainCategory": "KİŞİSEL BİLGİSAYARLAR",
+    "midCategory": "Taşınabilir Bilgisayarlar",
+    "subCategory": "Notebooklar",
+    "stockQty": 25,
+    "vatPercent": 20,
+    "currency": "TRY",
+    "unit": "ADET"
   },
   {
     "id": "epson-l3560",
@@ -73,7 +106,18 @@
       "/assets/img/products/epson-l3560-5.svg"
     ],
     "featured": true,
-    "active": true
+    "active": true,
+    "manufacturerCode": "EPSONL3560",
+    "barcode": "8691000000003",
+    "gtipCode": "84.43.32.10.00.00",
+    "specialCode": "yazici",
+    "mainCategory": "YAZICILAR VE ÇEVRE BİRİMLERİ",
+    "midCategory": "Yazıcılar",
+    "subCategory": "Ofis Yazıcıları",
+    "stockQty": 25,
+    "vatPercent": 20,
+    "currency": "TRY",
+    "unit": "ADET"
   },
   {
     "id": "arcelik-9103",
@@ -92,7 +136,18 @@
       "/assets/img/products/arcelik-9103-5.svg"
     ],
     "featured": true,
-    "active": true
+    "active": true,
+    "manufacturerCode": "ARCELIK9103",
+    "barcode": "8691000000004",
+    "gtipCode": "84.18.10.00.00.00",
+    "specialCode": "beyaz-esya",
+    "mainCategory": "BEYAZ EŞYA",
+    "midCategory": "Soğutma",
+    "subCategory": "Buzdolabı",
+    "stockQty": 25,
+    "vatPercent": 20,
+    "currency": "TRY",
+    "unit": "ADET"
   },
   {
     "id": "hp-m404dn",
@@ -111,6 +166,17 @@
       "/assets/img/products/hp-m404dn-5.svg"
     ],
     "featured": true,
-    "active": true
+    "active": true,
+    "manufacturerCode": "HPM404DN",
+    "barcode": "8691000000005",
+    "gtipCode": "84.43.32.10.00.00",
+    "specialCode": "yazici",
+    "mainCategory": "YAZICILAR VE ÇEVRE BİRİMLERİ",
+    "midCategory": "Yazıcılar",
+    "subCategory": "Ofis Yazıcıları",
+    "stockQty": 25,
+    "vatPercent": 20,
+    "currency": "TRY",
+    "unit": "ADET"
   }
 ]

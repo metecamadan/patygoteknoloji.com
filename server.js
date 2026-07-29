@@ -12,6 +12,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { mergeCatalogProducts, toPublicProduct } = require("./lib/catalog");
+const { CATEGORY_FEED_DEFAULTS, validateManualFeedFields } = require("./lib/product-fields");
 const { createAnalyticsStore } = require("./lib/analytics");
 const {
   createAkbankConfig,
@@ -394,6 +395,9 @@ function normalizeProduct(p, fallbackId) {
     .filter(Boolean)
     .slice(0, MAX_PRODUCT_IMAGES);
   if (legacyImage && !images.includes(legacyImage)) images.unshift(legacyImage);
+  const tree = CATEGORY_FEED_DEFAULTS[category] || CATEGORY_FEED_DEFAULTS.bilgisayar;
+  const vatPercent = Number(p.vatPercent);
+  const stockQty = Number(p.stockQty);
   return {
     id,
     brand: String(p.brand || "").trim().toUpperCase().slice(0, 40),
@@ -406,6 +410,17 @@ function normalizeProduct(p, fallbackId) {
     images: images.slice(0, MAX_PRODUCT_IMAGES),
     featured: Boolean(p.featured),
     active: p.active !== false,
+    manufacturerCode: String(p.manufacturerCode || "").trim().slice(0, 80),
+    barcode: String(p.barcode || "").trim().slice(0, 40),
+    gtipCode: String(p.gtipCode || "").trim().slice(0, 40),
+    specialCode: String(p.specialCode || "").trim().slice(0, 40),
+    mainCategory: String(p.mainCategory || tree.mainCategory).trim().slice(0, 80),
+    midCategory: String(p.midCategory || tree.midCategory).trim().slice(0, 80),
+    subCategory: String(p.subCategory || tree.subCategory).trim().slice(0, 80),
+    stockQty: Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0,
+    vatPercent: Number.isFinite(vatPercent) ? Math.max(0, Math.min(100, vatPercent)) : 20,
+    currency: String(p.currency || "TRY").trim().toUpperCase().slice(0, 8) || "TRY",
+    unit: String(p.unit || "ADET").trim().toUpperCase().slice(0, 20) || "ADET",
   };
 }
 
@@ -413,6 +428,7 @@ function mergedProducts(includeInactiveManual) {
   return mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
     includeInactiveManual,
     normalizeProduct,
+    categoryDefaults: CATEGORY_FEED_DEFAULTS,
   });
 }
 
@@ -818,6 +834,16 @@ async function handleApi(req, res, urlPath) {
               " görsel zorunlu (şu an " +
               p.images.length +
               ").",
+          });
+        }
+        const missingFields = validateManualFeedFields(p);
+        if (missingFields.length) {
+          return json(res, 422, {
+            ok: false,
+            error:
+              p.name +
+              ": feed için zorunlu alanlar eksik — " +
+              missingFields.join(", "),
           });
         }
         seen.add(p.id);

@@ -27,27 +27,76 @@
   }
 
   function assertManualProductsHaveGallery(list) {
-    const bad = (list || []).find(
+    const badImages = (list || []).find(
       (product) => countProductImages(product) < MIN_PRODUCT_IMAGES
     );
-    if (!bad) return;
-    throw new Error(
-      (bad.name || bad.id || "Ürün") +
-        ": panelden manuel kayıt için en az " +
-        MIN_PRODUCT_IMAGES +
-        " görsel zorunlu (şu an " +
-        countProductImages(bad) +
-        ")."
-    );
+    if (badImages) {
+      throw new Error(
+        (badImages.name || badImages.id || "Ürün") +
+          ": panelden manuel kayıt için en az " +
+          MIN_PRODUCT_IMAGES +
+          " görsel zorunlu (şu an " +
+          countProductImages(badImages) +
+          ")."
+      );
+    }
+    const badFeed = (list || []).find((product) => {
+      return !(
+        product &&
+        product.id &&
+        product.name &&
+        product.brand &&
+        product.manufacturerCode &&
+        product.barcode &&
+        product.gtipCode &&
+        product.mainCategory &&
+        product.midCategory &&
+        product.subCategory &&
+        Number.isFinite(Number(product.stockQty)) &&
+        Number.isFinite(Number(product.vatPercent)) &&
+        product.currency &&
+        product.unit &&
+        product.description &&
+        Number(product.price) > 0
+      );
+    });
+    if (badFeed) {
+      throw new Error(
+        (badFeed.name || badFeed.id || "Ürün") +
+          ": feed için zorunlu alanlar eksik (barkod, üretici kodu, kategori ağacı, stok, KDV vb.)."
+      );
+    }
   }
 
   function syncSaveButtonState() {
     if (!saveProductBtn) return;
-    const ready = currentImages.filter(Boolean).length >= MIN_PRODUCT_IMAGES;
+    const imagesReady = currentImages.filter(Boolean).length >= MIN_PRODUCT_IMAGES;
+    const requiredText = [
+      fields.id,
+      fields.brand,
+      fields.name,
+      fields.price,
+      fields.manufacturerCode,
+      fields.barcode,
+      fields.gtip,
+      fields.mainCategory,
+      fields.midCategory,
+      fields.subCategory,
+      fields.stock,
+      fields.vat,
+      fields.currency,
+      fields.unit,
+      fields.description,
+    ];
+    const feedReady = requiredText.every((el) => el && String(el.value || "").trim() !== "");
+    const priceOk = Number(fields.price && fields.price.value) > 0;
+    const ready = imagesReady && feedReady && priceOk;
     saveProductBtn.disabled = !ready;
     saveProductBtn.title = ready
       ? ""
-      : "Kaydetmek için en az " + MIN_PRODUCT_IMAGES + " görsel yükleyin";
+      : !imagesReady
+        ? "Kaydetmek için en az " + MIN_PRODUCT_IMAGES + " görsel yükleyin"
+        : "Feed için zorunlu alanları doldurun";
   }
   const loginView = document.getElementById("loginView");
   const panelView = document.getElementById("panelView");
@@ -79,7 +128,48 @@
     imageFile: document.getElementById("pImageFile"),
     featured: document.getElementById("pFeatured"),
     active: document.getElementById("pActive"),
+    manufacturerCode: document.getElementById("pManufacturerCode"),
+    barcode: document.getElementById("pBarcode"),
+    gtip: document.getElementById("pGtip"),
+    specialCode: document.getElementById("pSpecialCode"),
+    stock: document.getElementById("pStock"),
+    vat: document.getElementById("pVat"),
+    currency: document.getElementById("pCurrency"),
+    unit: document.getElementById("pUnit"),
+    mainCategory: document.getElementById("pMainCategory"),
+    midCategory: document.getElementById("pMidCategory"),
+    subCategory: document.getElementById("pSubCategory"),
   };
+
+  const CATEGORY_FEED_DEFAULTS = {
+    bilgisayar: {
+      mainCategory: "KİŞİSEL BİLGİSAYARLAR",
+      midCategory: "Taşınabilir Bilgisayarlar",
+      subCategory: "Notebooklar",
+    },
+    yazici: {
+      mainCategory: "YAZICILAR VE ÇEVRE BİRİMLERİ",
+      midCategory: "Yazıcılar",
+      subCategory: "Ofis Yazıcıları",
+    },
+    "kucuk-ev": {
+      mainCategory: "EV ALETLERİ",
+      midCategory: "Küçük Ev Aletleri",
+      subCategory: "Genel",
+    },
+    "beyaz-esya": {
+      mainCategory: "BEYAZ EŞYA",
+      midCategory: "Soğutma",
+      subCategory: "Buzdolabı",
+    },
+  };
+
+  function applyCategoryDefaults(force) {
+    const tree = CATEGORY_FEED_DEFAULTS[fields.category.value] || CATEGORY_FEED_DEFAULTS.bilgisayar;
+    if (force || !fields.mainCategory.value.trim()) fields.mainCategory.value = tree.mainCategory;
+    if (force || !fields.midCategory.value.trim()) fields.midCategory.value = tree.midCategory;
+    if (force || !fields.subCategory.value.trim()) fields.subCategory.value = tree.subCategory;
+  }
 
   function note(el, type, text) {
     el.classList.remove("ok", "err");
@@ -321,6 +411,15 @@
     fields.category.value = "bilgisayar";
     fields.description.value = "";
     fields.details.value = "";
+    fields.manufacturerCode.value = "";
+    fields.barcode.value = "";
+    fields.gtip.value = "";
+    fields.specialCode.value = "";
+    fields.stock.value = "0";
+    fields.vat.value = "20";
+    fields.currency.value = "TRY";
+    fields.unit.value = "ADET";
+    applyCategoryDefaults(true);
     currentImages = [];
     fields.imageFile.value = "";
     fields.featured.checked = true;
@@ -329,6 +428,7 @@
     renderImagePreviews();
     formTitle.textContent = "Yeni ürün";
     note(formNote, "", "");
+    syncSaveButtonState();
   }
 
   function fillForm(p, index) {
@@ -342,6 +442,18 @@
     fields.category.value = p.category || "bilgisayar";
     fields.description.value = p.description || "";
     fields.details.value = p.details || "";
+    fields.manufacturerCode.value = p.manufacturerCode || "";
+    fields.barcode.value = p.barcode || "";
+    fields.gtip.value = p.gtipCode || "";
+    fields.specialCode.value = p.specialCode || "";
+    fields.stock.value = Number.isFinite(Number(p.stockQty)) ? Number(p.stockQty) : 0;
+    fields.vat.value = Number.isFinite(Number(p.vatPercent)) ? Number(p.vatPercent) : 20;
+    fields.currency.value = p.currency || "TRY";
+    fields.unit.value = p.unit || "ADET";
+    fields.mainCategory.value = p.mainCategory || "";
+    fields.midCategory.value = p.midCategory || "";
+    fields.subCategory.value = p.subCategory || "";
+    applyCategoryDefaults(false);
     currentImages = Array.isArray(p.images)
       ? p.images.filter(Boolean).slice(0, MAX_PRODUCT_IMAGES)
       : p.image
@@ -352,6 +464,7 @@
     formTitle.textContent = "Ürünü düzenle";
     renderImagePreviews();
     note(formNote, "", "");
+    syncSaveButtonState();
   }
 
   function renderList() {
@@ -1420,6 +1533,16 @@
     fields.name.focus();
   });
 
+  fields.category.addEventListener("change", () => {
+    applyCategoryDefaults(true);
+    syncSaveButtonState();
+  });
+  Object.values(fields).forEach((el) => {
+    if (!el || el === fields.imageFile || el === fields.editIndex) return;
+    el.addEventListener("input", syncSaveButtonState);
+    el.addEventListener("change", syncSaveButtonState);
+  });
+
   fields.imageFile.addEventListener("change", async () => {
     const files = Array.from(fields.imageFile.files || []).slice(
       0,
@@ -1476,6 +1599,17 @@
       images: currentImages.slice(0, MAX_PRODUCT_IMAGES),
       featured: fields.featured.checked,
       active: fields.active.checked,
+      manufacturerCode: fields.manufacturerCode.value.trim(),
+      barcode: fields.barcode.value.trim(),
+      gtipCode: fields.gtip.value.trim(),
+      specialCode: fields.specialCode.value.trim(),
+      stockQty: Number(fields.stock.value),
+      vatPercent: Number(fields.vat.value),
+      currency: fields.currency.value,
+      unit: fields.unit.value.trim() || "ADET",
+      mainCategory: fields.mainCategory.value.trim(),
+      midCategory: fields.midCategory.value.trim(),
+      subCategory: fields.subCategory.value.trim(),
     };
     const next = products.slice();
     const idx = Number(fields.editIndex.value);
