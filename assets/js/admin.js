@@ -1792,7 +1792,23 @@
   const calendarEntryTime = document.getElementById("calendarEntryTime");
   const calendarEntryTitle = document.getElementById("calendarEntryTitle");
   const calendarEntryBody = document.getElementById("calendarEntryBody");
+  const calendarEntryEmail = document.getElementById("calendarEntryEmail");
   const calendarDeleteBtn = document.getElementById("calendarDeleteBtn");
+  const CALENDAR_EMAIL_KEY = "patygo_calendar_notify_email";
+
+  function readSavedCalendarEmail() {
+    try {
+      return String(localStorage.getItem(CALENDAR_EMAIL_KEY) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function saveCalendarEmail(email) {
+    try {
+      if (email) localStorage.setItem(CALENDAR_EMAIL_KEY, email);
+    } catch (_) {}
+  }
 
   let calendarCursor = new Date();
   calendarCursor.setDate(1);
@@ -1828,6 +1844,7 @@
     calendarEntryTime.value = "";
     calendarEntryTitle.value = "";
     calendarEntryBody.value = "";
+    if (calendarEntryEmail) calendarEntryEmail.value = readSavedCalendarEmail();
     if (calendarDeleteBtn) calendarDeleteBtn.hidden = true;
     note(calendarNote, "", "");
   }
@@ -1838,6 +1855,9 @@
     calendarEntryTime.value = entry.time || "";
     calendarEntryTitle.value = entry.title || "";
     calendarEntryBody.value = entry.body || "";
+    if (calendarEntryEmail) {
+      calendarEntryEmail.value = entry.notifyEmail || readSavedCalendarEmail();
+    }
     if (calendarDeleteBtn) calendarDeleteBtn.hidden = !entry.id;
   }
 
@@ -2005,28 +2025,47 @@
     });
     calendarEntryForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
+      const notifyEmail = calendarEntryEmail ? calendarEntryEmail.value.trim() : "";
       const payload = {
         date: calendarSelectedDate,
         type: calendarEntryType.value,
         title: calendarEntryTitle.value.trim(),
         body: calendarEntryBody.value.trim(),
         time: calendarEntryTime.value || null,
+        notifyEmail: notifyEmail || null,
       };
+      if (payload.type === "reminder" && !notifyEmail) {
+        note(calendarNote, "err", "Hatırlatıcı için bildirim e-postası gerekli.");
+        if (calendarEntryEmail) calendarEntryEmail.focus();
+        return;
+      }
       try {
         const editId = calendarEditId.value;
+        let result;
         if (editId) {
-          await api("/api/admin/calendar/" + editId, {
+          result = await api("/api/admin/calendar/" + editId, {
             method: "PUT",
             body: JSON.stringify(payload),
           });
           note(calendarNote, "ok", "Kayıt güncellendi.");
         } else {
-          await api("/api/admin/calendar", {
+          result = await api("/api/admin/calendar", {
             method: "POST",
             body: JSON.stringify(payload),
           });
-          note(calendarNote, "ok", "Kayıt eklendi.");
+          if (payload.type === "reminder") {
+            note(
+              calendarNote,
+              "ok",
+              result.mailQueued
+                ? "Kayıt eklendi; " + notifyEmail + " adresine görev maili gönderiliyor."
+                : "Kayıt eklendi."
+            );
+          } else {
+            note(calendarNote, "ok", "Kayıt eklendi.");
+          }
         }
+        if (notifyEmail) saveCalendarEmail(notifyEmail);
         resetCalendarForm();
         await loadCalendarMonth();
         checkBrowserCalendarReminders();

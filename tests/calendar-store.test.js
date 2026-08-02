@@ -14,6 +14,7 @@ test("calendar store creates reminders and notes by date", () => {
     time: "09:30",
     title: "XML güncelle",
     body: "Sabah feed kontrolü",
+    notifyEmail: "ops@patygoteknoloji.com",
   });
   const note = store.create({
     type: "note",
@@ -51,7 +52,18 @@ test("calendar reminders become due inside Istanbul time window", () => {
     date: "2026-07-29",
     time: "14:00",
     title: "Test",
+    notifyEmail: "hatirlat@patygoteknoloji.com",
   });
+  assert.equal(entry.notifyEmail, "hatirlat@patygoteknoloji.com");
+  assert.throws(
+    () =>
+      store.create({
+        type: "reminder",
+        date: "2026-07-29",
+        title: "Mailsiz",
+      }),
+    /e-posta/i
+  );
   const dueAt = new Date("2026-07-29T11:05:00.000Z"); // 14:05 Istanbul (UTC+3)
   assert.equal(isReminderDue(entry, dueAt, 15), true);
   assert.equal(isReminderDue(entry, new Date("2026-07-29T10:50:00.000Z"), 15), false);

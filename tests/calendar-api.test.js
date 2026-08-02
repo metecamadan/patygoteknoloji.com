@@ -67,12 +67,15 @@ test("admin calendar APIs require auth and persist reminders/notes", async (t) =
       time: "14:00",
       title: "Canlı kontrol",
       body: "Deploy sonrası smoke",
+      notifyEmail: "ops@example.com",
     }),
   });
   assert.equal(created.status, 200);
   const createdPayload = await created.json();
   assert.equal(createdPayload.ok, true);
   assert.equal(createdPayload.entry.type, "reminder");
+  assert.equal(createdPayload.entry.notifyEmail, "ops@example.com");
+  assert.equal(createdPayload.mailQueued, true);
   const entryId = createdPayload.entry.id;
 
   const listed = await fetch(

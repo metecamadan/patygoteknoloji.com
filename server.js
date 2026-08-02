@@ -913,7 +913,16 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
       const entry = calendarStore.create(body);
-      return json(res, 200, { ok: true, entry });
+      if (entry.type === "reminder" && entry.notifyEmail) {
+        sendCalendarReminderMail(entry, "created").catch((mailErr) => {
+          console.error("Takvim kayıt maili gönderilemedi:", mailErr.message || mailErr);
+        });
+      }
+      return json(res, 200, {
+        ok: true,
+        entry,
+        mailQueued: entry.type === "reminder" && Boolean(entry.notifyEmail),
+      });
     } catch (err) {
       return json(res, 400, { ok: false, error: err.message || "Kayıt başarısız" });
     }
@@ -1068,27 +1077,43 @@ server.listen(PORT, () => {
   console.log("");
 });
 
+async function sendCalendarReminderMail(entry, kind) {
+  const when = entry.time || "09:00";
+  const isDue = kind === "due";
+  const subject = isDue
+    ? "Görev hatırlatma: " + entry.title
+    : "Görev kaydedildi: " + entry.title;
+  const text = [
+    isDue
+      ? "Patygo Yönetim Paneli — Görev hatırlatma"
+      : "Patygo Yönetim Paneli — Görev hatırlatıcısı kaydedildi",
+    "-------------------------------------------",
+    "Başlık: " + entry.title,
+    "Tarih: " + entry.date,
+    "Saat: " + when + " (Europe/Istanbul)",
+    "Alıcı: " + (entry.notifyEmail || ""),
+    entry.body ? "" : null,
+    entry.body || null,
+    "",
+    isDue
+      ? "Bu görevin hatırlatma saati geldi."
+      : "Hatırlatma saatinde bu adrese yeniden e-posta gönderilecek.",
+    "Panel: https://patygoteknoloji.com/admin",
+  ]
+    .filter((line) => line != null)
+    .join("\n");
+  return deliverSimpleMail({
+    to: entry.notifyEmail,
+    subject,
+    text,
+  });
+}
+
 async function processCalendarReminderEmails() {
   const due = calendarStore.dueForEmail(new Date(), 15);
   for (const entry of due) {
     try {
-      const when = entry.time || "09:00";
-      await deliverSimpleMail({
-        subject: "Takvim hatırlatıcı: " + entry.title,
-        text: [
-          "Patygo Yönetim Paneli — Takvim hatırlatıcısı",
-          "-------------------------------------------",
-          "Başlık: " + entry.title,
-          "Tarih: " + entry.date,
-          "Saat: " + when + " (Europe/Istanbul)",
-          entry.body ? "" : null,
-          entry.body || null,
-          "",
-          "Panel: https://patygoteknoloji.com/admin",
-        ]
-          .filter((line) => line != null)
-          .join("\n"),
-      });
+      await sendCalendarReminderMail(entry, "due");
       calendarStore.markEmailNotified(entry.id);
     } catch (err) {
       console.error("Takvim e-posta hatırlatıcısı gönderilemedi:", err.message || err);
