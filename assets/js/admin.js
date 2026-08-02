@@ -320,6 +320,7 @@
     const pageMeta = {
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
       calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
+      users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
     };
@@ -360,6 +361,7 @@
       loadCalendarMonth().catch(() => {});
       ensureCalendarNotificationPermission().catch(() => {});
     }
+    if (name === "users" && token) loadAdminUsers().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -1604,9 +1606,13 @@
     if (btn) btn.disabled = true;
     note(loginNote, "", "Giriş yapılıyor…");
     try {
+      const emailEl = document.getElementById("loginEmail");
+      const email = emailEl ? String(emailEl.value || "").trim() : "";
+      const payload = { password: document.getElementById("password").value };
+      if (email) payload.email = email;
       const data = await api("/api/admin/login", {
         method: "POST",
-        body: JSON.stringify({ password: document.getElementById("password").value }),
+        body: JSON.stringify(payload),
       });
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
@@ -1792,23 +1798,9 @@
   const calendarEntryTime = document.getElementById("calendarEntryTime");
   const calendarEntryTitle = document.getElementById("calendarEntryTitle");
   const calendarEntryBody = document.getElementById("calendarEntryBody");
-  const calendarEntryEmail = document.getElementById("calendarEntryEmail");
+  const calendarNotifyEmail = document.getElementById("calendarNotifyEmail");
+  const calendarNotifyEmailField = document.getElementById("calendarNotifyEmailField");
   const calendarDeleteBtn = document.getElementById("calendarDeleteBtn");
-  const CALENDAR_EMAIL_KEY = "patygo_calendar_notify_email";
-
-  function readSavedCalendarEmail() {
-    try {
-      return String(localStorage.getItem(CALENDAR_EMAIL_KEY) || "").trim();
-    } catch (_) {
-      return "";
-    }
-  }
-
-  function saveCalendarEmail(email) {
-    try {
-      if (email) localStorage.setItem(CALENDAR_EMAIL_KEY, email);
-    } catch (_) {}
-  }
 
   let calendarCursor = new Date();
   calendarCursor.setDate(1);
@@ -1837,6 +1829,12 @@
     return { from, to };
   }
 
+  function syncCalendarNotifyEmailVisibility() {
+    const isReminder = !calendarEntryType || calendarEntryType.value === "reminder";
+    if (calendarNotifyEmailField) calendarNotifyEmailField.hidden = !isReminder;
+    if (calendarNotifyEmail) calendarNotifyEmail.required = isReminder;
+  }
+
   function resetCalendarForm() {
     if (!calendarEntryForm) return;
     calendarEditId.value = "";
@@ -1844,8 +1842,9 @@
     calendarEntryTime.value = "";
     calendarEntryTitle.value = "";
     calendarEntryBody.value = "";
-    if (calendarEntryEmail) calendarEntryEmail.value = readSavedCalendarEmail();
+    if (calendarNotifyEmail) calendarNotifyEmail.value = "";
     if (calendarDeleteBtn) calendarDeleteBtn.hidden = true;
+    syncCalendarNotifyEmailVisibility();
     note(calendarNote, "", "");
   }
 
@@ -1855,10 +1854,9 @@
     calendarEntryTime.value = entry.time || "";
     calendarEntryTitle.value = entry.title || "";
     calendarEntryBody.value = entry.body || "";
-    if (calendarEntryEmail) {
-      calendarEntryEmail.value = entry.notifyEmail || readSavedCalendarEmail();
-    }
+    if (calendarNotifyEmail) calendarNotifyEmail.value = entry.notifyEmail || "";
     if (calendarDeleteBtn) calendarDeleteBtn.hidden = !entry.id;
+    syncCalendarNotifyEmailVisibility();
   }
 
   function entriesForDate(dateKey) {
@@ -1899,6 +1897,7 @@
       const small = document.createElement("small");
       small.textContent =
         (entry.time ? entry.time + " · " : "") +
+        (entry.notifyEmail ? entry.notifyEmail + " · " : "") +
         (entry.body ? entry.body.slice(0, 80) : "Detay yok");
       btn.appendChild(badge);
       btn.appendChild(strong);
@@ -2025,47 +2024,38 @@
     });
     calendarEntryForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
-      const notifyEmail = calendarEntryEmail ? calendarEntryEmail.value.trim() : "";
       const payload = {
         date: calendarSelectedDate,
         type: calendarEntryType.value,
         title: calendarEntryTitle.value.trim(),
         body: calendarEntryBody.value.trim(),
         time: calendarEntryTime.value || null,
-        notifyEmail: notifyEmail || null,
       };
-      if (payload.type === "reminder" && !notifyEmail) {
-        note(calendarNote, "err", "Hatırlatıcı için bildirim e-postası gerekli.");
-        if (calendarEntryEmail) calendarEntryEmail.focus();
-        return;
+      if (payload.type === "reminder") {
+        payload.notifyEmail = calendarNotifyEmail ? calendarNotifyEmail.value.trim() : "";
       }
       try {
         const editId = calendarEditId.value;
-        let result;
         if (editId) {
-          result = await api("/api/admin/calendar/" + editId, {
+          await api("/api/admin/calendar/" + editId, {
             method: "PUT",
             body: JSON.stringify(payload),
           });
           note(calendarNote, "ok", "Kayıt güncellendi.");
         } else {
-          result = await api("/api/admin/calendar", {
+          const created = await api("/api/admin/calendar", {
             method: "POST",
             body: JSON.stringify(payload),
           });
+          let msg = "Kayıt eklendi.";
           if (payload.type === "reminder") {
-            note(
-              calendarNote,
-              "ok",
-              result.mailQueued
-                ? "Kayıt eklendi; " + notifyEmail + " adresine görev maili gönderiliyor."
-                : "Kayıt eklendi."
-            );
-          } else {
-            note(calendarNote, "ok", "Kayıt eklendi.");
+            if (created && created.mailSent) msg = "Kayıt eklendi; hatırlatma e-postası gönderildi.";
+            else if (created && created.mailError) {
+              msg = "Kayıt eklendi ancak e-posta gönderilemedi: " + created.mailError;
+            }
           }
+          note(calendarNote, created && created.mailError ? "err" : "ok", msg);
         }
-        if (notifyEmail) saveCalendarEmail(notifyEmail);
         resetCalendarForm();
         await loadCalendarMonth();
         checkBrowserCalendarReminders();
@@ -2073,6 +2063,11 @@
         note(calendarNote, "err", err.message || "Kaydedilemedi");
       }
     });
+
+    if (calendarEntryType) {
+      calendarEntryType.addEventListener("change", syncCalendarNotifyEmailVisibility);
+      syncCalendarNotifyEmailVisibility();
+    }
 
     const notifyBtn = document.getElementById("calendarNotifyPermissionBtn");
     if (notifyBtn) {
@@ -2189,6 +2184,126 @@
     document.getElementById("dashRefreshBtn").addEventListener("click", () => {
       loadDigitalDashboard().catch(() => {});
     });
+
+  const adminUserList = document.getElementById("adminUserList");
+  const adminUserForm = document.getElementById("adminUserForm");
+  const adminUsersNote = document.getElementById("adminUsersNote");
+  const adminUserEditId = document.getElementById("adminUserEditId");
+  const adminUserFirstName = document.getElementById("adminUserFirstName");
+  const adminUserLastName = document.getElementById("adminUserLastName");
+  const adminUserEmail = document.getElementById("adminUserEmail");
+  const adminUserPassword = document.getElementById("adminUserPassword");
+
+  function resetAdminUserForm() {
+    if (!adminUserForm) return;
+    adminUserEditId.value = "";
+    adminUserFirstName.value = "";
+    adminUserLastName.value = "";
+    adminUserEmail.value = "";
+    adminUserPassword.value = "";
+    adminUserPassword.required = true;
+    note(adminUsersNote, "", "");
+  }
+
+  function fillAdminUserForm(user) {
+    adminUserEditId.value = user.id || "";
+    adminUserFirstName.value = user.firstName || "";
+    adminUserLastName.value = user.lastName || "";
+    adminUserEmail.value = user.email || "";
+    adminUserPassword.value = "";
+    adminUserPassword.required = false;
+  }
+
+  async function loadAdminUsers() {
+    if (!adminUserList || !token) return;
+    const data = await api("/api/admin/users");
+    const users = (data && data.users) || [];
+    adminUserList.textContent = "";
+    if (!users.length) {
+      const empty = document.createElement("div");
+      empty.className = "admin-table-empty";
+      empty.textContent = "Henüz kullanıcı yok. Sağdan ilk paneli kullanıcısını ekleyin.";
+      adminUserList.appendChild(empty);
+      return;
+    }
+    users.forEach((user) => {
+      const row = document.createElement("div");
+      row.className = "admin-list-item";
+      const main = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = user.firstName + " " + user.lastName;
+      const meta = document.createElement("span");
+      meta.textContent = user.email + (user.role === "owner" ? " · sahip" : "");
+      main.appendChild(title);
+      main.appendChild(meta);
+      const actions = document.createElement("div");
+      actions.className = "admin-list-actions";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn btn-outline btn-sm";
+      editBtn.textContent = "Düzenle";
+      editBtn.addEventListener("click", () => fillAdminUserForm(user));
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn btn-ghost btn-sm";
+      delBtn.textContent = "Sil";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm(user.email + " kullanıcısını silmek istiyor musunuz?")) return;
+        try {
+          await api("/api/admin/users/" + user.id, { method: "DELETE" });
+          resetAdminUserForm();
+          await loadAdminUsers();
+          note(adminUsersNote, "ok", "Kullanıcı silindi.");
+        } catch (err) {
+          note(adminUsersNote, "err", err.message || "Silinemedi");
+        }
+      });
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(main);
+      row.appendChild(actions);
+      adminUserList.appendChild(row);
+    });
+  }
+
+  if (adminUserForm) {
+    adminUserForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const editId = adminUserEditId.value;
+      const payload = {
+        firstName: adminUserFirstName.value.trim(),
+        lastName: adminUserLastName.value.trim(),
+        email: adminUserEmail.value.trim(),
+      };
+      const password = adminUserPassword.value;
+      if (password) payload.password = password;
+      if (!editId && !password) {
+        note(adminUsersNote, "err", "Yeni kullanıcı için şifre gerekli.");
+        return;
+      }
+      try {
+        if (editId) {
+          await api("/api/admin/users/" + editId, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          });
+          note(adminUsersNote, "ok", "Kullanıcı güncellendi.");
+        } else {
+          await api("/api/admin/users", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          note(adminUsersNote, "ok", "Kullanıcı eklendi.");
+        }
+        resetAdminUserForm();
+        await loadAdminUsers();
+      } catch (err) {
+        note(adminUsersNote, "err", err.message || "Kaydedilemedi");
+      }
+    });
+    const resetBtn = document.getElementById("adminUserResetBtn");
+    if (resetBtn) resetBtn.addEventListener("click", resetAdminUserForm);
+  }
 
   if (token) {
     showPanel(true);

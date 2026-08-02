@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css" />
 </head>
-<body>
+<body class="checkout-page">
   <header class="site-header">
     <div class="container">
       <nav class="nav" aria-label="Ana menü">
@@ -32,7 +32,7 @@
   </header>
 
   <main>
-    <section class="page-hero">
+    <section class="page-hero checkout-hero">
       <div class="container">
         <div class="breadcrumb reveal"><a href="/">Ana Sayfa</a> <span>/</span> <a href="/urunler">Ürünler</a> <span>/</span> <span>Ödeme</span></div>
         <h1 class="reveal">Satın alma</h1>
@@ -40,11 +40,11 @@
       </div>
     </section>
 
-    <section class="section" style="padding-top:0">
+    <section class="section checkout-section">
       <div class="container">
         <div class="checkout-wrap" id="checkoutRoot">
           <div class="checkout-card reveal">
-            <h2 style="font-size:1.15rem;margin-bottom:18px">Alıcı bilgileri</h2>
+            <h2 class="checkout-card-title">Alıcı bilgileri</h2>
             <form id="checkout-form">
               <div class="form-row">
                 <div class="field">
@@ -80,7 +80,7 @@
               </div>
               <div class="field">
                 <label for="not">Sipariş notu</label>
-                <textarea id="not" name="not" rows="3" placeholder="Teslimat veya fatura ile ilgili notunuz..."></textarea>
+                <textarea id="not" name="not" rows="2" placeholder="Teslimat veya fatura ile ilgili notunuz..."></textarea>
               </div>
               <div class="check-inline">
                 <input type="checkbox" id="onayOnBilgi" name="onayOnBilgi" required />
@@ -100,7 +100,7 @@
           </div>
 
           <aside class="checkout-card reveal d1">
-            <h2 style="font-size:1.15rem;margin-bottom:18px">Sipariş özeti</h2>
+            <h2 class="checkout-card-title">Sipariş özeti</h2>
             <div class="checkout-product" id="orderProduct">
               <div class="visual" id="orderBrand">—</div>
               <div>

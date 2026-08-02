@@ -29,6 +29,7 @@ const {
 } = require("./lib/akbank-pos");
 const { createOrderStore } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
+const { createAdminUserStore } = require("./lib/admin-users");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
 const {
   createContactStore,
@@ -111,6 +112,7 @@ const supplierManager = createMultiSupplierManager(ROOT, {
 const analyticsStore = createAnalyticsStore(ROOT);
 const orderStore = createOrderStore(ROOT);
 const calendarStore = createCalendarStore(ROOT);
+const adminUserStore = createAdminUserStore(ROOT);
 const contactStore = createContactStore(ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
@@ -447,17 +449,59 @@ function mergedProducts(includeInactiveManual) {
   });
 }
 
-function authOk(req) {
+function getSession(req) {
   const h = req.headers.authorization || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : "";
-  if (!token) return false;
-  const exp = sessions.get(token);
+  if (!token) return null;
+  const raw = sessions.get(token);
+  if (!raw) return null;
+  const exp = typeof raw === "number" ? raw : raw.exp;
   if (!exp || Date.now() > exp) {
     sessions.delete(token);
-    return false;
+    return null;
   }
-  sessions.set(token, Date.now() + ADMIN_IDLE_MS);
-  return true;
+  const next =
+    typeof raw === "number"
+      ? { exp: Date.now() + ADMIN_IDLE_MS, userId: null }
+      : Object.assign({}, raw, { exp: Date.now() + ADMIN_IDLE_MS });
+  sessions.set(token, next);
+  return next;
+}
+
+function authOk(req) {
+  return Boolean(getSession(req));
+}
+
+function sessionUser(req) {
+  const session = getSession(req);
+  if (!session || !session.userId) return null;
+  return adminUserStore.publicUser(adminUserStore.get(session.userId));
+}
+
+async function sendCalendarReminderMail(entry, kind) {
+  const to = String((entry && entry.notifyEmail) || "").trim();
+  if (!to) throw new Error("Hatırlatıcı e-posta adresi yok.");
+  const when = (entry && entry.time) || "09:00";
+  const isCreate = kind === "created";
+  await deliverSimpleMail({
+    to,
+    subject: (isCreate ? "Takvim kaydı: " : "Takvim hatırlatıcı: ") + entry.title,
+    text: [
+      isCreate
+        ? "Patygo Yönetim Paneli — Yeni hatırlatıcı oluşturuldu"
+        : "Patygo Yönetim Paneli — Takvim hatırlatıcısı",
+      "-------------------------------------------",
+      "Başlık: " + entry.title,
+      "Tarih: " + entry.date,
+      "Saat: " + when + " (Europe/Istanbul)",
+      entry.body ? "" : null,
+      entry.body || null,
+      "",
+      "Panel: https://patygoteknoloji.com/admin",
+    ]
+      .filter((line) => line != null)
+      .join("\n"),
+  });
 }
 
 async function handleApi(req, res, urlPath) {
@@ -664,19 +708,32 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "POST" && urlPath === "/api/admin/login") {
     try {
-      const clientIp = (req.socket && req.socket.remoteAddress) || "unknown";
-      const now = Date.now();
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
-      const supplied = Buffer.from(String(body.password || ""));
-      const expected = Buffer.from(ADMIN_PASSWORD);
-      const matches =
-        supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
-      if (matches) {
-        const token = crypto.randomBytes(24).toString("hex");
-        sessions.set(token, Date.now() + ADMIN_IDLE_MS);
-        return json(res, 200, { ok: true, token });
+      const password = String(body.password || "");
+      const email = String(body.email || "").trim();
+      let user = null;
+
+      if (email) {
+        user = adminUserStore.authenticate(email, password);
+        if (!user) {
+          return json(res, 401, { ok: false, error: "E-posta veya şifre hatalı" });
+        }
+      } else {
+        const supplied = Buffer.from(password);
+        const expected = Buffer.from(ADMIN_PASSWORD);
+        const matches =
+          supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+        if (!matches) {
+          return json(res, 401, { ok: false, error: "Şifre hatalı" });
+        }
       }
-      return json(res, 401, { ok: false, error: "Şifre hatalı" });
+
+      const token = crypto.randomBytes(24).toString("hex");
+      sessions.set(token, {
+        exp: Date.now() + ADMIN_IDLE_MS,
+        userId: user ? user.id : null,
+      });
+      return json(res, 200, { ok: true, token, user });
     } catch (_) {
       return json(res, 400, { ok: false, error: "Geçersiz istek" });
     }
@@ -684,6 +741,49 @@ async function handleApi(req, res, urlPath) {
 
   if (urlPath.startsWith("/api/admin/") && !authOk(req)) {
     return json(res, 401, { ok: false, error: "Oturum gerekli" });
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/me") {
+    return json(res, 200, { ok: true, user: sessionUser(req) });
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/users") {
+    return json(res, 200, { ok: true, users: adminUserStore.list() });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/users") {
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const role = adminUserStore.count() === 0 ? "owner" : "admin";
+      const user = adminUserStore.create(body, { role });
+      return json(res, 200, { ok: true, user });
+    } catch (err) {
+      return json(res, 400, { ok: false, error: (err && err.message) || "Kullanıcı kaydedilemedi" });
+    }
+  }
+
+  const adminUserMatch = /^\/api\/admin\/users\/([a-f0-9]{16})$/.exec(urlPath);
+  if (adminUserMatch) {
+    const userId = adminUserMatch[1];
+    if (req.method === "PUT") {
+      try {
+        const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+        const user = adminUserStore.update(userId, body);
+        if (!user) return json(res, 404, { ok: false, error: "Kullanıcı bulunamadı" });
+        return json(res, 200, { ok: true, user });
+      } catch (err) {
+        return json(res, 400, { ok: false, error: (err && err.message) || "Güncellenemedi" });
+      }
+    }
+    if (req.method === "DELETE") {
+      try {
+        const removed = adminUserStore.remove(userId);
+        if (!removed) return json(res, 404, { ok: false, error: "Kullanıcı bulunamadı" });
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, 400, { ok: false, error: (err && err.message) || "Silinemedi" });
+      }
+    }
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/products") {
@@ -913,16 +1013,18 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
       const entry = calendarStore.create(body);
+      let mailSent = false;
+      let mailError = null;
       if (entry.type === "reminder" && entry.notifyEmail) {
-        sendCalendarReminderMail(entry, "created").catch((mailErr) => {
-          console.error("Takvim kayıt maili gönderilemedi:", mailErr.message || mailErr);
-        });
+        try {
+          await sendCalendarReminderMail(entry, "created");
+          mailSent = true;
+        } catch (err) {
+          mailError = (err && err.message) || "E-posta gönderilemedi";
+          console.error("Takvim oluşturma e-postası gönderilemedi:", mailError);
+        }
       }
-      return json(res, 200, {
-        ok: true,
-        entry,
-        mailQueued: entry.type === "reminder" && Boolean(entry.notifyEmail),
-      });
+      return json(res, 200, { ok: true, entry, mailSent, mailError });
     } catch (err) {
       return json(res, 400, { ok: false, error: err.message || "Kayıt başarısız" });
     }
@@ -1077,42 +1179,11 @@ server.listen(PORT, () => {
   console.log("");
 });
 
-async function sendCalendarReminderMail(entry, kind) {
-  const when = entry.time || "09:00";
-  const isDue = kind === "due";
-  const subject = isDue
-    ? "Görev hatırlatma: " + entry.title
-    : "Görev kaydedildi: " + entry.title;
-  const text = [
-    isDue
-      ? "Patygo Yönetim Paneli — Görev hatırlatma"
-      : "Patygo Yönetim Paneli — Görev hatırlatıcısı kaydedildi",
-    "-------------------------------------------",
-    "Başlık: " + entry.title,
-    "Tarih: " + entry.date,
-    "Saat: " + when + " (Europe/Istanbul)",
-    "Alıcı: " + (entry.notifyEmail || ""),
-    entry.body ? "" : null,
-    entry.body || null,
-    "",
-    isDue
-      ? "Bu görevin hatırlatma saati geldi."
-      : "Hatırlatma saatinde bu adrese yeniden e-posta gönderilecek.",
-    "Panel: https://patygoteknoloji.com/admin",
-  ]
-    .filter((line) => line != null)
-    .join("\n");
-  return deliverSimpleMail({
-    to: entry.notifyEmail,
-    subject,
-    text,
-  });
-}
-
 async function processCalendarReminderEmails() {
   const due = calendarStore.dueForEmail(new Date(), 15);
   for (const entry of due) {
     try {
+      if (!entry.notifyEmail) continue;
       await sendCalendarReminderMail(entry, "due");
       calendarStore.markEmailNotified(entry.id);
     } catch (err) {

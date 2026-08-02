@@ -59,10 +59,8 @@ test("admin calendar tab supports reminders and notes", () => {
   assert.match(script, /\/api\/admin\/calendar/);
   assert.match(script, /"calendar"/);
   assert.match(html, /id="calendarNotifyPermissionBtn"/);
-  assert.match(html, /id="calendarEntryEmail"/);
   assert.match(script, /checkBrowserCalendarReminders/);
   assert.match(script, /Notification\.requestPermission|ensureCalendarNotificationPermission/);
-  assert.match(script, /notifyEmail/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -151,6 +149,17 @@ test("admin ends session after 30 minutes of inactivity", () => {
 test("admin never renders the default password as a login hint", () => {
   assert.doesNotMatch(html, /patygo-admin/);
   assert.match(html, /ADMIN_PASSWORD/);
+});
+
+test("admin users tab supports panel account management", () => {
+  assert.match(html, /id="usersTab"/);
+  assert.match(html, /id="adminTabUsers"/);
+  assert.match(html, /id="adminUserForm"/);
+  assert.match(html, /id="loginEmail"/);
+  assert.match(html, /id="calendarNotifyEmail"/);
+  assert.match(script, /loadAdminUsers/);
+  assert.match(script, /notifyEmail/);
+  assert.match(script, /\/api\/admin\/users/);
 });
 
 test("admin XML refresh errors mention supplier access not generic /admin path", () => {

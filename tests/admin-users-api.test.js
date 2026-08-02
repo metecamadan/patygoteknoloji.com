@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const net = require("node:net");
+const fs = require("node:fs");
 const { spawn } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..");
@@ -30,9 +31,12 @@ async function waitForServer(baseUrl, child) {
   throw new Error("Test sunucusu zamanında başlamadı.");
 }
 
-test("admin calendar APIs require auth and persist reminders/notes", async (t) => {
+test("admin users API creates accounts and email login works", async (t) => {
   const port = await getFreePort();
-  const password = "calendar-admin-pass";
+  const password = "users-admin-pass";
+  const runtimeUsers = path.join(root, ".runtime", "admin-users.json");
+  const backup = fs.existsSync(runtimeUsers) ? fs.readFileSync(runtimeUsers) : null;
+
   const child = spawn(process.execPath, ["server.js"], {
     cwd: root,
     env: Object.assign({}, process.env, {
@@ -42,12 +46,16 @@ test("admin calendar APIs require auth and persist reminders/notes", async (t) =
     }),
     stdio: "ignore",
   });
-  t.after(() => child.kill());
+  t.after(() => {
+    child.kill();
+    try {
+      if (backup) fs.writeFileSync(runtimeUsers, backup);
+      else if (fs.existsSync(runtimeUsers)) fs.unlinkSync(runtimeUsers);
+    } catch (_) {}
+  });
+
   const baseUrl = `http://127.0.0.1:${port}`;
   await waitForServer(baseUrl, child);
-
-  const unauthorized = await fetch(baseUrl + "/api/admin/calendar");
-  assert.equal(unauthorized.status, 401);
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
@@ -58,44 +66,32 @@ test("admin calendar APIs require auth and persist reminders/notes", async (t) =
   const session = await login.json();
   const auth = { Authorization: "Bearer " + session.token };
 
-  const created = await fetch(baseUrl + "/api/admin/calendar", {
+  const email = "ayse-test-" + Date.now() + "@patygoteknoloji.com";
+  const created = await fetch(baseUrl + "/api/admin/users", {
     method: "POST",
     headers: Object.assign({ "Content-Type": "application/json" }, auth),
     body: JSON.stringify({
-      type: "reminder",
-      date: "2026-07-30",
-      time: "14:00",
-      title: "Canlı kontrol",
-      body: "Deploy sonrası smoke",
-      notifyEmail: "ops@patygoteknoloji.com",
+      firstName: "Ayşe",
+      lastName: "Yılmaz",
+      email,
+      password: "panel-pass-1",
     }),
   });
   assert.equal(created.status, 200);
   const createdPayload = await created.json();
   assert.equal(createdPayload.ok, true);
-  assert.equal(createdPayload.entry.type, "reminder");
-  const entryId = createdPayload.entry.id;
+  assert.equal(createdPayload.user.firstName, "Ayşe");
 
-  const listed = await fetch(
-    baseUrl + "/api/admin/calendar?from=2026-07-01&to=2026-07-31",
-    { headers: auth }
-  );
-  assert.equal(listed.status, 200);
-  const listPayload = await listed.json();
-  assert.ok(listPayload.entries.some((row) => row.id === entryId));
-
-  const updated = await fetch(baseUrl + "/api/admin/calendar/" + entryId, {
-    method: "PUT",
-    headers: Object.assign({ "Content-Type": "application/json" }, auth),
-    body: JSON.stringify({ title: "Canlı kontrol — tamam", done: true }),
+  const emailLogin = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      password: "panel-pass-1",
+    }),
   });
-  assert.equal(updated.status, 200);
-  const updatedPayload = await updated.json();
-  assert.equal(updatedPayload.entry.done, true);
-
-  const removed = await fetch(baseUrl + "/api/admin/calendar/" + entryId, {
-    method: "DELETE",
-    headers: auth,
-  });
-  assert.equal(removed.status, 200);
+  assert.equal(emailLogin.status, 200);
+  const emailSession = await emailLogin.json();
+  assert.ok(emailSession.token);
+  assert.equal(emailSession.user.email, email);
 });

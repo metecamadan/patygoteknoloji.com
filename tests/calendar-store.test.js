@@ -24,6 +24,7 @@ test("calendar store creates reminders and notes by date", () => {
   });
   assert.match(reminder.id, /^[a-f0-9]{16}$/);
   assert.equal(reminder.type, "reminder");
+  assert.equal(reminder.notifyEmail, "ops@patygoteknoloji.com");
   assert.equal(note.type, "note");
   const listed = store.list("2026-07-01", "2026-07-31");
   assert.equal(listed.length, 2);
@@ -41,6 +42,15 @@ test("calendar store rejects invalid dates and empty titles", () => {
   assert.throws(() => store.create({ type: "note", date: "29-07-2026", title: "x" }), /tarih/i);
   assert.throws(() => store.create({ type: "note", date: "2026-07-29", title: "  " }), /Başlık/i);
   assert.throws(() => store.create({ type: "event", date: "2026-07-29", title: "x" }), /Tür/i);
+  assert.throws(
+    () =>
+      store.create({
+        type: "reminder",
+        date: "2026-07-29",
+        title: "Mail yok",
+      }),
+    /e-posta/i
+  );
 });
 
 test("calendar reminders become due inside Istanbul time window", () => {
@@ -52,18 +62,8 @@ test("calendar reminders become due inside Istanbul time window", () => {
     date: "2026-07-29",
     time: "14:00",
     title: "Test",
-    notifyEmail: "hatirlat@patygoteknoloji.com",
+    notifyEmail: "ops@patygoteknoloji.com",
   });
-  assert.equal(entry.notifyEmail, "hatirlat@patygoteknoloji.com");
-  assert.throws(
-    () =>
-      store.create({
-        type: "reminder",
-        date: "2026-07-29",
-        title: "Mailsiz",
-      }),
-    /e-posta/i
-  );
   const dueAt = new Date("2026-07-29T11:05:00.000Z"); // 14:05 Istanbul (UTC+3)
   assert.equal(isReminderDue(entry, dueAt, 15), true);
   assert.equal(isReminderDue(entry, new Date("2026-07-29T10:50:00.000Z"), 15), false);

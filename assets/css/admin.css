@@ -320,6 +320,31 @@
   margin: 0 0 14px;
 }
 .admin-list { display: grid; gap: 10px; max-height: 70vh; overflow: auto; }
+.admin-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+}
+.admin-list-item strong {
+  display: block;
+  font-size: 0.92rem;
+}
+.admin-list-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+.admin-list-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .admin-item {
   border: 1px solid var(--line);
   border-radius: 12px;

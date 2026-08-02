@@ -817,10 +817,24 @@ h1, h2, h3, h4 {
 }
 
 /* Checkout / POS */
+.checkout-page .checkout-hero {
+  padding: clamp(20px, 3vw, 28px) 0 clamp(12px, 2vw, 16px);
+}
+.checkout-page .checkout-hero h1 {
+  margin: 6px 0 6px;
+  font-size: clamp(1.55rem, 2.8vw, 2rem);
+}
+.checkout-page .checkout-hero p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.checkout-page .checkout-section {
+  padding: 0 0 clamp(40px, 5vw, 64px);
+}
 .checkout-wrap {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  gap: 24px;
+  gap: 20px;
   align-items: start;
   max-width: 960px;
   margin: 0 auto;
@@ -833,8 +847,33 @@ h1, h2, h3, h4 {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
-  padding: 28px;
+  padding: 20px;
   box-shadow: var(--shadow);
+}
+.checkout-card-title {
+  font-size: 1.05rem;
+  margin: 0 0 12px;
+}
+.checkout-page .checkout-card .field {
+  margin-bottom: 12px;
+}
+.checkout-page .checkout-card .form-row {
+  gap: 12px;
+  margin-bottom: 0;
+}
+.checkout-page .checkout-card .check-inline {
+  margin-bottom: 8px;
+}
+.checkout-page .checkout-card .form-note {
+  margin: 8px 0;
+}
+.checkout-page .checkout-product {
+  margin-bottom: 14px;
+  padding: 12px;
+}
+.checkout-page .pos-box {
+  margin-top: 12px;
+  padding: 12px;
 }
 .checkout-product {
   display: flex;
@@ -1695,6 +1734,7 @@ h1, h2, h3, h4 {
   .fab a, .fab button { width: 44px; height: 44px; }
   .form-wrap,
   .checkout-card { padding-right: clamp(28px, 8vw, 40px); }
+  .checkout-page .checkout-card { padding: 18px; }
   main { padding-bottom: 72px; }
   .footer-bottom .legal-links { gap: 10px 14px; }
 }

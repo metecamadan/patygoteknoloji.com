@@ -29,7 +29,9 @@
       </a>
       <h1>Ürün paneli</h1>
       <p>Yalnızca yetkili kullanım içindir.</p>
-      <p class="admin-hint">Güvenli yönetim girişi. Şifreniz sunucudaki <code>ADMIN_PASSWORD</code> ayarından alınır.</p>
+      <p class="admin-hint">E-posta + şifre ile giriş yapın. Kurulumda hâlâ yalnızca <code>ADMIN_PASSWORD</code> ile şifre girişi de kabul edilir.</p>
+      <label for="loginEmail">E-posta</label>
+      <input type="email" id="loginEmail" name="email" autocomplete="username" placeholder="ornek@patygoteknoloji.com" />
       <label for="password">Şifre</label>
       <input type="password" id="password" name="password" required autocomplete="current-password" />
       <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
@@ -53,6 +55,7 @@
           </div>
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
+          <button type="button" class="admin-nav-item" id="usersTab" aria-controls="adminTabUsers" data-admin-tab="users"><span class="admin-nav-icon">◉</span>Kullanıcılar</button>
         </nav>
         <div class="admin-sidebar-foot">
           <a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a>
@@ -262,10 +265,10 @@
                     <label for="calendarEntryTitle">Başlık *</label>
                     <input id="calendarEntryTitle" type="text" maxlength="160" required placeholder="Örn. Stok güncellemesi" />
                   </div>
-                  <div class="field">
-                    <label for="calendarEntryEmail">Bildirim e-postası *</label>
-                    <input id="calendarEntryEmail" type="email" maxlength="120" autocomplete="email" placeholder="ornek@firma.com" />
-                    <p class="admin-field-help">Hatırlatıcı kaydedilince ve saati gelince bu adrese görev maili gider.</p>
+                  <div class="field" id="calendarNotifyEmailField">
+                    <label for="calendarNotifyEmail">Hatırlatma e-postası *</label>
+                    <input id="calendarNotifyEmail" type="email" maxlength="160" placeholder="ornek@firma.com" autocomplete="email" />
+                    <p class="admin-field-help">Hatırlatıcı kaydedilince ve saat gelince bu adrese e-posta gider.</p>
                   </div>
                   <div class="field">
                     <label for="calendarEntryBody">Açıklama</label>
@@ -279,6 +282,57 @@
                   <p class="admin-note" id="calendarNote" role="status"></p>
                 </form>
               </aside>
+            </div>
+          </div>
+        </section>
+
+        <section id="adminTabUsers" class="admin-tab-panel" aria-labelledby="usersTab" hidden>
+          <div class="admin-page">
+            <div class="admin-overview-grid admin-overview-grid-2">
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">PANEL</span>
+                    <h2>Kullanıcılar</h2>
+                  </div>
+                </div>
+                <div id="adminUserList" class="admin-list"></div>
+                <p class="admin-note" id="adminUsersNote" role="status"></p>
+              </section>
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">YENİ</span>
+                    <h2>Kullanıcı ekle</h2>
+                  </div>
+                </div>
+                <form id="adminUserForm" class="admin-form">
+                  <input type="hidden" id="adminUserEditId" value="" />
+                  <div class="form-row">
+                    <div class="field">
+                      <label for="adminUserFirstName">Ad *</label>
+                      <input id="adminUserFirstName" type="text" maxlength="60" required autocomplete="given-name" />
+                    </div>
+                    <div class="field">
+                      <label for="adminUserLastName">Soyad *</label>
+                      <input id="adminUserLastName" type="text" maxlength="60" required autocomplete="family-name" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="adminUserEmail">E-posta *</label>
+                    <input id="adminUserEmail" type="email" maxlength="160" required autocomplete="email" />
+                  </div>
+                  <div class="field">
+                    <label for="adminUserPassword">Şifre *</label>
+                    <input id="adminUserPassword" type="password" minlength="4" maxlength="120" autocomplete="new-password" />
+                    <p class="admin-field-help">Düzenlemede boş bırakılırsa şifre değişmez.</p>
+                  </div>
+                  <div class="admin-form-actions">
+                    <button type="submit" class="btn btn-primary" id="adminUserSaveBtn">Kaydet</button>
+                    <button type="button" class="btn btn-outline" id="adminUserResetBtn">Temizle</button>
+                  </div>
+                </form>
+              </section>
             </div>
           </div>
         </section>
