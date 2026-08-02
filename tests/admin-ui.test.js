@@ -74,6 +74,16 @@ test("admin panel exposes dark theme toggle in the top bar", () => {
   assert.match(script, /adminThemeToggle/);
 });
 
+test("admin overview uses consistent full-width grid spacing", () => {
+  assert.match(html, /admin-page--overview/);
+  assert.doesNotMatch(html, /admin-overview-grid-2" style="margin-top/);
+  assert.doesNotMatch(html, /admin-kpis" style="margin-top/);
+  assert.doesNotMatch(html, /admin-akakce-card" style="margin-top/);
+  assert.match(css, /\.admin-page--overview/);
+  assert.match(css, /\.admin-overview-grid-3\s*\{[\s\S]*?repeat\(3,/);
+  assert.match(css, /\.admin-overview-grid\s*>\s*\.admin-card/);
+});
+
 test("admin exposes three XML connections and source-specific margins", () => {
   assert.equal((html.match(/data-supplier-card="supplier-/g) || []).length, 3);
   assert.match(html, /id="supplierSlotFilter"/);
