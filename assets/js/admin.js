@@ -356,7 +356,10 @@
     if (newProductBtn && name !== "products") newProductBtn.hidden = true;
     if (name === "xml" && token) loadSupplierData().catch(() => {});
     if (name === "overview" && token) loadDigitalDashboard().catch(() => {});
-    if (name === "calendar" && token) loadCalendarMonth().catch(() => {});
+    if (name === "calendar" && token) {
+      loadCalendarMonth().catch(() => {});
+      ensureCalendarNotificationPermission().catch(() => {});
+    }
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -2026,11 +2029,105 @@
         }
         resetCalendarForm();
         await loadCalendarMonth();
+        checkBrowserCalendarReminders();
       } catch (err) {
         note(calendarNote, "err", err.message || "Kaydedilemedi");
       }
     });
+
+    const notifyBtn = document.getElementById("calendarNotifyPermissionBtn");
+    if (notifyBtn) {
+      notifyBtn.addEventListener("click", async () => {
+        const ok = await ensureCalendarNotificationPermission(true);
+        note(
+          calendarNote,
+          ok ? "ok" : "err",
+          ok
+            ? "Tarayıcı bildirimleri açık. Panel açıkken saat gelince uyarı çıkar."
+            : "Bildirim izni verilmedi. Tarayıcı ayarlarından izin vermeniz gerekir."
+        );
+      });
+    }
   }
+
+  function browserNotifyStorageKey(id) {
+    return "patygo_calendar_browser_notified_" + id;
+  }
+
+  async function ensureCalendarNotificationPermission(forceAsk) {
+    if (!("Notification" in window)) return false;
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
+    if (!forceAsk && Notification.permission === "default") return false;
+    try {
+      const result = await Notification.requestPermission();
+      return result === "granted";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function istanbulClock(nowDate) {
+    const date = nowDate || new Date();
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Istanbul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = Object.fromEntries(fmt.formatToParts(date).map((part) => [part.type, part.value]));
+    const hour = Number(parts.hour === "24" ? "0" : parts.hour);
+    const minute = Number(parts.minute);
+    return {
+      date: parts.year + "-" + parts.month + "-" + parts.day,
+      minutes: hour * 60 + minute,
+    };
+  }
+
+  function checkBrowserCalendarReminders() {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if (!Array.isArray(calendarEntries) || !calendarEntries.length) return;
+    const clock = istanbulClock(new Date());
+    calendarEntries.forEach((entry) => {
+      if (!entry || entry.type !== "reminder" || entry.done) return;
+      if (entry.date !== clock.date) return;
+      let key;
+      try {
+        key = browserNotifyStorageKey(entry.id);
+        if (localStorage.getItem(key)) return;
+      } catch (_) {
+        return;
+      }
+      const time = entry.time || "09:00";
+      const bits = String(time).split(":").map(Number);
+      if (bits.length < 2 || !Number.isFinite(bits[0]) || !Number.isFinite(bits[1])) return;
+      const scheduled = bits[0] * 60 + bits[1];
+      if (clock.minutes < scheduled || clock.minutes >= scheduled + 2) return;
+      try {
+        const n = new Notification("Takvim hatırlatıcı: " + entry.title, {
+          body: (entry.time ? entry.time + " · " : "") + (entry.body || "Patygo panel hatırlatıcısı"),
+          tag: "patygo-calendar-" + entry.id,
+        });
+        n.onclick = () => {
+          window.focus();
+          selectAdminTab("calendar", false);
+          calendarSelectedDate = entry.date;
+          fillCalendarForm(entry);
+          renderCalendarGrid();
+          renderCalendarEntries();
+        };
+        localStorage.setItem(key, new Date().toISOString());
+      } catch (_) {}
+    });
+  }
+
+  setInterval(() => {
+    if (!token || loginView && !loginView.hidden) return;
+    checkBrowserCalendarReminders();
+  }, 30 * 1000);
 
   const savedPeriod = readSavedPeriod();
   syncPeriodInputs(savedPeriod.from, savedPeriod.to);

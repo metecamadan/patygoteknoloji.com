@@ -58,6 +58,9 @@ test("admin calendar tab supports reminders and notes", () => {
   assert.match(script, /loadCalendarMonth/);
   assert.match(script, /\/api\/admin\/calendar/);
   assert.match(script, /"calendar"/);
+  assert.match(html, /id="calendarNotifyPermissionBtn"/);
+  assert.match(script, /checkBrowserCalendarReminders/);
+  assert.match(script, /Notification\.requestPermission|ensureCalendarNotificationPermission/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

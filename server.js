@@ -35,6 +35,7 @@ const {
   normalizeContactPayload,
   validateContactPayload,
   deliverContactMail,
+  deliverSimpleMail,
 } = require("./lib/contact");
 
 const ROOT = path.resolve(__dirname);
@@ -1066,6 +1067,42 @@ server.listen(PORT, () => {
   );
   console.log("");
 });
+
+async function processCalendarReminderEmails() {
+  const due = calendarStore.dueForEmail(new Date(), 15);
+  for (const entry of due) {
+    try {
+      const when = entry.time || "09:00";
+      await deliverSimpleMail({
+        subject: "Takvim hatırlatıcı: " + entry.title,
+        text: [
+          "Patygo Yönetim Paneli — Takvim hatırlatıcısı",
+          "-------------------------------------------",
+          "Başlık: " + entry.title,
+          "Tarih: " + entry.date,
+          "Saat: " + when + " (Europe/Istanbul)",
+          entry.body ? "" : null,
+          entry.body || null,
+          "",
+          "Panel: https://patygoteknoloji.com/admin",
+        ]
+          .filter((line) => line != null)
+          .join("\n"),
+      });
+      calendarStore.markEmailNotified(entry.id);
+    } catch (err) {
+      console.error("Takvim e-posta hatırlatıcısı gönderilemedi:", err.message || err);
+    }
+  }
+}
+
+const calendarMailTimer = setInterval(() => {
+  processCalendarReminderEmails().catch(() => {});
+}, 60 * 1000);
+if (typeof calendarMailTimer.unref === "function") calendarMailTimer.unref();
+setTimeout(() => {
+  processCalendarReminderEmails().catch(() => {});
+}, 8 * 1000);
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {

@@ -41,3 +41,20 @@ test("calendar store rejects invalid dates and empty titles", () => {
   assert.throws(() => store.create({ type: "note", date: "2026-07-29", title: "  " }), /Başlık/i);
   assert.throws(() => store.create({ type: "event", date: "2026-07-29", title: "x" }), /Tür/i);
 });
+
+test("calendar reminders become due inside Istanbul time window", () => {
+  const { isReminderDue, createCalendarStore } = require("../lib/calendar");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-calendar-due-"));
+  const store = createCalendarStore(root);
+  const entry = store.create({
+    type: "reminder",
+    date: "2026-07-29",
+    time: "14:00",
+    title: "Test",
+  });
+  const dueAt = new Date("2026-07-29T11:05:00.000Z"); // 14:05 Istanbul (UTC+3)
+  assert.equal(isReminderDue(entry, dueAt, 15), true);
+  assert.equal(isReminderDue(entry, new Date("2026-07-29T10:50:00.000Z"), 15), false);
+  store.markEmailNotified(entry.id, "2026-07-29T11:05:00.000Z");
+  assert.equal(store.dueForEmail(dueAt, 15).length, 0);
+});
