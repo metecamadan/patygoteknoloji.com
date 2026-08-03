@@ -194,6 +194,47 @@
   background: #fef3c7;
   color: #92400e;
 }
+.order-status {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.order-status--pending {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.order-status--success {
+  background: #dcfce7;
+  color: #166534;
+}
+.order-status--failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.order-status--preparing {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.order-status--shipped {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+.order-status--cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.order-status--refunded {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.order-status--neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+.admin-list-item span .order-status {
+  margin: 0 4px;
+  vertical-align: middle;
+}
 .admin-xml-copy {
   min-height: 72px;
   margin-bottom: 18px;
@@ -1384,6 +1425,14 @@ html.admin-theme-dark .admin-badge.off { background: #7f1d1d; color: #fecaca; }
 html.admin-theme-dark .admin-status.pending { background: #422006; color: #fcd34d; }
 html.admin-theme-dark .admin-status.on { background: #14532d; color: #86efac; }
 html.admin-theme-dark .admin-status.err { background: #7f1d1d; color: #fecaca; }
+html.admin-theme-dark .order-status--pending { background: #431407; color: #fdba74; }
+html.admin-theme-dark .order-status--success { background: #14532d; color: #86efac; }
+html.admin-theme-dark .order-status--failed { background: #7f1d1d; color: #fecaca; }
+html.admin-theme-dark .order-status--preparing { background: #1e3a8a; color: #93c5fd; }
+html.admin-theme-dark .order-status--shipped { background: #134e4a; color: #5eead4; }
+html.admin-theme-dark .order-status--cancelled { background: #374151; color: #d1d5db; }
+html.admin-theme-dark .order-status--refunded { background: #4c1d95; color: #ddd6fe; }
+html.admin-theme-dark .order-status--neutral { background: #374151; color: #e5e7eb; }
 
 html.admin-theme-dark .admin-table {
   color: var(--ink);

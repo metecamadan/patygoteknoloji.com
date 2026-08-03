@@ -2,8 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const net = require("node:net");
-const { spawn } = require("node:child_process");
+const { spawnTestServer } = require("./helpers/spawn-server");
 
 const root = path.resolve(__dirname, "..");
 const products = JSON.parse(
@@ -13,30 +12,6 @@ const adminHtml = fs.readFileSync(path.join(root, "admin.html"), "utf8");
 const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
 const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
 const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
-
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.on("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      server.close(() => resolve(address.port));
-    });
-  });
-}
-
-async function waitForServer(baseUrl, child) {
-  const deadline = Date.now() + 8000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error("Test sunucusu erken kapandı.");
-    try {
-      const response = await fetch(baseUrl + "/api/products");
-      if (response.ok) return;
-    } catch (_) {}
-    await new Promise((resolve) => setTimeout(resolve, 80));
-  }
-  throw new Error("Test sunucusu zamanında başlamadı.");
-}
 
 test("demo products each have at least 5 gallery images on disk", () => {
   products.forEach((product) => {
@@ -69,21 +44,10 @@ test("admin and server enforce minimum 5 product images", () => {
   assert.match(checkoutJs, /has-image/);
   assert.match(checkoutJs, /product\.images/);
 });
+
 test("PUT /api/admin/products rejects products with fewer than 5 images", async (t) => {
-  const port = await getFreePort();
   const password = "test-min-images";
-  const child = spawn(process.execPath, ["server.js"], {
-    cwd: root,
-    env: Object.assign({}, process.env, {
-      PORT: String(port),
-      ADMIN_PASSWORD: password,
-      SITE_BASE_URL: `http://127.0.0.1:${port}`,
-    }),
-    stdio: "ignore",
-  });
-  t.after(() => child.kill());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForServer(baseUrl, child);
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
@@ -118,7 +82,6 @@ test("PUT /api/admin/products rejects products with fewer than 5 images", async 
   const tooFewBody = await tooFew.json();
   assert.match(String(tooFewBody.error || ""), /en az 5/i);
 
-  // Confirm catalog was not replaced by the rejected payload
   const listed = await fetch(baseUrl + "/api/products");
   assert.equal(listed.status, 200);
   const catalog = await listed.json();

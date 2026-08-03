@@ -1,0 +1,44 @@
+---
+description: Agent içi görev parçalama ve koordinasyon
+alwaysApply: true
+---
+
+# Agent görev parçalama
+
+Her agent kullanıcı isteğini alınca **kendi içinde** alt görev listesi oluşturur.
+
+## Orchestrator
+
+1. İsteği analiz et (kapsam, risk, dosyalar).
+2. Alt görevleri agent'lara ata.
+3. Bağımlılık sırasını belirle (API → UI → test → release).
+4. Bitiş kriteri: tüm alt görevler yeşil test + GitHub güncel.
+
+## Uygulama agent'ları (Frontend, Backend)
+
+1. Etkilenen dosyaları listele.
+2. Mevcut testleri oku (`tests/`).
+3. Minimum diff ile uygula.
+4. İlgili test ekle/güncelle.
+5. `npm test` çalıştır; QA'ya veya Release'e devret.
+
+## QA
+
+1. Değişen yüzey için regression kontrol listesi.
+2. `npm test` (+ gerekirse `test:links`, `test:coverage`).
+3. Kırmızıysa hangi agent'ın düzelteceğini belirt.
+
+## Release & DevOps
+
+1. Test yeşil mi doğrula.
+2. Commit + push.
+3. Actions log kontrolü.
+4. Gerekirse `https://patygoteknoloji.com` smoke.
+
+## Alt görev formatı
+
+Her alt görev şunları içerir:
+- **Ne:** tek cümle hedef
+- **Dosyalar:** dokunulacak yollar
+- **Doğrulama:** hangi test/komut
+- **Durum:** pending / done / blocked

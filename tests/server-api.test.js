@@ -1,51 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const net = require("node:net");
-const { spawn } = require("node:child_process");
-
-const root = path.resolve(__dirname, "..");
-
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.on("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      server.close(() => resolve(address.port));
-    });
-  });
-}
-
-async function waitForServer(baseUrl, child) {
-  const deadline = Date.now() + 8000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error("Test sunucusu erken kapandı.");
-    try {
-      const response = await fetch(baseUrl + "/api/products");
-      if (response.ok) return;
-    } catch (_) {}
-    await new Promise((resolve) => setTimeout(resolve, 80));
-  }
-  throw new Error("Test sunucusu zamanında başlamadı.");
-}
+const { spawnTestServer } = require("./helpers/spawn-server");
 
 test("admin supplier APIs require authentication and return feed status", async (t) => {
-  const port = await getFreePort();
   const password = "test-admin-password";
-  const child = spawn(process.execPath, ["server.js"], {
-    cwd: root,
-    env: Object.assign({}, process.env, {
-      PORT: String(port),
-      ADMIN_PASSWORD: password,
-      SITE_BASE_URL: `http://127.0.0.1:${port}`,
-      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
-    }),
-    stdio: "ignore",
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
   });
-  t.after(() => child.kill());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForServer(baseUrl, child);
 
   const unauthorized = await fetch(baseUrl + "/api/admin/supplier/status");
   assert.equal(unauthorized.status, 401);
@@ -140,22 +102,12 @@ test("admin supplier APIs require authentication and return feed status", async 
 });
 
 test("admin sessions expire after idle timeout and slide on activity", async (t) => {
-  const port = await getFreePort();
   const password = "test-admin-password";
-  const child = spawn(process.execPath, ["server.js"], {
-    cwd: root,
-    env: Object.assign({}, process.env, {
-      PORT: String(port),
-      ADMIN_PASSWORD: password,
-      SITE_BASE_URL: `http://127.0.0.1:${port}`,
-      ADMIN_IDLE_MS: "400",
-      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
-    }),
-    stdio: "ignore",
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    ADMIN_IDLE_MS: "400",
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
   });
-  t.after(() => child.kill());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForServer(baseUrl, child);
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
@@ -179,21 +131,11 @@ test("admin sessions expire after idle timeout and slide on activity", async (t)
 });
 
 test("admin login does not lock out after repeated wrong attempts", async (t) => {
-  const port = await getFreePort();
   const password = "1234";
-  const child = spawn(process.execPath, ["server.js"], {
-    cwd: root,
-    env: Object.assign({}, process.env, {
-      PORT: String(port),
-      ADMIN_PASSWORD: password,
-      SITE_BASE_URL: `http://127.0.0.1:${port}`,
-      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
-    }),
-    stdio: "ignore",
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
   });
-  t.after(() => child.kill());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForServer(baseUrl, child);
 
   for (let i = 0; i < 10; i += 1) {
     const wrong = await fetch(baseUrl + "/api/admin/login", {
@@ -215,20 +157,10 @@ test("admin login does not lock out after repeated wrong attempts", async (t) =>
 });
 
 test("legacy patygo-admin env password maps to 1234 for login", async (t) => {
-  const port = await getFreePort();
-  const child = spawn(process.execPath, ["server.js"], {
-    cwd: root,
-    env: Object.assign({}, process.env, {
-      PORT: String(port),
-      ADMIN_PASSWORD: "patygo-admin",
-      SITE_BASE_URL: `http://127.0.0.1:${port}`,
-      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
-    }),
-    stdio: "ignore",
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: "patygo-admin",
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
   });
-  t.after(() => child.kill());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForServer(baseUrl, child);
 
   const legacy = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",

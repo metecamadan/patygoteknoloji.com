@@ -35,6 +35,11 @@ const { createConsentStore } = require("./lib/consent");
 const { createAuditStore } = require("./lib/audit");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
 const {
+  SHIPPING_CARRIERS,
+  NOTIFY_STATUSES,
+  sendOrderStatusMail,
+} = require("./lib/order-mail");
+const {
   createContactStore,
   normalizeContactPayload,
   validateContactPayload,
@@ -43,6 +48,9 @@ const {
 } = require("./lib/contact");
 
 const ROOT = path.resolve(__dirname);
+const DATA_ROOT = process.env.PATYGO_DATA_ROOT
+  ? path.resolve(process.env.PATYGO_DATA_ROOT)
+  : ROOT;
 const ROOT_PREFIX = ROOT.endsWith(path.sep) ? ROOT : ROOT + path.sep;
 const PORT = Number(process.env.PORT || process.argv[2] || 5173);
 
@@ -88,7 +96,7 @@ const supplierAllowedHosts = String(
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
-const supplierManager = createMultiSupplierManager(ROOT, {
+const supplierManager = createMultiSupplierManager(DATA_ROOT, {
   allowedHosts: supplierAllowedHosts,
   defaultMarginPercent: process.env.SUPPLIER_MARGIN_PERCENT || 15,
   slots: [
@@ -112,13 +120,13 @@ const supplierManager = createMultiSupplierManager(ROOT, {
     },
   ],
 });
-const analyticsStore = createAnalyticsStore(ROOT);
-const orderStore = createOrderStore(ROOT);
-const calendarStore = createCalendarStore(ROOT);
-const adminUserStore = createAdminUserStore(ROOT);
-const agentOpsStore = createAgentOpsStore(ROOT);
-const consentStore = createConsentStore(ROOT);
-const auditStore = createAuditStore(ROOT);
+const analyticsStore = createAnalyticsStore(DATA_ROOT);
+const orderStore = createOrderStore(DATA_ROOT);
+const calendarStore = createCalendarStore(DATA_ROOT);
+const adminUserStore = createAdminUserStore(DATA_ROOT);
+const agentOpsStore = createAgentOpsStore(DATA_ROOT);
+const consentStore = createConsentStore(DATA_ROOT);
+const auditStore = createAuditStore(DATA_ROOT);
 
 agentOpsStore.seedIfEmpty([
   {
@@ -202,7 +210,7 @@ agentOpsStore.seedIfEmpty([
     status: "planned",
   },
 ]);
-const contactStore = createContactStore(ROOT);
+const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 const contactAttempts = new Map(); // IP -> { count, resetAt }
@@ -753,6 +761,14 @@ async function handleApi(req, res, urlPath) {
             at: new Date().toISOString(),
           },
         });
+        if (paid) {
+          try {
+            const updated = orderStore.get(orderId);
+            await sendOrderStatusMail(updated, "paid");
+          } catch (err) {
+            console.error("order paid mail failed:", err.message);
+          }
+        }
       }
 
       const result = paid ? "success" : "failed";
@@ -938,6 +954,7 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, {
       ok: true,
       orders: orderStore.list({ status: status || undefined, limit }),
+      shippingCarriers: SHIPPING_CARRIERS,
     });
   }
 
@@ -952,39 +969,98 @@ async function handleApi(req, res, urlPath) {
     if (req.method === "PATCH") {
       try {
         const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
-        const status = String(body.status || "").trim();
-        if (!ORDER_STATUSES.has(status)) {
-          return json(res, 400, { ok: false, error: "Geçersiz sipariş durumu" });
-        }
         const current = orderStore.get(orderId);
         if (!current) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
-        const patch = { status };
-        if (status === "paid") {
-          patch.paymentStatus = "paid";
-          patch.paymentTaken = true;
+
+        const patch = {};
+        let mailKey = null;
+        let mailExtra = null;
+        let shippingSave = false;
+
+        const hasCarrierField = Object.prototype.hasOwnProperty.call(body, "shippingCarrier");
+        const hasTrackingField = Object.prototype.hasOwnProperty.call(body, "trackingCode");
+
+        if (hasCarrierField || hasTrackingField) {
+          const carrier = String(body.shippingCarrier || "").trim().slice(0, 80);
+          const tracking = String(body.trackingCode || "").trim().slice(0, 80);
+          if (!carrier || !tracking) {
+            return json(res, 400, {
+              ok: false,
+              error: "Kargo firması ve gönderi kodu birlikte gerekli.",
+            });
+          }
+          if (!SHIPPING_CARRIERS.includes(carrier)) {
+            return json(res, 400, { ok: false, error: "Geçersiz kargo firması." });
+          }
+          patch.shippingCarrier = carrier;
+          patch.trackingCode = tracking;
+          patch.status = "shipped";
+          mailKey = "shipped";
+          mailExtra = { shippingCarrier: carrier, trackingCode: tracking };
+          shippingSave = true;
         }
-        if (status === "payment_failed") {
-          patch.paymentStatus = "failed";
-          patch.paymentTaken = false;
+
+        if (Object.prototype.hasOwnProperty.call(body, "status")) {
+          const status = String(body.status || "").trim();
+          if (!ORDER_STATUSES.has(status)) {
+            return json(res, 400, { ok: false, error: "Geçersiz sipariş durumu" });
+          }
+          if (!shippingSave) {
+            patch.status = status;
+            if (status === "paid") {
+              patch.paymentStatus = "paid";
+              patch.paymentTaken = true;
+            }
+            if (status === "payment_failed") {
+              patch.paymentStatus = "failed";
+              patch.paymentTaken = false;
+            }
+            if (status === "refunded") {
+              patch.paymentStatus = "refunded";
+              patch.paymentTaken = false;
+            }
+          }
+        } else if (!shippingSave) {
+          return json(res, 400, { ok: false, error: "Durum veya kargo bilgisi gerekli." });
         }
-        if (status === "refunded") {
-          patch.paymentStatus = "refunded";
-          patch.paymentTaken = false;
-        }
+
         const order = orderStore.update(orderId, patch);
+        let mailSent = false;
+        try {
+          if (mailKey) {
+            await sendOrderStatusMail(order, mailKey, { extra: mailExtra });
+            mailSent = true;
+          } else if (
+            patch.status &&
+            current.status !== patch.status &&
+            NOTIFY_STATUSES.has(patch.status)
+          ) {
+            await sendOrderStatusMail(order, patch.status);
+            mailSent = true;
+          }
+        } catch (err) {
+          console.error("order status mail failed:", err.message);
+        }
         try {
           const session = getSession(req);
           auditStore.record({
             actorType: "admin_user",
             actorId: session && session.userId,
-            action: "order.status_update",
+            action: shippingSave ? "order.shipping_update" : "order.status_update",
             entityType: "order",
             entityId: orderId,
-            detail: { from: current.status, to: status },
+            detail: shippingSave
+              ? {
+                  shippingCarrier: patch.shippingCarrier,
+                  trackingCode: patch.trackingCode,
+                  status: patch.status,
+                  mailSent,
+                }
+              : { from: current.status, to: patch.status, mailSent },
             ip: clientIp(req),
           });
         } catch (_) {}
-        return json(res, 200, { ok: true, order });
+        return json(res, 200, { ok: true, order, mailSent });
       } catch (err) {
         return json(res, 400, { ok: false, error: (err && err.message) || "Güncellenemedi" });
       }

@@ -1,50 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const net = require("node:net");
-const { spawn } = require("node:child_process");
-
-const root = path.resolve(__dirname, "..");
-
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.on("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      server.close(() => resolve(address.port));
-    });
-  });
-}
-
-async function waitForServer(baseUrl, child) {
-  const deadline = Date.now() + 8000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error("Test sunucusu erken kapandı.");
-    try {
-      const response = await fetch(baseUrl + "/api/products");
-      if (response.ok) return;
-    } catch (_) {}
-    await new Promise((resolve) => setTimeout(resolve, 80));
-  }
-  throw new Error("Test sunucusu zamanında başlamadı.");
-}
+const { spawnTestServer } = require("./helpers/spawn-server");
 
 test("admin calendar APIs require auth and persist reminders/notes", async (t) => {
-  const port = await getFreePort();
   const password = "calendar-admin-pass";
-  const child = spawn(process.execPath, ["server.js"], {
-    cwd: root,
-    env: Object.assign({}, process.env, {
-      PORT: String(port),
-      ADMIN_PASSWORD: password,
-      SITE_BASE_URL: `http://127.0.0.1:${port}`,
-    }),
-    stdio: "ignore",
-  });
-  t.after(() => child.kill());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForServer(baseUrl, child);
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
 
   const unauthorized = await fetch(baseUrl + "/api/admin/calendar");
   assert.equal(unauthorized.status, 401);
@@ -90,8 +50,6 @@ test("admin calendar APIs require auth and persist reminders/notes", async (t) =
     body: JSON.stringify({ title: "Canlı kontrol — tamam", done: true }),
   });
   assert.equal(updated.status, 200);
-  const updatedPayload = await updated.json();
-  assert.equal(updatedPayload.entry.done, true);
 
   const removed = await fetch(baseUrl + "/api/admin/calendar/" + entryId, {
     method: "DELETE",

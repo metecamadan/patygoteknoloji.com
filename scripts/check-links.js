@@ -88,9 +88,15 @@ async function main() {
   }
 
   const port = await getFreePort();
+  const dataRoot = fs.mkdtempSync(path.join(require("os").tmpdir(), "patygo-links-"));
   const child = spawn(process.execPath, ["server.js"], {
     cwd: root,
-    env: { ...process.env, PORT: String(port), ADMIN_PASSWORD: "link-check-admin" },
+    env: {
+      ...process.env,
+      PORT: String(port),
+      ADMIN_PASSWORD: "link-check-admin",
+      PATYGO_DATA_ROOT: dataRoot,
+    },
     stdio: "ignore",
   });
   const base = `http://127.0.0.1:${port}`;
@@ -136,6 +142,9 @@ async function main() {
     }
   } finally {
     child.kill();
+    try {
+      fs.rmSync(dataRoot, { recursive: true, force: true });
+    } catch (_) {}
   }
 
   console.log("Checked href targets:", targets.size);

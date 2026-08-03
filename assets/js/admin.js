@@ -2220,12 +2220,49 @@
     return map[status] || status || "—";
   }
 
+  function orderStatusClass(status) {
+    const map = {
+      payment_pending: "order-status--pending",
+      paid: "order-status--success",
+      payment_failed: "order-status--failed",
+      preparing: "order-status--preparing",
+      shipped: "order-status--shipped",
+      cancelled: "order-status--cancelled",
+      refunded: "order-status--refunded",
+    };
+    return map[status] || "order-status--neutral";
+  }
+
+  function orderStatusBadge(status) {
+    return (
+      "<span class='admin-status order-status " +
+      orderStatusClass(status) +
+      "'>" +
+      orderStatusLabel(status) +
+      "</span>"
+    );
+  }
+
+  let shippingCarriers = [
+    "Yurtiçi Kargo",
+    "Aras Kargo",
+    "MNG Kargo",
+    "PTT Kargo",
+    "Sürat Kargo",
+    "UPS",
+    "DHL",
+    "Diğer",
+  ];
+
   async function loadAdminOrders() {
     if (!adminOrderList || !token) return;
     const status = orderStatusFilter ? orderStatusFilter.value : "";
     const q = status ? "?status=" + encodeURIComponent(status) : "";
     const data = await api("/api/admin/orders" + q);
     const orders = (data && data.orders) || [];
+    if (Array.isArray(data.shippingCarriers) && data.shippingCarriers.length) {
+      shippingCarriers = data.shippingCarriers;
+    }
     adminOrderList.textContent = "";
     if (!orders.length) {
       const empty = document.createElement("div");
@@ -2242,8 +2279,12 @@
       title.textContent = order.id;
       const meta = document.createElement("span");
       const who = (order.customer && order.customer.name) || "—";
-      meta.textContent =
-        who + " · " + orderStatusLabel(order.status) + " · " + moneyTr(order.total);
+      meta.innerHTML =
+        who +
+        " · " +
+        orderStatusBadge(order.status) +
+        " · " +
+        moneyTr(order.total);
       main.appendChild(title);
       main.appendChild(meta);
       row.appendChild(main);
@@ -2274,10 +2315,18 @@
     adminOrderDetail.innerHTML =
       "<dl class='admin-xml-meta'>" +
       "<div><dt>Durum</dt><dd>" +
-      orderStatusLabel(order.status) +
+      orderStatusBadge(order.status) +
       "</dd></div>" +
       "<div><dt>Ödeme</dt><dd>" +
-      (order.paymentStatus || "—") +
+      orderStatusBadge(
+        order.paymentStatus === "paid"
+          ? "paid"
+          : order.paymentStatus === "failed"
+            ? "payment_failed"
+            : order.paymentStatus === "refunded"
+              ? "refunded"
+              : "payment_pending"
+      ) +
       "</dd></div>" +
       "<div><dt>Müşteri</dt><dd>" +
       (c.name || "—") +
@@ -2294,6 +2343,12 @@
       "<div><dt>Teslimat</dt><dd>" +
       (c.shippingAddress || "—") +
       "</dd></div>" +
+      (order.shippingCarrier
+        ? "<div><dt>Kargo</dt><dd>" +
+          order.shippingCarrier +
+          (order.trackingCode ? " · " + order.trackingCode : "") +
+          "</dd></div>"
+        : "") +
       "<div><dt>Toplam</dt><dd>" +
       moneyTr(order.total) +
       "</dd></div>" +
@@ -2316,21 +2371,77 @@
         )
         .join("") +
       "</select></div>" +
-      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Kaydet</button></div>";
+      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
+      "<h3 style='font-size:0.95rem;margin:18px 0 8px'>Kargo bilgisi</h3>" +
+      "<p class='admin-field-help' style='margin:0 0 10px'>Kargo firması ve gönderi kodunu kaydettiğinizde sipariş kargoya verildi olarak işaretlenir ve müşteriye bilgilendirme maili gider.</p>" +
+      "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
+      "<select id='adminOrderCarrier'>" +
+      "<option value=''>Seçin</option>" +
+      shippingCarriers
+        .map(function (name) {
+          return (
+            "<option value='" +
+            name.replace(/'/g, "&#39;") +
+            "'" +
+            (order.shippingCarrier === name ? " selected" : "") +
+            ">" +
+            name +
+            "</option>"
+          );
+        })
+        .join("") +
+      "</select></div>" +
+      "<div class='field'><label for='adminOrderTracking'>Gönderi / takip kodu</label>" +
+      "<input type='text' id='adminOrderTracking' maxlength='80' value='" +
+      (order.trackingCode || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;") +
+      "' placeholder='Örn. 1234567890'></div>" +
+      "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>";
     const saveBtn = document.getElementById("adminOrderSaveStatus");
     if (saveBtn) {
       saveBtn.addEventListener("click", async () => {
         const status = document.getElementById("adminOrderStatus").value;
         try {
-          await api("/api/admin/orders/" + encodeURIComponent(orderId), {
+          const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
             method: "PATCH",
             body: JSON.stringify({ status }),
           });
-          note(adminOrdersNote, "ok", "Durum güncellendi.");
+          note(
+            adminOrdersNote,
+            "ok",
+            result.mailSent ? "Durum güncellendi. Müşteriye mail gönderildi." : "Durum güncellendi."
+          );
           await loadAdminOrders();
           await showAdminOrderDetail(orderId);
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Güncellenemedi");
+        }
+      });
+    }
+    const saveShippingBtn = document.getElementById("adminOrderSaveShipping");
+    if (saveShippingBtn) {
+      saveShippingBtn.addEventListener("click", async () => {
+        const shippingCarrier = document.getElementById("adminOrderCarrier").value;
+        const trackingCode = document.getElementById("adminOrderTracking").value.trim();
+        if (!shippingCarrier || !trackingCode) {
+          note(adminOrdersNote, "err", "Kargo firması ve gönderi kodu gerekli.");
+          return;
+        }
+        try {
+          const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
+            method: "PATCH",
+            body: JSON.stringify({ shippingCarrier, trackingCode }),
+          });
+          note(
+            adminOrdersNote,
+            "ok",
+            result.mailSent
+              ? "Kargo kaydedildi. Müşteriye kargoya verildi maili gönderildi."
+              : "Kargo kaydedildi."
+          );
+          await loadAdminOrders();
+          await showAdminOrderDetail(orderId);
+        } catch (err) {
+          note(adminOrdersNote, "err", err.message || "Kargo kaydedilemedi");
         }
       });
     }
