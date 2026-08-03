@@ -45,6 +45,8 @@ test("agent ops page exists and is noindex ops room", () => {
   assert.match(html, /Agent Ops/);
   assert.match(html, /noindex/);
   assert.match(html, /\/api\/admin\/agent-ops/);
+  assert.match(html, /id="loginEmail"/);
+  assert.match(html, /id="password"/);
   assert.match(html, /Bağlantı havuzu/);
   assert.match(html, /Şef kararları/);
 });

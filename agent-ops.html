@@ -226,9 +226,11 @@
 <body>
   <div id="loginView" class="login">
     <h1>Agent Ops · Canlı</h1>
-    <p>Admin şifresi ile giriş. Paslaşmalar, dosya değişiklikleri ve şef kararları 2 sn’de bir yenilenir.</p>
+    <p>Panel admin şifresi ile giriş (e-posta isteğe bağlı). Paslaşmalar 2 sn’de bir yenilenir.</p>
     <form id="loginForm">
-      <label for="password">Admin şifresi</label>
+      <label for="loginEmail">E-posta (opsiyonel)</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="mete.camadan@patygoteknoloji.com" />
+      <label for="password" style="margin-top:12px">Şifre</label>
       <input id="password" type="password" required autocomplete="current-password" />
       <button type="submit">Canlı izlemeyi aç</button>
       <p class="note" id="loginNote"></p>
@@ -493,9 +495,13 @@
         ev.preventDefault();
         loginNote.textContent = "Giriş…";
         try {
+          const email = String(document.getElementById("loginEmail").value || "").trim();
+          const password = document.getElementById("password").value;
+          const body = { password: password };
+          if (email) body.email = email;
           const data = await api("/api/admin/login", {
             method: "POST",
-            body: JSON.stringify({ password: document.getElementById("password").value }),
+            body: JSON.stringify(body),
           });
           token = data.token;
           sessionStorage.setItem(TOKEN_KEY, token);
