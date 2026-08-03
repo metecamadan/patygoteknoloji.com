@@ -220,39 +220,27 @@
 
         <section id="adminTabOrders" class="admin-tab-panel" aria-labelledby="ordersTab" hidden>
           <div class="admin-page">
-            <div class="admin-overview-grid admin-overview-grid-2">
-              <section class="admin-card">
-                <div class="admin-card-head">
-                  <div>
-                    <span class="admin-eyebrow">TİCARET</span>
-                    <h2>Siparişler</h2>
-                  </div>
-                  <select id="orderStatusFilter" aria-label="Durum filtresi">
-                    <option value="">Tümü</option>
-                    <option value="payment_pending">Ödeme bekliyor</option>
-                    <option value="paid">Ödendi</option>
-                    <option value="payment_failed">Ödeme başarısız</option>
-                    <option value="preparing">Hazırlanıyor</option>
-                    <option value="shipped">Kargoda</option>
-                    <option value="cancelled">İptal</option>
-                    <option value="refunded">İade</option>
-                  </select>
+            <section class="admin-card admin-orders-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">TİCARET</span>
+                  <h2>Siparişler</h2>
                 </div>
-                <div id="adminOrderList" class="admin-list"></div>
-                <p class="admin-note" id="adminOrdersNote" role="status"></p>
-              </section>
-              <section class="admin-card">
-                <div class="admin-card-head">
-                  <div>
-                    <span class="admin-eyebrow">DETAY</span>
-                    <h2 id="adminOrderDetailTitle">Sipariş seçin</h2>
-                  </div>
-                </div>
-                <div id="adminOrderDetail" class="admin-order-detail">
-                  <p class="admin-hint">Soldan bir sipariş seçin.</p>
-                </div>
-              </section>
-            </div>
+                <select id="orderStatusFilter" aria-label="Durum filtresi">
+                  <option value="">Tümü</option>
+                  <option value="payment_pending">Ödeme bekliyor</option>
+                  <option value="paid">Ödendi</option>
+                  <option value="payment_failed">Ödeme başarısız</option>
+                  <option value="preparing">Hazırlanıyor</option>
+                  <option value="shipped">Kargoda</option>
+                  <option value="cancelled">İptal</option>
+                  <option value="refunded">İade</option>
+                </select>
+              </div>
+              <p class="admin-hint" style="margin-top:0">Satıra tıklayınca detay ve kargo alanları açılır.</p>
+              <div id="adminOrderList" class="admin-orders-list" role="list"></div>
+              <p class="admin-note" id="adminOrdersNote" role="status"></p>
+            </section>
           </div>
         </section>
 

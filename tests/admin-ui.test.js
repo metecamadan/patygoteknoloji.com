@@ -159,6 +159,9 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /id="calendarNotifyEmail"/);
   assert.match(html, /id="ordersTab"/);
   assert.match(html, /id="adminTabOrders"/);
+  assert.match(html, /id="adminOrderList"/);
+  assert.match(html, /admin-orders-list/);
+  assert.doesNotMatch(html, /id="adminOrderDetailTitle"/);
   assert.match(
     html,
     /id="overviewTab"[\s\S]*?id="ordersTab"[\s\S]*?id="productsTab"/
@@ -166,6 +169,8 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /agent-ops/);
   assert.match(script, /loadAdminUsers/);
   assert.match(script, /loadAdminOrders/);
+  assert.match(script, /admin-order-row/);
+  assert.match(script, /adminOrderSaveShipping/);
   assert.match(script, /notifyEmail/);
   assert.match(script, /\/api\/admin\/users/);
   assert.match(script, /\/api\/admin\/orders/);

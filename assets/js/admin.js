@@ -2198,10 +2198,9 @@
 
   const adminOrderList = document.getElementById("adminOrderList");
   const adminOrdersNote = document.getElementById("adminOrdersNote");
-  const adminOrderDetail = document.getElementById("adminOrderDetail");
-  const adminOrderDetailTitle = document.getElementById("adminOrderDetailTitle");
   const orderStatusFilter = document.getElementById("orderStatusFilter");
   let selectedOrderId = "";
+  let ordersCache = [];
 
   function moneyTr(n) {
     return "₺" + Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2243,6 +2242,22 @@
     );
   }
 
+  function escapeAttr(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;");
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   let shippingCarriers = [
     "Yurtiçi Kargo",
     "Aras Kargo",
@@ -2254,51 +2269,14 @@
     "Diğer",
   ];
 
-  async function loadAdminOrders() {
-    if (!adminOrderList || !token) return;
-    const status = orderStatusFilter ? orderStatusFilter.value : "";
-    const q = status ? "?status=" + encodeURIComponent(status) : "";
-    const data = await api("/api/admin/orders" + q);
-    const orders = (data && data.orders) || [];
-    if (Array.isArray(data.shippingCarriers) && data.shippingCarriers.length) {
-      shippingCarriers = data.shippingCarriers;
-    }
-    adminOrderList.textContent = "";
-    if (!orders.length) {
-      const empty = document.createElement("div");
-      empty.className = "admin-table-empty";
-      empty.textContent = "Sipariş yok.";
-      adminOrderList.appendChild(empty);
-      return;
-    }
-    orders.forEach((order) => {
-      const row = document.createElement("div");
-      row.className = "admin-list-item" + (selectedOrderId === order.id ? " is-active" : "");
-      const main = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = order.id;
-      const meta = document.createElement("span");
-      const who = (order.customer && order.customer.name) || "—";
-      meta.innerHTML =
-        who +
-        " · " +
-        orderStatusBadge(order.status) +
-        " · " +
-        moneyTr(order.total);
-      main.appendChild(title);
-      main.appendChild(meta);
-      row.appendChild(main);
-      row.addEventListener("click", () => showAdminOrderDetail(order.id));
-      adminOrderList.appendChild(row);
-    });
+  function paymentStatusKey(paymentStatus) {
+    if (paymentStatus === "paid") return "paid";
+    if (paymentStatus === "failed") return "payment_failed";
+    if (paymentStatus === "refunded") return "refunded";
+    return "payment_pending";
   }
 
-  async function showAdminOrderDetail(orderId) {
-    selectedOrderId = orderId;
-    const data = await api("/api/admin/orders/" + encodeURIComponent(orderId));
-    const order = data.order;
-    if (!order) return;
-    if (adminOrderDetailTitle) adminOrderDetailTitle.textContent = order.id;
+  function buildOrderDetailHtml(order) {
     const c = order.customer || {};
     const items = (order.items || [])
       .map(
@@ -2306,57 +2284,51 @@
           "<li>" +
           (it.qty || 1) +
           "× " +
-          (it.name || it.productId) +
+          escapeHtml(it.name || it.productId) +
           " — " +
           moneyTr(it.line) +
           "</li>"
       )
       .join("");
-    adminOrderDetail.innerHTML =
+    return (
+      "<div class='admin-order-detail-grid'>" +
       "<dl class='admin-xml-meta'>" +
       "<div><dt>Durum</dt><dd>" +
       orderStatusBadge(order.status) +
       "</dd></div>" +
       "<div><dt>Ödeme</dt><dd>" +
-      orderStatusBadge(
-        order.paymentStatus === "paid"
-          ? "paid"
-          : order.paymentStatus === "failed"
-            ? "payment_failed"
-            : order.paymentStatus === "refunded"
-              ? "refunded"
-              : "payment_pending"
-      ) +
+      orderStatusBadge(paymentStatusKey(order.paymentStatus)) +
       "</dd></div>" +
       "<div><dt>Müşteri</dt><dd>" +
-      (c.name || "—") +
+      escapeHtml(c.name || "—") +
       "</dd></div>" +
       "<div><dt>E-posta</dt><dd>" +
-      (c.email || "—") +
+      escapeHtml(c.email || "—") +
       "</dd></div>" +
       "<div><dt>Telefon</dt><dd>" +
-      (c.phone || "—") +
+      escapeHtml(c.phone || "—") +
       "</dd></div>" +
       "<div><dt>Fatura adresi</dt><dd>" +
-      (c.billingAddress || "—") +
+      escapeHtml(c.billingAddress || "—") +
       "</dd></div>" +
       "<div><dt>Teslimat</dt><dd>" +
-      (c.shippingAddress || "—") +
+      escapeHtml(c.shippingAddress || "—") +
       "</dd></div>" +
       (order.shippingCarrier
         ? "<div><dt>Kargo</dt><dd>" +
-          order.shippingCarrier +
-          (order.trackingCode ? " · " + order.trackingCode : "") +
+          escapeHtml(order.shippingCarrier) +
+          (order.trackingCode ? " · " + escapeHtml(order.trackingCode) : "") +
           "</dd></div>"
         : "") +
       "<div><dt>Toplam</dt><dd>" +
       moneyTr(order.total) +
       "</dd></div>" +
       "</dl>" +
-      "<h3 style='font-size:0.95rem;margin:14px 0 8px'>Kalemler</h3><ul>" +
+      "<div>" +
+      "<h3 class='admin-order-section-title'>Kalemler</h3><ul class='admin-order-items'>" +
       (items || "<li>—</li>") +
       "</ul>" +
-      "<div class='field' style='margin-top:14px'><label for='adminOrderStatus'>Durum güncelle</label>" +
+      "<div class='field'><label for='adminOrderStatus'>Durum güncelle</label>" +
       "<select id='adminOrderStatus'>" +
       ["payment_pending", "paid", "payment_failed", "preparing", "shipped", "cancelled", "refunded"]
         .map(
@@ -2372,8 +2344,9 @@
         .join("") +
       "</select></div>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
-      "<h3 style='font-size:0.95rem;margin:18px 0 8px'>Kargo bilgisi</h3>" +
-      "<p class='admin-field-help' style='margin:0 0 10px'>Kargo firması ve gönderi kodunu kaydettiğinizde sipariş kargoya verildi olarak işaretlenir ve müşteriye bilgilendirme maili gider.</p>" +
+      "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
+      "<p class='admin-field-help'>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur ve müşteriye mail gider.</p>" +
+      "<div class='admin-order-shipping-fields'>" +
       "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
       "<select id='adminOrderCarrier'>" +
       "<option value=''>Seçin</option>" +
@@ -2381,11 +2354,11 @@
         .map(function (name) {
           return (
             "<option value='" +
-            name.replace(/'/g, "&#39;") +
+            escapeAttr(name) +
             "'" +
             (order.shippingCarrier === name ? " selected" : "") +
             ">" +
-            name +
+            escapeHtml(name) +
             "</option>"
           );
         })
@@ -2393,12 +2366,19 @@
       "</select></div>" +
       "<div class='field'><label for='adminOrderTracking'>Gönderi / takip kodu</label>" +
       "<input type='text' id='adminOrderTracking' maxlength='80' value='" +
-      (order.trackingCode || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;") +
+      escapeAttr(order.trackingCode || "") +
       "' placeholder='Örn. 1234567890'></div>" +
-      "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>";
+      "</div>" +
+      "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>" +
+      "</div></div>"
+    );
+  }
+
+  function bindOrderDetailActions(orderId) {
     const saveBtn = document.getElementById("adminOrderSaveStatus");
     if (saveBtn) {
-      saveBtn.addEventListener("click", async () => {
+      saveBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
         const status = document.getElementById("adminOrderStatus").value;
         try {
           const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
@@ -2410,8 +2390,7 @@
             "ok",
             result.mailSent ? "Durum güncellendi. Müşteriye mail gönderildi." : "Durum güncellendi."
           );
-          await loadAdminOrders();
-          await showAdminOrderDetail(orderId);
+          await loadAdminOrders({ keepOpen: orderId });
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Güncellenemedi");
         }
@@ -2419,7 +2398,8 @@
     }
     const saveShippingBtn = document.getElementById("adminOrderSaveShipping");
     if (saveShippingBtn) {
-      saveShippingBtn.addEventListener("click", async () => {
+      saveShippingBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
         const shippingCarrier = document.getElementById("adminOrderCarrier").value;
         const trackingCode = document.getElementById("adminOrderTracking").value.trim();
         if (!shippingCarrier || !trackingCode) {
@@ -2438,18 +2418,132 @@
               ? "Kargo kaydedildi. Müşteriye kargoya verildi maili gönderildi."
               : "Kargo kaydedildi."
           );
-          await loadAdminOrders();
-          await showAdminOrderDetail(orderId);
+          await loadAdminOrders({ keepOpen: orderId });
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Kargo kaydedilemedi");
         }
       });
     }
-    await loadAdminOrders();
+  }
+
+  async function expandOrderRow(orderId) {
+    selectedOrderId = orderId;
+    const block = adminOrderList.querySelector('[data-order-id="' + CSS.escape(orderId) + '"]');
+    if (!block) return;
+    adminOrderList.querySelectorAll(".admin-order-block.is-open").forEach((el) => {
+      if (el !== block) {
+        el.classList.remove("is-open");
+        const panel = el.querySelector(".admin-order-expand");
+        if (panel) panel.hidden = true;
+      }
+    });
+    const expand = block.querySelector(".admin-order-expand");
+    if (!expand) return;
+    expand.hidden = false;
+    expand.innerHTML = "<p class='admin-hint'>Yükleniyor…</p>";
+    block.classList.add("is-open");
+    try {
+      const data = await api("/api/admin/orders/" + encodeURIComponent(orderId));
+      const order = data.order;
+      if (!order || selectedOrderId !== orderId) return;
+      expand.innerHTML = buildOrderDetailHtml(order);
+      bindOrderDetailActions(orderId);
+    } catch (err) {
+      expand.innerHTML =
+        "<p class='admin-note err'>" + escapeHtml(err.message || "Detay yüklenemedi") + "</p>";
+    }
+  }
+
+  function collapseOrderRow() {
+    selectedOrderId = "";
+    if (!adminOrderList) return;
+    adminOrderList.querySelectorAll(".admin-order-block.is-open").forEach((el) => {
+      el.classList.remove("is-open");
+      const panel = el.querySelector(".admin-order-expand");
+      if (panel) {
+        panel.hidden = true;
+        panel.innerHTML = "";
+      }
+    });
+  }
+
+  async function toggleOrderRow(orderId) {
+    if (selectedOrderId === orderId) {
+      collapseOrderRow();
+      return;
+    }
+    await expandOrderRow(orderId);
+  }
+
+  async function loadAdminOrders(options) {
+    if (!adminOrderList || !token) return;
+    const opts = options || {};
+    if (opts.keepOpen) selectedOrderId = opts.keepOpen;
+    const status = orderStatusFilter ? orderStatusFilter.value : "";
+    const q = status ? "?status=" + encodeURIComponent(status) : "";
+    const data = await api("/api/admin/orders" + q);
+    ordersCache = (data && data.orders) || [];
+    if (Array.isArray(data.shippingCarriers) && data.shippingCarriers.length) {
+      shippingCarriers = data.shippingCarriers;
+    }
+    adminOrderList.textContent = "";
+    if (!ordersCache.length) {
+      const empty = document.createElement("div");
+      empty.className = "admin-table-empty";
+      empty.textContent = "Sipariş yok.";
+      adminOrderList.appendChild(empty);
+      selectedOrderId = "";
+      return;
+    }
+    ordersCache.forEach((order) => {
+      const block = document.createElement("article");
+      block.className =
+        "admin-order-block" + (selectedOrderId === order.id ? " is-open" : "");
+      block.dataset.orderId = order.id;
+      block.setAttribute("role", "listitem");
+
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "admin-order-row";
+      row.setAttribute("aria-expanded", selectedOrderId === order.id ? "true" : "false");
+      const who = (order.customer && order.customer.name) || "—";
+      row.innerHTML =
+        "<span class='admin-order-id'>" +
+        escapeHtml(order.id) +
+        "</span>" +
+        "<span class='admin-order-customer'>" +
+        escapeHtml(who) +
+        "</span>" +
+        "<span class='admin-order-status-cell'>" +
+        orderStatusBadge(order.status) +
+        "</span>" +
+        "<span class='admin-order-total'>" +
+        moneyTr(order.total) +
+        "</span>" +
+        "<span class='admin-order-chevron' aria-hidden='true'></span>";
+      row.addEventListener("click", () => {
+        toggleOrderRow(order.id).catch(() => {});
+      });
+
+      const expand = document.createElement("div");
+      expand.className = "admin-order-expand";
+      expand.hidden = selectedOrderId !== order.id;
+
+      block.appendChild(row);
+      block.appendChild(expand);
+      adminOrderList.appendChild(block);
+    });
+
+    if (selectedOrderId) {
+      const stillThere = ordersCache.some((o) => o.id === selectedOrderId);
+      if (stillThere) await expandOrderRow(selectedOrderId);
+      else selectedOrderId = "";
+    }
   }
 
   if (orderStatusFilter) {
     orderStatusFilter.addEventListener("change", () => {
+      selectedOrderId = "";
       loadAdminOrders().catch(() => {});
     });
   }
