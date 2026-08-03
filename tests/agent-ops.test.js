@@ -42,11 +42,16 @@ test("agent ops store records decisions handoffs and snapshot edges", () => {
 
 test("agent ops page exists and is noindex ops room", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "agent-ops.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "agent-ops.js"), "utf8");
   assert.match(html, /Agent Ops/);
   assert.match(html, /noindex/);
-  assert.match(html, /\/api\/admin\/agent-ops/);
   assert.match(html, /id="loginEmail"/);
   assert.match(html, /id="password"/);
   assert.match(html, /Bağlantı havuzu/);
   assert.match(html, /Şef kararları/);
+  assert.match(html, /src="\/assets\/js\/agent-ops\.js"/);
+  assert.doesNotMatch(html, /<script>\s*\(function/);
+  assert.match(js, /\/api\/admin\/agent-ops/);
+  assert.match(js, /\/api\/admin\/login/);
+  assert.match(js, /preventDefault/);
 });
