@@ -27,10 +27,12 @@ const {
   isPaymentSuccess,
   publicPosStatus,
 } = require("./lib/akbank-pos");
-const { createOrderStore } = require("./lib/orders");
+const { createOrderStore, ORDER_STATUSES } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createAgentOpsStore } = require("./lib/agent-ops");
+const { createConsentStore } = require("./lib/consent");
+const { createAuditStore } = require("./lib/audit");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
 const {
   createContactStore,
@@ -115,6 +117,8 @@ const orderStore = createOrderStore(ROOT);
 const calendarStore = createCalendarStore(ROOT);
 const adminUserStore = createAdminUserStore(ROOT);
 const agentOpsStore = createAgentOpsStore(ROOT);
+const consentStore = createConsentStore(ROOT);
+const auditStore = createAuditStore(ROOT);
 
 agentOpsStore.seedIfEmpty([
   {
@@ -367,6 +371,11 @@ function buildCheckoutOrder(body) {
   if (!name || !email || !phone) throw new Error("Alıcı bilgileri eksik.");
   if (!isValidEmail(email)) throw new Error("Geçerli bir e-posta girin.");
   if (!body.contractsAccepted) throw new Error("Sözleşme onayları gerekli.");
+  if (!body.kvkkAccepted) throw new Error("KVKK aydınlatma onayı gerekli.");
+
+  const billingAddress = String(customer.billingAddress || "").trim().slice(0, 400);
+  const shippingAddress = String(customer.shippingAddress || billingAddress).trim().slice(0, 400);
+  if (!billingAddress) throw new Error("Fatura adresi gerekli.");
 
   return {
     id: makeOrderId(),
@@ -382,11 +391,14 @@ function buildCheckoutOrder(body) {
       phone,
       taxId: String(customer.taxId || "").trim().slice(0, 40),
       note: String(customer.note || "").trim().slice(0, 500),
+      billingAddress,
+      shippingAddress,
     },
     contractsAccepted: {
       onBilgilendirme: true,
       mesafeliSatis: true,
       iadeCayma: true,
+      kvkk: true,
       at: new Date().toISOString(),
     },
     status: "payment_pending",
@@ -624,6 +636,16 @@ async function handleApi(req, res, urlPath) {
       };
       contactStore.append(lead);
 
+      try {
+        consentStore.record({
+          subjectType: "contact",
+          subjectRef: lead.id,
+          purpose: "kvkk_notice",
+          policyVersion: "2026-08-03",
+          evidence: { ip, email: data.email, granted: true },
+        });
+      } catch (_) {}
+
       if (check.spam) {
         return json(res, 200, { ok: true, delivered: false });
       }
@@ -664,6 +686,28 @@ async function handleApi(req, res, urlPath) {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
       const order = buildCheckoutOrder(body);
       orderStore.save(order);
+      try {
+        consentStore.record({
+          subjectType: "checkout",
+          subjectRef: order.id,
+          purpose: "contracts_bundle",
+          policyVersion: "2026-08-03",
+          evidence: {
+            onBilgilendirme: true,
+            mesafeliSatis: true,
+            iadeCayma: true,
+            kvkk: true,
+            ip,
+          },
+        });
+        consentStore.record({
+          subjectType: "checkout",
+          subjectRef: order.id,
+          purpose: "kvkk_notice",
+          policyVersion: "2026-08-03",
+          evidence: { ip, email: order.customer.email },
+        });
+      } catch (_) {}
       const callbackUrl = SITE_BASE_URL + "/api/payment/callback";
       const form = buildHostedPaymentForm(akbankConfig, {
         orderId: order.id,
@@ -883,6 +927,66 @@ async function handleApi(req, res, urlPath) {
         return json(res, 200, { ok: true });
       } catch (err) {
         return json(res, 400, { ok: false, error: (err && err.message) || "Silinemedi" });
+      }
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/orders") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const status = requestUrl.searchParams.get("status") || "";
+    const limit = requestUrl.searchParams.get("limit") || "50";
+    return json(res, 200, {
+      ok: true,
+      orders: orderStore.list({ status: status || undefined, limit }),
+    });
+  }
+
+  const adminOrderMatch = /^\/api\/admin\/orders\/([^/]+)$/.exec(urlPath);
+  if (adminOrderMatch) {
+    const orderId = decodeURIComponent(adminOrderMatch[1]);
+    if (req.method === "GET") {
+      const order = orderStore.get(orderId);
+      if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+      return json(res, 200, { ok: true, order });
+    }
+    if (req.method === "PATCH") {
+      try {
+        const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+        const status = String(body.status || "").trim();
+        if (!ORDER_STATUSES.has(status)) {
+          return json(res, 400, { ok: false, error: "Geçersiz sipariş durumu" });
+        }
+        const current = orderStore.get(orderId);
+        if (!current) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+        const patch = { status };
+        if (status === "paid") {
+          patch.paymentStatus = "paid";
+          patch.paymentTaken = true;
+        }
+        if (status === "payment_failed") {
+          patch.paymentStatus = "failed";
+          patch.paymentTaken = false;
+        }
+        if (status === "refunded") {
+          patch.paymentStatus = "refunded";
+          patch.paymentTaken = false;
+        }
+        const order = orderStore.update(orderId, patch);
+        try {
+          const session = getSession(req);
+          auditStore.record({
+            actorType: "admin_user",
+            actorId: session && session.userId,
+            action: "order.status_update",
+            entityType: "order",
+            entityId: orderId,
+            detail: { from: current.status, to: status },
+            ip: clientIp(req),
+          });
+        } catch (_) {}
+        return json(res, 200, { ok: true, order });
+      } catch (err) {
+        return json(res, 400, { ok: false, error: (err && err.message) || "Güncellenemedi" });
       }
     }
   }

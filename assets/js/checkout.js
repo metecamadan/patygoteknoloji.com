@@ -335,12 +335,22 @@
         if (
           !els.form.onayOnBilgi?.checked ||
           !els.form.onayMesafeli?.checked ||
-          !els.form.onayIade?.checked
+          !els.form.onayIade?.checked ||
+          !els.form.onayKvkk?.checked
         ) {
           els.note.classList.remove("ok");
           els.note.classList.add("err");
           els.note.textContent =
-            "Devam etmek için Ön Bilgilendirme, Mesafeli Satış Sözleşmesi ve İade/Cayma koşullarını onaylayın.";
+            "Devam etmek için Ön Bilgilendirme, Mesafeli Satış, İade/Cayma ve KVKK onaylarını işaretleyin.";
+          return;
+        }
+        const billingAddress = (els.form.faturaAdres && els.form.faturaAdres.value.trim()) || "";
+        const shippingAddress =
+          (els.form.teslimatAdres && els.form.teslimatAdres.value.trim()) || billingAddress;
+        if (!billingAddress || !shippingAddress) {
+          els.note.classList.remove("ok");
+          els.note.classList.add("err");
+          els.note.textContent = "Fatura ve teslimat adreslerini girin.";
           return;
         }
 
@@ -380,8 +390,11 @@
                 phone: tel,
                 taxId: (els.form.vergi && els.form.vergi.value.trim()) || "",
                 note: (els.form.not && els.form.not.value.trim()) || "",
+                billingAddress,
+                shippingAddress,
               },
               contractsAccepted: true,
+              kvkkAccepted: true,
             }),
           });
           const data = await res.json();

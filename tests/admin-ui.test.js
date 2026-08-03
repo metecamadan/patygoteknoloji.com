@@ -157,10 +157,14 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /id="adminUserForm"/);
   assert.match(html, /id="loginEmail"/);
   assert.match(html, /id="calendarNotifyEmail"/);
+  assert.match(html, /id="ordersTab"/);
+  assert.match(html, /id="adminTabOrders"/);
   assert.match(html, /agent-ops/);
   assert.match(script, /loadAdminUsers/);
+  assert.match(script, /loadAdminOrders/);
   assert.match(script, /notifyEmail/);
   assert.match(script, /\/api\/admin\/users/);
+  assert.match(script, /\/api\/admin\/orders/);
 });
 
 test("admin XML refresh errors mention supplier access not generic /admin path", () => {

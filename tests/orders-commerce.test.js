@@ -4,8 +4,10 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { createOrderStore } = require("../lib/orders");
+const { resetDbForTests } = require("../lib/db");
 
 test("order store commerceSummary computes paid revenue and AOV for period", () => {
+  resetDbForTests();
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-orders-summary-"));
   const store = createOrderStore(root);
   try {
@@ -14,6 +16,8 @@ test("order store commerceSummary computes paid revenue and AOV for period", () 
       total: 1200,
       paymentTaken: true,
       paymentStatus: "paid",
+      status: "paid",
+      customer: { name: "A", email: "a1@example.com", phone: "1" },
       createdAt: "2026-07-18T10:00:00.000Z",
       items: [
         { productId: "a", name: "Ürün A", brand: "X", qty: 2, line: 800 },
@@ -25,6 +29,8 @@ test("order store commerceSummary computes paid revenue and AOV for period", () 
       total: 800,
       paymentTaken: true,
       paymentStatus: "paid",
+      status: "paid",
+      customer: { name: "B", email: "b1@example.com", phone: "2" },
       createdAt: "2026-07-19T10:00:00.000Z",
       items: [{ productId: "a", name: "Ürün A", brand: "X", qty: 1, line: 800 }],
     });
@@ -33,6 +39,8 @@ test("order store commerceSummary computes paid revenue and AOV for period", () 
       total: 500,
       paymentTaken: false,
       paymentStatus: "failed",
+      status: "payment_failed",
+      customer: { name: "C", email: "c1@example.com", phone: "3" },
       createdAt: "2026-07-19T12:00:00.000Z",
       items: [{ productId: "c", name: "Ürün C", qty: 5, line: 500 }],
     });
@@ -41,6 +49,8 @@ test("order store commerceSummary computes paid revenue and AOV for period", () 
       total: 9999,
       paymentTaken: true,
       paymentStatus: "paid",
+      status: "paid",
+      customer: { name: "D", email: "d1@example.com", phone: "4" },
       createdAt: "2026-01-01T10:00:00.000Z",
       items: [{ productId: "a", name: "Ürün A", qty: 99, line: 9999 }],
     });
@@ -55,5 +65,6 @@ test("order store commerceSummary computes paid revenue and AOV for period", () 
     assert.equal(summary.topPurchasedProducts[0].qty, 3);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+    resetDbForTests();
   }
 });

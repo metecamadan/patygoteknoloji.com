@@ -72,8 +72,11 @@ test("payment APIs start hosted form and verify callback", async (t) => {
         name: "Test Musteri",
         email: "test@example.com",
         phone: "05555555555",
+        billingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+        shippingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
       },
       contractsAccepted: true,
+      kvkkAccepted: true,
     }),
   });
   assert.equal(start.status, 200);

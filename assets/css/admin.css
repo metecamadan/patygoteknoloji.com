@@ -340,10 +340,9 @@
   font-size: 0.78rem;
   margin-top: 2px;
 }
-.admin-list-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
+.admin-list-item.is-active {
+  border-color: #93c5fd;
+  background: #eff6ff;
 }
 .admin-item {
   border: 1px solid var(--line);

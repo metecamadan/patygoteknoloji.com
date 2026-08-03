@@ -79,6 +79,14 @@
                 </div>
               </div>
               <div class="field">
+                <label for="faturaAdres">Fatura adresi *</label>
+                <textarea id="faturaAdres" name="faturaAdres" rows="2" required placeholder="Mahalle, sokak, no, ilçe / il"></textarea>
+              </div>
+              <div class="field">
+                <label for="teslimatAdres">Teslimat adresi *</label>
+                <textarea id="teslimatAdres" name="teslimatAdres" rows="2" required placeholder="Fatura ile aynıysa tekrar yazın"></textarea>
+              </div>
+              <div class="field">
                 <label for="not">Sipariş notu</label>
                 <textarea id="not" name="not" rows="2" placeholder="Teslimat veya fatura ile ilgili notunuz..."></textarea>
               </div>
@@ -93,6 +101,10 @@
               <div class="check-inline">
                 <input type="checkbox" id="onayIade" name="onayIade" required />
                 <label for="onayIade"><a href="/iade-ve-cayma" target="_blank" rel="noopener" style="color:var(--brand)">İade ve Cayma Hakkı</a> koşullarını okudum. *</label>
+              </div>
+              <div class="check-inline">
+                <input type="checkbox" id="onayKvkk" name="onayKvkk" required />
+                <label for="onayKvkk"><a href="/kvkk" target="_blank" rel="noopener" style="color:var(--brand)">KVKK Aydınlatma Metni</a>’ni okudum; siparişimin ifası için kişisel verilerimin işlenmesini kabul ediyorum. *</label>
               </div>
               <p class="form-note" id="checkoutNote" aria-live="polite"></p>
               <button type="submit" class="btn btn-primary btn-block btn-lg" id="payBtn">Güvenli Ödemeye Geç</button>
