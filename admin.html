@@ -48,6 +48,7 @@
         </a>
         <nav class="admin-nav" aria-label="Admin bölümleri">
           <button type="button" class="admin-nav-item active" id="overviewTab" aria-current="page" aria-controls="adminTabOverview" data-admin-tab="overview"><span class="admin-nav-icon">⌂</span>Genel Bakış</button>
+          <button type="button" class="admin-nav-item" id="ordersTab" aria-controls="adminTabOrders" data-admin-tab="orders"><span class="admin-nav-icon">☰</span>Siparişler</button>
           <button type="button" class="admin-nav-item" id="productsTab" aria-controls="adminTabProducts" data-admin-tab="products" aria-expanded="false"><span class="admin-nav-icon">▣</span>Ürünler</button>
           <div class="admin-nav-children" id="productsNavChildren" hidden>
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
@@ -55,7 +56,6 @@
           </div>
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
-          <button type="button" class="admin-nav-item" id="ordersTab" aria-controls="adminTabOrders" data-admin-tab="orders"><span class="admin-nav-icon">☰</span>Siparişler</button>
           <button type="button" class="admin-nav-item" id="usersTab" aria-controls="adminTabUsers" data-admin-tab="users"><span class="admin-nav-icon">◉</span>Kullanıcılar</button>
         </nav>
         <div class="admin-sidebar-foot">
@@ -218,6 +218,44 @@
           </div>
         </section>
 
+        <section id="adminTabOrders" class="admin-tab-panel" aria-labelledby="ordersTab" hidden>
+          <div class="admin-page">
+            <div class="admin-overview-grid admin-overview-grid-2">
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">TİCARET</span>
+                    <h2>Siparişler</h2>
+                  </div>
+                  <select id="orderStatusFilter" aria-label="Durum filtresi">
+                    <option value="">Tümü</option>
+                    <option value="payment_pending">Ödeme bekliyor</option>
+                    <option value="paid">Ödendi</option>
+                    <option value="payment_failed">Ödeme başarısız</option>
+                    <option value="preparing">Hazırlanıyor</option>
+                    <option value="shipped">Kargoda</option>
+                    <option value="cancelled">İptal</option>
+                    <option value="refunded">İade</option>
+                  </select>
+                </div>
+                <div id="adminOrderList" class="admin-list"></div>
+                <p class="admin-note" id="adminOrdersNote" role="status"></p>
+              </section>
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">DETAY</span>
+                    <h2 id="adminOrderDetailTitle">Sipariş seçin</h2>
+                  </div>
+                </div>
+                <div id="adminOrderDetail" class="admin-order-detail">
+                  <p class="admin-hint">Soldan bir sipariş seçin.</p>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
         <section id="adminTabCalendar" class="admin-tab-panel" aria-labelledby="calendarTab" hidden>
           <div class="admin-page admin-page--flush admin-page--calendar">
             <div class="admin-calendar-shell">
@@ -284,44 +322,6 @@
                   <p class="admin-note" id="calendarNote" role="status"></p>
                 </form>
               </aside>
-            </div>
-          </div>
-        </section>
-
-        <section id="adminTabOrders" class="admin-tab-panel" aria-labelledby="ordersTab" hidden>
-          <div class="admin-page">
-            <div class="admin-overview-grid admin-overview-grid-2">
-              <section class="admin-card">
-                <div class="admin-card-head">
-                  <div>
-                    <span class="admin-eyebrow">TİCARET</span>
-                    <h2>Siparişler</h2>
-                  </div>
-                  <select id="orderStatusFilter" aria-label="Durum filtresi">
-                    <option value="">Tümü</option>
-                    <option value="payment_pending">Ödeme bekliyor</option>
-                    <option value="paid">Ödendi</option>
-                    <option value="payment_failed">Ödeme başarısız</option>
-                    <option value="preparing">Hazırlanıyor</option>
-                    <option value="shipped">Kargoda</option>
-                    <option value="cancelled">İptal</option>
-                    <option value="refunded">İade</option>
-                  </select>
-                </div>
-                <div id="adminOrderList" class="admin-list"></div>
-                <p class="admin-note" id="adminOrdersNote" role="status"></p>
-              </section>
-              <section class="admin-card">
-                <div class="admin-card-head">
-                  <div>
-                    <span class="admin-eyebrow">DETAY</span>
-                    <h2 id="adminOrderDetailTitle">Sipariş seçin</h2>
-                  </div>
-                </div>
-                <div id="adminOrderDetail" class="admin-order-detail">
-                  <p class="admin-hint">Soldan bir sipariş seçin.</p>
-                </div>
-              </section>
             </div>
           </div>
         </section>
