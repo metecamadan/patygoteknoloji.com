@@ -157,6 +157,7 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /id="adminUserForm"/);
   assert.match(html, /id="loginEmail"/);
   assert.match(html, /id="calendarNotifyEmail"/);
+  assert.match(html, /agent-ops/);
   assert.match(script, /loadAdminUsers/);
   assert.match(script, /notifyEmail/);
   assert.match(script, /\/api\/admin\/users/);

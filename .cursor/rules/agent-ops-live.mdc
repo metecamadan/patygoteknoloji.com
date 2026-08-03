@@ -1,0 +1,19 @@
+---
+description: Görev paslaşmalarını Agent Ops canlı paneline yaz
+alwaysApply: true
+---
+
+# Agent Ops canlı günlük
+
+Kullanıcıya canlı paslaşma göstermek için çok-rollü işlerde olay yaz:
+
+```bash
+node scripts/agent-ops-log.js --type decision --from orchestrator --summary "..."
+node scripts/agent-ops-log.js --type handoff --from orchestrator --to frontend --summary "..." --files a.html,b.css
+node scripts/agent-ops-log.js --type change --from frontend --summary "..." --files a.html
+node scripts/agent-ops-log.js --type gate --from qa --summary "npm test yeşil" --status pass
+```
+
+Tipler: `decision` (şef), `handoff`, `change`, `gate`, `note`.
+Panel: `/agent-ops` (admin şifresi, 2 sn yenilenir).
+---

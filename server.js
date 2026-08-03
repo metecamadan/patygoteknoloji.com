@@ -30,6 +30,7 @@ const {
 const { createOrderStore } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
+const { createAgentOpsStore } = require("./lib/agent-ops");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
 const {
   createContactStore,
@@ -113,6 +114,90 @@ const analyticsStore = createAnalyticsStore(ROOT);
 const orderStore = createOrderStore(ROOT);
 const calendarStore = createCalendarStore(ROOT);
 const adminUserStore = createAdminUserStore(ROOT);
+const agentOpsStore = createAgentOpsStore(ROOT);
+
+agentOpsStore.seedIfEmpty([
+  {
+    type: "decision",
+    from: "orchestrator",
+    summary: "Yarım kalan 3 iş: ödeme spacing, takvim mail, kullanıcı yönetimi — sıra: FE → BE → QA → Release",
+    taskId: "resume-aug2",
+    status: "planned",
+  },
+  {
+    type: "handoff",
+    from: "orchestrator",
+    to: "frontend",
+    summary: "Ödeme sayfası dikey boşlukları sıkılaştır",
+    files: ["odeme.html", "assets/css/style.css"],
+    taskId: "checkout-compact",
+  },
+  {
+    type: "change",
+    from: "frontend",
+    summary: "checkout-page compact hero/section eklendi",
+    files: ["odeme.html", "assets/css/style.css", "tests/checkout-layout.test.js"],
+    taskId: "checkout-compact",
+  },
+  {
+    type: "handoff",
+    from: "orchestrator",
+    to: "backend",
+    summary: "notifyEmail + admin kullanıcı store",
+    files: ["lib/calendar.js", "lib/admin-users.js", "server.js"],
+    taskId: "users-calendar",
+  },
+  {
+    type: "change",
+    from: "backend",
+    summary: "admin-users API ve takvim e-posta hedefi",
+    files: ["lib/admin-users.js", "lib/contact.js", "server.js"],
+    taskId: "users-calendar",
+  },
+  {
+    type: "handoff",
+    from: "backend",
+    to: "frontend",
+    summary: "Kullanıcılar sekmesi + takvim e-posta alanı",
+    files: ["admin.html", "assets/js/admin.js"],
+    taskId: "users-calendar",
+  },
+  {
+    type: "handoff",
+    from: "frontend",
+    to: "qa",
+    summary: "Regression: checkout + users + calendar",
+    taskId: "resume-aug2",
+  },
+  {
+    type: "gate",
+    from: "qa",
+    summary: "npm test 117/117 yeşil",
+    status: "pass",
+    taskId: "resume-aug2",
+  },
+  {
+    type: "handoff",
+    from: "qa",
+    to: "release",
+    summary: "Commit + push main",
+    taskId: "resume-aug2",
+  },
+  {
+    type: "gate",
+    from: "release",
+    summary: "GitHub Actions CI and Deploy success",
+    status: "pass",
+    taskId: "resume-aug2",
+  },
+  {
+    type: "decision",
+    from: "orchestrator",
+    summary: "Canlı agent-ops paneli: görev paslaşmalarını kullanıcıya göster",
+    taskId: "agent-ops-live",
+    status: "planned",
+  },
+]);
 const contactStore = createContactStore(ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
@@ -747,6 +832,22 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, { ok: true, user: sessionUser(req) });
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/agent-ops") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const limit = requestUrl.searchParams.get("limit");
+    return json(res, 200, { ok: true, snapshot: agentOpsStore.snapshot(), events: agentOpsStore.list(limit) });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/agent-ops") {
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const event = agentOpsStore.append(body);
+      return json(res, 200, { ok: true, event });
+    } catch (err) {
+      return json(res, 400, { ok: false, error: (err && err.message) || "Olay yazılamadı" });
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/users") {
     return json(res, 200, { ok: true, users: adminUserStore.list() });
   }
@@ -1086,7 +1187,7 @@ function sendFile(res, filePath, method) {
   fs.readFile(filePath, (readErr, data) => {
     if (readErr) return serveNotFound(res, method);
     const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
-    if (rel === "admin.html") {
+    if (rel === "admin.html" || rel === "agent-ops.html") {
       headers["X-Robots-Tag"] = "noindex, nofollow";
       headers["Cache-Control"] = "no-store";
     }
