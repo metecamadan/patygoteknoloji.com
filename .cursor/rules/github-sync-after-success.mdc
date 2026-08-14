@@ -13,7 +13,7 @@ alwaysApply: true
 2. İlgili dosyaları stage et; secret (`.env`, key) commit etme.
 3. Anlamlı commit mesajı (neden odaklı, Türkçe veya İngilizce tutarlı).
 4. `git push origin main` (veya feature branch → PR).
-5. GitHub Actions sonucunu kontrol et; deploy job kırmızıysa düzelt.
+5. GitHub Actions sonucunu kontrol et. **Test kırmızıysa dur ve düzelt.** Deploy job SSH ile kırmızıysa kullanıcıya bırakma: VPS’ten `git fetch` + `git reset --hard origin/main` + `pm2 restart patygo` (Paramiko). XML çekme. Secret değerlerini sohbete yazma.
 
 ## Onay sorma — varsayılan canlıya al
 

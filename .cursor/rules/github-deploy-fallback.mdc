@@ -1,0 +1,12 @@
+---
+description: GitHub deploy kırmızıysa VPS'ten otomatik yayınla, kullanıcıya bırakma
+alwaysApply: true
+---
+
+# GitHub deploy kırmızısı — otomatik düzelt
+
+`CI and Deploy` içinde **Test yeşil, Deploy kırmızı** (veya kırmızı deploy maili) gelirse onay sorma.
+
+1. Canlıyı hemen al: Paramiko ile VPS `/var/www/patygoteknoloji.com` → `git fetch origin main` + `git reset --hard origin/main` + `pm2 restart patygo`. `.env` yok. XML yok. Şifreyi sohbete yazma.
+2. Kök neden genelde GitHub SSH: VPS `authorized_keys` boş, appleboy 1 sn’de düşer. Kullanıcıya secret yapıştırma. Yayın yolu `scripts/watch-github-deploy.js` (Test yeşil `origin/main`).
+3. Bitmeden `https://patygoteknoloji.com` smoke (IP değil).

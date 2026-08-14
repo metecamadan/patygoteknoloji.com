@@ -32,7 +32,7 @@ alwaysApply: true
 
 - Özellik veya bug fix bitince test kapısını tekrar çalıştır; “az önce geçmişti” ile yetinme.
 - Dashboard, ödeme, katalog, URL, admin gibi yüzeylerde değişiklik varsa ilgili test dosyalarını güncelle; manuel smoke’u varsayılan kapı yapma.
-- Canlıya giden tek yol: `main` + GitHub Actions (`CI and Deploy`). Actions önce test çalıştırır; geçmezse deploy olmaz.
+- Canlıya giden yol: `main` + GitHub Actions **Test** yeşil. Sunucu `scripts/watch-github-deploy.js` ile `origin/main` alır. GitHub SSH deploy kırmızıysa (authorized_keys boş / appleboy) kullanıcıya “secret ekle” deyip durma: VPS pull-deploy veya Paramiko `reset --hard origin/main` + `pm2 restart patygo`.
 
 ## Yayın ve güvenlik
 
