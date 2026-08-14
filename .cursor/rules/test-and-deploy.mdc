@@ -32,7 +32,7 @@ alwaysApply: true
 
 - Özellik veya bug fix bitince test kapısını tekrar çalıştır; “az önce geçmişti” ile yetinme.
 - Dashboard, ödeme, katalog, URL, admin gibi yüzeylerde değişiklik varsa ilgili test dosyalarını güncelle; manuel smoke’u varsayılan kapı yapma.
-- Canlıya giden yol: `main` + GitHub Actions **Test** yeşil. Sunucu `scripts/watch-github-deploy.js` ile `origin/main` alır. GitHub SSH deploy kırmızıysa (authorized_keys boş / appleboy) kullanıcıya “secret ekle” deyip durma: VPS pull-deploy veya Paramiko `reset --hard origin/main` + `pm2 restart patygo`.
+- Canlıya giden yol: `main` + GitHub Actions Test yeşil, ardından **Deploy over SSH** (`appleboy/ssh-action`) VPS’te `origin/main` alır ve `https://patygoteknoloji.com` smoke eder. SSH kırmızıysa anahtar eşlemesini düzelt; pull-deploy ile job’u yeşil gösterme.
 
 ## Yayın ve güvenlik
 

@@ -38,3 +38,16 @@ test("post-deploy sync migrates legacy patygo-admin in .env to 1234", () => {
   assert.match(updated, /^ADMIN_PASSWORD=1234$/m);
   assert.doesNotMatch(updated, /^ADMIN_PASSWORD=patygo-admin$/m);
 });
+
+test("CI deploy job SSHes into production after tests pass", () => {
+  const workflow = fs.readFileSync(
+    path.join(root, ".github", "workflows", "ci-deploy.yml"),
+    "utf8"
+  );
+  assert.match(workflow, /appleboy\/ssh-action/);
+  assert.match(workflow, /needs: test/);
+  assert.match(workflow, /git reset --hard origin\/main/);
+  assert.match(workflow, /pm2 restart/);
+  assert.match(workflow, /\/api\/payment\/status/);
+  assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
+});

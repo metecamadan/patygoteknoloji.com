@@ -1,5 +1,15 @@
-# GitHub Actions → test gate. Canlı yayın VPS pull-deploy (scripts/watch-github-deploy.js).
-# GitHub → sunucu SSH kullanılmaz: VPS authorized_keys boşken appleboy 1 sn'de düşer.
+# GitHub Actions → production deploy over SSH
+#
+# Required secrets:
+#   DEPLOY_HOST      Domain preferred (patygoteknoloji.com)
+#   DEPLOY_USER      SSH user (root)
+#   DEPLOY_SSH_KEY   OpenSSH private key matching VPS authorized_keys
+#
+# Optional:
+#   DEPLOY_APP_DIR     default /var/www/patygoteknoloji.com
+#   DEPLOY_PM2_NAME    default patygo
+#   DEPLOY_APP_PORT    default 5173
+#   DEPLOY_PUBLIC_URL  default https://patygoteknoloji.com
 
 name: CI and Deploy
 
@@ -39,10 +49,79 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Confirm VPS pull-deploy
+      - name: Verify deploy secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          echo "Test job passed."
-          echo "Production publish is pull-deploy on the VPS (scripts/watch-github-deploy.js)."
-          echo "The server fetches origin/main after this Test job is green; GitHub does not SSH."
+          missing=0
+          [ -n "$DEPLOY_HOST" ] || { echo "Missing secret: DEPLOY_HOST"; missing=1; }
+          [ -n "$DEPLOY_USER" ] || { echo "Missing secret: DEPLOY_USER"; missing=1; }
+          [ -n "$DEPLOY_SSH_KEY" ] || { echo "Missing secret: DEPLOY_SSH_KEY"; missing=1; }
+          if [ "$missing" -ne 0 ]; then
+            echo "Missing GitHub Actions repository secrets."
+            echo "Add DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY under Settings > Secrets > Actions."
+            echo "Prefer DEPLOY_HOST=patygoteknoloji.com (not a raw IP)."
+            exit 1
+          fi
+          if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -Eq "BEGIN (OPENSSH|RSA|EC|ED25519) PRIVATE KEY"; then
+            echo "DEPLOY_SSH_KEY format invalid: expected an OpenSSH/PEM private key block."
+            exit 1
+          fi
+          if ! printf '%s' "$DEPLOY_SSH_KEY" | grep -Eq "END (OPENSSH|RSA|EC|ED25519) PRIVATE KEY"; then
+            echo "DEPLOY_SSH_KEY format invalid: missing END private key line."
+            exit 1
+          fi
+          key_lines="$(printf '%s\n' "$DEPLOY_SSH_KEY" | wc -l | tr -d ' ')"
+          if [ "$key_lines" -lt 3 ]; then
+            echo "DEPLOY_SSH_KEY looks truncated (lines=$key_lines). Re-paste full private key."
+            exit 1
+          fi
+          echo "Deploy secrets present (host=$DEPLOY_HOST user=$DEPLOY_USER key_lines=$key_lines)."
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          DEPLOY_PM2_NAME: ${{ secrets.DEPLOY_PM2_NAME }}
+          DEPLOY_APP_PORT: ${{ secrets.DEPLOY_APP_PORT }}
+          DEPLOY_PUBLIC_URL: ${{ secrets.DEPLOY_PUBLIC_URL }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          timeout: 40s
+          command_timeout: 5m
+          envs: DEPLOY_APP_DIR,DEPLOY_PM2_NAME,DEPLOY_APP_PORT,DEPLOY_PUBLIC_URL
+          script: |
+            set -euo pipefail
+            APP_DIR="${DEPLOY_APP_DIR:-/var/www/patygoteknoloji.com}"
+            PM2_NAME="${DEPLOY_PM2_NAME:-patygo}"
+            APP_PORT="${DEPLOY_APP_PORT:-5173}"
+            PUBLIC_URL="${DEPLOY_PUBLIC_URL:-https://patygoteknoloji.com}"
+            PUBLIC_URL="${PUBLIC_URL%/}"
+            cd "$APP_DIR"
+            echo "Deploying $(git rev-parse --short HEAD) -> origin/main in $APP_DIR"
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            npm ci --omit=dev
+            pm2 restart "$PM2_NAME" --update-env
+            sleep 2
+            LOOP_JSON="$(curl -fsS "http://127.0.0.1:${APP_PORT}/api/payment/status")"
+            echo "$LOOP_JSON" | grep -q '"provider":"akbank"'
+            echo "$LOOP_JSON" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && {
+              echo "payment/status unexpectedly contains an IPv4"
+              exit 1
+            } || true
+            PUB_JSON="$(curl -fsS "${PUBLIC_URL}/api/payment/status")"
+            echo "$PUB_JSON" | grep -q '"paymentModel"'
+            echo "$PUB_JSON" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && {
+              echo "public payment/status unexpectedly contains an IPv4"
+              exit 1
+            } || true
+            echo "Deploy OK: $(git rev-parse --short HEAD) public=${PUBLIC_URL}"

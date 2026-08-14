@@ -1,12 +1,14 @@
 ---
-description: GitHub deploy kırmızıysa VPS'ten otomatik yayınla, kullanıcıya bırakma
+description: GitHub deploy kırmızıysa SSH anahtarını düzelt, sahte yeşil job koyma
 alwaysApply: true
 ---
 
-# GitHub deploy kırmızısı — otomatik düzelt
+# GitHub deploy kırmızısı
 
-`CI and Deploy` içinde **Test yeşil, Deploy kırmızı** (veya kırmızı deploy maili) gelirse onay sorma.
+`CI and Deploy` **Deploy to production** kırmızıysa üstünü örtme (echo success / pull-deploy ile yeşil gösterme).
 
-1. Canlıyı hemen al: Paramiko ile VPS `/var/www/patygoteknoloji.com` → `git fetch origin main` + `git reset --hard origin/main` + `pm2 restart patygo`. `.env` yok. XML yok. Şifreyi sohbete yazma.
-2. Kök neden genelde GitHub SSH: VPS `authorized_keys` boş, appleboy 1 sn’de düşer. Kullanıcıya secret yapıştırma. Yayın yolu `scripts/watch-github-deploy.js` (Test yeşil `origin/main`).
-3. Bitmeden `https://patygoteknoloji.com` smoke (IP değil).
+Kök neden: GitHub `DEPLOY_SSH_KEY` ile SSH atar; VPS `/root/.ssh/authorized_keys` aynı anahtarın public halini içermelidir.
+
+1. Anahtarı eşle (VPS `github_actions_deploy` + `authorized_keys`, GitHub secret `DEPLOY_SSH_KEY`). Secret değerini sohbete yazma.
+2. Workflow `appleboy/ssh-action` ile `git reset --hard origin/main`, `pm2 restart`, `https://patygoteknoloji.com/api/payment/status` doğrular.
+3. Actions Deploy gerçekten yeşil olmadan “SSH düzeltildi” deme. Geçici canlı senkron Paramiko olabilir; asıl kapı GitHub SSH’dir.
