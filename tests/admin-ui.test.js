@@ -108,7 +108,9 @@ test("admin XML schedule is editable under critical stock", () => {
   assert.match(html, /Avansas \(test\)/);
   assert.match(html, /Yayına almayın/);
   assert.match(html, /id="supplierPoolPager"/);
+  assert.match(html, /Stok \(son XML\)/);
   assert.match(html, /Site kategorisi/);
+  assert.match(script, /Son XML okumasındaki stok adedi/);
   assert.match(html, /value="nocat"/);
   assert.match(script, /POOL_PAGE_SIZE/);
   assert.match(script, /siteCategoryAssigned/);

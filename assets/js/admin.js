@@ -1867,6 +1867,9 @@
       const stockValue = item.stockQty;
       stockCell.textContent = stockValue === null ? "—" : String(stockValue);
       const critical = Number(item.criticalStockQty);
+      const fetchedAt = item.lastSuccessfulFetchAt
+        ? new Date(item.lastSuccessfulFetchAt).toLocaleString("tr-TR")
+        : "";
       if (
         item.catalogStale !== true &&
         Number.isFinite(critical) &&
@@ -1876,10 +1879,17 @@
         stockCell.title =
           "Kritik stok eşiği (" +
           critical +
-          ") altında; site ve Akakçe feed’de stoksuz sayılır.";
+          ") altında; site ve Akakçe feed’de stoksuz sayılır." +
+          (fetchedAt ? " Son XML okuma: " + fetchedAt : "");
         stockCell.classList.add("is-critical-stock");
       } else if (item.catalogStale) {
-        stockCell.title = "XML okunamadı; stok son başarılı katalogdan donduruldu.";
+        stockCell.title =
+          "XML okunamadı; stok son başarılı katalogdan donduruldu." +
+          (fetchedAt ? " Son başarılı okuma: " + fetchedAt : "");
+      } else {
+        stockCell.title = fetchedAt
+          ? "Son XML okumasındaki stok adedi (" + fetchedAt + ")."
+          : "Son XML okumasındaki stok adedi.";
       }
 
       const categoryCell = document.createElement("td");
