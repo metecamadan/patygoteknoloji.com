@@ -57,3 +57,28 @@ test("order store persists shipping carrier and tracking code", () => {
   assert.equal(loaded.shippingCarrier, "Aras Kargo");
   assert.equal(loaded.trackingCode, "AR123456");
 });
+
+test("order store claims each status mail only once", () => {
+  resetDbForTests();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-orders-mail-"));
+  const store = createOrderStore(root);
+  store.save({
+    id: "PTY-CLAIM",
+    total: 10,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "C", email: "c@example.com" },
+    items: [],
+    createdAt: "2026-07-20T12:00:00.000Z",
+  });
+  assert.equal(store.claimStatusMail("PTY-CLAIM", "paid"), true);
+  assert.equal(store.claimStatusMail("PTY-CLAIM", "paid"), false);
+  assert.equal(store.hasStatusMail("PTY-CLAIM", "paid"), true);
+  store.releaseStatusMail("PTY-CLAIM", "paid");
+  assert.equal(store.claimStatusMail("PTY-CLAIM", "paid"), true);
+  resetDbForTests();
+  try {
+    fs.rmSync(root, { recursive: true, force: true });
+  } catch (_) {}
+});

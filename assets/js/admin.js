@@ -3133,7 +3133,7 @@
       "</select></div>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
       "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
-      "<p class='admin-field-help'>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur ve müşteriye mail gider.</p>" +
+      "<p class='admin-field-help'>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur. Aynı durum için müşteriye yalnızca bir mail gider.</p>" +
       "<div class='admin-order-shipping-fields'>" +
       "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
       "<select id='adminOrderCarrier'>" +
@@ -3167,6 +3167,8 @@
     if (saveBtn) {
       saveBtn.addEventListener("click", async (event) => {
         event.stopPropagation();
+        if (saveBtn.disabled) return;
+        saveBtn.disabled = true;
         const status = document.getElementById("adminOrderStatus").value;
         try {
           const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
@@ -3181,6 +3183,8 @@
           await loadAdminOrders({ keepOpen: orderId });
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Güncellenemedi");
+        } finally {
+          saveBtn.disabled = false;
         }
       });
     }
@@ -3188,12 +3192,14 @@
     if (saveShippingBtn) {
       saveShippingBtn.addEventListener("click", async (event) => {
         event.stopPropagation();
+        if (saveShippingBtn.disabled) return;
         const shippingCarrier = document.getElementById("adminOrderCarrier").value;
         const trackingCode = document.getElementById("adminOrderTracking").value.trim();
         if (!shippingCarrier || !trackingCode) {
           note(adminOrdersNote, "err", "Kargo firması ve gönderi kodu gerekli.");
           return;
         }
+        saveShippingBtn.disabled = true;
         try {
           const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
             method: "PATCH",
@@ -3209,6 +3215,8 @@
           await loadAdminOrders({ keepOpen: orderId });
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Kargo kaydedilemedi");
+        } finally {
+          saveShippingBtn.disabled = false;
         }
       });
     }

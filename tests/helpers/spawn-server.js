@@ -17,10 +17,15 @@ function getFreePort() {
   });
 }
 
-async function waitForServer(baseUrl, child) {
+async function waitForServer(baseUrl, child, getStderr) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error("Test sunucusu erken kapandı.");
+    if (child.exitCode !== null) {
+      const detail = typeof getStderr === "function" ? getStderr() : "";
+      throw new Error(
+        "Test sunucusu erken kapandı." + (detail ? " " + detail : "")
+      );
+    }
     try {
       const response = await fetch(baseUrl + "/api/payment/status");
       if (response.ok) return;
@@ -38,14 +43,22 @@ function spawnTestServer(t, envExtra) {
   const portPromise = getFreePort();
   return portPromise.then((port) => {
     const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-data-"));
+    const stderrChunks = [];
     const child = spawn(process.execPath, ["server.js"], {
       cwd: projectRoot,
       env: Object.assign({}, process.env, {
         PORT: String(port),
         PATYGO_DATA_ROOT: dataRoot,
         SITE_BASE_URL: `http://127.0.0.1:${port}`,
+        SMTP_HOST: "",
+        SMTP_USER: "",
+        SMTP_PASS: "",
       }, envExtra || {}),
-      stdio: "ignore",
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    child.stderr.on("data", (chunk) => {
+      stderrChunks.push(Buffer.from(chunk));
+      if (stderrChunks.length > 40) stderrChunks.shift();
     });
     t.after(() => {
       child.kill();
@@ -54,7 +67,9 @@ function spawnTestServer(t, envExtra) {
       } catch (_) {}
     });
     const baseUrl = `http://127.0.0.1:${port}`;
-    return waitForServer(baseUrl, child).then(() => ({ port, baseUrl, child, dataRoot }));
+    return waitForServer(baseUrl, child, () =>
+      Buffer.concat(stderrChunks).toString("utf8").trim().slice(-1500)
+    ).then(() => ({ port, baseUrl, child, dataRoot }));
   });
 }
 

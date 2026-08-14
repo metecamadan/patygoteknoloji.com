@@ -782,7 +782,7 @@ async function handleApi(req, res, urlPath) {
         if (paid) {
           try {
             const updated = orderStore.get(orderId);
-            await sendOrderStatusMail(updated, "paid");
+            await sendOrderStatusMail(updated, "paid", { store: orderStore });
           } catch (err) {
             console.error("order paid mail failed:", err.message);
           }
@@ -1065,17 +1065,24 @@ async function handleApi(req, res, urlPath) {
         const order = orderStore.update(orderId, patch);
         let mailSent = false;
         try {
+          let mailResult = null;
           if (mailKey) {
-            await sendOrderStatusMail(order, mailKey, { extra: mailExtra });
-            mailSent = true;
+            mailResult = await sendOrderStatusMail(order, mailKey, {
+              extra: mailExtra,
+              store: orderStore,
+            });
           } else if (
             patch.status &&
             current.status !== patch.status &&
             NOTIFY_STATUSES.has(patch.status)
           ) {
-            await sendOrderStatusMail(order, patch.status);
-            mailSent = true;
+            if (patch.status === "shipped" && !(order.shippingCarrier && order.trackingCode)) {
+              mailResult = { sent: false, reason: "shipped_without_tracking" };
+            } else {
+              mailResult = await sendOrderStatusMail(order, patch.status, { store: orderStore });
+            }
           }
+          mailSent = Boolean(mailResult && mailResult.sent);
         } catch (err) {
           console.error("order status mail failed:", err.message);
         }
