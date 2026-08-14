@@ -55,6 +55,14 @@ test("three supplier slots keep configuration, products and overrides isolated",
       await manager.refresh(slot.id);
     }
 
+    const paged = manager.queryProducts({ page: 1, limit: 2 });
+    assert.equal(paged.catalogCount, 3);
+    assert.equal(paged.total, 3);
+    assert.equal(paged.products.length, 2);
+    assert.equal(paged.totalPages, 2);
+    const slot2 = manager.queryProducts({ slot: "supplier-2", page: 1, limit: 50 });
+    assert.equal(slot2.total, 1);
+    assert.equal(slot2.products[0].name, "İkinci Ürün");
     const products = manager.listProducts();
     assert.equal(products.length, 3);
     assert.equal(new Set(products.map((item) => item.id)).size, 3);

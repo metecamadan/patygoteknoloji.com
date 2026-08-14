@@ -9,6 +9,7 @@
   let selectedIndex = -1;
   let currentImages = [];
   let supplierProducts = [];
+  let supplierPoolMeta = { total: 0, page: 1, totalPages: 1, catalogCount: 0, activeCount: 0 };
   let supplierSlots = [];
   let feedStatus = null;
   let idleTimer = null;
@@ -474,9 +475,10 @@
 
     const ctrl = new AbortController();
     const isSupplierRefresh = path.includes("/supplier/refresh");
+    const isSupplierProducts = path.includes("/supplier/products");
     const timer = setTimeout(
       () => ctrl.abort(),
-      Number(opts.timeout) || (isSupplierRefresh ? 100000 : 12000)
+      Number(opts.timeout) || (isSupplierRefresh ? 100000 : isSupplierProducts ? 30000 : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -649,7 +651,11 @@
     if (newProductBtn) newProductBtn.hidden = view !== "manual";
     if (view === "xml") {
       renderSupplierProducts();
-      if (token) loadSupplierData().catch(() => {});
+      if (token) {
+        loadSupplierData().catch((err) => {
+          note(document.getElementById("supplierProductsNote"), "err", err.message || "Havuz yüklenemedi");
+        });
+      }
     }
     try {
       sessionStorage.setItem("patygo_products_view", view);
@@ -1314,7 +1320,10 @@
 
   function updateDashboard() {
     const activeManual = products.filter((item) => item.active !== false).length;
-    const activeSupplier = supplierProducts.filter((item) => item.active).length;
+    const activeSupplier = Number(supplierPoolMeta.activeCount) || 0;
+    const catalogCount =
+      Number(supplierPoolMeta.catalogCount) ||
+      supplierSlots.reduce((sum, slot) => sum + (Number(slot.itemCount) || 0), 0);
     const configuredSlots = supplierSlots.filter((slot) => slot.configured);
     const failedSlots = supplierSlots.filter((slot) => slot.lastFetchStatus === "error");
     const latestFetch = supplierSlots
@@ -1326,9 +1335,7 @@
     document.getElementById("dashboardActiveCount").textContent = String(
       activeManual + activeSupplier
     );
-    document.getElementById("dashboardSupplierCount").textContent = String(
-      supplierProducts.length
-    );
+    document.getElementById("dashboardSupplierCount").textContent = String(catalogCount);
     document.getElementById("dashboardFeedCount").textContent = String(
       feedStatus ? feedStatus.activeCount : activeManual + activeSupplier
     );
@@ -1530,39 +1537,29 @@
     updateDashboard();
   }
 
-  function filteredSupplierProducts() {
-    const query = String(supplierSearch && supplierSearch.value ? supplierSearch.value : "")
-      .trim()
-      .toLocaleLowerCase("tr-TR");
+  function supplierQueryString() {
+    const qs = new URLSearchParams();
+    qs.set("page", String(supplierPoolPage || 1));
+    qs.set("limit", String(POOL_PAGE_SIZE));
+    const query = String(supplierSearch && supplierSearch.value ? supplierSearch.value : "").trim();
     const status = supplierStatusFilter ? supplierStatusFilter.value : "";
     const slotId = supplierSlotFilter ? supplierSlotFilter.value : "";
-    return supplierProducts.filter((item) => {
-      const haystack = [item.supplierSku, item.name, item.brand, item.supplierName]
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
-      if (query && !haystack.includes(query)) return false;
-      if (slotId && item.supplierSlot !== slotId) return false;
-      if (status === "active" && !item.active) return false;
-      if (status === "inactive" && item.active) return false;
-      if (status === "stock" && !(item.stockQty === null || Number(item.stockQty) > 0)) {
-        return false;
-      }
-      if (status === "nocat" && item.siteCategoryAssigned) return false;
-      return true;
-    });
+    if (query) qs.set("q", query);
+    if (status) qs.set("status", status);
+    if (slotId) qs.set("slot", slotId);
+    return qs.toString();
   }
 
-  function pagedSupplierProducts(visible) {
-    const list = visible || filteredSupplierProducts();
-    const totalPages = Math.max(1, Math.ceil(list.length / POOL_PAGE_SIZE) || 1);
-    if (supplierPoolPage > totalPages) supplierPoolPage = totalPages;
-    if (supplierPoolPage < 1) supplierPoolPage = 1;
-    const start = (supplierPoolPage - 1) * POOL_PAGE_SIZE;
+  function pagedSupplierProducts() {
+    const total = Number(supplierPoolMeta.total) || 0;
+    const totalPages = Math.max(1, Number(supplierPoolMeta.totalPages) || 1);
+    const page = Math.min(totalPages, Math.max(1, Number(supplierPoolMeta.page) || supplierPoolPage || 1));
+    const start = total ? (page - 1) * (Number(supplierPoolMeta.limit) || POOL_PAGE_SIZE) : 0;
     return {
-      list,
+      listTotal: total,
       totalPages,
       start,
-      shown: list.slice(start, start + POOL_PAGE_SIZE),
+      shown: supplierProducts,
     };
   }
 
@@ -1663,7 +1660,9 @@
       if (opts.current) btn.setAttribute("aria-current", "page");
       btn.addEventListener("click", () => {
         supplierPoolPage = page;
-        renderSupplierProducts();
+        loadSupplierData().catch((err) => {
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        });
       });
       pager.appendChild(btn);
     };
@@ -1685,22 +1684,23 @@
   function renderSupplierProducts() {
     supplierRows.textContent = "";
     const page = pagedSupplierProducts();
-    const visible = page.list;
     const shown = page.shown;
-    const end = visible.length ? page.start + shown.length : 0;
-    document.getElementById("supplierVisibleCount").textContent = visible.length
+    const visibleTotal = page.listTotal;
+    const end = visibleTotal ? page.start + shown.length : 0;
+    const catalogCount = Number(supplierPoolMeta.catalogCount) || 0;
+    document.getElementById("supplierVisibleCount").textContent = visibleTotal
       ? page.start +
         1 +
         "–" +
         end +
         " / " +
-        visible.length +
+        visibleTotal +
         " ürün" +
-        (visible.length !== supplierProducts.length
-          ? " (filtre: " + supplierProducts.length + ")"
+        (visibleTotal !== catalogCount && catalogCount
+          ? " (filtre: " + catalogCount + ")"
           : "") +
-        (page.totalPages > 1 ? " · sayfa " + supplierPoolPage + "/" + page.totalPages : "")
-      : "0 / " + supplierProducts.length + " ürün";
+        (page.totalPages > 1 ? " · sayfa " + (supplierPoolMeta.page || 1) + "/" + page.totalPages : "")
+      : "0 / " + catalogCount + " ürün";
     const selectAll = document.getElementById("supplierSelectAll");
     if (selectAll) {
       selectAll.checked =
@@ -1709,12 +1709,12 @@
           selectedSupplierSkus.has(item.supplierSlot + "|" + item.supplierSku)
         );
     }
-    if (!visible.length) {
+    if (!visibleTotal) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
       cell.colSpan = 11;
       cell.className = "admin-table-empty";
-      cell.textContent = supplierProducts.length
+      cell.textContent = catalogCount
         ? "Filtrelere uygun XML ürünü bulunamadı."
         : supplierSlots.some((slot) => /g[uü]nl[uü]k|s[iı]n[iı]r/i.test(String(slot.lastError || "")))
           ? emptyPoolQuotaMessage()
@@ -2041,7 +2041,7 @@
     if (!siteCategories.length) await loadSiteCategories();
     const results = await Promise.all([
       api("/api/admin/supplier/status"),
-      api("/api/admin/supplier/products"),
+      api("/api/admin/supplier/products?" + supplierQueryString()),
     ]);
     supplierSlots = Array.isArray(results[0].slots)
       ? results[0].slots
@@ -2050,6 +2050,15 @@
         : [];
     feedStatus = results[0].feed || null;
     supplierProducts = Array.isArray(results[1].products) ? results[1].products : [];
+    supplierPoolMeta = {
+      total: Number(results[1].total) || 0,
+      page: Number(results[1].page) || 1,
+      totalPages: Number(results[1].totalPages) || 1,
+      catalogCount: Number(results[1].catalogCount) || 0,
+      activeCount: Number(results[1].activeCount) || 0,
+      limit: Number(results[1].limit) || POOL_PAGE_SIZE,
+    };
+    supplierPoolPage = supplierPoolMeta.page;
     const scheduleHint = document.getElementById("supplierScheduleHint");
     if (scheduleHint && results[0].schedule && results[0].nextScheduled) {
       scheduleHint.textContent =
@@ -2067,11 +2076,10 @@
   }
 
   async function updateSupplierProducts(updates) {
-    const data = await api("/api/admin/supplier/products", {
+    await api("/api/admin/supplier/products", {
       method: "PATCH",
       body: JSON.stringify({ updates }),
     });
-    supplierProducts = Array.isArray(data.products) ? data.products : supplierProducts;
     await loadSupplierData();
   }
 
@@ -2116,11 +2124,23 @@
     control.addEventListener(control.tagName === "INPUT" ? "input" : "change", renderList);
     }
   );
+  let supplierSearchTimer = 0;
   [supplierSearch, supplierStatusFilter, supplierSlotFilter].forEach((control) => {
     if (!control) return;
     control.addEventListener(control.tagName === "INPUT" ? "input" : "change", () => {
       supplierPoolPage = 1;
-      renderSupplierProducts();
+      if (control === supplierSearch) {
+        clearTimeout(supplierSearchTimer);
+        supplierSearchTimer = setTimeout(() => {
+          loadSupplierData().catch((err) => {
+            note(document.getElementById("supplierProductsNote"), "err", err.message);
+          });
+        }, 250);
+        return;
+      }
+      loadSupplierData().catch((err) => {
+        note(document.getElementById("supplierProductsNote"), "err", err.message);
+      });
     });
   });
 
@@ -2407,7 +2427,15 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       showPanel(true);
-      await Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth(), loadCategoryTree()]);
+      await Promise.all([
+        refresh(),
+        loadSupplierData().catch((err) => {
+          note(document.getElementById("supplierProductsNote"), "err", err.message || "Havuz yüklenemedi");
+        }),
+        loadDigitalDashboard(),
+        loadCalendarMonth(),
+        loadCategoryTree(),
+      ]);
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {
@@ -3761,7 +3789,15 @@
 
   if (token) {
     showPanel(true);
-    Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth(), loadCategoryTree()]).catch(() => {
+    Promise.all([
+      refresh(),
+      loadSupplierData().catch((err) => {
+        note(document.getElementById("supplierProductsNote"), "err", err.message || "Havuz yüklenemedi");
+      }),
+      loadDigitalDashboard(),
+      loadCalendarMonth(),
+      loadCategoryTree(),
+    ]).catch(() => {
       endSession("Oturum geçersiz. Tekrar giriş yapın.");
     });
   }

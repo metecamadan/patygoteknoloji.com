@@ -1218,7 +1218,6 @@ async function handleApi(req, res, urlPath) {
         result,
         slots,
         status: slots.find((slot) => slot.id === result.slotId) || slots[0],
-        products: enrichSupplierProducts(supplierManager.listProducts()),
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: err.message || "XML alınamadı" });
@@ -1226,9 +1225,23 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const slots = supplierManager.listSlots();
+    const queried = supplierManager.queryProducts({
+      q: requestUrl.searchParams.get("q") || "",
+      status: requestUrl.searchParams.get("status") || "",
+      slot: requestUrl.searchParams.get("slot") || "",
+      page: requestUrl.searchParams.get("page") || 1,
+      limit: requestUrl.searchParams.get("limit") || 50,
+    });
     return json(res, 200, {
-      products: enrichSupplierProducts(supplierManager.listProducts()),
+      products: enrichSupplierProducts(queried.products),
+      total: queried.total,
+      page: queried.page,
+      limit: queried.limit,
+      totalPages: queried.totalPages,
+      catalogCount: queried.catalogCount,
+      activeCount: queried.activeCount,
       slots,
       status: slots[0],
     });
@@ -1247,7 +1260,6 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, {
         ok: true,
         settings,
-        products: enrichSupplierProducts(supplierManager.listProducts()),
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Ayar kaydedilemedi" });
@@ -1267,7 +1279,6 @@ async function handleApi(req, res, urlPath) {
       });
       return json(res, 200, {
         ok: true,
-        products: enrichSupplierProducts(supplierManager.listProducts()),
         feedCount: feedAnalysis.eligible.length,
         feedExcludedCount: feedAnalysis.excluded.length,
       });
