@@ -248,27 +248,143 @@
     },
   };
 
+  const FEED_CATEGORY_TREE = [
+    {
+      name: "KİŞİSEL BİLGİSAYARLAR",
+      children: [
+        { name: "Taşınabilir Bilgisayarlar", children: ["Notebooklar", "Tablet"] },
+        { name: "Masaüstü Bilgisayarlar", children: ["Masaüstü Bilgisayarlar"] },
+        { name: "Monitörler", children: ["Monitör"] },
+        { name: "Çevre Birimleri", children: ["Klavye", "Mouse", "Klavye Mouse Set"] },
+        { name: "Bilgisayar Bileşenleri", children: ["Ram", "Ekran Kartı", "İşlemci", "Kasa"] },
+      ],
+    },
+    {
+      name: "YAZICILAR VE ÇEVRE BİRİMLERİ",
+      children: [
+        { name: "Yazıcılar", children: ["Ofis Yazıcıları", "Laser Yazıcılar", "Inkjet Yazıcılar"] },
+        { name: "Tarayıcılar", children: ["Tarayıcılar"] },
+        { name: "Ağ Ürünleri", children: ["Modem", "Router"] },
+        { name: "Depolama", children: ["USB Bellekler"] },
+        { name: "Çantalar ve Kılıflar", children: ["Notebook Çantaları"] },
+      ],
+    },
+    {
+      name: "EV ALETLERİ",
+      children: [{ name: "Küçük Ev Aletleri", children: ["Genel"] }],
+    },
+    {
+      name: "BEYAZ EŞYA",
+      children: [{ name: "Soğutma", children: ["Buzdolabı"] }],
+    },
+  ];
+
+  function uniqueFeedLabels(list) {
+    const seen = new Set();
+    const out = [];
+    (list || []).forEach((item) => {
+      const value = String(item || "").trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      out.push(value);
+    });
+    return out;
+  }
+
+  function feedMainNames() {
+    return FEED_CATEGORY_TREE.map((row) => row.name);
+  }
+
+  function feedMidNames(mainName) {
+    const main = FEED_CATEGORY_TREE.find((row) => row.name === mainName);
+    return main ? main.children.map((row) => row.name) : [];
+  }
+
+  function feedSubNames(mainName, midName) {
+    const main = FEED_CATEGORY_TREE.find((row) => row.name === mainName);
+    const mid = main && main.children.find((row) => row.name === midName);
+    return mid ? mid.children.slice() : [];
+  }
+
+  function fillSelectOptions(select, values, selected, placeholder) {
+    if (!select) return;
+    const current = String(selected || "").trim();
+    const options = uniqueFeedLabels((values || []).concat(current ? [current] : []));
+    select.textContent = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = placeholder;
+    select.appendChild(empty);
+    options.forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.value = options.indexOf(current) >= 0 ? current : "";
+  }
+
+  function setFeedCategorySelects(mainEl, midEl, subEl, values) {
+    const main = String((values && values.main) || "").trim();
+    const mid = String((values && values.mid) || "").trim();
+    const sub = String((values && values.sub) || "").trim();
+    fillSelectOptions(mainEl, feedMainNames(), main, "Ana kategori seçin");
+    fillSelectOptions(midEl, feedMidNames(mainEl.value), mid, "Ara kategori seçin");
+    fillSelectOptions(subEl, feedSubNames(mainEl.value, midEl.value), sub, "Alt kategori seçin");
+  }
+
+  function bindFeedCategoryCascade(mainEl, midEl, subEl) {
+    if (!mainEl || !midEl || !subEl || mainEl.dataset.feedCascade === "1") return;
+    mainEl.dataset.feedCascade = "1";
+    mainEl.addEventListener("change", () => {
+      fillSelectOptions(midEl, feedMidNames(mainEl.value), "", "Ara kategori seçin");
+      fillSelectOptions(subEl, feedSubNames(mainEl.value, midEl.value), "", "Alt kategori seçin");
+    });
+    midEl.addEventListener("change", () => {
+      fillSelectOptions(subEl, feedSubNames(mainEl.value, midEl.value), "", "Alt kategori seçin");
+    });
+  }
+
   function applyCategoryDefaults(force) {
     const tree = CATEGORY_FEED_DEFAULTS[fields.category.value] || CATEGORY_FEED_DEFAULTS.bilgisayar;
-    if (force || !fields.mainCategory.value.trim()) fields.mainCategory.value = tree.mainCategory;
-    if (force || !fields.midCategory.value.trim()) fields.midCategory.value = tree.midCategory;
-    if (force || !fields.subCategory.value.trim()) fields.subCategory.value = tree.subCategory;
+    setFeedCategorySelects(fields.mainCategory, fields.midCategory, fields.subCategory, {
+      main: force || !fields.mainCategory.value.trim() ? tree.mainCategory : fields.mainCategory.value,
+      mid: force || !fields.midCategory.value.trim() ? tree.midCategory : fields.midCategory.value,
+      sub: force || !fields.subCategory.value.trim() ? tree.subCategory : fields.subCategory.value,
+    });
   }
 
   function applySupplierFeedCategoryDefaults(force) {
     if (!supplierFeedFields.category) return;
     const tree =
       CATEGORY_FEED_DEFAULTS[supplierFeedFields.category.value] || CATEGORY_FEED_DEFAULTS.bilgisayar;
-    if (force || !supplierFeedFields.mainCategory.value.trim()) {
-      supplierFeedFields.mainCategory.value = tree.mainCategory;
-    }
-    if (force || !supplierFeedFields.midCategory.value.trim()) {
-      supplierFeedFields.midCategory.value = tree.midCategory;
-    }
-    if (force || !supplierFeedFields.subCategory.value.trim()) {
-      supplierFeedFields.subCategory.value = tree.subCategory;
-    }
+    setFeedCategorySelects(
+      supplierFeedFields.mainCategory,
+      supplierFeedFields.midCategory,
+      supplierFeedFields.subCategory,
+      {
+        main:
+          force || !supplierFeedFields.mainCategory.value.trim()
+            ? tree.mainCategory
+            : supplierFeedFields.mainCategory.value,
+        mid:
+          force || !supplierFeedFields.midCategory.value.trim()
+            ? tree.midCategory
+            : supplierFeedFields.midCategory.value,
+        sub:
+          force || !supplierFeedFields.subCategory.value.trim()
+            ? tree.subCategory
+            : supplierFeedFields.subCategory.value,
+      }
+    );
   }
+
+  bindFeedCategoryCascade(fields.mainCategory, fields.midCategory, fields.subCategory);
+  bindFeedCategoryCascade(
+    supplierFeedFields.mainCategory,
+    supplierFeedFields.midCategory,
+    supplierFeedFields.subCategory
+  );
 
   function renderSupplierFeedIssues(issues) {
     if (!supplierFeedIssues) return;
@@ -305,12 +421,19 @@
     supplierFeedFields.currency.value = item.currency || "TRY";
     supplierFeedFields.unit.value = item.unit || "ADET";
     supplierFeedFields.category.value = item.category || "bilgisayar";
-    supplierFeedFields.mainCategory.value = item.mainCategory || "";
-    supplierFeedFields.midCategory.value = item.midCategory || "";
-    supplierFeedFields.subCategory.value = item.subCategory || "";
+    setFeedCategorySelects(
+      supplierFeedFields.mainCategory,
+      supplierFeedFields.midCategory,
+      supplierFeedFields.subCategory,
+      {
+        main: item.mainCategory || "",
+        mid: item.midCategory || "",
+        sub: item.subCategory || "",
+      }
+    );
+    applySupplierFeedCategoryDefaults(false);
     supplierFeedFields.description.value = item.description || item.name || "";
     supplierFeedFields.image.value = item.image || "";
-    applySupplierFeedCategoryDefaults(false);
     renderSupplierFeedIssues(item.feedIssues || []);
     note(supplierFeedFormNote, "", "");
     supplierFeedModal.hidden = false;
@@ -658,9 +781,11 @@
       : "";
     fields.currency.value = p.currency || "TRY";
     fields.unit.value = p.unit || "ADET";
-    fields.mainCategory.value = p.mainCategory || "";
-    fields.midCategory.value = p.midCategory || "";
-    fields.subCategory.value = p.subCategory || "";
+    setFeedCategorySelects(fields.mainCategory, fields.midCategory, fields.subCategory, {
+      main: p.mainCategory || "",
+      mid: p.midCategory || "",
+      sub: p.subCategory || "",
+    });
     applyCategoryDefaults(false);
     currentImages = Array.isArray(p.images)
       ? p.images.filter(Boolean).slice(0, MAX_PRODUCT_IMAGES)
