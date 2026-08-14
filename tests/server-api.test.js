@@ -211,3 +211,56 @@ test("agent-ops ingest accepts keyed prompt events without admin session", async
   const payload = await accepted.json();
   assert.equal(payload.event.type, "prompt");
 });
+
+test("admin category tree API publishes only active categories to the public feed", async (t) => {
+  const password = "test-admin-password";
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+  const denied = await fetch(baseUrl + "/api/admin/categories");
+  assert.equal(denied.status, 401);
+
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  const session = await login.json();
+  const auth = { Authorization: "Bearer " + session.token };
+
+  const current = await fetch(baseUrl + "/api/admin/categories", { headers: auth });
+  assert.equal(current.status, 200);
+  const seeded = await current.json();
+  assert.ok(seeded.categories.length >= 2);
+
+  const saved = await fetch(baseUrl + "/api/admin/categories", {
+    method: "PUT",
+    headers: Object.assign({ "Content-Type": "application/json" }, auth),
+    body: JSON.stringify({
+      categories: [
+        {
+          name: "Canlı Dal",
+          slug: "canli-dal",
+          active: true,
+          children: [{ name: "Canlı Yaprak", slug: "canli-yaprak", active: true }],
+        },
+        {
+          name: "Taslak Dal",
+          slug: "taslak-dal",
+          active: false,
+          children: [{ name: "Gizli", slug: "gizli", active: true }],
+        },
+      ],
+    }),
+  });
+  assert.equal(saved.status, 200);
+  const publicFeed = await fetch(baseUrl + "/assets/data/categories.json");
+  assert.equal(publicFeed.status, 200);
+  const publicJson = await publicFeed.json();
+  assert.deepEqual(
+    publicJson.categories.map((row) => row.slug),
+    ["canli-dal"]
+  );
+  assert.deepEqual(publicJson.categories[0].children.map((row) => row.slug), ["canli-yaprak"]);
+});

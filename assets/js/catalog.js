@@ -278,17 +278,17 @@
   }
 
   async function loadCategories() {
+    try {
+      const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.categories)) return data.categories;
+      }
+    } catch (_) {}
     if (window.PatygoNav && Array.isArray(window.PatygoNav.categories)) {
       return window.PatygoNav.categories;
     }
-    try {
-      const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data.categories) ? data.categories : [];
-    } catch (_) {
-      return [];
-    }
+    return [];
   }
 
   async function reloadCatalog() {

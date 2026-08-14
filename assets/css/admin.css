@@ -1447,6 +1447,27 @@ body.admin-modal-open {
   font-size: 0.68rem;
   line-height: 1.3;
 }
+.admin-cat-tree { display: grid; gap: 10px; }
+.admin-cat-parent {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.admin-cat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.admin-cat-row strong { display: block; }
+.admin-cat-slug { display: block; color: var(--muted); font-size: 0.72rem; }
+.admin-cat-children {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px 12px 22px;
+}
+.admin-cat-row-child { padding: 8px 10px; background: #f8fafc; border-radius: 8px; }
 .admin-pager {
   display: flex;
   flex-wrap: wrap;
@@ -1690,6 +1711,13 @@ html.admin-theme-dark .admin-pager button {
 }
 html.admin-theme-dark .admin-cat-selects .admin-cat-missing {
   color: #fdba74;
+}
+html.admin-theme-dark .admin-cat-parent {
+  background: #182234;
+  border-color: var(--line);
+}
+html.admin-theme-dark .admin-cat-row-child {
+  background: #121a28;
 }
 
 html.admin-theme-dark .admin-modal-backdrop {

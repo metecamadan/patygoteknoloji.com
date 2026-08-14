@@ -14,6 +14,10 @@ const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { mergeCatalogProducts, toPublicProduct } = require("./lib/catalog");
 const {
+  createCategoryStore,
+  setCategoryListLoader,
+} = require("./lib/categories");
+const {
   CATEGORY_FEED_DEFAULTS,
   validateManualFeedFields,
   normalizeVatPercent,
@@ -125,6 +129,8 @@ const supplierManager = createMultiSupplierManager(DATA_ROOT, {
 const analyticsStore = createAnalyticsStore(DATA_ROOT);
 const orderStore = createOrderStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
+const categoryStore = createCategoryStore(DATA_ROOT);
+setCategoryListLoader(() => categoryStore.list());
 const adminUserStore = createAdminUserStore(DATA_ROOT);
 const agentOpsStore = createAgentOpsStore(DATA_ROOT);
 const consentStore = createConsentStore(DATA_ROOT);
@@ -1103,6 +1109,20 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, { products: loadProducts() });
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/categories") {
+    return json(res, 200, { ok: true, categories: categoryStore.list() });
+  }
+
+  if (req.method === "PUT" && urlPath === "/api/admin/categories") {
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const categories = categoryStore.save(body.categories);
+      return json(res, 200, { ok: true, categories });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Kategori ağacı kaydedilemedi" });
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/analytics") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const from = requestUrl.searchParams.get("from");
@@ -1462,6 +1482,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405, securityHeaders({ Allow: "GET, HEAD" }));
     return res.end("405 Method Not Allowed");
+  }
+
+  if (urlPath === "/assets/data/categories.json") {
+    return json(res, 200, { version: 1, categories: categoryStore.publicList() });
   }
 
   // SEO: /sayfa.html → /sayfa (301)

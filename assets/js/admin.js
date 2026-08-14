@@ -550,6 +550,7 @@
       users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
+      categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
     };
     const productsMeta = {
       manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
@@ -590,6 +591,7 @@
     }
     if (name === "users" && token) loadAdminUsers().catch(() => {});
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
+    if (name === "categories" && token) loadCategoryTree().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -1566,6 +1568,11 @@
 
   async function loadSiteCategories() {
     try {
+      if (token) {
+        const data = await api("/api/admin/categories");
+        siteCategories = Array.isArray(data.categories) ? data.categories : [];
+        return;
+      }
       const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
@@ -2390,7 +2397,7 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       showPanel(true);
-      await Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth()]);
+      await Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth(), loadCategoryTree()]);
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {
@@ -3430,9 +3437,313 @@
     if (resetBtn) resetBtn.addEventListener("click", resetAdminUserForm);
   }
 
+  let categoryTree = [];
+  const categoryTreeList = document.getElementById("categoryTreeList");
+  const categoryTreeNote = document.getElementById("categoryTreeNote");
+  const categoryForm = document.getElementById("categoryForm");
+  const catEditKey = document.getElementById("catEditKey");
+  const catParentSlug = document.getElementById("catParentSlug");
+  const catName = document.getElementById("catName");
+  const catSlug = document.getElementById("catSlug");
+  const catActive = document.getElementById("catActive");
+  const catDeleteBtn = document.getElementById("catDeleteBtn");
+  const categoryFormTitle = document.getElementById("categoryFormTitle");
+
+  function slugifyAdminCategory(value) {
+    return String(value || "")
+      .toLocaleLowerCase("tr-TR")
+      .replace(/ğ/g, "g")
+      .replace(/ü/g, "u")
+      .replace(/ş/g, "s")
+      .replace(/ı/g, "i")
+      .replace(/ö/g, "o")
+      .replace(/ç/g, "c")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80);
+  }
+
+  function resetCategoryForm() {
+    if (!categoryForm) return;
+    catEditKey.value = "";
+    catParentSlug.disabled = false;
+    catParentSlug.value = "";
+    catName.value = "";
+    catSlug.value = "";
+    catActive.checked = true;
+    catDeleteBtn.hidden = true;
+    if (categoryFormTitle) categoryFormTitle.textContent = "Kategori ekle";
+  }
+
+  function fillCategoryParentOptions() {
+    if (!catParentSlug) return;
+    const current = catParentSlug.value;
+    catParentSlug.textContent = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Ana kategori";
+    catParentSlug.appendChild(empty);
+    categoryTree.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat.slug;
+      opt.textContent = cat.name;
+      catParentSlug.appendChild(opt);
+    });
+    catParentSlug.value = current;
+  }
+
+  function makePublishSwitch(checked, labelText, onChange) {
+    const wrap = document.createElement("label");
+    wrap.className = "admin-switch";
+    wrap.setAttribute("aria-label", labelText);
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = !!checked;
+    const track = document.createElement("span");
+    input.addEventListener("change", () => onChange(input));
+    wrap.appendChild(input);
+    wrap.appendChild(track);
+    return wrap;
+  }
+
+  async function persistCategoryTree(next, message) {
+    const data = await api("/api/admin/categories", {
+      method: "PUT",
+      body: JSON.stringify({ categories: next }),
+    });
+    categoryTree = Array.isArray(data.categories) ? data.categories : next;
+    siteCategories = categoryTree;
+    renderCategoryTree();
+    notifySite();
+    note(categoryTreeNote, "ok", message || "Kategori ağacı kaydedildi.");
+  }
+
+  function renderCategoryTree() {
+    if (!categoryTreeList) return;
+    categoryTreeList.textContent = "";
+    fillCategoryParentOptions();
+    if (!categoryTree.length) {
+      const empty = document.createElement("p");
+      empty.className = "admin-table-empty";
+      empty.textContent = "Henüz kategori yok. Sağdaki formdan ana kategori ekleyin.";
+      categoryTreeList.appendChild(empty);
+      return;
+    }
+    categoryTree.forEach((parent, parentIndex) => {
+      const card = document.createElement("article");
+      card.className = "admin-cat-parent";
+      const head = document.createElement("div");
+      head.className = "admin-cat-row";
+      const title = document.createElement("div");
+      const strong = document.createElement("strong");
+      strong.textContent = parent.name;
+      const slug = document.createElement("span");
+      slug.className = "admin-cat-slug";
+      slug.textContent = parent.slug + (parent.active ? "" : " · taslak");
+      title.appendChild(strong);
+      title.appendChild(slug);
+      const publish = makePublishSwitch(parent.active, parent.name + " yayın", async (input) => {
+        const next = categoryTree.map((row, index) =>
+          index === parentIndex ? Object.assign({}, row, { active: input.checked }) : row
+        );
+        try {
+          await persistCategoryTree(
+            next,
+            input.checked ? parent.name + " webde yayına alındı." : parent.name + " yayından kaldırıldı."
+          );
+        } catch (err) {
+          input.checked = !input.checked;
+          note(categoryTreeNote, "err", err.message);
+        }
+      });
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn btn-ghost btn-xs";
+      editBtn.textContent = "Düzenle";
+      editBtn.addEventListener("click", () => {
+        catEditKey.value = parent.slug;
+        catParentSlug.value = "";
+        catParentSlug.disabled = true;
+        catName.value = parent.name;
+        catSlug.value = parent.slug;
+        catActive.checked = parent.active !== false;
+        catDeleteBtn.hidden = false;
+        if (categoryFormTitle) categoryFormTitle.textContent = "Ana kategori düzenle";
+      });
+      head.appendChild(title);
+      head.appendChild(publish);
+      head.appendChild(editBtn);
+      card.appendChild(head);
+
+      const children = document.createElement("div");
+      children.className = "admin-cat-children";
+      (parent.children || []).forEach((child, childIndex) => {
+        const row = document.createElement("div");
+        row.className = "admin-cat-row admin-cat-row-child";
+        const childTitle = document.createElement("div");
+        const childName = document.createElement("strong");
+        childName.textContent = child.name;
+        const childSlug = document.createElement("span");
+        childSlug.className = "admin-cat-slug";
+        childSlug.textContent = child.slug + (child.active ? "" : " · taslak");
+        childTitle.appendChild(childName);
+        childTitle.appendChild(childSlug);
+        const childPublish = makePublishSwitch(child.active, child.name + " yayın", async (input) => {
+          const next = categoryTree.map((row, index) => {
+            if (index !== parentIndex) return row;
+            return Object.assign({}, row, {
+              children: row.children.map((item, idx) =>
+                idx === childIndex ? Object.assign({}, item, { active: input.checked }) : item
+              ),
+            });
+          });
+          try {
+            await persistCategoryTree(
+              next,
+              input.checked ? child.name + " webde yayına alındı." : child.name + " yayından kaldırıldı."
+            );
+          } catch (err) {
+            input.checked = !input.checked;
+            note(categoryTreeNote, "err", err.message);
+          }
+        });
+        const childEdit = document.createElement("button");
+        childEdit.type = "button";
+        childEdit.className = "btn btn-ghost btn-xs";
+        childEdit.textContent = "Düzenle";
+        childEdit.addEventListener("click", () => {
+          catEditKey.value = parent.slug + "/" + child.slug;
+          catParentSlug.value = parent.slug;
+          catParentSlug.disabled = true;
+          catName.value = child.name;
+          catSlug.value = child.slug;
+          catActive.checked = child.active !== false;
+          catDeleteBtn.hidden = false;
+          if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori düzenle";
+        });
+        row.appendChild(childTitle);
+        row.appendChild(childPublish);
+        row.appendChild(childEdit);
+        children.appendChild(row);
+      });
+      const addChild = document.createElement("button");
+      addChild.type = "button";
+      addChild.className = "btn btn-outline btn-xs";
+      addChild.textContent = "+ Alt kategori";
+      addChild.addEventListener("click", () => {
+        resetCategoryForm();
+        catParentSlug.value = parent.slug;
+        catParentSlug.disabled = false;
+        if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori ekle";
+        if (catName) catName.focus();
+      });
+      children.appendChild(addChild);
+      card.appendChild(children);
+      categoryTreeList.appendChild(card);
+    });
+  }
+
+  async function loadCategoryTree() {
+    if (!categoryTreeList) return;
+    const data = await api("/api/admin/categories");
+    categoryTree = Array.isArray(data.categories) ? data.categories : [];
+    siteCategories = categoryTree;
+    renderCategoryTree();
+  }
+
+  if (catName && catSlug) {
+    catName.addEventListener("input", () => {
+      if (catEditKey.value) return;
+      if (catSlug.dataset.manual === "1") return;
+      catSlug.value = slugifyAdminCategory(catName.value);
+    });
+    catSlug.addEventListener("input", () => {
+      catSlug.dataset.manual = catSlug.value.trim() ? "1" : "";
+    });
+  }
+
+  if (categoryForm) {
+    categoryForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const name = catName.value.trim();
+      const slug = slugifyAdminCategory(catSlug.value || catName.value);
+      const active = catActive.checked;
+      const parentSlug = catParentSlug.value;
+      const editKey = catEditKey.value;
+      let next = categoryTree.map((row) =>
+        Object.assign({}, row, { children: (row.children || []).slice() })
+      );
+      try {
+        if (editKey && !editKey.includes("/")) {
+          const index = next.findIndex((row) => row.slug === editKey);
+          if (index < 0) throw new Error("Ana kategori bulunamadı.");
+          next[index] = Object.assign({}, next[index], { name, slug, active });
+        } else if (editKey.includes("/")) {
+          const parts = editKey.split("/");
+          const parent = next.find((row) => row.slug === parts[0]);
+          if (!parent) throw new Error("Ana kategori bulunamadı.");
+          const childIndex = parent.children.findIndex((row) => row.slug === parts[1]);
+          if (childIndex < 0) throw new Error("Alt kategori bulunamadı.");
+          parent.children[childIndex] = Object.assign({}, parent.children[childIndex], {
+            name,
+            slug,
+            active,
+          });
+        } else if (parentSlug) {
+          const parent = next.find((row) => row.slug === parentSlug);
+          if (!parent) throw new Error("Ana kategori seçin.");
+          parent.children.push({ name, slug, active });
+        } else {
+          next.push({ name, slug, active, children: [] });
+        }
+        await persistCategoryTree(next, "Kategori kaydedildi. Yayındaysa web menüsünde görünür.");
+        resetCategoryForm();
+        catSlug.dataset.manual = "";
+      } catch (err) {
+        note(categoryTreeNote, "err", err.message);
+      }
+    });
+  }
+
+  if (document.getElementById("catResetBtn")) {
+    document.getElementById("catResetBtn").addEventListener("click", () => {
+      resetCategoryForm();
+      catSlug.dataset.manual = "";
+      note(categoryTreeNote, "", "");
+    });
+  }
+
+  if (catDeleteBtn) {
+    catDeleteBtn.addEventListener("click", async () => {
+      const editKey = catEditKey.value;
+      if (!editKey) return;
+      if (!confirm("Bu kategoriyi silmek istiyor musunuz?")) return;
+      let next = categoryTree.map((row) =>
+        Object.assign({}, row, { children: (row.children || []).slice() })
+      );
+      try {
+        if (editKey.includes("/")) {
+          const parts = editKey.split("/");
+          next = next.map((row) => {
+            if (row.slug !== parts[0]) return row;
+            return Object.assign({}, row, {
+              children: row.children.filter((child) => child.slug !== parts[1]),
+            });
+          });
+        } else {
+          next = next.filter((row) => row.slug !== editKey);
+        }
+        await persistCategoryTree(next, "Kategori silindi.");
+        resetCategoryForm();
+      } catch (err) {
+        note(categoryTreeNote, "err", err.message);
+      }
+    });
+  }
+
   if (token) {
     showPanel(true);
-    Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth()]).catch(() => {
+    Promise.all([refresh(), loadSupplierData(), loadDigitalDashboard(), loadCalendarMonth(), loadCategoryTree()]).catch(() => {
       endSession("Oturum geçersiz. Tekrar giriş yapın.");
     });
   }

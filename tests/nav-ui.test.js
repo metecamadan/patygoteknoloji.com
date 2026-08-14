@@ -17,3 +17,9 @@ test("mega menu keeps hover bridge for submenu access", () => {
   assert.match(navCss, /\.nav-mega:hover > \.nav-mega-panel/);
   assert.match(navJs, /panel\.addEventListener\("mouseenter"/);
 });
+
+test("nav hides unpublished category nodes", () => {
+  assert.match(navJs, /function publishedCategories/);
+  assert.match(navJs, /active !== false/);
+  assert.match(navJs, /BroadcastChannel\("patygo-catalog"\)/);
+});

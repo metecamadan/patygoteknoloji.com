@@ -63,6 +63,18 @@ test("admin calendar tab supports reminders and notes", () => {
   assert.match(script, /Notification\.requestPermission|ensureCalendarNotificationPermission/);
 });
 
+test("admin categories tab manages the site category tree", () => {
+  assert.match(html, /id="categoriesTab"/);
+  assert.match(html, /id="adminTabCategories"/);
+  assert.match(html, /id="categoryTreeList"/);
+  assert.match(html, /id="categoryForm"/);
+  assert.match(html, /id="catActive"/);
+  assert.match(css, /\.admin-cat-tree/);
+  assert.match(script, /loadCategoryTree/);
+  assert.match(script, /\/api\/admin\/categories/);
+  assert.match(script, /yayına alındı/);
+});
+
 test("admin panel exposes dark theme toggle in the top bar", () => {
   assert.match(html, /id="adminThemeToggle"/);
   assert.match(html, /admin-theme-toggle/);

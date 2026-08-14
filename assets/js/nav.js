@@ -95,10 +95,21 @@
     return li;
   }
 
+  function publishedCategories(list) {
+    return (list || [])
+      .filter((cat) => cat && cat.active !== false)
+      .map((cat) => ({
+        slug: cat.slug,
+        name: cat.name,
+        children: (cat.children || []).filter((child) => child && child.active !== false),
+      }))
+      .filter((cat) => (cat.children || []).length);
+  }
+
   function renderNav(root, categories) {
     root.textContent = "";
-    (categories || []).forEach((cat) => root.appendChild(buildMegaItem(cat)));
-    renderHeroOrbit(categories);
+    publishedCategories(categories).forEach((cat) => root.appendChild(buildMegaItem(cat)));
+    renderHeroOrbit(publishedCategories(categories));
   }
 
   const HERO_ICON_SVG = {
@@ -190,13 +201,8 @@
     });
   }
 
-  function init() {
-    const root = document.querySelector("[data-site-nav]");
-    if (!root) return;
-
-    bindChrome(root);
-
-    fetch(NAV_SOURCE, { cache: "no-store" })
+  function loadNav(root) {
+    return fetch(NAV_SOURCE, { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error("Kategori menüsü yüklenemedi");
         return res.json();
@@ -205,7 +211,7 @@
         const categories = Array.isArray(data && data.categories) ? data.categories : [];
         renderNav(root, categories);
         window.PatygoNav = {
-          categories,
+          categories: publishedCategories(categories),
           categoryHref,
         };
         document.dispatchEvent(new CustomEvent("patygo:nav-ready"));
@@ -213,6 +219,21 @@
       .catch(() => {
         root.textContent = "";
       });
+  }
+
+  function init() {
+    const root = document.querySelector("[data-site-nav]");
+    if (!root) return;
+
+    bindChrome(root);
+    loadNav(root);
+    try {
+      const bc = new BroadcastChannel("patygo-catalog");
+      bc.addEventListener("message", () => loadNav(root));
+    } catch (_) {}
+    window.addEventListener("storage", (ev) => {
+      if (ev.key === "patygo_catalog_version") loadNav(root);
+    });
   }
 
   if (document.readyState === "loading") {

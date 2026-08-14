@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=xml-sched-180" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=cat-tree-1" />
   <script>
     (function () {
       try {
@@ -54,6 +54,7 @@
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
           </div>
+          <button type="button" class="admin-nav-item" id="categoriesTab" aria-controls="adminTabCategories" data-admin-tab="categories"><span class="admin-nav-icon">▤</span>Kategoriler</button>
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
           <button type="button" class="admin-nav-item" id="usersTab" aria-controls="adminTabUsers" data-admin-tab="users"><span class="admin-nav-icon">◉</span>Kullanıcılar</button>
@@ -669,6 +670,57 @@
           </div>
         </section>
 
+        <section id="adminTabCategories" class="admin-tab-panel" aria-labelledby="categoriesTab" hidden>
+          <div class="admin-page">
+            <div class="admin-overview-grid admin-overview-grid-2">
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">WEB MENÜSÜ</span>
+                    <h2>Kategori ağacı</h2>
+                    <p class="admin-field-help">Yalnızca yayındaki ana ve alt kategoriler sitede görünür.</p>
+                  </div>
+                </div>
+                <div id="categoryTreeList" class="admin-cat-tree"></div>
+                <p class="admin-note" id="categoryTreeNote" role="status"></p>
+              </section>
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow">DÜZENLE</span>
+                    <h2 id="categoryFormTitle">Kategori ekle</h2>
+                  </div>
+                </div>
+                <form id="categoryForm" class="admin-form">
+                  <input type="hidden" id="catEditKey" value="" />
+                  <div class="field">
+                    <label for="catParentSlug">Tür</label>
+                    <select id="catParentSlug">
+                      <option value="">Ana kategori</option>
+                    </select>
+                    <p class="admin-field-help">Alt kategori için bir ana kategori seçin.</p>
+                  </div>
+                  <div class="field">
+                    <label for="catName">Ad *</label>
+                    <input id="catName" type="text" maxlength="80" required />
+                  </div>
+                  <div class="field">
+                    <label for="catSlug">Adres kodu</label>
+                    <input id="catSlug" type="text" maxlength="80" placeholder="otomatik" />
+                    <p class="admin-field-help">Boş bırakılırsa addan üretilir. Örnek: notebook</p>
+                  </div>
+                  <label class="admin-checks"><input type="checkbox" id="catActive" checked /> Webde yayında</label>
+                  <div class="admin-form-actions">
+                    <button type="submit" class="btn btn-primary" id="catSaveBtn">Kaydet / Yayınla</button>
+                    <button type="button" class="btn btn-outline" id="catResetBtn">Temizle</button>
+                    <button type="button" class="btn btn-ghost" id="catDeleteBtn" hidden>Sil</button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </div>
+        </section>
+
         <section id="adminTabXml" class="admin-tab-panel" aria-labelledby="xmlTab" hidden>
           <div class="admin-page">
             <div class="admin-page-head">
@@ -842,6 +894,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=feed-cat-select-1"></script>
+  <script src="/assets/js/admin.js?v=cat-tree-1"></script>
 </body>
 </html>
