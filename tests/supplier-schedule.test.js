@@ -54,6 +54,48 @@ test("daily quota error detector recognizes supplier limit messages", () => {
   );
 });
 
+test("scheduler skips a slot held for the same Istanbul day", async () => {
+  const { createSupplierScheduler } = require("../lib/supplier-schedule");
+  let refreshed = 0;
+  const manager = {
+    listSlots() {
+      return [
+        {
+          id: "supplier-1",
+          configured: true,
+          scheduleStartMinute: 8 * 60,
+          scheduleIntervalMinutes: 180,
+          lastScheduledFetchKey: "",
+          holdScheduledFetchesAt: "2026-08-13T05:00:00.000Z",
+          lastError: "",
+        },
+      ];
+    },
+    async refresh() {
+      refreshed += 1;
+    },
+    markScheduledFetch() {},
+  };
+  const scheduler = createSupplierScheduler({ manager, intervalMs: 60 * 60 * 1000, log() {}, logError() {} });
+  const realDate = Date;
+  const frozen = new Date("2026-08-13T05:00:00.000Z");
+  global.Date = class extends Date {
+    constructor(...args) {
+      if (!args.length) return frozen;
+      super(...args);
+    }
+    static now() {
+      return frozen.getTime();
+    }
+  };
+  try {
+    await scheduler.tick();
+  } finally {
+    global.Date = realDate;
+  }
+  assert.equal(refreshed, 0);
+});
+
 test("critical stock threshold excludes supplier products from Akakce feed", () => {
   const analysis = analyzeAkakceProducts(
     [

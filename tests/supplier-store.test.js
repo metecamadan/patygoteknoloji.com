@@ -305,3 +305,22 @@ test("supplier store blocks publish without a valid site category", async () => 
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("failed parse keeps last XML on disk for later import", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-lastxml-"));
+  const store = createSupplierStore(root, {
+    allowedHosts: ["supplier.example"],
+    defaultMarginPercent: 15,
+    validateUrl: async (raw) => new URL(raw),
+    fetchXml: async () =>
+      `<?xml version="1.0"?><Urunler><Urun><StokKodu>A1</StokKodu><Not>Yok</Not></Urun><Urun><StokKodu>A2</StokKodu><Not>Yok</Not></Urun></Urunler>`,
+  });
+  try {
+    await store.saveUrl("https://supplier.example/feed.xml");
+    await assert.rejects(() => store.refresh(), /fiyatı ve adı geçerli|ürün listesi tespit edilemedi/);
+    const last = fs.readFileSync(path.join(root, ".runtime", "supplier-last.xml"), "utf8");
+    assert.match(last, /<StokKodu>A1<\/StokKodu>/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

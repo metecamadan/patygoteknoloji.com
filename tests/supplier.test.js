@@ -55,6 +55,33 @@ test("supplier XML products are normalized", () => {
   assert.equal(products[0].image, "https://supplier.example/images/test.jpg");
 });
 
+test("supplier XML accepts Adi and BayiFiyat field names", () => {
+  const xml = `<?xml version="1.0"?>
+    <Stoklar>
+      <Stok>
+        <StokKodu>ST-9</StokKodu>
+        <Adi>Ofis Mouse</Adi>
+        <BayiFiyat>199,90</BayiFiyat>
+      </Stok>
+    </Stoklar>`;
+  const products = parseSupplierXml(xml, new URL("https://supplier.example/feed.xml"));
+  assert.equal(products.length, 1);
+  assert.equal(products[0].supplierSku, "ST-9");
+  assert.equal(products[0].name, "Ofis Mouse");
+  assert.equal(products[0].costPrice, 199.9);
+});
+
+test("empty priced catalog explains detected field names", () => {
+  assert.throws(
+    () =>
+      parseSupplierXml(
+        `<?xml version="1.0"?><Urunler><Urun><StokKodu>A1</StokKodu><Not>Yok</Not></Urun><Urun><StokKodu>A2</StokKodu><Not>Yok</Not></Urun></Urunler>`,
+        new URL("https://supplier.example/feed.xml")
+      ),
+    /Alanlar:.*StokKodu/i
+  );
+});
+
 test("supplier fault XML is shown as the real error", () => {
   assert.throws(
     () =>
