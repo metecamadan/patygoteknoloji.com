@@ -70,6 +70,8 @@ test("three supplier slots keep configuration, products and overrides isolated",
         supplierSku: "SKU-1",
         active: true,
         marginPercent: 25,
+        siteParent: "bilgisayar-tablet",
+        siteChild: "notebook",
       },
     ]);
     const updated = manager

@@ -26,6 +26,17 @@ test("catalog product cards use cart flow without quote button", () => {
   assert.match(catalogJs, /Hemen Al/);
 });
 
+test("catalog filters storefront products by site category query instead of always emptying", () => {
+  assert.match(catalogJs, /function productsForSiteCategory/);
+  assert.match(catalogJs, /categoryQuery/);
+  assert.match(catalogJs, /Bu kategoride henüz ürün yok/);
+  assert.doesNotMatch(catalogJs, /Bu kategori yakında/);
+  assert.doesNotMatch(
+    catalogJs,
+    /if \(opts\.categoryResolved\) \{\s*renderCategoryEmpty/
+  );
+});
+
 test("nav renders animated hero orbit icons from categories json", () => {
   assert.match(navJs, /renderHeroOrbit/);
   assert.match(navJs, /hero-orbit-chip/);

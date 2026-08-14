@@ -7,6 +7,8 @@ const {
   findCategory,
   categoryHref,
   isValidCategoryPair,
+  assignedSiteCategory,
+  hasSiteCategory,
 } = require("../lib/categories");
 
 test("loadCategories exposes two parents with expected children", () => {
@@ -29,4 +31,23 @@ test("findCategory and href helpers", () => {
   );
   assert.equal(isValidCategoryPair(cats, "cevre-birimleri", "modem"), true);
   assert.equal(isValidCategoryPair(cats, "cevre-birimleri", "yok"), false);
+});
+
+test("hasSiteCategory requires a valid parent and child slug pair", () => {
+  const cats = loadCategories();
+  assert.equal(hasSiteCategory({}, cats), false);
+  assert.equal(hasSiteCategory({ siteParent: "bilgisayar-tablet" }, cats), false);
+  assert.equal(
+    hasSiteCategory({ siteParent: "bilgisayar-tablet", siteChild: "yok" }, cats),
+    false
+  );
+  const assigned = assignedSiteCategory(
+    { siteParent: "cevre-birimleri", siteChild: "usb-bellek" },
+    cats
+  );
+  assert.equal(assigned.label, "Çevre Birimleri › USB Bellekler");
+  assert.equal(
+    hasSiteCategory({ siteParent: "cevre-birimleri", siteChild: "usb-bellek" }, cats),
+    true
+  );
 });

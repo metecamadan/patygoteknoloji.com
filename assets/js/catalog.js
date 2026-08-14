@@ -50,13 +50,13 @@
     empty.className = "catalog-empty";
     empty.style.gridColumn = "1 / -1";
     const heading = document.createElement("h2");
-    heading.textContent = "Bu kategori yakında";
+    heading.textContent = "Bu kategoride henüz ürün yok";
     const text = document.createElement("p");
     text.style.color = "var(--muted)";
     text.textContent = resolved
       ? (resolved.child ? resolved.child.name : resolved.parent.name) +
-        " için ürünler yakında eklenecek. Diğer kategorilere göz atabilirsiniz."
-      : "Seçilen kategori için ürünler hazırlanıyor.";
+        " için yayınlanmış ürün yok. Diğer kategorilere göz atabilirsiniz."
+      : "Seçilen kategori için yayınlanmış ürün yok.";
     const actions = document.createElement("div");
     actions.className = "hero-cta";
     actions.style.marginTop = "16px";
@@ -218,13 +218,25 @@
     });
   }
 
+  function productsForSiteCategory(products, query) {
+    const parent = String((query && query.parent) || "").trim();
+    const child = String((query && query.child) || "").trim();
+    if (!parent && !child) return products.slice();
+    return products.filter((product) => {
+      if (parent && String(product.category || "") !== parent) return false;
+      if (child && String(product.alt || "") !== child) return false;
+      return true;
+    });
+  }
+
   function renderGrid(grid, products, options) {
     const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
     let list = products.slice();
     if (mode === "featured") list = list.filter((p) => p.featured);
+    if (opts.categoryQuery) list = productsForSiteCategory(list, opts.categoryQuery);
     grid.textContent = "";
-    if (opts.categoryResolved) {
+    if (!list.length && opts.categoryResolved) {
       renderCategoryEmpty(grid, opts.categoryResolved);
       return;
     }
@@ -290,7 +302,10 @@
       if (categoryResolved) applyCategoryHeading(categoryResolved);
     }
     return applyCatalog(all, {
-      categoryResolved: wantsCategory ? categoryResolved || { parent: { name: "Kategori" }, child: null } : null,
+      categoryQuery: wantsCategory ? query : null,
+      categoryResolved: wantsCategory
+        ? categoryResolved || { parent: { name: "Kategori" }, child: null }
+        : null,
     });
   }
 

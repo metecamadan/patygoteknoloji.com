@@ -10,7 +10,8 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
-const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
+const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
+const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { mergeCatalogProducts, toPublicProduct } = require("./lib/catalog");
 const {
   CATEGORY_FEED_DEFAULTS,
@@ -91,7 +92,8 @@ const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);
 const ADMIN_IDLE_MS =
   Number.isFinite(rawIdleMs) && rawIdleMs > 0 ? rawIdleMs : 30 * 60 * 1000;
 const supplierAllowedHosts = String(
-  process.env.SUPPLIER_ALLOWED_HOSTS || "www.bilgisayarim.com.tr"
+  process.env.SUPPLIER_ALLOWED_HOSTS ||
+    "www.bilgisayarim.com.tr,cdnsta.avansas.com,www.avansas.com"
 )
   .split(",")
   .map((value) => value.trim())
@@ -554,6 +556,16 @@ function mergedProducts(includeInactiveManual) {
   });
 }
 
+function enrichSupplierProducts(products) {
+  return (products || []).map((product) => {
+    const feedIssues = analyzeSupplierFeedIssues(product, { siteBaseUrl: SITE_BASE_URL });
+    return Object.assign({}, product, {
+      feedIssues,
+      feedReady: feedIssues.length === 0,
+    });
+  });
+}
+
 function getSession(req) {
   const h = req.headers.authorization || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : "";
@@ -851,6 +863,26 @@ async function handleApi(req, res, urlPath) {
     return res.end(xml);
   }
 
+  if (req.method === "POST" && urlPath === "/api/agent-ops/ingest") {
+    const expected = String(process.env.AGENT_OPS_INGEST_KEY || "").trim();
+    const got = String(req.headers["x-agent-ops-key"] || "").trim();
+    if (!expected) {
+      return json(res, 503, { ok: false, error: "Agent Ops ingest kapalı" });
+    }
+    const a = crypto.createHash("sha256").update(expected).digest();
+    const b = crypto.createHash("sha256").update(got).digest();
+    if (!crypto.timingSafeEqual(a, b)) {
+      return json(res, 401, { ok: false, error: "Anahtar geçersiz" });
+    }
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const event = agentOpsStore.append(body);
+      return json(res, 200, { ok: true, event });
+    } catch (err) {
+      return json(res, 400, { ok: false, error: (err && err.message) || "Olay yazılamadı" });
+    }
+  }
+
   if (req.method === "POST" && urlPath === "/api/admin/login") {
     try {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
@@ -1103,16 +1135,18 @@ async function handleApi(req, res, urlPath) {
         brand: product ? product.brand : "",
       };
     });
+    // Process metrics only — never expose host IP / “server online” as site health.
     return json(res, 200, {
       ok: true,
       analytics: Object.assign({}, analytics, { topViewedProducts }),
       commerce,
-      server: {
-        status: "online",
+      process: {
+        apiReachable: true,
         uptimeSec: Math.floor(process.uptime()),
         node: process.version,
         memoryMB: Math.round((mem.rss / (1024 * 1024)) * 10) / 10,
         pos: publicPosStatus(akbankConfig),
+        siteBaseUrl: SITE_BASE_URL,
         checkedAt: new Date().toISOString(),
       },
       leadsNote:
@@ -1122,9 +1156,12 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/admin/supplier/status") {
     const slots = supplierManager.listSlots();
+    const primary = slots[0] || {};
     return json(res, 200, {
       slots,
       status: slots[0],
+      schedule: primary.schedule || scheduleSummary(),
+      nextScheduled: primary.nextScheduled || getNextScheduledAt(new Date()),
       feed: buildAkakceFeedSummary(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
       }),
@@ -1154,7 +1191,7 @@ async function handleApi(req, res, urlPath) {
         result,
         slots,
         status: slots.find((slot) => slot.id === result.slotId) || slots[0],
-        products: supplierManager.listProducts(),
+        products: enrichSupplierProducts(supplierManager.listProducts()),
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: err.message || "XML alınamadı" });
@@ -1164,7 +1201,7 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
     const slots = supplierManager.listSlots();
     return json(res, 200, {
-      products: supplierManager.listProducts(),
+      products: enrichSupplierProducts(supplierManager.listProducts()),
       slots,
       status: slots[0],
     });
@@ -1173,14 +1210,17 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/settings") {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
-      const settings = supplierManager.setGlobalMargin(
-        body.slotId || "supplier-1",
-        body.globalMarginPercent
-      );
+      const settings = supplierManager.setSettings(body.slotId || "supplier-1", {
+        globalMarginPercent: body.globalMarginPercent,
+        criticalStockQty: body.criticalStockQty,
+        scheduleStart: body.scheduleStart,
+        scheduleStartMinute: body.scheduleStartMinute,
+        scheduleIntervalMinutes: body.scheduleIntervalMinutes,
+      });
       return json(res, 200, {
         ok: true,
         settings,
-        products: supplierManager.listProducts(),
+        products: enrichSupplierProducts(supplierManager.listProducts()),
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Ayar kaydedilemedi" });
@@ -1200,7 +1240,7 @@ async function handleApi(req, res, urlPath) {
       });
       return json(res, 200, {
         ok: true,
-        products: supplierManager.listProducts(),
+        products: enrichSupplierProducts(supplierManager.listProducts()),
         feedCount: feedAnalysis.eligible.length,
         feedExcludedCount: feedAnalysis.excluded.length,
       });
@@ -1480,6 +1520,14 @@ if (typeof calendarMailTimer.unref === "function") calendarMailTimer.unref();
 setTimeout(() => {
   processCalendarReminderEmails().catch(() => {});
 }, 8 * 1000);
+
+const supplierScheduler = createSupplierScheduler({
+  manager: supplierManager,
+  log: (message, slotId, key) => console.log(message, slotId, key),
+  logError: (message, slotId, key, detail) =>
+    console.error(message, slotId, key, detail || ""),
+});
+supplierScheduler.start();
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {

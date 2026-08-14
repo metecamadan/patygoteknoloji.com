@@ -69,7 +69,8 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.ok(dash.analytics.pageViews >= 1);
   assert.equal(typeof dash.commerce.revenue, "number");
   assert.equal(typeof dash.commerce.aov, "number");
-  assert.equal(dash.server.status, "online");
+  assert.equal(dash.process.apiReachable, true);
+  assert.equal(typeof dash.process.uptimeSec, "number");
   assert.ok(dash.leadsNote);
 
   const privateData = await fetch(baseUrl + "/assets/data/products.json");
@@ -175,4 +176,38 @@ test("legacy patygo-admin env password maps to 1234 for login", async (t) => {
     body: JSON.stringify({ password: "1234" }),
   });
   assert.equal(updated.status, 200);
+});
+
+test("agent-ops ingest accepts keyed prompt events without admin session", async (t) => {
+  const ingestKey = "test-ingest-key";
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: "test-admin-password",
+    AGENT_OPS_INGEST_KEY: ingestKey,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+
+  const denied = await fetch(baseUrl + "/api/agent-ops/ingest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "prompt", from: "user", summary: "no key" }),
+  });
+  assert.equal(denied.status, 401);
+
+  const accepted = await fetch(baseUrl + "/api/agent-ops/ingest", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Agent-Ops-Key": ingestKey,
+    },
+    body: JSON.stringify({
+      type: "prompt",
+      from: "user",
+      to: "orchestrator",
+      summary: "Agent ops canlı görünsün",
+      status: "live",
+    }),
+  });
+  assert.equal(accepted.status, 200);
+  const payload = await accepted.json();
+  assert.equal(payload.event.type, "prompt");
 });

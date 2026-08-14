@@ -84,6 +84,26 @@ test("admin overview uses consistent full-width grid spacing", () => {
   assert.match(css, /\.admin-overview-grid\s*>\s*\.admin-card/);
 });
 
+test("admin XML schedule is editable under critical stock", () => {
+  assert.match(html, /id="supplierCriticalStock1"[\s\S]*?id="supplierScheduleStart1"[\s\S]*?id="supplierScheduleInterval1"/);
+  assert.match(html, /data-slot-input="scheduleStart"/);
+  assert.match(html, /data-slot-input="scheduleInterval"/);
+  assert.match(html, /Otomatik XML okuma/);
+  assert.match(script, /scheduleStart/);
+  assert.match(script, /scheduleIntervalMinutes/);
+  assert.match(css, /\.admin-schedule-row/);
+  assert.doesNotMatch(html, /07:00’da başlar, günde 10 kez/);
+  assert.match(html, /Avansas \(test\)/);
+  assert.match(html, /Yayına almayın/);
+  assert.match(html, /id="supplierPoolPager"/);
+  assert.match(html, /Site kategorisi/);
+  assert.match(html, /value="nocat"/);
+  assert.match(script, /POOL_PAGE_SIZE/);
+  assert.match(script, /siteCategoryAssigned/);
+  assert.match(script, /Site kategorisi seçilmeden ürün yayına alınamaz/);
+  assert.doesNotMatch(script, /POOL_RENDER_LIMIT/);
+});
+
 test("admin exposes three XML connections and source-specific margins", () => {
   assert.equal((html.match(/data-supplier-card="supplier-/g) || []).length, 3);
   assert.match(html, /id="supplierSlotFilter"/);
@@ -166,7 +186,10 @@ test("admin users tab supports panel account management", () => {
     html,
     /id="overviewTab"[\s\S]*?id="ordersTab"[\s\S]*?id="productsTab"/
   );
-  assert.match(html, /agent-ops/);
+  assert.match(html, /id="xmlProductsView"[\s\S]*id="supplierFeedModal"/);
+  assert.doesNotMatch(html, /id="manualProductsView"[\s\S]*id="supplierFeedModal"[\s\S]*id="xmlProductsView"/);
+  assert.match(html, /Son başarılı katalog/);
+  assert.match(html, /stok dondurulur/);
   assert.match(script, /loadAdminUsers/);
   assert.match(script, /loadAdminOrders/);
   assert.match(script, /admin-order-row/);

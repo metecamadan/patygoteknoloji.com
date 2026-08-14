@@ -34,6 +34,8 @@ test("manual and active supplier products form one public catalog", () => {
         category: "bilgisayar",
         image: "https://cdn.example/sup-1.jpg",
         active: true,
+        siteParent: "bilgisayar-tablet",
+        siteChild: "notebook",
       },
       {
         id: "sup-hidden",
@@ -86,6 +88,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
     price: 200,
     vatPercent: 20,
     category: "bilgisayar",
+    alt: "",
     description: "Açıklama",
     details: "Detay",
     image: "https://cdn.example/a.jpg",
@@ -119,9 +122,60 @@ test("supplier IDs cannot overwrite manual products", () => {
         salePrice: 200,
         category: "bilgisayar",
         active: true,
+        siteParent: "bilgisayar-tablet",
+        siteChild: "notebook",
       },
     ]
   );
   assert.equal(result.length, 1);
   assert.equal(result[0].source, "manual");
+});
+
+test("active supplier products without site category stay off the public catalog", () => {
+  const result = mergeCatalogProducts(
+    [],
+    [
+      {
+        id: "sup-1",
+        supplierSku: "SUP-1",
+        name: "Kategorisiz",
+        brand: "TEDARİKÇİ",
+        salePrice: 200,
+        category: "bilgisayar",
+        active: true,
+      },
+      {
+        id: "sup-2",
+        supplierSku: "SUP-2",
+        name: "Kategorili",
+        brand: "TEDARİKÇİ",
+        salePrice: 220,
+        category: "bilgisayar",
+        active: true,
+        siteParent: "bilgisayar-tablet",
+        siteChild: "notebook",
+      },
+    ]
+  );
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["sup-2"]
+  );
+  assert.equal(result[0].category, "bilgisayar-tablet");
+  assert.equal(result[0].siteChild, "notebook");
+});
+
+test("toPublicProduct exposes site child as alt for storefront filters", () => {
+  const { toPublicProduct } = require("../lib/catalog");
+  const publicProduct = toPublicProduct({
+    id: "sup-1",
+    brand: "HP",
+    name: "Notebook",
+    price: 200,
+    category: "bilgisayar-tablet",
+    siteChild: "notebook",
+    active: true,
+  });
+  assert.equal(publicProduct.category, "bilgisayar-tablet");
+  assert.equal(publicProduct.alt, "notebook");
 });

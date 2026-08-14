@@ -12,6 +12,9 @@
   let supplierSlots = [];
   let feedStatus = null;
   let idleTimer = null;
+  let siteCategories = [];
+  let supplierPoolPage = 1;
+  const POOL_PAGE_SIZE = 50;
   const selectedSupplierSkus = new Set();
   const MIN_PRODUCT_IMAGES = 5;
   const MAX_PRODUCT_IMAGES = 10;
@@ -155,6 +158,31 @@
   const supplierSearch = document.getElementById("supplierSearch");
   const supplierStatusFilter = document.getElementById("supplierStatusFilter");
   const supplierSlotFilter = document.getElementById("supplierSlotFilter");
+  const supplierFeedModal = document.getElementById("supplierFeedModal");
+  const supplierFeedForm = document.getElementById("supplierFeedForm");
+  const supplierFeedFields = {
+    supplierSku: document.getElementById("sFeedSupplierSku"),
+    supplierSlot: document.getElementById("sFeedSupplierSlot"),
+    name: document.getElementById("sFeedName"),
+    brand: document.getElementById("sFeedBrand"),
+    manufacturerCode: document.getElementById("sFeedManufacturerCode"),
+    barcode: document.getElementById("sFeedBarcode"),
+    gtip: document.getElementById("sFeedGtip"),
+    specialCode: document.getElementById("sFeedSpecialCode"),
+    vat: document.getElementById("sFeedVat"),
+    currency: document.getElementById("sFeedCurrency"),
+    unit: document.getElementById("sFeedUnit"),
+    category: document.getElementById("sFeedCategory"),
+    mainCategory: document.getElementById("sFeedMainCategory"),
+    midCategory: document.getElementById("sFeedMidCategory"),
+    subCategory: document.getElementById("sFeedSubCategory"),
+    description: document.getElementById("sFeedDescription"),
+    image: document.getElementById("sFeedImage"),
+  };
+  const supplierFeedIssues = document.getElementById("supplierFeedIssues");
+  const supplierFeedSubtitle = document.getElementById("supplierFeedSubtitle");
+  const supplierFeedFormNote = document.getElementById("supplierFeedFormNote");
+  let editingSupplierFeedKey = "";
 
   function openProductModal() {
     if (!productFormModal) return;
@@ -227,7 +255,82 @@
     if (force || !fields.subCategory.value.trim()) fields.subCategory.value = tree.subCategory;
   }
 
+  function applySupplierFeedCategoryDefaults(force) {
+    if (!supplierFeedFields.category) return;
+    const tree =
+      CATEGORY_FEED_DEFAULTS[supplierFeedFields.category.value] || CATEGORY_FEED_DEFAULTS.bilgisayar;
+    if (force || !supplierFeedFields.mainCategory.value.trim()) {
+      supplierFeedFields.mainCategory.value = tree.mainCategory;
+    }
+    if (force || !supplierFeedFields.midCategory.value.trim()) {
+      supplierFeedFields.midCategory.value = tree.midCategory;
+    }
+    if (force || !supplierFeedFields.subCategory.value.trim()) {
+      supplierFeedFields.subCategory.value = tree.subCategory;
+    }
+  }
+
+  function renderSupplierFeedIssues(issues) {
+    if (!supplierFeedIssues) return;
+    supplierFeedIssues.textContent = "";
+    const list = Array.isArray(issues) ? issues : [];
+    if (!list.length) {
+      supplierFeedIssues.hidden = true;
+      return;
+    }
+    supplierFeedIssues.hidden = false;
+    list.forEach((reason) => {
+      const item = document.createElement("li");
+      item.textContent = reason;
+      supplierFeedIssues.appendChild(item);
+    });
+  }
+
+  function openSupplierFeedModal(item) {
+    if (!supplierFeedModal || !item) return;
+    editingSupplierFeedKey = item.supplierSlot + "|" + item.supplierSku;
+    if (supplierFeedSubtitle) {
+      supplierFeedSubtitle.textContent =
+        (item.supplierSku || "") + " · " + (item.name || "XML ürünü");
+    }
+    supplierFeedFields.supplierSku.value = item.supplierSku || "";
+    supplierFeedFields.supplierSlot.value = item.supplierSlot || "supplier-1";
+    supplierFeedFields.name.value = item.name || "";
+    supplierFeedFields.brand.value = item.brand || "";
+    supplierFeedFields.manufacturerCode.value = item.manufacturerCode || item.supplierSku || "";
+    supplierFeedFields.barcode.value = item.barcode || "";
+    supplierFeedFields.gtip.value = item.gtipCode || "";
+    supplierFeedFields.specialCode.value = item.specialCode || "";
+    supplierFeedFields.vat.value = String(item.vatPercent || 20);
+    supplierFeedFields.currency.value = item.currency || "TRY";
+    supplierFeedFields.unit.value = item.unit || "ADET";
+    supplierFeedFields.category.value = item.category || "bilgisayar";
+    supplierFeedFields.mainCategory.value = item.mainCategory || "";
+    supplierFeedFields.midCategory.value = item.midCategory || "";
+    supplierFeedFields.subCategory.value = item.subCategory || "";
+    supplierFeedFields.description.value = item.description || item.name || "";
+    supplierFeedFields.image.value = item.image || "";
+    applySupplierFeedCategoryDefaults(false);
+    renderSupplierFeedIssues(item.feedIssues || []);
+    note(supplierFeedFormNote, "", "");
+    supplierFeedModal.hidden = false;
+    document.body.classList.add("admin-modal-open");
+    if (supplierFeedFields.name) supplierFeedFields.name.focus();
+  }
+
+  function closeSupplierFeedModal() {
+    if (!supplierFeedModal) return;
+    supplierFeedModal.hidden = true;
+    editingSupplierFeedKey = "";
+    if (!isProductModalOpen()) document.body.classList.remove("admin-modal-open");
+  }
+
+  function isSupplierFeedModalOpen() {
+    return supplierFeedModal && !supplierFeedModal.hidden;
+  }
+
   function note(el, type, text) {
+    if (!el) return;
     el.classList.remove("ok", "err");
     if (type) el.classList.add(type);
     el.textContent = text || "";
@@ -250,7 +353,7 @@
     const isSupplierRefresh = path.includes("/supplier/refresh");
     const timer = setTimeout(
       () => ctrl.abort(),
-      Number(opts.timeout) || (isSupplierRefresh ? 60000 : 12000)
+      Number(opts.timeout) || (isSupplierRefresh ? 100000 : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -710,6 +813,40 @@
       : date.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" });
   }
 
+  function minuteToTimeValue(minuteValue) {
+    const n = Number(minuteValue);
+    if (!Number.isFinite(n)) return "08:00";
+    const hour = Math.max(0, Math.min(23, Math.floor(n / 60)));
+    const minute = Math.max(0, Math.min(59, n % 60));
+    return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+  }
+
+  function formatSchedulePreview(startValue, intervalValue, knownTimes) {
+    if (Array.isArray(knownTimes) && knownTimes.length) {
+      return knownTimes.join(", ") + " — son okuma 20:00’ı geçmez.";
+    }
+    const match = String(startValue || "08:00").match(/^(\d{1,2}):(\d{2})$/);
+    const startMinute = match ? Number(match[1]) * 60 + Number(match[2]) : 8 * 60;
+    const interval = Math.max(30, Math.min(720, Math.floor(Number(intervalValue) || 180)));
+    const labels = [];
+    for (let t = startMinute; t <= 20 * 60; t += interval) {
+      labels.push(minuteToTimeValue(t));
+      if (labels.length >= 16) break;
+    }
+    if (!labels.length) labels.push(minuteToTimeValue(startMinute));
+    return labels.join(", ") + " — son okuma 20:00’ı geçmez.";
+  }
+
+  function emptyPoolQuotaMessage() {
+    const next = supplierSlots.find((slot) => slot && slot.nextScheduled && slot.nextScheduled.label);
+    const when = next && next.nextScheduled.label ? " (" + next.nextScheduled.label + ")" : "";
+    return (
+      "Tedarikçi günlük XML kotası doldu. Havuz ilk başarılı okumada dolacak" +
+      when +
+      ". Bugün kalan otomatik denemeler durduruldu."
+    );
+  }
+
   function formatMoney(amount) {
     return (
       "₺" +
@@ -739,15 +876,15 @@
   function renderDigitalDashboard(payload) {
     const analytics = (payload && payload.analytics) || {};
     const commerce = (payload && payload.commerce) || {};
-    const server = (payload && payload.server) || {};
+    const proc = (payload && (payload.process || payload.server)) || {};
     const setText = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     };
     const live =
       (payload && payload.ok === true) ||
-      server.status === "online" ||
-      Boolean(server.checkedAt);
+      proc.apiReachable === true ||
+      Boolean(proc.checkedAt);
 
     setText("dashVisitors", String(analytics.visitors || 0));
     setText("dashPageViews", String(analytics.pageViews || 0));
@@ -780,23 +917,28 @@
     const status = document.getElementById("dashServerStatus");
     if (status) {
       status.className = "admin-status " + (live ? "on" : payload && payload.loadError ? "err" : "pending");
-      status.textContent = live ? "Online" : payload && payload.loadError ? "Veri alınamadı" : "Yükleniyor";
+      status.textContent = live
+        ? "API yanıt verdi"
+        : payload && payload.loadError
+          ? "Veri alınamadı"
+          : "Yükleniyor";
     }
     const serverNote = document.getElementById("dashServerNote");
     if (serverNote) {
       if (payload && payload.loadError) {
         serverNote.hidden = false;
         serverNote.textContent =
-          "Site ayakta olabilir; panel özeti şu an çekilemedi: " + payload.loadError;
+          "Panel özeti çekilemedi (bu, sitenin kapalı olduğu anlamına gelmez): " + payload.loadError;
       } else {
         serverNote.hidden = true;
         serverNote.textContent = "";
       }
     }
-    setText("dashUptime", live ? formatUptime(server.uptimeSec) : "—");
-    setText("dashMemory", live && server.memoryMB != null ? server.memoryMB + " MB" : "—");
-    setText("dashNode", live ? server.node || "—" : "—");
-    const pos = server.pos || {};
+    setText("dashUptime", live ? formatUptime(proc.uptimeSec) : "—");
+    setText("dashMemory", live && proc.memoryMB != null ? proc.memoryMB + " MB" : "—");
+    setText("dashNode", live ? proc.node || "—" : "—");
+    setText("dashSiteBaseUrl", live ? proc.siteBaseUrl || "—" : "—");
+    const pos = proc.pos || {};
     setText(
       "dashPos",
       live
@@ -805,7 +947,7 @@
           : "Yapılandırılmadı"
         : "—"
     );
-    setText("dashCheckedAt", live ? formatDate(server.checkedAt) : "—");
+    setText("dashCheckedAt", live ? formatDate(proc.checkedAt) : "—");
 
     const spark = document.getElementById("dashSpark");
     if (spark) {
@@ -1063,22 +1205,49 @@
     document.getElementById("dashboardFeedCount").textContent = String(
       feedStatus ? feedStatus.activeCount : activeManual + activeSupplier
     );
+    const staleSlots = supplierSlots.filter((slot) => slot.catalogStale);
     const badge = document.getElementById("dashboardXmlStatus");
-    badge.className =
-      "admin-status " +
-      (failedSlots.length ? "err" : configuredSlots.length ? "on" : "pending");
-    badge.textContent = failedSlots.length
-      ? failedSlots.length + " bağlantıda hata"
-      : configuredSlots.length
-        ? configuredSlots.length + " / 3 bağlı"
-        : "Yapılandırılmadı";
-    document.getElementById("dashboardLastSync").textContent = formatDate(latestFetch);
-    document.getElementById("dashboardXmlHost").textContent =
-      configuredSlots.length ? configuredSlots.length + " XML kaynağı" : "Tanımlanmadı";
-    document.getElementById("dashboardMargin").textContent =
-      configuredSlots.length
+    if (badge) {
+      badge.className =
+        "admin-status " +
+        (staleSlots.length ? "pending" : failedSlots.length ? "err" : configuredSlots.length ? "on" : "pending");
+      badge.textContent = staleSlots.length
+        ? "Katalog donduruldu"
+        : failedSlots.length
+          ? failedSlots.length + " bağlantıda hata"
+          : configuredSlots.length
+            ? configuredSlots.length + " / 3 bağlı"
+            : "Yapılandırılmadı";
+    }
+    const lastSync = document.getElementById("dashboardLastSync");
+    if (lastSync) lastSync.textContent = formatDate(latestFetch);
+    const host = document.getElementById("dashboardXmlHost");
+    if (host) {
+      host.textContent = configuredSlots.length
+        ? configuredSlots.map((slot) => slot.host || slot.name).join(" · ")
+        : "Tanımlanmadı";
+    }
+    const margin = document.getElementById("dashboardMargin");
+    if (margin) {
+      margin.textContent = configuredSlots.length
         ? configuredSlots.map((slot) => "%" + slot.globalMarginPercent).join(" · ")
         : "%15";
+    }
+    const failed = failedSlots[0];
+    const dashErr = document.getElementById("dashboardXmlError");
+    if (dashErr) dashErr.textContent = failed && failed.lastError ? failed.lastError : "—";
+    const dashNote = document.getElementById("dashboardXmlNote");
+    if (dashNote) {
+      note(
+        dashNote,
+        failed ? "err" : "",
+        failed
+          ? (staleSlots.length
+              ? failed.lastError + " Son katalog donduruldu; sitede stoksuz işaretlenmez."
+              : failed.lastError)
+          : ""
+      );
+    }
     syncFeedUrlUi();
   }
 
@@ -1087,26 +1256,89 @@
       const card = document.querySelector('[data-supplier-card="' + slot.id + '"]');
       if (!card) return;
       const failed = slot.lastFetchStatus === "error";
+      const stale = slot.catalogStale === true;
       const field = (name) => card.querySelector('[data-slot-field="' + name + '"]');
       const input = (name) => card.querySelector('[data-slot-input="' + name + '"]');
       const badge = field("badge");
-      badge.className =
-        "admin-status " + (failed ? "err" : slot.configured ? "on" : "pending");
-      badge.textContent = failed
-        ? "Senkron hatası"
-        : slot.configured
-          ? "Bağlantı kayıtlı"
-          : "Yapılandırılmadı";
-      field("title").textContent = slot.name;
-      field("maskedUrl").textContent = slot.maskedUrl || "Tanımlanmadı";
-      field("lastSync").textContent = formatDate(slot.lastFetchAt);
-      field("itemCount").textContent = String(slot.itemCount || 0);
-      input("name").value = slot.name;
-      input("margin").value = String(slot.globalMarginPercent);
-      note(field("note"), failed ? "err" : "", failed ? slot.lastError : "");
+      if (badge) {
+        badge.className =
+          "admin-status " +
+          (failed && stale ? "pending" : failed ? "err" : slot.configured ? "on" : "pending");
+        badge.textContent = failed && stale
+          ? "Katalog donduruldu"
+          : failed
+            ? "Senkron hatası"
+            : slot.configured
+              ? "Bağlantı kayıtlı"
+              : "Yapılandırılmadı";
+      }
+      if (field("title")) field("title").textContent = slot.name;
+      if (field("maskedUrl")) field("maskedUrl").textContent = slot.maskedUrl || "Tanımlanmadı";
+      if (field("lastSync")) field("lastSync").textContent = formatDate(slot.lastFetchAt);
+      if (field("lastSuccess")) field("lastSuccess").textContent = formatDate(slot.lastSuccessfulFetchAt);
+      if (field("itemCount")) field("itemCount").textContent = String(slot.itemCount || 0);
+      if (field("lastAutoSync")) {
+        field("lastAutoSync").textContent = slot.lastScheduledFetchKey || "Henüz yok";
+      }
+      if (input("name")) input("name").value = slot.name;
+      if (input("margin")) input("margin").value = String(slot.globalMarginPercent);
+      const urlInput = input("url");
+      if (urlInput) {
+        urlInput.placeholder = slot.configured
+          ? "Kayıtlı bağlantı gizli. Değiştirmek için yeni URL yazın."
+          : "https://tedarikci.com/xml?...";
+      }
+      if (input("criticalStock")) {
+        input("criticalStock").value = String(slot.criticalStockQty || 0);
+      }
+      if (input("scheduleStart")) {
+        input("scheduleStart").value = minuteToTimeValue(slot.scheduleStartMinute);
+      }
+      if (input("scheduleInterval")) {
+        input("scheduleInterval").value = String(slot.scheduleIntervalMinutes || 180);
+      }
+      if (field("scheduleHelp")) {
+        field("scheduleHelp").textContent = formatSchedulePreview(
+          input("scheduleStart") && input("scheduleStart").value,
+          input("scheduleInterval") && input("scheduleInterval").value,
+          slot.schedule && slot.schedule.times
+        );
+      }
+      const noteText = stale
+        ? (slot.lastError || "XML okunamadı") +
+          " Havuzdaki " +
+          (slot.itemCount || 0) +
+          " ürün son başarılı katalogdan; stok donduruldu."
+        : failed
+          ? slot.lastError
+          : "";
+      note(field("note"), failed ? "err" : "", noteText);
       const option = supplierSlotFilter.querySelector('option[value="' + slot.id + '"]');
       if (option) option.textContent = slot.name;
     });
+    const banner = document.getElementById("supplierStatusBanner");
+    if (banner) {
+      const lines = supplierSlots.map((slot) => {
+        const state = slot.catalogStale
+          ? "katalog donduruldu"
+          : slot.lastFetchStatus === "error"
+            ? "hata"
+            : slot.configured
+              ? "kayıtlı"
+              : "yapılandırılmadı";
+        const extra = slot.lastFetchStatus === "error"
+          ? " — " + (slot.lastError || "senkron başarısız") +
+            (slot.itemCount ? " · havuz: " + slot.itemCount + " ürün" : "")
+          : slot.configured
+            ? " · " + (slot.itemCount || 0) + " ürün · son: " + formatDate(slot.lastFetchAt)
+            : "";
+        return (slot.name || slot.id) + ": " + state + extra;
+      });
+      banner.textContent = lines.join(" | ");
+      banner.className =
+        "admin-xml-status-banner" +
+        (supplierSlots.some((slot) => slot.lastFetchStatus === "error") ? " is-error" : "");
+    }
     if (feedStatus) {
       document.getElementById("feedActiveCount").textContent = String(feedStatus.activeCount || 0);
       const catalogActive = document.getElementById("feedCatalogActiveCount");
@@ -1188,30 +1420,183 @@
       if (status === "stock" && !(item.stockQty === null || Number(item.stockQty) > 0)) {
         return false;
       }
+      if (status === "nocat" && item.siteCategoryAssigned) return false;
       return true;
     });
   }
 
+  function pagedSupplierProducts(visible) {
+    const list = visible || filteredSupplierProducts();
+    const totalPages = Math.max(1, Math.ceil(list.length / POOL_PAGE_SIZE) || 1);
+    if (supplierPoolPage > totalPages) supplierPoolPage = totalPages;
+    if (supplierPoolPage < 1) supplierPoolPage = 1;
+    const start = (supplierPoolPage - 1) * POOL_PAGE_SIZE;
+    return {
+      list,
+      totalPages,
+      start,
+      shown: list.slice(start, start + POOL_PAGE_SIZE),
+    };
+  }
+
+  async function loadSiteCategories() {
+    try {
+      const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      siteCategories = Array.isArray(data.categories) ? data.categories : [];
+    } catch (_) {
+      siteCategories = [];
+    }
+  }
+
+  function fillSiteParentSelect(select, selected) {
+    select.textContent = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Ana kategori";
+    select.appendChild(empty);
+    siteCategories.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat.slug;
+      opt.textContent = cat.name;
+      if (cat.slug === selected) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  function fillSiteChildSelect(select, parentSlug, selected) {
+    select.textContent = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = parentSlug ? "Alt kategori" : "Önce ana kategori";
+    select.appendChild(empty);
+    const parent = siteCategories.find((cat) => cat.slug === parentSlug);
+    const children = parent && Array.isArray(parent.children) ? parent.children : [];
+    children.forEach((child) => {
+      const opt = document.createElement("option");
+      opt.value = child.slug;
+      opt.textContent = child.name;
+      if (child.slug === selected) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.disabled = !parent;
+  }
+
+  async function saveSupplierSiteCategory(item, parentSlug, childSlug) {
+    const updates = {
+      supplierSku: item.supplierSku,
+      supplierSlot: item.supplierSlot,
+      siteParent: parentSlug || "",
+      siteChild: childSlug || "",
+    };
+    if (item.active && !(parentSlug && childSlug)) updates.active = false;
+    await updateSupplierProducts([updates]);
+  }
+
+  function poolPageNumbers(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const set = new Set([1, total, current - 1, current, current + 1]);
+    if (current <= 3) {
+      set.add(2);
+      set.add(3);
+      set.add(4);
+    }
+    if (current >= total - 2) {
+      set.add(total - 3);
+      set.add(total - 2);
+      set.add(total - 1);
+    }
+    return Array.from(set)
+      .filter((n) => n >= 1 && n <= total)
+      .sort((a, b) => a - b);
+  }
+
+  function renderSupplierPager(totalPages) {
+    const pager = document.getElementById("supplierPoolPager");
+    if (!pager) return;
+    pager.textContent = "";
+    if (totalPages <= 1) {
+      pager.hidden = true;
+      return;
+    }
+    pager.hidden = false;
+    const addBtn = (label, page, options) => {
+      const opts = options || {};
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts.current) btn.className = "is-current";
+      btn.disabled = !!opts.disabled;
+      if (opts.current) btn.setAttribute("aria-current", "page");
+      btn.addEventListener("click", () => {
+        supplierPoolPage = page;
+        renderSupplierProducts();
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", supplierPoolPage - 1, { disabled: supplierPoolPage <= 1 });
+    let prev = 0;
+    poolPageNumbers(supplierPoolPage, totalPages).forEach((page) => {
+      if (prev && page - prev > 1) {
+        const dots = document.createElement("span");
+        dots.className = "admin-pager-ellipsis";
+        dots.textContent = "…";
+        pager.appendChild(dots);
+      }
+      addBtn(String(page), page, { current: page === supplierPoolPage });
+      prev = page;
+    });
+    addBtn("›", supplierPoolPage + 1, { disabled: supplierPoolPage >= totalPages });
+  }
+
   function renderSupplierProducts() {
     supplierRows.textContent = "";
-    const visible = filteredSupplierProducts();
-    document.getElementById("supplierVisibleCount").textContent =
-      visible.length + " / " + supplierProducts.length + " ürün";
+    const page = pagedSupplierProducts();
+    const visible = page.list;
+    const shown = page.shown;
+    const end = visible.length ? page.start + shown.length : 0;
+    document.getElementById("supplierVisibleCount").textContent = visible.length
+      ? page.start +
+        1 +
+        "–" +
+        end +
+        " / " +
+        visible.length +
+        " ürün" +
+        (visible.length !== supplierProducts.length
+          ? " (filtre: " + supplierProducts.length + ")"
+          : "") +
+        (page.totalPages > 1 ? " · sayfa " + supplierPoolPage + "/" + page.totalPages : "")
+      : "0 / " + supplierProducts.length + " ürün";
+    const selectAll = document.getElementById("supplierSelectAll");
+    if (selectAll) {
+      selectAll.checked =
+        shown.length > 0 &&
+        shown.every((item) =>
+          selectedSupplierSkus.has(item.supplierSlot + "|" + item.supplierSku)
+        );
+    }
     if (!visible.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 9;
+      cell.colSpan = 11;
       cell.className = "admin-table-empty";
       cell.textContent = supplierProducts.length
         ? "Filtrelere uygun XML ürünü bulunamadı."
-        : "XML bağlantısını kaydedip ürünleri güncelleyin.";
+        : supplierSlots.some((slot) => /g[uü]nl[uü]k|s[iı]n[iı]r/i.test(String(slot.lastError || "")))
+          ? emptyPoolQuotaMessage()
+          : supplierSlots.some((slot) => slot.configured)
+          ? "Havuz boş: son XML okuması ürün getirmedi. Sonraki başarılı okumada katalog dolacak; mevcut yayındaki stok dondurulur, stoksuz işaretlenmez."
+          : "XML bağlantısını kaydedip ürünleri güncelleyin.";
       row.appendChild(cell);
       supplierRows.appendChild(row);
+      renderSupplierPager(1);
       updateDashboard();
       return;
     }
 
-    visible.forEach((item) => {
+    shown.forEach((item) => {
       const row = document.createElement("tr");
       const selectionKey = item.supplierSlot + "|" + item.supplierSku;
       const checkCell = document.createElement("td");
@@ -1240,11 +1625,41 @@
             textContent: (item.brand || "?").slice(0, 3),
           });
       const text = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = item.name;
+      const nameInput = document.createElement("input");
+      nameInput.className = "admin-name-input";
+      nameInput.type = "text";
+      nameInput.maxLength = 180;
+      nameInput.value = item.name || "";
+      nameInput.title = item.nameOverride
+        ? "Panelde özelleştirilmiş ürün adı"
+        : "Ürün adını düzenleyebilirsiniz";
+      nameInput.addEventListener("change", async () => {
+        const nextName = String(nameInput.value || "").trim();
+        if (!nextName) {
+          nameInput.value = item.name || "";
+          note(document.getElementById("supplierProductsNote"), "err", "Ürün adı boş olamaz.");
+          return;
+        }
+        nameInput.disabled = true;
+        try {
+          await updateSupplierProducts([
+            {
+              supplierSku: item.supplierSku,
+              supplierSlot: item.supplierSlot,
+              name: nextName,
+            },
+          ]);
+          note(document.getElementById("supplierProductsNote"), "ok", "Ürün adı güncellendi.");
+        } catch (err) {
+          nameInput.value = item.name || "";
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        } finally {
+          nameInput.disabled = false;
+        }
+      });
       const brand = document.createElement("span");
       brand.textContent = item.brand + " · " + item.category;
-      text.appendChild(title);
+      text.appendChild(nameInput);
       text.appendChild(brand);
       product.appendChild(media);
       product.appendChild(text);
@@ -1317,7 +1732,98 @@
       saleCell.appendChild(saleInput);
 
       const stockCell = document.createElement("td");
-      stockCell.textContent = item.stockQty === null ? "—" : String(item.stockQty);
+      const stockValue = item.stockQty;
+      stockCell.textContent = stockValue === null ? "—" : String(stockValue);
+      const critical = Number(item.criticalStockQty);
+      if (
+        item.catalogStale !== true &&
+        Number.isFinite(critical) &&
+        Number.isFinite(Number(stockValue)) &&
+        Number(stockValue) <= critical
+      ) {
+        stockCell.title =
+          "Kritik stok eşiği (" +
+          critical +
+          ") altında; site ve Akakçe feed’de stoksuz sayılır.";
+        stockCell.classList.add("is-critical-stock");
+      } else if (item.catalogStale) {
+        stockCell.title = "XML okunamadı; stok son başarılı katalogdan donduruldu.";
+      }
+
+      const categoryCell = document.createElement("td");
+      const catWrap = document.createElement("div");
+      catWrap.className = "admin-cat-selects";
+      const parentSelect = document.createElement("select");
+      parentSelect.setAttribute("aria-label", item.name + " ana kategorisi");
+      const childSelect = document.createElement("select");
+      childSelect.setAttribute("aria-label", item.name + " alt kategorisi");
+      fillSiteParentSelect(parentSelect, item.siteParent || "");
+      fillSiteChildSelect(childSelect, item.siteParent || "", item.siteChild || "");
+      parentSelect.addEventListener("change", async () => {
+        const parentSlug = parentSelect.value;
+        fillSiteChildSelect(childSelect, parentSlug, "");
+        parentSelect.disabled = true;
+        childSelect.disabled = true;
+        try {
+          await saveSupplierSiteCategory(item, parentSlug, "");
+          note(
+            document.getElementById("supplierProductsNote"),
+            parentSlug ? "" : "ok",
+            parentSlug
+              ? "Alt kategori seçin; seçilmeden ürün yayına alınamaz."
+              : "Site kategorisi temizlendi; ürün yayından çıkarıldı."
+          );
+        } catch (err) {
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        }
+      });
+      childSelect.addEventListener("change", async () => {
+        const parentSlug = parentSelect.value;
+        const childSlug = childSelect.value;
+        parentSelect.disabled = true;
+        childSelect.disabled = true;
+        try {
+          await saveSupplierSiteCategory(item, parentSlug, childSlug);
+          note(
+            document.getElementById("supplierProductsNote"),
+            childSlug ? "ok" : "",
+            childSlug
+              ? "Site kategorisi kaydedildi."
+              : "Alt kategori seçilmeden ürün yayına alınamaz."
+          );
+        } catch (err) {
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        }
+      });
+      catWrap.appendChild(parentSelect);
+      catWrap.appendChild(childSelect);
+      if (!item.siteCategoryAssigned) {
+        const missing = document.createElement("span");
+        missing.className = "admin-cat-missing";
+        missing.textContent = "Kategori yok — yayına alınamaz";
+        catWrap.appendChild(missing);
+      }
+      categoryCell.appendChild(catWrap);
+
+      const feedCell = document.createElement("td");
+      const feedWrap = document.createElement("div");
+      feedWrap.className = "admin-feed-cell";
+      const feedBadge = document.createElement("span");
+      feedBadge.className =
+        "admin-badge " + (item.feedReady ? "on" : item.active ? "err" : "pending");
+      feedBadge.textContent = item.feedReady ? "Hazır" : item.active ? "Eksik" : "—";
+      if (Array.isArray(item.feedIssues) && item.feedIssues.length) {
+        feedBadge.title = item.feedIssues.join(", ");
+      }
+      const feedEditBtn = document.createElement("button");
+      feedEditBtn.type = "button";
+      feedEditBtn.className = "btn btn-ghost btn-xs";
+      feedEditBtn.textContent = "Düzenle";
+      feedEditBtn.addEventListener("click", () => openSupplierFeedModal(item));
+      feedWrap.appendChild(feedBadge);
+      feedWrap.appendChild(feedEditBtn);
+      feedCell.appendChild(feedWrap);
+
       const activeCell = document.createElement("td");
       const toggleLabel = document.createElement("label");
       toggleLabel.className = "admin-switch";
@@ -1325,8 +1831,21 @@
       const toggle = document.createElement("input");
       toggle.type = "checkbox";
       toggle.checked = !!item.active;
+      toggle.disabled = !item.siteCategoryAssigned;
+      toggle.title = item.siteCategoryAssigned
+        ? "Yayın durumunu değiştir"
+        : "Önce site kategorisi seçin";
       const track = document.createElement("span");
       toggle.addEventListener("change", async () => {
+        if (toggle.checked && !item.siteCategoryAssigned) {
+          toggle.checked = false;
+          note(
+            document.getElementById("supplierProductsNote"),
+            "err",
+            "Site kategorisi seçilmeden ürün yayına alınamaz."
+          );
+          return;
+        }
         toggle.disabled = true;
         try {
           await updateSupplierProducts([
@@ -1341,14 +1860,16 @@
             document.getElementById("supplierProductsNote"),
             "ok",
             toggle.checked
-              ? "Ürün site ve Akakçe XML’i için aktif edildi."
-              : "Ürün site ve Akakçe XML’inden kaldırıldı."
+              ? item.feedReady
+                ? "Ürün yayına alındı; site ve export XML’inde listelenir."
+                : "Ürün yayına alındı; export için eksik alanları tamamlayın (Export → Düzenle)."
+              : "Ürün yayından kaldırıldı; site ve export XML’inden çıkarıldı."
           );
         } catch (err) {
           toggle.checked = !toggle.checked;
           note(document.getElementById("supplierProductsNote"), "err", err.message);
         } finally {
-          toggle.disabled = false;
+          toggle.disabled = !item.siteCategoryAssigned;
         }
       });
       toggleLabel.appendChild(toggle);
@@ -1364,14 +1885,18 @@
         marginCell,
         saleCell,
         stockCell,
+        categoryCell,
+        feedCell,
         activeCell,
       ].forEach((cell) => row.appendChild(cell));
       supplierRows.appendChild(row);
     });
+    renderSupplierPager(page.totalPages);
     updateDashboard();
   }
 
   async function loadSupplierData() {
+    if (!siteCategories.length) await loadSiteCategories();
     const results = await Promise.all([
       api("/api/admin/supplier/status"),
       api("/api/admin/supplier/products"),
@@ -1383,6 +1908,17 @@
         : [];
     feedStatus = results[0].feed || null;
     supplierProducts = Array.isArray(results[1].products) ? results[1].products : [];
+    const scheduleHint = document.getElementById("supplierScheduleHint");
+    if (scheduleHint && results[0].schedule && results[0].nextScheduled) {
+      scheduleHint.textContent =
+        "Otomatik XML okuma: " +
+        results[0].schedule.summary +
+        ". Sonraki okuma: " +
+        results[0].nextScheduled.label +
+        " (" +
+        results[0].nextScheduled.timezone +
+        ").";
+    }
     renderSupplierStatus();
     renderSupplierProducts();
     renderList();
@@ -1440,10 +1976,10 @@
   );
   [supplierSearch, supplierStatusFilter, supplierSlotFilter].forEach((control) => {
     if (!control) return;
-    control.addEventListener(
-      control.tagName === "INPUT" ? "input" : "change",
-      renderSupplierProducts
-    );
+    control.addEventListener(control.tagName === "INPUT" ? "input" : "change", () => {
+      supplierPoolPage = 1;
+      renderSupplierProducts();
+    });
   });
 
   document.querySelectorAll(".supplier-config-form").forEach((form) => {
@@ -1494,7 +2030,7 @@
         await api("/api/admin/supplier/refresh", {
           method: "POST",
           body: JSON.stringify({ slotId }),
-          timeout: 60000,
+          timeout: 100000,
         });
         selectedSupplierSkus.clear();
         await loadSupplierData();
@@ -1514,28 +2050,119 @@
   });
 
   document.querySelectorAll(".supplier-settings-form").forEach((form) => {
+    const startEl = form.querySelector('[data-slot-input="scheduleStart"]');
+    const intervalEl = form.querySelector('[data-slot-input="scheduleInterval"]');
+    const helpEl = form.querySelector('[data-slot-field="scheduleHelp"]');
+    function previewSchedule() {
+      if (!helpEl) return;
+      helpEl.textContent = formatSchedulePreview(
+        startEl && startEl.value,
+        intervalEl && intervalEl.value
+      );
+    }
+    if (startEl) {
+      startEl.addEventListener("input", previewSchedule);
+      startEl.addEventListener("change", previewSchedule);
+    }
+    if (intervalEl) {
+      intervalEl.addEventListener("input", previewSchedule);
+      intervalEl.addEventListener("change", previewSchedule);
+    }
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const slotId = form.dataset.slotId;
       const card = form.closest("[data-supplier-card]");
       const statusNote = card.querySelector('[data-slot-field="note"]');
       const margin = Number(form.querySelector('[data-slot-input="margin"]').value);
-      const button = form.querySelector('button[type="submit"]');
+      const criticalStockEl = form.querySelector('[data-slot-input="criticalStock"]');
+      const criticalStockQty = criticalStockEl ? Number(criticalStockEl.value) : undefined;
+      const scheduleStartEl = form.querySelector('[data-slot-input="scheduleStart"]');
+      const scheduleIntervalEl = form.querySelector('[data-slot-input="scheduleInterval"]');
+      const button = ev.submitter || form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
         await api("/api/admin/supplier/settings", {
           method: "PUT",
-          body: JSON.stringify({ slotId, globalMarginPercent: margin }),
+          body: JSON.stringify({
+            slotId,
+            globalMarginPercent: margin,
+            criticalStockQty,
+            scheduleStart: scheduleStartEl ? scheduleStartEl.value : undefined,
+            scheduleIntervalMinutes: scheduleIntervalEl ? Number(scheduleIntervalEl.value) : undefined,
+          }),
         });
         await loadSupplierData();
         notifySite();
-        note(statusNote, "ok", "Bu XML kaynağının genel kâr oranı güncellendi.");
+        note(statusNote, "ok", "Bu XML kaynağının ayarları güncellendi.");
       } catch (err) {
         note(statusNote, "err", err.message);
       } finally {
         button.disabled = false;
       }
     });
+  });
+
+  if (supplierFeedFields.category) {
+    supplierFeedFields.category.addEventListener("change", () => {
+      applySupplierFeedCategoryDefaults(true);
+    });
+  }
+
+  if (supplierFeedForm) {
+    supplierFeedForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const saveBtn = document.getElementById("saveSupplierFeedBtn");
+      if (saveBtn) saveBtn.disabled = true;
+      note(supplierFeedFormNote, "", "Kaydediliyor…");
+      try {
+        const payload = {
+          supplierSku: supplierFeedFields.supplierSku.value,
+          supplierSlot: supplierFeedFields.supplierSlot.value,
+          name: supplierFeedFields.name.value,
+          brand: supplierFeedFields.brand.value,
+          manufacturerCode: supplierFeedFields.manufacturerCode.value,
+          barcode: supplierFeedFields.barcode.value,
+          gtipCode: supplierFeedFields.gtip.value,
+          specialCode: supplierFeedFields.specialCode.value,
+          vatPercent: Number(supplierFeedFields.vat.value),
+          currency: supplierFeedFields.currency.value,
+          unit: supplierFeedFields.unit.value,
+          category: supplierFeedFields.category.value,
+          mainCategory: supplierFeedFields.mainCategory.value,
+          midCategory: supplierFeedFields.midCategory.value,
+          subCategory: supplierFeedFields.subCategory.value,
+          description: supplierFeedFields.description.value,
+          image: supplierFeedFields.image.value,
+        };
+        await updateSupplierProducts([payload]);
+        notifySite();
+        closeSupplierFeedModal();
+        note(
+          document.getElementById("supplierProductsNote"),
+          "ok",
+          "Export bilgileri kaydedildi."
+        );
+      } catch (err) {
+        note(supplierFeedFormNote, "err", err.message || "Kaydedilemedi");
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
+      }
+    });
+  }
+
+  [
+    document.getElementById("closeSupplierFeedModalBtn"),
+    document.getElementById("cancelSupplierFeedModalBtn"),
+    ...document.querySelectorAll("[data-close-supplier-feed-modal]"),
+  ].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("click", () => closeSupplierFeedModal());
+  });
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && isSupplierFeedModalOpen()) {
+      closeSupplierFeedModal();
+    }
   });
 
   document.getElementById("feedCopyBtn").addEventListener("click", () => {
@@ -1556,7 +2183,7 @@
 
   document.getElementById("supplierSelectAll").addEventListener("change", (ev) => {
     const checked = ev.currentTarget.checked;
-    filteredSupplierProducts().forEach((item) => {
+    pagedSupplierProducts().shown.forEach((item) => {
       const key = item.supplierSlot + "|" + item.supplierSku;
       if (checked) selectedSupplierSkus.add(key);
       else selectedSupplierSkus.delete(key);
@@ -1569,16 +2196,34 @@
       note(document.getElementById("supplierProductsNote"), "err", "Önce ürün seçin.");
       return;
     }
+    const selected = Array.from(selectedSupplierSkus).map((key) => {
+      const separator = key.indexOf("|");
+      return {
+        supplierSlot: key.slice(0, separator),
+        supplierSku: key.slice(separator + 1),
+      };
+    });
+    const updates = active
+      ? selected.filter((row) => {
+          const product = supplierProducts.find(
+            (item) =>
+              item.supplierSlot === row.supplierSlot && item.supplierSku === row.supplierSku
+          );
+          return product && product.siteCategoryAssigned;
+        })
+      : selected;
+    const skipped = selected.length - updates.length;
+    if (active && !updates.length) {
+      note(
+        document.getElementById("supplierProductsNote"),
+        "err",
+        "Seçilen ürünlerin site kategorisi yok. Önce kategori atayın."
+      );
+      return;
+    }
     try {
       await updateSupplierProducts(
-        Array.from(selectedSupplierSkus).map((key) => {
-          const separator = key.indexOf("|");
-          return {
-            supplierSlot: key.slice(0, separator),
-            supplierSku: key.slice(separator + 1),
-            active,
-          };
-        })
+        updates.map((row) => Object.assign({ active }, row))
       );
       selectedSupplierSkus.clear();
       document.getElementById("supplierSelectAll").checked = false;
@@ -1587,7 +2232,8 @@
         document.getElementById("supplierProductsNote"),
         "ok",
         active
-          ? "Seçilen ürünler site ve Akakçe XML’i için aktif edildi."
+          ? "Seçilen ürünler site ve Akakçe XML’i için aktif edildi." +
+            (skipped ? " " + skipped + " kategorisiz ürün atlandı." : "")
           : "Seçilen ürünler pasife alındı."
       );
     } catch (err) {
