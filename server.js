@@ -1511,10 +1511,12 @@ const supplierScheduler = createSupplierScheduler({
   logError: (message, slotId, key, detail) =>
     console.error(message, slotId, key, detail || ""),
 });
-supplierManager.listSlots().forEach((slot) => {
-  if (slot.configured) syncLiveXmlCategories(slot.id);
-});
 supplierScheduler.start();
+setImmediate(() => {
+  supplierManager.listSlots().forEach((slot) => {
+    if (slot.configured) syncLiveXmlCategories(slot.id);
+  });
+});
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {

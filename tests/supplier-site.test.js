@@ -153,6 +153,8 @@ test("sync restores missing XML parent KİŞİSEL BİLGİSAYARLAR", () => {
           mainCategory: "OEM & ÇEVRE BİRİMLERİ",
           midCategory: "İşlemciler",
           subCategory: "Intel İşlemciler",
+          siteParent: "oem-cevre-birimleri",
+          siteChild: "islemciler",
         },
       ];
     },
@@ -177,6 +179,8 @@ test("sync restores missing XML parent KİŞİSEL BİLGİSAYARLAR", () => {
     assert.equal(notebook.siteParent, "kisisel-bilgisayarlar");
     assert.equal(notebook.siteChild, "notebooklar");
     assert.equal(notebook.active, undefined);
+    const cpu = updates.find((row) => row.supplierSku === "CPU-1");
+    assert.equal(cpu, undefined);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
