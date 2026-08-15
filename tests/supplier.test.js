@@ -365,3 +365,43 @@ test("stale supplier catalog does not force critical-stock out of stock", () => 
     0
   );
 });
+
+test("Akakce feed drops supplier products unread for 7 days even if last stock was positive", () => {
+  const now = new Date("2026-08-15T12:00:00.000Z");
+  const stale = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  const analysis = analyzeAkakceProducts(
+    [
+      feedReadyProduct({
+        lastSuccessfulFetchAt: now.toISOString(),
+      }),
+      feedReadyProduct({
+        id: "old-stock",
+        supplierSku: "OLD-1",
+        name: "Eski Stok",
+        stockQty: 20,
+        catalogStale: true,
+        lastSuccessfulFetchAt: stale,
+      }),
+    ],
+    { siteBaseUrl: "https://patygoteknoloji.com", now }
+  );
+  assert.equal(analysis.eligible.length, 1);
+  assert.equal(analysis.excluded.length, 1);
+  assert.ok(analysis.excluded[0].reasons.includes("Son 7 günde stok okunamadı"));
+  const xml = buildAkakceXml(
+    [
+      feedReadyProduct({ lastSuccessfulFetchAt: now.toISOString() }),
+      feedReadyProduct({
+        id: "old-stock",
+        supplierSku: "OLD-1",
+        name: "Eski Stok",
+        stockQty: 20,
+        catalogStale: true,
+        lastSuccessfulFetchAt: stale,
+      }),
+    ],
+    { siteBaseUrl: "https://patygoteknoloji.com", now }
+  );
+  assert.match(xml, /Hazır Ürün/);
+  assert.doesNotMatch(xml, /Eski Stok/);
+});

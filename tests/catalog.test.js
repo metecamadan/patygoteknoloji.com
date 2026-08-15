@@ -121,6 +121,7 @@ test("supplier IDs cannot overwrite manual products", () => {
         name: "Tedarikçi",
         brand: "TEDARİKÇİ",
         salePrice: 200,
+        stockQty: 4,
         category: "bilgisayar",
         active: true,
         siteParent: "oem-cevre-birimleri",
@@ -152,6 +153,7 @@ test("active supplier products without site category stay off the public catalog
         name: "Kategorili",
         brand: "TEDARİKÇİ",
         salePrice: 220,
+        stockQty: 4,
         category: "bilgisayar",
         active: true,
         siteParent: "oem-cevre-birimleri",
@@ -166,6 +168,59 @@ test("active supplier products without site category stay off the public catalog
   );
   assert.equal(result[0].category, "oem-cevre-birimleri");
   assert.equal(result[0].siteChild, "notebook");
+});
+
+test("supplier out of stock and unread stock in last 7 days stay off the public catalog", () => {
+  const now = new Date("2026-08-15T12:00:00.000Z");
+  const fresh = now.toISOString();
+  const stale = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  const result = mergeCatalogProducts(
+    [],
+    [
+      {
+        id: "oos",
+        supplierSku: "OOS",
+        name: "Stoksuz",
+        brand: "INTEL",
+        salePrice: 200,
+        stockQty: 0,
+        lastSuccessfulFetchAt: fresh,
+        active: true,
+        siteParent: "oem-cevre-birimleri",
+        siteChild: "islemciler",
+      },
+      {
+        id: "unread",
+        supplierSku: "UNREAD",
+        name: "Okunamadı",
+        brand: "INTEL",
+        salePrice: 200,
+        stockQty: 12,
+        catalogStale: true,
+        lastSuccessfulFetchAt: stale,
+        active: true,
+        siteParent: "oem-cevre-birimleri",
+        siteChild: "islemciler",
+      },
+      {
+        id: "live",
+        supplierSku: "LIVE",
+        name: "Stoklu",
+        brand: "INTEL",
+        salePrice: 200,
+        stockQty: 8,
+        lastSuccessfulFetchAt: fresh,
+        active: true,
+        siteParent: "oem-cevre-birimleri",
+        siteChild: "islemciler",
+      },
+    ],
+    { categories: TEST_SITE_CATEGORIES, now }
+  );
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["live"]
+  );
 });
 
 test("toPublicProduct exposes site child as alt for storefront filters", () => {

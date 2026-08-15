@@ -96,6 +96,29 @@ test("scheduler skips a slot held for the same Istanbul day", async () => {
   assert.equal(refreshed, 0);
 });
 
+test("scheduler reapplies the 7-day stock visibility rule once per Istanbul day", async () => {
+  const { createSupplierScheduler } = require("../lib/supplier-schedule");
+  const logs = [];
+  const manager = {
+    listSlots() {
+      return [];
+    },
+    async refresh() {},
+  };
+  const scheduler = createSupplierScheduler({
+    manager,
+    intervalMs: 60 * 60 * 1000,
+    log(message) {
+      logs.push(String(message));
+    },
+    logError() {},
+  });
+  await scheduler.tick();
+  await scheduler.tick();
+  const hits = logs.filter((line) => /Stok görünürlük kuralı/.test(line));
+  assert.equal(hits.length, 1);
+});
+
 test("critical stock threshold excludes supplier products from Akakce feed", () => {
   const analysis = analyzeAkakceProducts(
     [
