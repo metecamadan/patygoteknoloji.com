@@ -98,6 +98,23 @@ test("admin supplier APIs require authentication and return feed status", async 
     assert.equal(Object.prototype.hasOwnProperty.call(product, "stockQty"), false);
   }
 
+  const featuredHome = await fetch(baseUrl + "/api/products?homeFeatured=1");
+  assert.equal(featuredHome.status, 200);
+  const featuredPayload = await featuredHome.json();
+  assert.ok(Array.isArray(featuredPayload.products));
+  assert.equal(typeof featuredPayload.byParent, "object");
+  assert.ok(featuredPayload.byParent);
+  for (const slug of [
+    "bilgisayar-tablet",
+    "bilgisayar-bilesenleri",
+    "kartus-toner",
+    "baski-cozumleri",
+    "yapi-gerecleri",
+    "ofis-urunleri",
+  ]) {
+    assert.ok(Array.isArray(featuredPayload.byParent[slug]), slug);
+  }
+
   const feed = await fetch(baseUrl + "/api/feeds/akakce.xml");
   assert.equal(feed.status, 200);
   assert.match(feed.headers.get("content-type"), /application\/xml/);

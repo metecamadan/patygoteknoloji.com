@@ -13,7 +13,7 @@ const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
-const { mergeCatalogProducts, queryPublicCatalog } = require("./lib/catalog");
+const { mergeCatalogProducts, queryPublicCatalog, homeFeaturedCatalog } = require("./lib/catalog");
 const {
   createCategoryStore,
   setCategoryListLoader,
@@ -482,7 +482,14 @@ function mergedProducts(includeInactiveManual) {
   });
 }
 
+const POPULAR_SCORES_TTL_MS = 60 * 1000;
+let popularScoresMemo = { at: 0, scores: null };
+
 function popularProductScores() {
+  const now = Date.now();
+  if (popularScoresMemo.scores && now - popularScoresMemo.at < POPULAR_SCORES_TTL_MS) {
+    return popularScoresMemo.scores;
+  }
   const scores = {};
   try {
     const views = analyticsStore.productViewCounts(90) || {};
@@ -496,6 +503,7 @@ function popularProductScores() {
       scores[id] = (Number(scores[id]) || 0) + (Number(sold[id]) || 0) * 100;
     });
   } catch (_) {}
+  popularScoresMemo = { at: now, scores };
   return scores;
 }
 
@@ -801,6 +809,26 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/products") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const updatedAt = fs.existsSync(PRODUCTS_FILE)
+      ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
+      : null;
+    if (requestUrl.searchParams.get("homeFeatured") === "1") {
+      const featured = homeFeaturedCatalog(mergedProducts(false), {
+        popularity: popularProductScores(),
+        limit: requestUrl.searchParams.get("limit") || 12,
+      });
+      return json(res, 200, {
+        products: featured.products,
+        byParent: featured.byParent,
+        perCategory: featured.perCategory,
+        parents: featured.parents,
+        total: featured.products.length,
+        page: 1,
+        limit: featured.perCategory,
+        totalPages: 1,
+        updatedAt,
+      });
+    }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
     const queried = queryPublicCatalog(mergedProducts(false), {
       id: requestUrl.searchParams.get("id") || "",
@@ -814,9 +842,6 @@ async function handleApi(req, res, urlPath) {
       sort,
       popularity: sort === "popular" ? popularProductScores() : undefined,
     });
-    const updatedAt = fs.existsSync(PRODUCTS_FILE)
-      ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
-      : null;
     return json(res, 200, {
       products: queried.products,
       total: queried.total,

@@ -230,3 +230,41 @@ test("queryPublicCatalog sorts popular products by sales and views first", () =>
   );
   assert.equal(ranked.products.length, 3);
 });
+
+test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
+  const { homeFeaturedCatalog } = require("../lib/catalog");
+  const parents = [
+    "bilgisayar-tablet",
+    "bilgisayar-bilesenleri",
+    "kartus-toner",
+    "baski-cozumleri",
+    "yapi-gerecleri",
+    "ofis-urunleri",
+  ];
+  const products = [];
+  parents.forEach((slug) => {
+    for (let i = 0; i < 15; i += 1) {
+      products.push({
+        id: slug + "-" + i,
+        name: slug + " " + String(i).padStart(2, "0"),
+        brand: "NO-NAME",
+        price: 100,
+        category: slug,
+        active: true,
+      });
+    }
+  });
+  const featured = homeFeaturedCatalog(products, {
+    popularity: { "bilgisayar-tablet-3": 500, "yapi-gerecleri-1": 400 },
+    limit: 12,
+  });
+  assert.equal(featured.perCategory, 12);
+  assert.equal(featured.byParent["bilgisayar-tablet"][0].id, "bilgisayar-tablet-3");
+  assert.equal(featured.byParent["yapi-gerecleri"][0].id, "yapi-gerecleri-1");
+  parents.forEach((slug) => {
+    assert.equal(featured.byParent[slug].length, 12);
+  });
+  assert.equal(featured.products.length, 12);
+  assert.equal(featured.products[0].id, "bilgisayar-tablet-3");
+  assert.equal(featured.products[4].id, "yapi-gerecleri-1");
+});

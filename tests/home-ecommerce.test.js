@@ -61,11 +61,13 @@ test("homepage featured grid uses live catalog tabs instead of demo categories",
   assert.doesNotMatch(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
   assert.match(catalogJs, /FEATURED_PER_CATEGORY = 12/);
   assert.match(catalogJs, /if \(mode === "featured"\) list = list.slice\(0, FEATURED_PER_CATEGORY\)/);
-  assert.match(catalogJs, /featuredParents/);
-  assert.match(catalogJs, /sort:\s*"popular"/);
-  assert.match(catalogJs, /limit:\s*FEATURED_PER_CATEGORY/);
+  assert.match(catalogJs, /featuredParents|FEATURED_PARENTS/);
+  assert.match(catalogJs, /homeFeatured:\s*"1"/);
+  assert.match(catalogJs, /function fetchHomeFeatured/);
+  assert.match(catalogJs, /Ürünler yükleniyor/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);
+  assert.doesNotMatch(catalogJs, /sort:\s*"popular"/);
 });
 
 test("storefront catalog loads paginated products by category", () => {

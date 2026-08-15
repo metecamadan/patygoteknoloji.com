@@ -416,6 +416,16 @@
     return products;
   }
 
+  function showFeaturedLoading(grid) {
+    if (!grid) return;
+    grid.textContent = "";
+    const note = document.createElement("p");
+    note.style.color = "var(--muted)";
+    note.style.gridColumn = "1 / -1";
+    note.textContent = "Ürünler yükleniyor…";
+    grid.appendChild(note);
+  }
+
   async function fetchProductPage(params) {
     const qs = new URLSearchParams();
     Object.keys(params || {}).forEach((key) => {
@@ -433,7 +443,36 @@
       page: Number(data.page) || 1,
       limit: Number(data.limit) || products.length,
       totalPages: Number(data.totalPages) || 0,
+      byParent: data.byParent && typeof data.byParent === "object" ? data.byParent : null,
     };
+  }
+
+  async function fetchHomeFeatured() {
+    const home = await fetchProductPage({ homeFeatured: "1", limit: FEATURED_PER_CATEGORY });
+    const byParent = {};
+    FEATURED_PARENTS.forEach((slug) => {
+      byParent[slug] = ((home.byParent && home.byParent[slug]) || []).slice(0, FEATURED_PER_CATEGORY);
+    });
+    const mixed =
+      Array.isArray(home.products) && home.products.length
+        ? home.products.slice(0, FEATURED_PER_CATEGORY)
+        : mixFeatured(byParent, FEATURED_PER_CATEGORY);
+    return { byParent, mixed };
+  }
+
+  async function fetchHomeFeaturedFallback() {
+    const featuredParents = FEATURED_PARENTS.slice();
+    const pages = await Promise.allSettled(
+      featuredParents.map((kategori) => fetchProductPage({ kategori: kategori, limit: FEATURED_PER_CATEGORY }))
+    );
+    const byParent = {};
+    featuredParents.forEach((slug, index) => {
+      const result = pages[index];
+      const products =
+        result && result.status === "fulfilled" ? result.value.products || [] : [];
+      byParent[slug] = products.slice(0, FEATURED_PER_CATEGORY);
+    });
+    return { byParent, mixed: mixFeatured(byParent, FEATURED_PER_CATEGORY) };
   }
 
   async function loadCategories() {
@@ -478,20 +517,32 @@
           .join(",");
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
-        const featuredParents = FEATURED_PARENTS.slice();
-        const pages = await Promise.all(
-          featuredParents.map((kategori) =>
-            fetchProductPage({ kategori: kategori, limit: FEATURED_PER_CATEGORY, sort: "popular" })
-          )
-        );
-        const byParent = {};
-        featuredParents.forEach((slug, index) => {
-          byParent[slug] = (pages[index].products || []).slice(0, FEATURED_PER_CATEGORY);
-        });
-        window.PatygoCatalog.featuredByParent = byParent;
-        const mixed = mixFeatured(byParent, FEATURED_PER_CATEGORY);
-        payload = { products: mixed, total: mixed.length, page: 1, totalPages: 1 };
-        featuredTabs = byParent;
+        showFeaturedLoading(document.querySelector('.product-grid[data-catalog="featured"]'));
+        let home = null;
+        try {
+          home = await fetchHomeFeatured();
+        } catch (_) {
+          home = null;
+        }
+        const hasAny =
+          home &&
+          FEATURED_PARENTS.some((slug) => ((home.byParent && home.byParent[slug]) || []).length);
+        if (!hasAny) {
+          try {
+            home = await fetchHomeFeaturedFallback();
+          } catch (_) {
+            home = { byParent: {}, mixed: [] };
+          }
+        }
+        if (!home) home = { byParent: {}, mixed: [] };
+        window.PatygoCatalog.featuredByParent = home.byParent;
+        payload = {
+          products: home.mixed,
+          total: home.mixed.length,
+          page: 1,
+          totalPages: 1,
+        };
+        featuredTabs = home.byParent;
       } else {
         payload = await fetchProductPage({
           kategori: wantsCategory ? query.parent : "",
