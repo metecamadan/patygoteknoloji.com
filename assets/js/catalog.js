@@ -60,6 +60,17 @@
       }
       return cat || "";
     },
+    productHref(id) {
+      return "/urun-detay?id=" + encodeURIComponent(id || "");
+    },
+    categoryHref(parentSlug, midSlug, childSlug) {
+      const params = new URLSearchParams();
+      if (parentSlug) params.set("kategori", parentSlug);
+      if (midSlug) params.set("ara", midSlug);
+      if (childSlug) params.set("alt", childSlug);
+      const q = params.toString();
+      return q ? "/urunler?" + q : "/urunler";
+    },
   };
 
   function renderCategoryEmpty(grid, resolved) {
@@ -81,7 +92,7 @@
     const all = document.createElement("a");
     all.className = "btn btn-primary";
     all.href = "/urunler";
-    all.textContent = "Tüm ürünler";
+    all.textContent = "Ürün kataloğunu incele";
     actions.appendChild(all);
     empty.appendChild(heading);
     empty.appendChild(text);
@@ -127,7 +138,42 @@
       : resolved.mid
         ? resolved.mid.name
         : resolved.parent.name;
-    if (crumb) crumb.textContent = label;
+    const nav = crumb && crumb.closest(".breadcrumb");
+    if (nav) {
+      nav.textContent = "";
+      const addSep = () => {
+        const sep = document.createElement("span");
+        sep.textContent = "/";
+        nav.appendChild(sep);
+      };
+      const addLink = (href, text) => {
+        const a = document.createElement("a");
+        a.href = href;
+        a.textContent = text;
+        nav.appendChild(a);
+      };
+      addLink("/", "Ana Sayfa");
+      addSep();
+      addLink("/urunler", "Ürün kataloğu");
+      addSep();
+      if (resolved.child || resolved.mid) {
+        addLink(window.PatygoCatalog.categoryHref(resolved.parent.slug), resolved.parent.name);
+        addSep();
+        if (resolved.child && resolved.mid) {
+          addLink(
+            window.PatygoCatalog.categoryHref(resolved.parent.slug, resolved.mid.slug),
+            resolved.mid.name
+          );
+          addSep();
+        }
+      }
+      const current = document.createElement("span");
+      current.setAttribute("data-catalog-crumb", "");
+      current.textContent = label;
+      nav.appendChild(current);
+    } else if (crumb) {
+      crumb.textContent = label;
+    }
     if (title) title.textContent = label;
     if (lead) {
       const parts = [resolved.parent.name];
@@ -193,7 +239,7 @@
 
     const title = document.createElement("h3");
     const titleLink = document.createElement("a");
-    titleLink.href = "/urun-detay?id=" + encodeURIComponent(product.id);
+    titleLink.href = window.PatygoCatalog.productHref(product.id);
     titleLink.textContent = product.name || "";
     title.appendChild(titleLink);
 
@@ -253,13 +299,17 @@
     actions.appendChild(buy);
     body.appendChild(price);
     body.appendChild(actions);
-    article.appendChild(visual);
+    const visualWrap = document.createElement("a");
+    visualWrap.className = "product-card-media";
+    visualWrap.href = window.PatygoCatalog.productHref(product.id);
+    visualWrap.appendChild(visual);
+    article.appendChild(visualWrap);
     article.appendChild(body);
     return article;
   }
 
   function bindTabs(root) {
-    const tabs = root.querySelectorAll(".product-tabs button");
+    const tabs = root.querySelectorAll(".product-tabs [data-filter]");
     const cards = root.querySelectorAll(".product-card");
     if (!tabs.length || !cards.length) return;
     tabs.forEach((btn) => {
@@ -311,11 +361,11 @@
     const tablist = section.querySelector(".product-tabs");
     const grid = document.querySelector('.product-grid[data-catalog="featured"]');
     if (!tablist || !grid) return;
-    tablist.querySelectorAll("button").forEach((btn) => {
+    tablist.querySelectorAll("[data-filter]").forEach((btn) => {
       const next = btn.cloneNode(true);
       btn.parentNode.replaceChild(next, btn);
     });
-    const tabs = tablist.querySelectorAll("button");
+    const tabs = tablist.querySelectorAll("[data-filter]");
     const show = (filter) => {
       tabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === filter));
       const list =
@@ -325,9 +375,12 @@
       renderGrid(grid, list, {});
     };
     tabs.forEach((btn) => {
-      btn.addEventListener("click", () => show(btn.dataset.filter || "all"));
+      btn.addEventListener("click", (ev) => {
+        if (btn.tagName === "A") ev.preventDefault();
+        show(btn.dataset.filter || "all");
+      });
     });
-    const active = tablist.querySelector("button.active");
+    const active = tablist.querySelector("[data-filter].active");
     show((active && active.dataset.filter) || "all");
   }
 
@@ -381,24 +434,36 @@
       return;
     }
     pager.hidden = false;
-    const addBtn = (label, target, options) => {
+    const addLink = (label, target, options) => {
       const opts = options || {};
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      if (opts.current) btn.className = "is-current";
-      btn.disabled = !!opts.disabled;
-      btn.addEventListener("click", () => {
-        const url = new URL(location.href);
-        url.searchParams.set("sayfa", String(target));
-        history.pushState({}, "", url.pathname + url.search);
+      const url = new URL(location.href);
+      if (target <= 1) url.searchParams.delete("sayfa");
+      else url.searchParams.set("sayfa", String(target));
+      const href = url.pathname + url.search;
+      if (opts.disabled) {
+        const span = document.createElement("span");
+        span.textContent = label;
+        span.setAttribute("aria-disabled", "true");
+        if (opts.current) {
+          span.className = "is-current";
+          span.setAttribute("aria-current", "page");
+        }
+        pager.appendChild(span);
+        return;
+      }
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = label;
+      link.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        history.pushState({}, "", href);
         reloadCatalog();
       });
-      pager.appendChild(btn);
+      pager.appendChild(link);
     };
-    addBtn("‹", page - 1, { disabled: page <= 1 });
-    addBtn(String(page), page, { current: true, disabled: true });
-    addBtn("›", page + 1, { disabled: page >= totalPages });
+    addLink("‹", page - 1, { disabled: page <= 1 });
+    addLink(String(page), page, { current: true, disabled: true });
+    addLink("›", page + 1, { disabled: page >= totalPages });
   }
 
   function applyCatalog(all, options) {

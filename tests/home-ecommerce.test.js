@@ -12,7 +12,7 @@ test("homepage keeps teklif form and e-commerce hero", () => {
   assert.doesNotMatch(indexHtml, /quote-card/);
   assert.match(indexHtml, /id="teklif"/);
   assert.match(indexHtml, /data-hero-orbit/);
-  assert.match(indexHtml, /Alışverişe Başla/);
+  assert.match(indexHtml, /Ürün kataloğunu incele/);
   assert.match(indexHtml, /Teklif Al/);
   assert.doesNotMatch(indexHtml, /hero-cta[\s\S]*Sepetim/);
   assert.doesNotMatch(indexHtml, /Güncel Katalog/);
@@ -49,7 +49,15 @@ test("nav renders animated hero orbit icons from live site categories", () => {
   assert.match(navJs, /published\.forEach\(\(cat\) => root\.appendChild\(buildMegaItem\(cat\)\)\)/);
 });
 
-test("homepage featured grid uses live catalog tabs instead of demo categories", () => {
+test("homepage featured tabs are crawlable category links", () => {
+  assert.match(indexHtml, /href="\/urunler\?kategori=bilgisayar-tablet"/);
+  assert.match(indexHtml, /href="\/urunler\?kategori=bilgisayar-bilesenleri"/);
+  assert.match(indexHtml, /href="\/urunler\?kategori=kartus-toner"/);
+  assert.match(indexHtml, /href="\/urunler\?kategori=baski-cozumleri"/);
+  assert.match(indexHtml, /href="\/urunler\?kategori=yapi-gerecleri"/);
+  assert.match(indexHtml, /href="\/urunler\?kategori=ofis-urunleri"/);
+  assert.match(indexHtml, /<nav class="product-tabs/);
+  assert.doesNotMatch(indexHtml, /<div class="product-tabs/);
   assert.match(indexHtml, /data-filter="bilgisayar-tablet"/);
   assert.match(indexHtml, /data-filter="bilgisayar-bilesenleri"/);
   assert.match(indexHtml, /data-filter="kartus-toner"/);
@@ -67,7 +75,8 @@ test("homepage featured grid uses live catalog tabs instead of demo categories",
   assert.match(catalogJs, /Ürünler yükleniyor/);
   assert.match(catalogJs, /product-card--skeleton/);
   assert.match(catalogJs, /function showCatalogLoading/);
-  assert.match(catalogJs, /function bindFeaturedTabs/);
+  assert.match(catalogJs, /function applyCategoryHeading/);
+  assert.match(catalogJs, /addLink\("\/urunler", "Ürün kataloğu"\)/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);
   assert.doesNotMatch(catalogJs, /sort:\s*"popular"/);
 });

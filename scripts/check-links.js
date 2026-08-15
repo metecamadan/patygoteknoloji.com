@@ -48,6 +48,23 @@ function collectHrefTargets() {
   return targets;
 }
 
+function collectUncrawlableHrefs() {
+  const bad = [];
+  const re = /\b(?:href|action)=["']([^"']*)["']/gi;
+  for (const file of htmlFiles) {
+    if (file === "admin.html") continue;
+    const text = fs.readFileSync(path.join(root, file), "utf8");
+    let m;
+    while ((m = re.exec(text))) {
+      const raw = String(m[1] || "").trim();
+      if (/^javascript:/i.test(raw) || /^void\s*\(/i.test(raw)) {
+        bad.push({ file, raw: raw || "(empty javascript)" });
+      }
+    }
+  }
+  return bad;
+}
+
 function staticExists(pathname) {
   const clean = pathname.replace(/^\//, "").replace(/\/$/, "");
   if (!clean) return true;
@@ -74,6 +91,7 @@ async function waitForServer(base, child, getStderr) {
 }
 
 async function main() {
+  const uncrawlable = collectUncrawlableHrefs();
   const targets = collectHrefTargets();
   const staticBroken = [];
   for (const [pathname, srcs] of targets) {
@@ -121,6 +139,12 @@ async function main() {
     paths.add("/robots.txt");
     paths.add("/assets/data/categories.json");
     paths.add("/urunler");
+    paths.add("/urunler?kategori=bilgisayar-tablet");
+    paths.add("/urunler?kategori=bilgisayar-bilesenleri");
+    paths.add("/urunler?kategori=kartus-toner");
+    paths.add("/urunler?kategori=baski-cozumleri");
+    paths.add("/urunler?kategori=yapi-gerecleri");
+    paths.add("/urunler?kategori=ofis-urunleri");
 
     for (const p of [...paths].sort()) {
       if (p.startsWith("/api/")) continue;
@@ -158,6 +182,10 @@ async function main() {
   }
 
   console.log("Checked href targets:", targets.size);
+  if (uncrawlable.length) {
+    console.log("\nUncrawlable hrefs:");
+    for (const row of uncrawlable) console.log("-", row.file, row.raw);
+  }
   if (staticBroken.length) {
     console.log("\nStatic issues:");
     for (const row of staticBroken) console.log("-", row.pathname, row.reason, "from", row.srcs.join(", "));
@@ -167,7 +195,7 @@ async function main() {
     for (const row of httpBroken) console.log("-", row.path, row.status, row.note || "");
   }
 
-  if (staticBroken.length || httpBroken.length) {
+  if (uncrawlable.length || staticBroken.length || httpBroken.length) {
     process.exit(1);
   }
   console.log("All internal links OK.");

@@ -24,12 +24,12 @@
         '<span class="cart-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3" stroke-linecap="round"/></svg></span>' +
         "<h2>Sepetiniz şu anda boş</h2>" +
         "<p>İhtiyacınız olan ürünleri inceleyerek sepetinize ekleyebilirsiniz.</p>" +
-        '<a href="/urunler" class="btn btn-primary">Ürünleri incele</a>';
+        '<a href="/urunler" class="btn btn-primary">Ürün kataloğunu incele</a>';
       linesEl.appendChild(empty);
       checkoutBtn.classList.add("disabled");
       checkoutBtn.setAttribute("aria-disabled", "true");
       checkoutBtn.href = "/urunler";
-      checkoutBtn.textContent = "Ürünlere git";
+      checkoutBtn.textContent = "Ürün kataloğuna git";
       note.textContent = "";
       note.hidden = true;
       return;

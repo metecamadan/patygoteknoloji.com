@@ -6,6 +6,17 @@
   <title>Patygo Teknoloji | Online Elektronik Mağaza</title>
   <meta name="description" content="Patygo Teknoloji online mağazası: bilgisayar, tablet, çevre birimleri ve elektronik ürünlerde güvenli alışveriş, sepet ve online ödeme." />
   <link rel="canonical" href="https://patygoteknoloji.com/" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Patygo Teknoloji ve Bilişim Ltd. Şti.",
+    "url": "https://patygoteknoloji.com/",
+    "logo": "https://patygoteknoloji.com/assets/img/patygo-logo.png",
+    "email": "info@patygoteknoloji.com",
+    "telephone": "+90-555-507-07-24"
+  }
+  </script>
   <meta property="og:title" content="Patygo Teknoloji | Online Elektronik Mağaza" />
   <meta property="og:description" content="Kategorilere göz atın, sepete ekleyin ve güvenle satın alın." />
   <meta property="og:url" content="https://patygoteknoloji.com/" />
@@ -33,6 +44,17 @@
       </nav>
     </div>
   </header>
+  <noscript>
+    <nav class="container" aria-label="Kategori bağlantıları">
+      <a href="/urunler">Ürün kataloğu</a>
+      <a href="/urunler?kategori=bilgisayar-tablet">Bilgisayar ve tablet</a>
+      <a href="/urunler?kategori=bilgisayar-bilesenleri">Bilgisayar bileşenleri</a>
+      <a href="/urunler?kategori=kartus-toner">Kartuş ve toner</a>
+      <a href="/urunler?kategori=baski-cozumleri">Baskı çözümleri</a>
+      <a href="/urunler?kategori=yapi-gerecleri">Yapı gereçleri</a>
+      <a href="/urunler?kategori=ofis-urunleri">Ofis ürünleri</a>
+    </nav>
+  </noscript>
 
   <main>
     <!-- HERO -->
@@ -42,7 +64,7 @@
           <h1>Elektronik alışverişin <em>güvenilir adresi.</em></h1>
           <p class="lead">Bilgisayar, tablet ve çevre birimlerinden binlerce ürüne kategoriler üzerinden ulaşın; sepete ekleyin, güvenle online ödeme yapın.</p>
           <div class="hero-cta">
-            <a href="/urunler" class="btn btn-primary btn-lg">Alışverişe Başla</a>
+            <a href="/urunler" class="btn btn-primary btn-lg">Ürün kataloğunu incele</a>
           </div>
           <div class="hero-stats">
             <div><strong>43+</strong><span>Marka</span></div>
@@ -78,17 +100,17 @@
       <div class="container">
         <div class="section-head reveal">
           <h2>Öne çıkan ürünler</h2>
-          <p>Güncel fiyatlarla sepete ekleyin, online ödeme ile siparişinizi tamamlayın. <a href="/urunler" style="color:var(--brand);font-weight:600">Tüm ürünler →</a></p>
+          <p>Güncel fiyatlarla sepete ekleyin, online ödeme ile siparişinizi tamamlayın. <a href="/urunler" style="color:var(--brand);font-weight:600">Ürün kataloğunu incele</a></p>
         </div>
-        <div class="product-tabs reveal" role="tablist">
-          <button type="button" class="active" data-filter="all">Tümü</button>
-          <button type="button" data-filter="bilgisayar-tablet">Bilgisayar</button>
-          <button type="button" data-filter="bilgisayar-bilesenleri">Bileşen</button>
-          <button type="button" data-filter="kartus-toner">Kartuş</button>
-          <button type="button" data-filter="baski-cozumleri">Baskı</button>
-          <button type="button" data-filter="yapi-gerecleri">Yapı</button>
-          <button type="button" data-filter="ofis-urunleri">Ofis</button>
-        </div>
+        <nav class="product-tabs reveal" aria-label="Kategori bağlantıları">
+          <a href="/urunler" class="active" data-filter="all">Tüm ürünler</a>
+          <a href="/urunler?kategori=bilgisayar-tablet" data-filter="bilgisayar-tablet">Bilgisayar ve tablet</a>
+          <a href="/urunler?kategori=bilgisayar-bilesenleri" data-filter="bilgisayar-bilesenleri">Bilgisayar bileşenleri</a>
+          <a href="/urunler?kategori=kartus-toner" data-filter="kartus-toner">Kartuş ve toner</a>
+          <a href="/urunler?kategori=baski-cozumleri" data-filter="baski-cozumleri">Baskı çözümleri</a>
+          <a href="/urunler?kategori=yapi-gerecleri" data-filter="yapi-gerecleri">Yapı gereçleri</a>
+          <a href="/urunler?kategori=ofis-urunleri" data-filter="ofis-urunleri">Ofis ürünleri</a>
+        </nav>
         <div class="product-grid" data-catalog="featured" aria-live="polite"></div>
       </div>
     </section>
@@ -208,10 +230,19 @@
           <h4>Kurumsal</h4>
           <a href="/kurumsal">Hakkımızda</a>
           <a href="/kurumsal#bilgiler">Şirket Bilgileri</a>
-          <a href="/urunler">Ürünler</a>
+          <a href="/urunler">Ürün kataloğu</a>
           <a href="/markalar">Markalar</a>
           <a href="/hizmetler">Kurumsal Tedarik</a>
           <a href="/iletisim">İletişim</a>
+        </div>
+        <div class="footer-col">
+          <h4>Kategoriler</h4>
+          <a href="/urunler?kategori=bilgisayar-tablet">Bilgisayar ve tablet</a>
+          <a href="/urunler?kategori=bilgisayar-bilesenleri">Bilgisayar bileşenleri</a>
+          <a href="/urunler?kategori=kartus-toner">Kartuş ve toner</a>
+          <a href="/urunler?kategori=baski-cozumleri">Baskı çözümleri</a>
+          <a href="/urunler?kategori=yapi-gerecleri">Yapı gereçleri</a>
+          <a href="/urunler?kategori=ofis-urunleri">Ofis ürünleri</a>
         </div>
         <div class="footer-col">
           <h4>Yasal</h4>
@@ -241,7 +272,7 @@
   </footer>
 
   <div class="fab">
-    <a class="wa" href="https://wa.me/905555070724" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.2L2 22l4.9-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1-.7-.3-1.4-.6-2-1.3-.5-.5-.9-1.1-1-1.3-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3.2-.5 0-.2 0-.4 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3z"/></svg></a>
+    <a class="wa" href="https://wa.me/905555070724" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.2L2 22l4.9-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1-.7-.3-1.4-.6-2-1.3-.5-.5-.9-1.1-1-1.3-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3.2-.5 0-.2 0-.4 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3z"/></svg></a>
     <button class="top" aria-label="Yukarı" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
 

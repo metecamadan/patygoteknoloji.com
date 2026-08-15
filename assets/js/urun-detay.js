@@ -35,7 +35,7 @@
     root.classList.add("no-copy");
     if (!product) {
       root.innerHTML =
-        '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürünlere dön</a></p>';
+        '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürün kataloğuna dön</a></p>';
       return;
     }
 
@@ -107,11 +107,38 @@
 
     const info = document.createElement("div");
     info.className = "detail-info";
-    const crumb = document.createElement("div");
+    const crumb = document.createElement("nav");
     crumb.className = "breadcrumb";
-    crumb.innerHTML =
-      '<a href="/">Ana Sayfa</a> <span>/</span> <a href="/urunler">Ürünler</a> <span>/</span> <span></span>';
-    crumb.querySelector("span:last-child").textContent = product.name;
+    crumb.setAttribute("aria-label", "Sayfa konumu");
+    const parentSlug = String(product.category || "").trim();
+    const parentHref = window.PatygoCatalog.categoryHref
+      ? window.PatygoCatalog.categoryHref(parentSlug)
+      : parentSlug
+        ? "/urunler?kategori=" + encodeURIComponent(parentSlug)
+        : "/urunler";
+    const parentLabel = window.PatygoCatalog.categoryLabel(parentSlug) || "Kategori";
+    const crumbParts = [
+      { href: "/", text: "Ana Sayfa" },
+      { href: "/urunler", text: "Ürün kataloğu" },
+    ];
+    if (parentSlug) crumbParts.push({ href: parentHref, text: parentLabel });
+    crumbParts.forEach((part, index) => {
+      if (index) {
+        const sep = document.createElement("span");
+        sep.textContent = "/";
+        crumb.appendChild(sep);
+      }
+      const link = document.createElement("a");
+      link.href = part.href;
+      link.textContent = part.text;
+      crumb.appendChild(link);
+    });
+    const nameSep = document.createElement("span");
+    nameSep.textContent = "/";
+    crumb.appendChild(nameSep);
+    const nameCrumb = document.createElement("span");
+    nameCrumb.textContent = product.name;
+    crumb.appendChild(nameCrumb);
 
     const tag = document.createElement("span");
     tag.className = "brand-tag";
@@ -122,7 +149,14 @@
 
     const cat = document.createElement("p");
     cat.className = "detail-cat";
-    cat.textContent = window.PatygoCatalog.categoryLabel(product.category);
+    if (parentSlug) {
+      const catLink = document.createElement("a");
+      catLink.href = parentHref;
+      catLink.textContent = parentLabel;
+      cat.appendChild(catLink);
+    } else {
+      cat.textContent = parentLabel;
+    }
 
     const price = document.createElement("div");
     price.className = "price";
@@ -186,6 +220,77 @@
     }
 
     bindCopyGuard(root);
+    upsertProductJsonLd(product, parentSlug, parentHref, parentLabel);
+  }
+
+  function upsertJsonLd(scriptId, data) {
+    let el = document.getElementById(scriptId);
+    if (!el) {
+      el = document.createElement("script");
+      el.type = "application/ld+json";
+      el.id = scriptId;
+      document.head.appendChild(el);
+    }
+    el.textContent = JSON.stringify(data);
+  }
+
+  function upsertProductJsonLd(product, parentSlug, parentHref, parentLabel) {
+    const pageUrl =
+      "https://patygoteknoloji.com/urun-detay?id=" + encodeURIComponent(product.id);
+    const images = (
+      Array.isArray(product.images) ? product.images : [product.image]
+    ).filter(Boolean);
+    const price = window.PatygoCatalog.priceInclVat(product);
+    upsertJsonLd("product-jsonld", {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.name,
+      image: images,
+      description: String(product.description || product.details || product.name)
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 5000),
+      sku: String(product.id || ""),
+      brand: product.brand
+        ? { "@type": "Brand", name: product.brand }
+        : undefined,
+      offers: {
+        "@type": "Offer",
+        url: pageUrl,
+        priceCurrency: "TRY",
+        price: String(price),
+        availability: "https://schema.org/InStock",
+        itemCondition: "https://schema.org/NewCondition",
+      },
+    });
+    const crumbs = [
+      { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: "https://patygoteknoloji.com/" },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Ürün kataloğu",
+        item: "https://patygoteknoloji.com/urunler",
+      },
+    ];
+    if (parentSlug) {
+      crumbs.push({
+        "@type": "ListItem",
+        position: 3,
+        name: parentLabel,
+        item: "https://patygoteknoloji.com" + parentHref,
+      });
+    }
+    crumbs.push({
+      "@type": "ListItem",
+      position: crumbs.length + 1,
+      name: product.name,
+      item: pageUrl,
+    });
+    upsertJsonLd("breadcrumb-jsonld", {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: crumbs,
+    });
   }
 
   window.PatygoCatalog.ready.then(() => {

@@ -62,6 +62,12 @@ test("footer links to published legal contracts", () => {
   assert.match(footer, /href="\/gizlilik"/);
   assert.match(footer, /href="\/cerez"/);
   assert.match(footer, /href="\/kullanim-kosullari"/);
+  assert.match(footer, /href="\/urunler\?kategori=bilgisayar-tablet"/);
+  assert.match(footer, /href="\/urunler\?kategori=bilgisayar-bilesenleri"/);
+  assert.match(footer, /href="\/urunler\?kategori=kartus-toner"/);
+  assert.match(footer, /href="\/urunler\?kategori=baski-cozumleri"/);
+  assert.match(footer, /href="\/urunler\?kategori=yapi-gerecleri"/);
+  assert.match(footer, /href="\/urunler\?kategori=ofis-urunleri"/);
 });
 
 test("commerce contracts state storefront prices include VAT", () => {

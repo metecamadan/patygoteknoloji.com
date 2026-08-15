@@ -19,10 +19,19 @@ const FOOTER_GRID = `
           <h4>Kurumsal</h4>
           <a href="/kurumsal">Hakkımızda</a>
           <a href="/kurumsal#bilgiler">Şirket Bilgileri</a>
-          <a href="/urunler">Ürünler</a>
+          <a href="/urunler">Ürün kataloğu</a>
           <a href="/markalar">Markalar</a>
           <a href="/hizmetler">Kurumsal Tedarik</a>
           <a href="/iletisim">İletişim</a>
+        </div>
+        <div class="footer-col">
+          <h4>Kategoriler</h4>
+          <a href="/urunler?kategori=bilgisayar-tablet">Bilgisayar ve tablet</a>
+          <a href="/urunler?kategori=bilgisayar-bilesenleri">Bilgisayar bileşenleri</a>
+          <a href="/urunler?kategori=kartus-toner">Kartuş ve toner</a>
+          <a href="/urunler?kategori=baski-cozumleri">Baskı çözümleri</a>
+          <a href="/urunler?kategori=yapi-gerecleri">Yapı gereçleri</a>
+          <a href="/urunler?kategori=ofis-urunleri">Ofis ürünleri</a>
         </div>
         <div class="footer-col">
           <h4>Yasal</h4>
@@ -55,6 +64,13 @@ function absolutizeAssets(html) {
     .replace(/(href|src)=(["'])\.\/assets\//g, "$1=$2/assets/");
 }
 
+function hardenWhatsAppRel(html) {
+  return html.replace(
+    /(href="https:\/\/wa\.me\/[^"]+"[^>]*\brel=")noopener(")/g,
+    "$1noopener noreferrer$2"
+  );
+}
+
 function replaceFooter(html) {
   const re = /<div class="footer-grid">[\s\S]*?<div class="footer-bottom">[\s\S]*?<\/div>\s*<\/div>/;
   if (!re.test(html)) return { html, changed: false };
@@ -69,6 +85,7 @@ for (const file of files) {
   let html = fs.readFileSync(full, "utf8");
   const before = html;
   html = absolutizeAssets(html);
+  html = hardenWhatsAppRel(html);
   const foot = replaceFooter(html);
   html = foot.html;
   if (file === "odeme.html") {
