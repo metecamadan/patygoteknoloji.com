@@ -77,5 +77,6 @@ test("publishing XML slot 1 assigns site categories and lists products on the st
   assert.ok(cpu);
   assert.equal(cpu.price, 3220);
   assert.match(cpu.image, /^https:\/\//);
-  assert.equal(cpu.category, "oem-cevre-birimleri");
+  assert.equal(cpu.category, "bilgisayar-tablet");
+  assert.equal(cpu.alt, "islemci");
 });

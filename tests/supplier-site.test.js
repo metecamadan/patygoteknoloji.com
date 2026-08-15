@@ -31,6 +31,37 @@ test("XML ana/ara kategori becomes a two-level site tree", () => {
   assert.equal(pair.siteChild, oem.children[0].slug);
 });
 
+test("XML processors map to the existing İşlemci site category even with poisoned feed overrides", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
+  const store = createCategoryStore(root);
+  const cats = mergeCategoryTrees(store.list(), [
+    {
+      name: "KİŞİSEL BİLGİSAYARLAR",
+      slug: "kisisel-bilgisayarlar",
+      children: [{ name: "Bilgisayar Bileşenleri", slug: "bilgisayar-bilesenleri" }],
+    },
+    {
+      name: "OEM & ÇEVRE BİRİMLERİ",
+      slug: "oem-cevre-birimleri",
+      children: [{ name: "İşlemciler", slug: "islemciler" }],
+    },
+  ]);
+  const pair = suggestSiteCategory(
+    {
+      mainCategory: "KİŞİSEL BİLGİSAYARLAR",
+      midCategory: "Bilgisayar Bileşenleri",
+      subCategory: "İşlemci",
+      xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+      xmlMidCategory: "İşlemciler",
+      xmlSubCategory: "Intel İşlemciler",
+    },
+    cats
+  );
+  assert.equal(pair.siteParent, "bilgisayar-tablet");
+  assert.equal(pair.siteChild, "islemci");
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("merge keeps existing site categories and adds XML parents", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
   const store = createCategoryStore(root);
