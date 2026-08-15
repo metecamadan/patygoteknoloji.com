@@ -50,13 +50,14 @@ test("nav renders animated hero orbit icons from live site categories", () => {
 });
 
 test("homepage featured grid uses live catalog tabs instead of demo categories", () => {
-  assert.match(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
-  assert.match(indexHtml, /data-filter="oem-cevre-birimleri"/);
-  assert.match(indexHtml, /data-filter="cevre-baski-birimleri"/);
-  assert.match(indexHtml, /data-filter="tuketici-elektronigi"/);
-  assert.match(indexHtml, /data-filter="ev-aletleri"/);
+  assert.match(indexHtml, /data-filter="bilgisayar-tablet"/);
+  assert.match(indexHtml, /data-filter="bilgisayar-bilesenleri"/);
+  assert.match(indexHtml, /data-filter="baski-cozumleri"/);
+  assert.match(indexHtml, /data-filter="kartus-toner"/);
+  assert.match(indexHtml, /data-filter="ofis-urunleri"/);
   assert.doesNotMatch(indexHtml, /data-filter="bilgisayar"/);
   assert.doesNotMatch(indexHtml, /data-filter="kucuk-ev"/);
+  assert.doesNotMatch(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
   assert.match(catalogJs, /if \(mode === "featured"\) list = list.slice\(0, 12\)/);
   assert.match(catalogJs, /featuredParents/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);

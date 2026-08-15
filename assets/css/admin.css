@@ -1462,6 +1462,21 @@ body.admin-modal-open {
 .admin-cat-parent.is-collapsed .admin-cat-children {
   display: none;
 }
+.admin-cat-leaves.is-collapsed {
+  display: none;
+}
+.admin-cat-row-leaf {
+  padding: 6px 10px 6px 28px;
+  background: #eef2f7;
+  border-radius: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+.admin-cat-row-child {
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+}
+.admin-product-pool-card {
+  margin-top: 18px;
+}
 .admin-cat-toggle {
   width: 28px;
   height: 28px;
@@ -1524,7 +1539,8 @@ body.admin-modal-open {
   gap: 4px;
   padding: 0 12px 12px 22px;
 }
-.admin-cat-row-child { padding: 8px 10px; background: #f8fafc; border-radius: 8px; grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.admin-cat-row-child { padding: 8px 10px; background: #f8fafc; border-radius: 8px; grid-template-columns: auto auto minmax(0, 1fr) auto auto; }
+.admin-cat-row-leaf { padding: 6px 10px 6px 28px; background: #eef2f7; border-radius: 8px; grid-template-columns: auto minmax(0, 1fr) auto auto; }
 .admin-pager {
   display: flex;
   flex-wrap: wrap;
@@ -1775,6 +1791,9 @@ html.admin-theme-dark .admin-cat-parent {
 }
 html.admin-theme-dark .admin-cat-row-child {
   background: #121a28;
+}
+html.admin-theme-dark .admin-cat-row-leaf {
+  background: #0f172a;
 }
 html.admin-theme-dark .admin-cat-toggle {
   background: #121a28;

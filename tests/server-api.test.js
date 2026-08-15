@@ -215,7 +215,8 @@ test("admin category tree API publishes only active categories to the public fee
   const current = await fetch(baseUrl + "/api/admin/categories", { headers: auth });
   assert.equal(current.status, 200);
   const seeded = await current.json();
-  assert.equal(seeded.categories.length, 0);
+  assert.equal(seeded.categories.length, 6);
+  assert.ok(seeded.categories.some((row) => row.slug === "baski-cozumleri"));
 
   const saved = await fetch(baseUrl + "/api/admin/categories", {
     method: "PUT",

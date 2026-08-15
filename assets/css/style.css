@@ -297,6 +297,35 @@ h1, h2, h3, h4 {
   color: var(--ink);
   padding: 4px 12px 10px;
 }
+.nav-mega-panel {
+  min-width: min(640px, calc(100vw - 32px));
+  width: max-content;
+  max-width: min(1080px, calc(100vw - 32px));
+}
+.nav-mega:nth-last-child(-n+2) .nav-mega-panel {
+  left: auto;
+  right: 0;
+}
+.nav-mega-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 16px 20px;
+  max-height: min(70vh, 520px);
+  overflow: auto;
+}
+.nav-mega-group-title {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  padding: 0 12px 6px;
+}
+.nav-mega-group .nav-mega-list {
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: 1fr;
+}
 
 /* ---------- Hero ---------- */
 .hero {

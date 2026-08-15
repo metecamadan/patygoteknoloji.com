@@ -25,9 +25,23 @@ const SAMPLE_TREE = [
   },
 ];
 
-test("seed category file starts empty so XML tree is the storefront menu", () => {
+test("seed category file falls back to the canonical ANA-ARA-ALT schema", () => {
   const cats = loadCategories();
-  assert.equal(cats.length, 0);
+  assert.equal(cats.length, 6);
+  assert.deepEqual(
+    cats.map((row) => row.slug),
+    [
+      "baski-cozumleri",
+      "yapi-gerecleri",
+      "ofis-urunleri",
+      "bilgisayar-tablet",
+      "bilgisayar-bilesenleri",
+      "kartus-toner",
+    ]
+  );
+  const cpu = cats.find((row) => row.slug === "bilgisayar-bilesenleri");
+  const processors = cpu.children.find((row) => row.slug === "islemciler");
+  assert.ok(processors.children.some((row) => row.slug === "intel-islemciler"));
 });
 
 test("findCategory and href helpers", () => {
@@ -42,21 +56,48 @@ test("findCategory and href helpers", () => {
   assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "yok"), false);
 });
 
-test("hasSiteCategory requires a valid parent and child slug pair", () => {
-  assert.equal(hasSiteCategory({}, SAMPLE_TREE), false);
-  assert.equal(hasSiteCategory({ siteParent: "oem-cevre-birimleri" }, SAMPLE_TREE), false);
+test("hasSiteCategory requires ANA+ARA+ALT on a three-level tree", () => {
+  const tree = [
+    {
+      slug: "bilgisayar-bilesenleri",
+      name: "BİLGİSAYAR BİLEŞENLERİ",
+      children: [
+        {
+          slug: "islemciler",
+          name: "İşlemciler",
+          children: [{ slug: "intel-islemciler", name: "Intel İşlemciler", active: true }],
+        },
+      ],
+    },
+  ];
   assert.equal(
-    hasSiteCategory({ siteParent: "oem-cevre-birimleri", siteChild: "yok" }, SAMPLE_TREE),
+    hasSiteCategory(
+      { siteParent: "bilgisayar-bilesenleri", siteChild: "islemciler" },
+      tree
+    ),
     false
   );
-  const assigned = assignedSiteCategory(
-    { siteParent: "oem-cevre-birimleri", siteChild: "usb-bellek" },
-    SAMPLE_TREE
-  );
-  assert.equal(assigned.label, "OEM & ÇEVRE BİRİMLERİ › USB Bellekler");
   assert.equal(
-    hasSiteCategory({ siteParent: "oem-cevre-birimleri", siteChild: "usb-bellek" }, SAMPLE_TREE),
+    hasSiteCategory(
+      {
+        siteParent: "bilgisayar-bilesenleri",
+        siteMid: "islemciler",
+        siteChild: "intel-islemciler",
+      },
+      tree
+    ),
     true
+  );
+  assert.equal(
+    assignedSiteCategory(
+      {
+        siteParent: "bilgisayar-bilesenleri",
+        siteMid: "islemciler",
+        siteChild: "intel-islemciler",
+      },
+      tree
+    ).label,
+    "BİLGİSAYAR BİLEŞENLERİ › İşlemciler › Intel İşlemciler"
   );
 });
 
@@ -80,7 +121,7 @@ test("retired seed parents are stripped from the live tree", () => {
   ]);
   assert.deepEqual(
     pruned.map((row) => row.slug),
-    ["oem-cevre-birimleri"]
+    ["bilgisayar-tablet", "oem-cevre-birimleri"]
   );
 });
 
@@ -120,7 +161,8 @@ test("category store seeds from site tree and persists display-name edits", () =
   try {
     const store = createCategoryStore(root);
     const seeded = store.list();
-    assert.equal(seeded.length, 0);
+    assert.equal(seeded.length, 6);
+    assert.ok(seeded.some((row) => row.slug === "baski-cozumleri"));
     const saved = store.save([
       {
         name: "Yeni Dal",

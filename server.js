@@ -789,6 +789,7 @@ async function handleApi(req, res, urlPath) {
       ids: requestUrl.searchParams.get("ids") || "",
       featured: requestUrl.searchParams.get("featured") || "",
       kategori: requestUrl.searchParams.get("kategori") || "",
+      ara: requestUrl.searchParams.get("ara") || "",
       alt: requestUrl.searchParams.get("alt") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 48,
@@ -1444,7 +1445,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (urlPath === "/assets/data/categories.json") {
-    return json(res, 200, { version: 1, categories: categoryStore.publicList() });
+    return json(res, 200, { version: 3, categories: categoryStore.publicList() });
   }
 
   // SEO: /sayfa.html → /sayfa (301)

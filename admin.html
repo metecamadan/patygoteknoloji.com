@@ -691,7 +691,7 @@
                   <div>
                     <span class="admin-eyebrow">WEB MENÜSÜ</span>
                     <h2>Kategori ağacı</h2>
-                    <p class="admin-field-help">Sitede görünen adı buradan değiştirin; XML ürünleri aynı kategori koduna bağlanmaya devam eder. Tutamacı sürükleyerek sıra değiştirin. Alt kategoriler için ana satıra tıklayın.</p>
+                    <p class="admin-field-help">Sitede görünen adı buradan değiştirin. Ağaç ANA → ARA → ALT şeklindedir. Tutamacı sürükleyerek sıra değiştirin.</p>
                   </div>
                 </div>
                 <div class="admin-cat-toolbar">
@@ -715,7 +715,7 @@
                     <select id="catParentSlug">
                       <option value="">Ana kategori</option>
                     </select>
-                    <p class="admin-field-help">Alt kategori için bir ana kategori seçin.</p>
+                    <p class="admin-field-help">Ara kategori için bir ANA, alt kategori için ANA › ARA seçin.</p>
                   </div>
                   <div class="field">
                     <label for="catName">Ad *</label>
@@ -735,6 +735,34 @@
                 </form>
               </section>
             </div>
+            <section class="admin-card admin-product-pool-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">YAYIN BEKLEYEN</span>
+                  <h2>Ürün havuzu</h2>
+                  <p class="admin-field-help">Stoklu olup sitede yayında olmayan ürünler. ANA → ARA → ALT bağlayıp yayına alın.</p>
+                </div>
+              </div>
+              <div class="admin-toolbar">
+                <input id="productPoolSearch" type="search" placeholder="Ürün, stok kodu veya marka ara" />
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table" id="productPoolTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">Ürün</th>
+                      <th scope="col">Stok</th>
+                      <th scope="col">XML kategori</th>
+                      <th scope="col">Site kategorisi</th>
+                      <th scope="col">Yayın</th>
+                    </tr>
+                  </thead>
+                  <tbody id="productPoolBody"></tbody>
+                </table>
+              </div>
+              <nav id="productPoolPager" class="admin-pager" aria-label="Ürün havuzu sayfaları" hidden></nav>
+              <p class="admin-note" id="productPoolNote" role="status"></p>
+            </section>
           </div>
         </section>
 
@@ -912,6 +940,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=xml-stock-1"></script>
+  <script src="/assets/js/admin.js?v=cat-schema-3"></script>
 </body>
 </html>

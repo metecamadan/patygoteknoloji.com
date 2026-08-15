@@ -89,6 +89,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
     price: 200,
     vatPercent: 20,
     category: "bilgisayar",
+    mid: "",
     alt: "",
     description: "Açıklama",
     details: "Detay",

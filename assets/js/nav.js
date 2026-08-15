@@ -4,10 +4,15 @@
 
   const NAV_SOURCE = "/assets/data/categories.json";
 
-  function categoryHref(parentSlug, childSlug) {
+  function categoryHref(parentSlug, midSlug, childSlug) {
     const params = new URLSearchParams();
     if (parentSlug) params.set("kategori", parentSlug);
-    if (childSlug) params.set("alt", childSlug);
+    if (arguments.length < 3) {
+      if (midSlug) params.set("alt", midSlug);
+    } else {
+      if (midSlug) params.set("ara", midSlug);
+      if (childSlug) params.set("alt", childSlug);
+    }
     const q = params.toString();
     return q ? "/urunler?" + q : "/urunler";
   }
@@ -44,18 +49,47 @@
     heading.href = categoryHref(category.slug);
     heading.textContent = category.name;
 
-    const list = document.createElement("ul");
-    list.className = "nav-mega-list";
+    const groups = document.createElement("div");
+    groups.className = "nav-mega-groups";
     (category.children || []).forEach((child) => {
+      const leaves = Array.isArray(child.children) ? child.children : [];
+      if (leaves.length) {
+        const group = document.createElement("div");
+        group.className = "nav-mega-group";
+        const title = document.createElement("a");
+        title.className = "nav-mega-group-title";
+        title.href = categoryHref(category.slug, child.slug, "");
+        title.textContent = child.name;
+        const list = document.createElement("ul");
+        list.className = "nav-mega-list";
+        leaves.forEach((leaf) => {
+          const leafLi = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = categoryHref(category.slug, child.slug, leaf.slug);
+          a.textContent = leaf.name;
+          leafLi.appendChild(a);
+          list.appendChild(leafLi);
+        });
+        group.appendChild(title);
+        group.appendChild(list);
+        groups.appendChild(group);
+        return;
+      }
+      const group = document.createElement("div");
+      group.className = "nav-mega-group";
+      const list = document.createElement("ul");
+      list.className = "nav-mega-list";
       const childLi = document.createElement("li");
       const a = document.createElement("a");
       a.href = categoryHref(category.slug, child.slug);
       a.textContent = child.name;
       childLi.appendChild(a);
       list.appendChild(childLi);
+      group.appendChild(list);
+      groups.appendChild(group);
     });
     panel.appendChild(heading);
-    panel.appendChild(list);
+    panel.appendChild(groups);
 
     toggle.addEventListener("click", (ev) => {
       ev.preventDefault();
@@ -107,7 +141,13 @@
       .map((cat) => ({
         slug: cat.slug,
         name: cat.name,
-        children: (cat.children || []).filter((child) => child && child.active !== false),
+        children: (cat.children || [])
+          .filter((child) => child && child.active !== false)
+          .map((child) => ({
+            slug: child.slug,
+            name: child.name,
+            children: (child.children || []).filter((leaf) => leaf && leaf.active !== false),
+          })),
       }))
       .filter((cat) => (cat.children || []).length);
   }
@@ -167,8 +207,14 @@
     { slugs: ["dsl-modemler", "modem"], top: 64, left: 52, delay: 1.6, dur: 4.3 },
   ];
 
-  function childKey(parent, child) {
-    return (parent && parent.slug ? parent.slug : "") + "/" + (child && child.slug ? child.slug : "");
+  function childKey(parent, mid, child) {
+    return (
+      (parent && parent.slug ? parent.slug : "") +
+      "/" +
+      (mid && mid.slug ? mid.slug : "") +
+      "/" +
+      (child && child.slug ? child.slug : "")
+    );
   }
 
   function findChildBySlugs(categories, slugs, used) {
@@ -176,11 +222,17 @@
     for (let i = 0; i < want.length; i += 1) {
       const alias = want[i];
       for (const parent of categories || []) {
-        const child = (parent.children || []).find((row) => row.slug === alias);
-        if (!child) continue;
-        const key = childKey(parent, child);
-        if (used.has(key)) continue;
-        return { parent, child, key };
+        for (const mid of parent.children || []) {
+          if (mid.slug === alias) {
+            const key = childKey(parent, mid, mid);
+            if (!used.has(key)) return { parent, mid, child: mid, key };
+          }
+          const leaf = (mid.children || []).find((row) => row.slug === alias);
+          if (!leaf) continue;
+          const key = childKey(parent, mid, leaf);
+          if (used.has(key)) continue;
+          return { parent, mid, child: leaf, key };
+        }
       }
     }
     return null;
@@ -189,11 +241,21 @@
   function leftoverChildren(categories, used) {
     const out = [];
     (categories || []).forEach((parent) => {
-      (parent.children || []).forEach((child) => {
-        if (!child || child.slug === "genel") return;
-        const key = childKey(parent, child);
-        if (used.has(key)) return;
-        out.push({ parent, child, key });
+      (parent.children || []).forEach((mid) => {
+        const leaves = mid.children || [];
+        if (!leaves.length) {
+          if (mid.slug === "genel") return;
+          const key = childKey(parent, mid, mid);
+          if (used.has(key)) return;
+          out.push({ parent, mid, child: mid, key });
+          return;
+        }
+        leaves.forEach((leaf) => {
+          if (!leaf || leaf.slug === "genel") return;
+          const key = childKey(parent, mid, leaf);
+          if (used.has(key)) return;
+          out.push({ parent, mid, child: leaf, key });
+        });
       });
     });
     return out;
@@ -206,7 +268,7 @@
       const match = findChildBySlugs(categories, slot.slugs, used);
       if (!match) return;
       used.add(match.key);
-      chips.push({ slot: slot, parent: match.parent, child: match.child });
+      chips.push({ slot: slot, parent: match.parent, mid: match.mid, child: match.child });
     });
     const extras = leftoverChildren(categories, used);
     HERO_ORBIT_LAYOUT.forEach((slot) => {
@@ -214,7 +276,7 @@
       const extra = extras.shift();
       if (!extra) return;
       used.add(extra.key);
-      chips.push({ slot: slot, parent: extra.parent, child: extra.child });
+      chips.push({ slot: slot, parent: extra.parent, mid: extra.mid, child: extra.child });
     });
     return chips;
   }
@@ -248,7 +310,7 @@
       const slot = item.slot;
       const link = document.createElement("a");
       link.className = "hero-orbit-chip";
-      link.href = categoryHref(item.parent.slug, item.child.slug);
+      link.href = categoryHref(item.parent.slug, item.mid && item.mid.slug, item.child.slug);
       link.style.setProperty("--chip-top", slot.top + "%");
       link.style.setProperty("--chip-left", slot.left + "%");
       link.style.setProperty("--float-delay", slot.delay + "s");

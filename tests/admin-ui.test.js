@@ -83,7 +83,10 @@ test("admin categories tab manages the site category tree", () => {
   assert.match(css, /\.admin-cat-parent\.is-collapsed/);
   assert.match(script, /expandedCategorySlugs/);
   assert.match(script, /catSlug\.readOnly/);
-  assert.match(script, /XML ürünleri aynı koda bağlanmaya devam eder/);
+  assert.match(html, /id="productPoolBody"/);
+  assert.match(html, /Ürün havuzu/);
+  assert.match(script, /status=pool|status: "pool"/);
+  assert.match(script, /Yayına al/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

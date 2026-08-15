@@ -1671,11 +1671,11 @@
     });
   }
 
-  function fillSiteChildSelect(select, parentSlug, selected) {
+  function fillSiteMidSelect(select, parentSlug, selected) {
     select.textContent = "";
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = parentSlug ? "Alt kategori" : "Önce ana kategori";
+    empty.textContent = parentSlug ? "Ara kategori" : "Önce ana kategori";
     select.appendChild(empty);
     const parent = siteCategories.find((cat) => cat.slug === parentSlug);
     const children = parent && Array.isArray(parent.children) ? parent.children : [];
@@ -1689,11 +1689,38 @@
     select.disabled = !parent;
   }
 
-  async function saveSupplierSiteCategory(item, parentSlug, childSlug) {
+  function fillSiteChildSelect(select, parentSlug, midSlug, selected) {
+    select.textContent = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = midSlug ? "Alt kategori" : "Önce ara kategori";
+    select.appendChild(empty);
+    const parent = siteCategories.find((cat) => cat.slug === parentSlug);
+    const mid =
+      parent && Array.isArray(parent.children)
+        ? parent.children.find((row) => row.slug === midSlug)
+        : null;
+    const leaves = mid && Array.isArray(mid.children) && mid.children.length
+      ? mid.children
+      : mid
+        ? [mid]
+        : [];
+    leaves.forEach((child) => {
+      const opt = document.createElement("option");
+      opt.value = child.slug;
+      opt.textContent = child.name;
+      if (child.slug === selected) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.disabled = !mid;
+  }
+
+  async function saveSupplierSiteCategory(item, parentSlug, midSlug, childSlug) {
     const updates = {
       supplierSku: item.supplierSku,
       supplierSlot: item.supplierSlot,
       siteParent: parentSlug || "",
+      siteMid: midSlug || "",
       siteChild: childSlug || "",
     };
     if (item.active && !(parentSlug && childSlug)) updates.active = false;
@@ -1992,23 +2019,46 @@
       catWrap.className = "admin-cat-selects";
       const parentSelect = document.createElement("select");
       parentSelect.setAttribute("aria-label", item.name + " ana kategorisi");
+      const midSelect = document.createElement("select");
+      midSelect.setAttribute("aria-label", item.name + " ara kategorisi");
       const childSelect = document.createElement("select");
       childSelect.setAttribute("aria-label", item.name + " alt kategorisi");
       fillSiteParentSelect(parentSelect, item.siteParent || "");
-      fillSiteChildSelect(childSelect, item.siteParent || "", item.siteChild || "");
+      fillSiteMidSelect(midSelect, item.siteParent || "", item.siteMid || "");
+      fillSiteChildSelect(childSelect, item.siteParent || "", item.siteMid || "", item.siteChild || "");
       parentSelect.addEventListener("change", async () => {
         const parentSlug = parentSelect.value;
-        fillSiteChildSelect(childSelect, parentSlug, "");
+        fillSiteMidSelect(midSelect, parentSlug, "");
+        fillSiteChildSelect(childSelect, parentSlug, "", "");
         parentSelect.disabled = true;
+        midSelect.disabled = true;
         childSelect.disabled = true;
         try {
-          await saveSupplierSiteCategory(item, parentSlug, "");
+          await saveSupplierSiteCategory(item, parentSlug, "", "");
           note(
             document.getElementById("supplierProductsNote"),
             parentSlug ? "" : "ok",
             parentSlug
-              ? "Alt kategori seçin; seçilmeden ürün yayına alınamaz."
+              ? "Ara ve alt kategori seçin; seçilmeden ürün yayına alınamaz."
               : "Site kategorisi temizlendi; ürün yayından çıkarıldı."
+          );
+        } catch (err) {
+          note(document.getElementById("supplierProductsNote"), "err", err.message);
+        }
+      });
+      midSelect.addEventListener("change", async () => {
+        const parentSlug = parentSelect.value;
+        const midSlug = midSelect.value;
+        fillSiteChildSelect(childSelect, parentSlug, midSlug, "");
+        parentSelect.disabled = true;
+        midSelect.disabled = true;
+        childSelect.disabled = true;
+        try {
+          await saveSupplierSiteCategory(item, parentSlug, midSlug, "");
+          note(
+            document.getElementById("supplierProductsNote"),
+            "",
+            midSlug ? "Alt kategori seçin; seçilmeden ürün yayına alınamaz." : "Ara kategori temizlendi."
           );
         } catch (err) {
           note(document.getElementById("supplierProductsNote"), "err", err.message);
@@ -2016,11 +2066,13 @@
       });
       childSelect.addEventListener("change", async () => {
         const parentSlug = parentSelect.value;
+        const midSlug = midSelect.value;
         const childSlug = childSelect.value;
         parentSelect.disabled = true;
+        midSelect.disabled = true;
         childSelect.disabled = true;
         try {
-          await saveSupplierSiteCategory(item, parentSlug, childSlug);
+          await saveSupplierSiteCategory(item, parentSlug, midSlug, childSlug);
           note(
             document.getElementById("supplierProductsNote"),
             childSlug ? "ok" : "",
@@ -2033,6 +2085,7 @@
         }
       });
       catWrap.appendChild(parentSelect);
+      catWrap.appendChild(midSelect);
       catWrap.appendChild(childSelect);
       if (!item.siteCategoryAssigned) {
         const missing = document.createElement("span");
@@ -3677,6 +3730,7 @@
 
   let categoryTree = [];
   const expandedCategorySlugs = new Set();
+  const expandedMidKeys = new Set();
   const categoryTreeList = document.getElementById("categoryTreeList");
   const categoryTreeNote = document.getElementById("categoryTreeNote");
   const categoryForm = document.getElementById("categoryForm");
@@ -3724,10 +3778,16 @@
     empty.textContent = "Ana kategori";
     catParentSlug.appendChild(empty);
     categoryTree.forEach((cat) => {
-      const opt = document.createElement("option");
-      opt.value = cat.slug;
-      opt.textContent = cat.name;
-      catParentSlug.appendChild(opt);
+      const anaOpt = document.createElement("option");
+      anaOpt.value = cat.slug;
+      anaOpt.textContent = "ARA · " + cat.name;
+      catParentSlug.appendChild(anaOpt);
+      (cat.children || []).forEach((mid) => {
+        const midOpt = document.createElement("option");
+        midOpt.value = cat.slug + "/" + mid.slug;
+        midOpt.textContent = "ALT · " + cat.name + " › " + mid.name;
+        catParentSlug.appendChild(midOpt);
+      });
     });
     catParentSlug.value = current;
   }
@@ -3756,14 +3816,11 @@
     renderCategoryTree();
     notifySite();
     note(categoryTreeNote, "ok", message || "Kategori ağacı kaydedildi. Site menüsü güncellendi.");
+    loadProductPool().catch(() => {});
   }
 
   function cloneCategoryTree(tree) {
-    return (tree || []).map((parent) =>
-      Object.assign({}, parent, {
-        children: (parent.children || []).map((child) => Object.assign({}, child)),
-      })
-    );
+    return JSON.parse(JSON.stringify(tree || []));
   }
 
   function moveCategoryItem(list, fromIndex, toIndex) {
@@ -3794,6 +3851,20 @@
       const children = moveCategoryItem(parent.children, from.childIndex, to.childIndex);
       if (!children) return null;
       parent.children = children;
+      return next;
+    }
+    if (
+      from.kind === "grandchild" &&
+      from.parentIndex === to.parentIndex &&
+      from.childIndex === to.childIndex
+    ) {
+      const next = cloneCategoryTree(tree);
+      const parent = next[from.parentIndex];
+      const mid = parent && parent.children[from.childIndex];
+      if (!mid) return null;
+      const children = moveCategoryItem(mid.children || [], from.grandIndex, to.grandIndex);
+      if (!children) return null;
+      mid.children = children;
       return next;
     }
     return null;
@@ -3881,7 +3952,7 @@
       strong.textContent = parent.name;
       const count = document.createElement("span");
       count.className = "admin-cat-count";
-      count.textContent = (parent.children || []).length + " alt";
+      count.textContent = (parent.children || []).length + " ara";
       strong.appendChild(count);
       const slug = document.createElement("span");
       slug.className = "admin-cat-slug";
@@ -3901,9 +3972,8 @@
         renderCategoryTree();
       });
       const publish = makePublishSwitch(parent.active, parent.name + " yayın", async (input) => {
-        const next = categoryTree.map((row, index) =>
-          index === parentIndex ? Object.assign({}, row, { active: input.checked }) : row
-        );
+        const next = cloneCategoryTree(categoryTree);
+        if (next[parentIndex]) next[parentIndex].active = input.checked;
         try {
           await persistCategoryTree(
             next,
@@ -3941,8 +4011,10 @@
       const children = document.createElement("div");
       children.className = "admin-cat-children";
       (parent.children || []).forEach((child, childIndex) => {
+        const midKey = parent.slug + "/" + child.slug;
+        const midExpanded = expandedMidKeys.has(midKey);
         const row = document.createElement("div");
-        row.className = "admin-cat-row admin-cat-row-child";
+        row.className = "admin-cat-row admin-cat-row-child" + (midExpanded ? "" : " is-mid-collapsed");
         bindCategoryDropTarget(row, {
           kind: "child",
           parentIndex: parentIndex,
@@ -3951,20 +4023,31 @@
         const childTitle = document.createElement("div");
         const childName = document.createElement("strong");
         childName.textContent = child.name;
+        const midCount = document.createElement("span");
+        midCount.className = "admin-cat-count";
+        midCount.textContent = (child.children || []).length + " alt";
+        childName.appendChild(midCount);
         const childSlug = document.createElement("span");
         childSlug.className = "admin-cat-slug";
         childSlug.textContent = child.slug + (child.active ? "" : " · taslak");
         childTitle.appendChild(childName);
         childTitle.appendChild(childSlug);
+        const midToggle = document.createElement("button");
+        midToggle.type = "button";
+        midToggle.className = "admin-cat-toggle";
+        midToggle.setAttribute("aria-expanded", midExpanded ? "true" : "false");
+        midToggle.textContent = "▸";
+        midToggle.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (expandedMidKeys.has(midKey)) expandedMidKeys.delete(midKey);
+          else expandedMidKeys.add(midKey);
+          renderCategoryTree();
+        });
         const childPublish = makePublishSwitch(child.active, child.name + " yayın", async (input) => {
-          const next = categoryTree.map((row, index) => {
-            if (index !== parentIndex) return row;
-            return Object.assign({}, row, {
-              children: row.children.map((item, idx) =>
-                idx === childIndex ? Object.assign({}, item, { active: input.checked }) : item
-              ),
-            });
-          });
+          const next = cloneCategoryTree(categoryTree);
+          if (next[parentIndex] && next[parentIndex].children[childIndex]) {
+            next[parentIndex].children[childIndex].active = input.checked;
+          }
           try {
             await persistCategoryTree(
               next,
@@ -3989,7 +4072,7 @@
           catSlug.readOnly = true;
           catActive.checked = child.active !== false;
           catDeleteBtn.hidden = false;
-          if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori düzenle";
+          if (categoryFormTitle) categoryFormTitle.textContent = "Ara kategori düzenle";
         });
         row.appendChild(
           createCategoryHandle({
@@ -3998,21 +4081,105 @@
             childIndex: childIndex,
           })
         );
+        row.appendChild(midToggle);
         row.appendChild(childTitle);
         row.appendChild(childPublish);
         row.appendChild(childEdit);
         children.appendChild(row);
+
+        const leavesWrap = document.createElement("div");
+        leavesWrap.className = "admin-cat-leaves" + (midExpanded ? "" : " is-collapsed");
+        (child.children || []).forEach((leaf, grandIndex) => {
+          const leafRow = document.createElement("div");
+          leafRow.className = "admin-cat-row admin-cat-row-leaf";
+          bindCategoryDropTarget(leafRow, {
+            kind: "grandchild",
+            parentIndex: parentIndex,
+            childIndex: childIndex,
+            grandIndex: grandIndex,
+          });
+          const leafTitle = document.createElement("div");
+          const leafName = document.createElement("strong");
+          leafName.textContent = leaf.name;
+          const leafSlug = document.createElement("span");
+          leafSlug.className = "admin-cat-slug";
+          leafSlug.textContent = leaf.slug + (leaf.active ? "" : " · taslak");
+          leafTitle.appendChild(leafName);
+          leafTitle.appendChild(leafSlug);
+          const leafPublish = makePublishSwitch(leaf.active, leaf.name + " yayın", async (input) => {
+            const next = cloneCategoryTree(categoryTree);
+            const target =
+              next[parentIndex] &&
+              next[parentIndex].children[childIndex] &&
+              next[parentIndex].children[childIndex].children[grandIndex];
+            if (target) target.active = input.checked;
+            try {
+              await persistCategoryTree(
+                next,
+                input.checked ? leaf.name + " webde yayına alındı." : leaf.name + " yayından kaldırıldı."
+              );
+            } catch (err) {
+              input.checked = !input.checked;
+              note(categoryTreeNote, "err", err.message);
+            }
+          });
+          const leafEdit = document.createElement("button");
+          leafEdit.type = "button";
+          leafEdit.className = "btn btn-ghost btn-xs";
+          leafEdit.textContent = "Düzenle";
+          leafEdit.addEventListener("click", () => {
+            expandedCategorySlugs.add(parent.slug);
+            expandedMidKeys.add(midKey);
+            catEditKey.value = parent.slug + "/" + child.slug + "/" + leaf.slug;
+            catParentSlug.value = parent.slug + "/" + child.slug;
+            catParentSlug.disabled = true;
+            catName.value = leaf.name;
+            catSlug.value = leaf.slug;
+            catSlug.readOnly = true;
+            catActive.checked = leaf.active !== false;
+            catDeleteBtn.hidden = false;
+            if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori düzenle";
+          });
+          leafRow.appendChild(
+            createCategoryHandle({
+              kind: "grandchild",
+              parentIndex: parentIndex,
+              childIndex: childIndex,
+              grandIndex: grandIndex,
+            })
+          );
+          leafRow.appendChild(leafTitle);
+          leafRow.appendChild(leafPublish);
+          leafRow.appendChild(leafEdit);
+          leavesWrap.appendChild(leafRow);
+        });
+        const addLeaf = document.createElement("button");
+        addLeaf.type = "button";
+        addLeaf.className = "btn btn-outline btn-xs";
+        addLeaf.textContent = "+ Alt kategori";
+        addLeaf.addEventListener("click", () => {
+          expandedCategorySlugs.add(parent.slug);
+          expandedMidKeys.add(midKey);
+          resetCategoryForm();
+          catParentSlug.value = parent.slug + "/" + child.slug;
+          catParentSlug.disabled = false;
+          if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori ekle";
+          if (catName) catName.focus();
+          renderCategoryTree();
+        });
+        leavesWrap.appendChild(addLeaf);
+        children.appendChild(leavesWrap);
       });
       const addChild = document.createElement("button");
       addChild.type = "button";
       addChild.className = "btn btn-outline btn-xs";
-      addChild.textContent = "+ Alt kategori";
+      addChild.textContent = "+ Ara kategori";
       addChild.addEventListener("click", () => {
         expandedCategorySlugs.add(parent.slug);
         resetCategoryForm();
         catParentSlug.value = parent.slug;
         catParentSlug.disabled = false;
-        if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori ekle";
+        if (categoryFormTitle) categoryFormTitle.textContent = "Ara kategori ekle";
         if (catName) catName.focus();
         renderCategoryTree();
       });
@@ -4028,19 +4195,24 @@
     categoryTree = Array.isArray(data.categories) ? data.categories : [];
     siteCategories = categoryTree;
     renderCategoryTree();
+    loadProductPool().catch(() => {});
   }
 
   const catExpandAllBtn = document.getElementById("catExpandAllBtn");
   const catCollapseAllBtn = document.getElementById("catCollapseAllBtn");
   if (catExpandAllBtn) {
     catExpandAllBtn.addEventListener("click", () => {
-      categoryTree.forEach((parent) => expandedCategorySlugs.add(parent.slug));
+      categoryTree.forEach((parent) => {
+        expandedCategorySlugs.add(parent.slug);
+        (parent.children || []).forEach((child) => expandedMidKeys.add(parent.slug + "/" + child.slug));
+      });
       renderCategoryTree();
     });
   }
   if (catCollapseAllBtn) {
     catCollapseAllBtn.addEventListener("click", () => {
       expandedCategorySlugs.clear();
+      expandedMidKeys.clear();
       renderCategoryTree();
     });
   }
@@ -4066,28 +4238,41 @@
       const active = catActive.checked;
       const parentSlug = catParentSlug.value;
       const editKey = catEditKey.value;
-      let next = categoryTree.map((row) =>
-        Object.assign({}, row, { children: (row.children || []).slice() })
-      );
+      const next = cloneCategoryTree(categoryTree);
       try {
         if (editKey && !editKey.includes("/")) {
           const index = next.findIndex((row) => row.slug === editKey);
           if (index < 0) throw new Error("Ana kategori bulunamadı.");
           next[index] = Object.assign({}, next[index], { name, active });
-        } else if (editKey.includes("/")) {
+        } else if (editKey.split("/").length === 2) {
           const parts = editKey.split("/");
           const parent = next.find((row) => row.slug === parts[0]);
           if (!parent) throw new Error("Ana kategori bulunamadı.");
           const childIndex = parent.children.findIndex((row) => row.slug === parts[1]);
-          if (childIndex < 0) throw new Error("Alt kategori bulunamadı.");
+          if (childIndex < 0) throw new Error("Ara kategori bulunamadı.");
           parent.children[childIndex] = Object.assign({}, parent.children[childIndex], {
             name,
             active,
           });
+        } else if (editKey.split("/").length === 3) {
+          const parts = editKey.split("/");
+          const parent = next.find((row) => row.slug === parts[0]);
+          const mid = parent && parent.children.find((row) => row.slug === parts[1]);
+          if (!mid) throw new Error("Ara kategori bulunamadı.");
+          const leafIndex = (mid.children || []).findIndex((row) => row.slug === parts[2]);
+          if (leafIndex < 0) throw new Error("Alt kategori bulunamadı.");
+          mid.children[leafIndex] = Object.assign({}, mid.children[leafIndex], { name, active });
+        } else if (parentSlug.includes("/")) {
+          const parts = parentSlug.split("/");
+          const parent = next.find((row) => row.slug === parts[0]);
+          const mid = parent && parent.children.find((row) => row.slug === parts[1]);
+          if (!mid) throw new Error("Ara kategori seçin.");
+          if (!Array.isArray(mid.children)) mid.children = [];
+          mid.children.push({ name, slug, active, children: [] });
         } else if (parentSlug) {
           const parent = next.find((row) => row.slug === parentSlug);
           if (!parent) throw new Error("Ana kategori seçin.");
-          parent.children.push({ name, slug, active });
+          parent.children.push({ name, slug, active, children: [] });
         } else {
           next.push({ name, slug, active, children: [] });
         }
@@ -4113,12 +4298,14 @@
       const editKey = catEditKey.value;
       if (!editKey) return;
       if (!confirm("Bu kategoriyi silmek istiyor musunuz?")) return;
-      let next = categoryTree.map((row) =>
-        Object.assign({}, row, { children: (row.children || []).slice() })
-      );
+      let next = cloneCategoryTree(categoryTree);
       try {
-        if (editKey.includes("/")) {
-          const parts = editKey.split("/");
+        const parts = editKey.split("/");
+        if (parts.length === 3) {
+          const parent = next.find((row) => row.slug === parts[0]);
+          const mid = parent && parent.children.find((row) => row.slug === parts[1]);
+          if (mid) mid.children = (mid.children || []).filter((leaf) => leaf.slug !== parts[2]);
+        } else if (parts.length === 2) {
           next = next.map((row) => {
             if (row.slug !== parts[0]) return row;
             return Object.assign({}, row, {
@@ -4133,6 +4320,166 @@
       } catch (err) {
         note(categoryTreeNote, "err", err.message);
       }
+    });
+  }
+
+  let productPoolPage = 1;
+  let productPoolQuery = "";
+
+  function xmlCategoryLabel(item) {
+    return [item.xmlMainCategory || item.mainCategory, item.xmlMidCategory || item.midCategory, item.xmlSubCategory || item.subCategory]
+      .map((part) => String(part || "").trim())
+      .filter(Boolean)
+      .join(" › ") || "—";
+  }
+
+  function renderProductPoolPager(totalPages) {
+    const pager = document.getElementById("productPoolPager");
+    if (!pager) return;
+    pager.textContent = "";
+    if (totalPages <= 1) {
+      pager.hidden = true;
+      return;
+    }
+    pager.hidden = false;
+    const addBtn = (label, page, options) => {
+      const opts = options || {};
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts.current) btn.className = "is-current";
+      btn.disabled = !!opts.disabled;
+      btn.addEventListener("click", () => {
+        productPoolPage = page;
+        loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", productPoolPage - 1, { disabled: productPoolPage <= 1 });
+    addBtn(String(productPoolPage), productPoolPage, { current: true, disabled: true });
+    addBtn("›", productPoolPage + 1, { disabled: productPoolPage >= totalPages });
+  }
+
+  function renderProductPoolRow(item) {
+    const tr = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    const strong = document.createElement("strong");
+    strong.textContent = item.name || item.supplierSku;
+    const meta = document.createElement("span");
+    meta.className = "admin-cat-slug";
+    meta.textContent = [item.brand, item.supplierSku].filter(Boolean).join(" · ");
+    nameCell.appendChild(strong);
+    nameCell.appendChild(meta);
+
+    const stockCell = document.createElement("td");
+    stockCell.textContent = item.stockQty == null ? "—" : String(item.stockQty);
+
+    const xmlCell = document.createElement("td");
+    xmlCell.textContent = xmlCategoryLabel(item);
+
+    const catCell = document.createElement("td");
+    const catWrap = document.createElement("div");
+    catWrap.className = "admin-cat-selects";
+    const parentSelect = document.createElement("select");
+    const midSelect = document.createElement("select");
+    const childSelect = document.createElement("select");
+    fillSiteParentSelect(parentSelect, item.siteParent || "");
+    fillSiteMidSelect(midSelect, item.siteParent || "", item.siteMid || "");
+    fillSiteChildSelect(childSelect, item.siteParent || "", item.siteMid || "", item.siteChild || "");
+    parentSelect.addEventListener("change", () => {
+      fillSiteMidSelect(midSelect, parentSelect.value, "");
+      fillSiteChildSelect(childSelect, parentSelect.value, "", "");
+    });
+    midSelect.addEventListener("change", () => {
+      fillSiteChildSelect(childSelect, parentSelect.value, midSelect.value, "");
+    });
+    catWrap.appendChild(parentSelect);
+    catWrap.appendChild(midSelect);
+    catWrap.appendChild(childSelect);
+    catCell.appendChild(catWrap);
+
+    const actionCell = document.createElement("td");
+    const publishBtn = document.createElement("button");
+    publishBtn.type = "button";
+    publishBtn.className = "btn btn-primary btn-xs";
+    publishBtn.textContent = "Yayına al";
+    publishBtn.addEventListener("click", async () => {
+      const parentSlug = parentSelect.value;
+      const midSlug = midSelect.value;
+      const childSlug = childSelect.value;
+      if (!parentSlug || !midSlug || !childSlug) {
+        note(document.getElementById("productPoolNote"), "err", "ANA, ARA ve ALT kategori seçin.");
+        return;
+      }
+      publishBtn.disabled = true;
+      try {
+        await updateSupplierProducts([
+          {
+            supplierSku: item.supplierSku,
+            supplierSlot: item.supplierSlot,
+            siteParent: parentSlug,
+            siteMid: midSlug,
+            siteChild: childSlug,
+            active: true,
+          },
+        ]);
+        notifySite();
+        note(document.getElementById("productPoolNote"), "ok", item.name + " yayına alındı.");
+        await loadProductPool();
+      } catch (err) {
+        note(document.getElementById("productPoolNote"), "err", err.message);
+        publishBtn.disabled = false;
+      }
+    });
+    actionCell.appendChild(publishBtn);
+
+    [nameCell, stockCell, xmlCell, catCell, actionCell].forEach((cell) => tr.appendChild(cell));
+    return tr;
+  }
+
+  async function loadProductPool() {
+    const body = document.getElementById("productPoolBody");
+    const poolNote = document.getElementById("productPoolNote");
+    if (!body) return;
+    const qs = new URLSearchParams({
+      status: "pool",
+      q: productPoolQuery,
+      page: String(productPoolPage || 1),
+      limit: "50",
+    });
+    const data = await api("/api/admin/supplier/products?" + qs.toString());
+    const rows = Array.isArray(data.products) ? data.products : [];
+    body.textContent = "";
+    if (!rows.length) {
+      const empty = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.className = "admin-table-empty";
+      cell.textContent = "Stoklu ve yayında olmayan ürün yok.";
+      empty.appendChild(cell);
+      body.appendChild(empty);
+    } else {
+      rows.forEach((item) => body.appendChild(renderProductPoolRow(item)));
+    }
+    const total = Number(data.total) || 0;
+    const totalPages = Math.max(1, Number(data.totalPages) || 1);
+    productPoolPage = Math.min(totalPages, Number(data.page) || 1);
+    renderProductPoolPager(totalPages);
+    if (poolNote && poolNote.className.indexOf("err") < 0) {
+      note(poolNote, "", total ? total + " stoklu ürün sitede yayında değil." : "");
+    }
+  }
+
+  const productPoolSearch = document.getElementById("productPoolSearch");
+  if (productPoolSearch) {
+    let poolSearchTimer = null;
+    productPoolSearch.addEventListener("input", () => {
+      clearTimeout(poolSearchTimer);
+      poolSearchTimer = setTimeout(() => {
+        productPoolQuery = productPoolSearch.value.trim();
+        productPoolPage = 1;
+        loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
+      }, 280);
     });
   }
 

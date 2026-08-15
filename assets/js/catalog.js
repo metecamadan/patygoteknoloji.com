@@ -3,12 +3,22 @@
   "use strict";
 
   const CATEGORY_LABELS = {
-    "kisisel-bilgisayarlar": "Kişisel Bilgisayarlar",
-    "oem-cevre-birimleri": "OEM & Çevre Birimleri",
-    "cevre-baski-birimleri": "Çevre & Baskı Birimleri",
-    "ev-aletleri": "Ev Aletleri",
-    "tuketici-elektronigi": "Tüketici Elektroniği",
-    "kurumsal-ag-urunleri": "Kurumsal Ağ Ürünleri",
+    "bilgisayar-tablet": "Bilgisayar / Tablet",
+    "bilgisayar-bilesenleri": "Bilgisayar Bileşenleri",
+    "baski-cozumleri": "Baskı Çözümleri",
+    "kartus-toner": "Kartuş Toner",
+    "ofis-urunleri": "Ofis Ürünleri",
+    "yapi-gerecleri": "Yapı Gereçleri",
+    "kisisel-bilgisayarlar": "Bilgisayar / Tablet",
+    "oem-cevre-birimleri": "Bilgisayar Bileşenleri",
+    "cevre-baski-birimleri": "Baskı Çözümleri",
+  };
+  const CATEGORY_QUERY_ALIASES = {
+    "kisisel-bilgisayarlar": "bilgisayar-tablet",
+    "oem-cevre-birimleri": "bilgisayar-bilesenleri",
+    "cevre-baski-birimleri": "baski-cozumleri",
+    "tuketici-elektronigi": "bilgisayar-bilesenleri",
+    "kurumsal-ag-urunleri": "bilgisayar-tablet",
   };
 
   window.PatygoCatalog = {
@@ -81,8 +91,10 @@
 
   function readCategoryQuery() {
     const params = new URLSearchParams(location.search || "");
+    const rawParent = String(params.get("kategori") || "").trim();
     return {
-      parent: String(params.get("kategori") || "").trim(),
+      parent: CATEGORY_QUERY_ALIASES[rawParent] || rawParent,
+      mid: String(params.get("ara") || "").trim(),
       child: String(params.get("alt") || "").trim(),
     };
   }
@@ -91,12 +103,18 @@
     const parents = Array.isArray(categories) ? categories : [];
     const parent = parents.find((cat) => cat.slug === query.parent) || null;
     if (!parent) return null;
+    const mid =
+      query.mid && Array.isArray(parent.children)
+        ? parent.children.find((row) => row.slug === query.mid) || null
+        : null;
+    if (query.mid && !mid) return null;
+    const leafSource = mid ? mid.children || [] : parent.children || [];
     const child =
-      query.child && Array.isArray(parent.children)
-        ? parent.children.find((row) => row.slug === query.child) || null
+      query.child && Array.isArray(leafSource)
+        ? leafSource.find((row) => row.slug === query.child) || null
         : null;
     if (query.child && !child) return null;
-    return { parent, child };
+    return { parent, mid, child };
   }
 
   function applyCategoryHeading(resolved) {
@@ -104,13 +122,18 @@
     const title = document.querySelector("[data-catalog-title]");
     const lead = document.querySelector("[data-catalog-lead]");
     if (!resolved) return;
-    const label = resolved.child ? resolved.child.name : resolved.parent.name;
+    const label = resolved.child
+      ? resolved.child.name
+      : resolved.mid
+        ? resolved.mid.name
+        : resolved.parent.name;
     if (crumb) crumb.textContent = label;
     if (title) title.textContent = label;
     if (lead) {
-      lead.textContent = resolved.child
-        ? resolved.parent.name + " / " + resolved.child.name + " kategorisindeki ürünler."
-        : resolved.parent.name + " kategorisindeki ürünler.";
+      const parts = [resolved.parent.name];
+      if (resolved.mid) parts.push(resolved.mid.name);
+      if (resolved.child) parts.push(resolved.child.name);
+      lead.textContent = parts.join(" / ") + " kategorisindeki ürünler.";
     }
     document.title = label + " | Patygo Teknoloji";
   }
@@ -253,11 +276,17 @@
 
   function productsForSiteCategory(products, query) {
     const parent = String((query && query.parent) || "").trim();
+    const mid = String((query && query.mid) || "").trim();
     const child = String((query && query.child) || "").trim();
-    if (!parent && !child) return products.slice();
+    if (!parent && !mid && !child) return products.slice();
     return products.filter((product) => {
       if (parent && String(product.category || "") !== parent) return false;
-      if (child && String(product.alt || "") !== child) return false;
+      if (mid && String(product.mid || "") !== mid) return false;
+      if (child) {
+        const alt = String(product.alt || "");
+        const productMid = String(product.mid || "");
+        if (alt !== child && !( !mid && productMid === child)) return false;
+      }
       return true;
     });
   }
@@ -370,7 +399,7 @@
     const onProductsPage = /\/urunler\/?$/i.test(path);
     const onDetailPage = /\/urun-detay\/?$/i.test(path);
     const onCartPage = /\/sepet\/?$/i.test(path) || /\/odeme\/?$/i.test(path);
-    const wantsCategory = onProductsPage && (query.parent || query.child);
+    const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const categories = await loadCategories();
     let categoryResolved = null;
     if (wantsCategory) {
@@ -391,11 +420,11 @@
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
         const featuredParents = [
-          "kisisel-bilgisayarlar",
-          "oem-cevre-birimleri",
-          "cevre-baski-birimleri",
-          "tuketici-elektronigi",
-          "ev-aletleri",
+          "bilgisayar-tablet",
+          "bilgisayar-bilesenleri",
+          "baski-cozumleri",
+          "kartus-toner",
+          "ofis-urunleri",
         ];
         const pages = await Promise.all(
           featuredParents.map((kategori) => fetchProductPage({ kategori: kategori, limit: 8 }))
@@ -421,6 +450,7 @@
       } else {
         payload = await fetchProductPage({
           kategori: wantsCategory ? query.parent : "",
+          ara: wantsCategory ? query.mid : "",
           alt: wantsCategory ? query.child : "",
           page: pageParam,
           limit: 48,

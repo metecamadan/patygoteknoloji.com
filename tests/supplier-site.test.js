@@ -33,25 +33,13 @@ test("XML ana/ara kategori becomes a two-level site tree", () => {
   assert.equal(pair.siteChild, oem.children[0].slug);
 });
 
-test("Intel Alt kategori folds into Ara İşlemciler, not seed İşlemci", () => {
+test("Intel Alt kategori maps onto schema ANA/ARA/ALT leaves", () => {
   assert.equal(
     browseChildName({ mid: "İşlemciler", sub: "Intel İşlemciler" }),
     "İşlemciler"
   );
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
   const store = createCategoryStore(root);
-  const cats = mergeCategoryTrees(store.list(), [
-    {
-      name: "KİŞİSEL BİLGİSAYARLAR",
-      slug: "kisisel-bilgisayarlar",
-      children: [{ name: "Bilgisayar Bileşenleri", slug: "bilgisayar-bilesenleri" }],
-    },
-    {
-      name: "OEM & ÇEVRE BİRİMLERİ",
-      slug: "oem-cevre-birimleri",
-      children: [{ name: "İşlemciler", slug: "islemciler" }],
-    },
-  ]);
   const pair = suggestSiteCategory(
     {
       mainCategory: "KİŞİSEL BİLGİSAYARLAR",
@@ -61,10 +49,11 @@ test("Intel Alt kategori folds into Ara İşlemciler, not seed İşlemci", () =>
       xmlMidCategory: "İşlemciler",
       xmlSubCategory: "Intel İşlemciler",
     },
-    cats
+    store.list()
   );
-  assert.equal(pair.siteParent, "oem-cevre-birimleri");
-  assert.equal(pair.siteChild, "islemciler");
+  assert.equal(pair.siteParent, "bilgisayar-bilesenleri");
+  assert.equal(pair.siteMid, "islemciler");
+  assert.equal(pair.siteChild, "intel-islemciler");
   fs.rmSync(root, { recursive: true, force: true });
 });
 
@@ -106,7 +95,7 @@ test("rename keeps slug so XML products stay on the same nav category", () => {
   assert.ok((merged[0].xmlNames || []).includes("OEM & ÇEVRE BİRİMLERİ"));
 });
 
-test("merge keeps existing site categories and adds XML parents", () => {
+test("merge aliases XML OEM parent onto curated Bilgisayar Bileşenleri", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
   const store = createCategoryStore(root);
   const merged = mergeCategoryTrees(store.list(), [
@@ -116,26 +105,15 @@ test("merge keeps existing site categories and adds XML parents", () => {
       children: [{ name: "İşlemciler", slug: "islemciler" }],
     },
   ]);
-  assert.ok(!merged.some((row) => row.slug === "bilgisayar-tablet"));
-  assert.ok(merged.some((row) => row.slug === "oem-cevre-birimleri"));
+  assert.ok(merged.some((row) => row.slug === "bilgisayar-tablet"));
+  assert.ok(merged.some((row) => row.slug === "bilgisayar-bilesenleri"));
+  assert.ok(!merged.some((row) => row.slug === "oem-cevre-birimleri"));
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test("sync restores missing XML parent KİŞİSEL BİLGİSAYARLAR", () => {
+test("sync maps XML products onto the curated schema without rebuilding the menu", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-"));
   const store = createCategoryStore(root);
-  store.save([
-    {
-      slug: "oem-cevre-birimleri",
-      name: "OEM & ÇEVRE BİRİMLERİ",
-      children: [{ slug: "islemciler", name: "İşlemciler" }],
-    },
-    {
-      slug: "kisisel-bakim-ve-kozmetik",
-      name: "KİŞİSEL BAKIM VE KOZMETİK",
-      children: [{ slug: "sampuan", name: "Şampuan" }],
-    },
-  ]);
   const updates = [];
   const manager = {
     listProducts() {
@@ -170,17 +148,20 @@ test("sync restores missing XML parent KİŞİSEL BİLGİSAYARLAR", () => {
     });
     const tree = store.list();
     assert.equal(result.empty, false);
-    assert.ok(tree.some((row) => row.slug === "kisisel-bilgisayarlar"));
-    assert.ok(tree.some((row) => row.slug === "oem-cevre-birimleri"));
-    assert.ok(tree.some((row) => row.slug === "kisisel-bakim-ve-kozmetik"));
-    const pc = tree.find((row) => row.slug === "kisisel-bilgisayarlar");
-    assert.ok(pc.children.some((child) => child.slug === "notebooklar"));
+    assert.ok(tree.some((row) => row.slug === "bilgisayar-tablet"));
+    assert.ok(tree.some((row) => row.slug === "bilgisayar-bilesenleri"));
+    assert.ok(!tree.some((row) => row.slug === "kisisel-bilgisayarlar"));
+    assert.ok(!tree.some((row) => row.slug === "oem-cevre-birimleri"));
     const notebook = updates.find((row) => row.supplierSku === "NB-1");
-    assert.equal(notebook.siteParent, "kisisel-bilgisayarlar");
+    assert.equal(notebook.siteParent, "bilgisayar-tablet");
+    assert.equal(notebook.siteMid, "tasinabilir-bilgisayarlar");
     assert.equal(notebook.siteChild, "notebooklar");
     assert.equal(notebook.active, undefined);
     const cpu = updates.find((row) => row.supplierSku === "CPU-1");
-    assert.equal(cpu, undefined);
+    assert.equal(cpu.siteParent, "bilgisayar-bilesenleri");
+    assert.equal(cpu.siteMid, "islemciler");
+    assert.equal(cpu.siteChild, "intel-islemciler");
+    assert.equal(cpu.active, undefined);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
