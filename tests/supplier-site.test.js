@@ -268,3 +268,51 @@ test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
   assert.equal(featured.products[0].id, "bilgisayar-tablet-3");
   assert.equal(featured.products[4].id, "yapi-gerecleri-1");
 });
+
+test("homeFeaturedCatalog mixes ALT types inside an ANA instead of filling with notebooks", () => {
+  const { homeFeaturedCatalog } = require("../lib/catalog");
+  const products = [];
+  for (let i = 0; i < 20; i += 1) {
+    products.push({
+      id: "nb-" + i,
+      name: "Notebook " + i,
+      brand: "NO-NAME",
+      price: 1000,
+      category: "bilgisayar-tablet",
+      siteChild: "notebooklar",
+      active: true,
+    });
+  }
+  [
+    ["mouse-1", "Mouse", "mouse"],
+    ["klavye-1", "Klavye", "klavye"],
+    ["monitor-1", "Monitor", "monitorler"],
+    ["combo-1", "Set", "klavye-ve-mouse"],
+  ].forEach(([id, name, child]) => {
+    products.push({
+      id,
+      name,
+      brand: "NO-NAME",
+      price: 200,
+      category: "bilgisayar-tablet",
+      siteChild: child,
+      active: true,
+    });
+  });
+  const popularity = {};
+  for (let i = 0; i < 20; i += 1) popularity["nb-" + i] = 900 - i;
+  popularity["mouse-1"] = 10;
+  popularity["klavye-1"] = 9;
+  popularity["monitor-1"] = 8;
+  popularity["combo-1"] = 7;
+  const featured = homeFeaturedCatalog(products, { popularity, limit: 12 });
+  const computers = featured.byParent["bilgisayar-tablet"];
+  const alts = computers.map((row) => row.alt);
+  assert.equal(computers[0].id, "nb-0");
+  assert.ok(alts.includes("mouse"));
+  assert.ok(alts.includes("klavye"));
+  assert.ok(alts.includes("monitorler"));
+  assert.ok(alts.includes("klavye-ve-mouse"));
+  assert.equal(alts.filter((alt) => alt === "notebooklar").length, 8);
+  assert.equal(new Set(alts.slice(0, 5)).size, 5);
+});
