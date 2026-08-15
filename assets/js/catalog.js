@@ -274,6 +274,63 @@
     });
   }
 
+  const FEATURED_PER_CATEGORY = 12;
+  const FEATURED_PARENTS = [
+    "bilgisayar-tablet",
+    "bilgisayar-bilesenleri",
+    "kartus-toner",
+    "baski-cozumleri",
+    "yapi-gerecleri",
+    "ofis-urunleri",
+  ];
+
+  function mixFeatured(byParent, limit) {
+    const queues = FEATURED_PARENTS.map((slug) => ((byParent && byParent[slug]) || []).slice());
+    const seen = new Set();
+    const mixed = [];
+    let added = true;
+    while (added && mixed.length < limit) {
+      added = false;
+      queues.forEach((queue) => {
+        if (mixed.length >= limit) return;
+        while (queue.length) {
+          const item = queue.shift();
+          if (!item || seen.has(item.id)) continue;
+          seen.add(item.id);
+          mixed.push(item);
+          added = true;
+          break;
+        }
+      });
+    }
+    return mixed;
+  }
+
+  function bindFeaturedTabs(byParent) {
+    const section = document.getElementById("urunler") || document;
+    const tablist = section.querySelector(".product-tabs");
+    const grid = document.querySelector('.product-grid[data-catalog="featured"]');
+    if (!tablist || !grid) return;
+    tablist.querySelectorAll("button").forEach((btn) => {
+      const next = btn.cloneNode(true);
+      btn.parentNode.replaceChild(next, btn);
+    });
+    const tabs = tablist.querySelectorAll("button");
+    const show = (filter) => {
+      tabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === filter));
+      const list =
+        filter === "all"
+          ? mixFeatured(byParent, FEATURED_PER_CATEGORY)
+          : ((byParent && byParent[filter]) || []).slice(0, FEATURED_PER_CATEGORY);
+      renderGrid(grid, list, {});
+    };
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => show(btn.dataset.filter || "all"));
+    });
+    const active = tablist.querySelector("button.active");
+    show((active && active.dataset.filter) || "all");
+  }
+
   function productsForSiteCategory(products, query) {
     const parent = String((query && query.parent) || "").trim();
     const mid = String((query && query.mid) || "").trim();
@@ -295,7 +352,7 @@
     const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
     let list = products.slice();
-    if (mode === "featured") list = list.slice(0, 12);
+    if (mode === "featured") list = list.slice(0, FEATURED_PER_CATEGORY);
     if (opts.categoryQuery) list = productsForSiteCategory(list, opts.categoryQuery);
     grid.textContent = "";
     if (!list.length && opts.categoryResolved) {
@@ -353,7 +410,8 @@
       renderGrid(grid, products, opts);
     });
     renderCatalogPager(opts.pager || null);
-    if (!opts.categoryResolved) bindTabs(document);
+    if (opts.featuredTabs) bindFeaturedTabs(opts.featuredTabs);
+    else if (!opts.categoryResolved) bindTabs(document);
     window.dispatchEvent(new CustomEvent("patygo:catalog", { detail: { products } }));
     return products;
   }
@@ -408,6 +466,7 @@
     }
 
     let payload = { products: [], total: 0, page: 1, totalPages: 0 };
+    let featuredTabs = null;
     try {
       if (onDetailPage) {
         const id = new URLSearchParams(location.search).get("id") || "";
@@ -419,34 +478,20 @@
           .join(",");
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
-        const featuredParents = [
-          "bilgisayar-tablet",
-          "bilgisayar-bilesenleri",
-          "baski-cozumleri",
-          "kartus-toner",
-          "ofis-urunleri",
-        ];
+        const featuredParents = FEATURED_PARENTS.slice();
         const pages = await Promise.all(
-          featuredParents.map((kategori) => fetchProductPage({ kategori: kategori, limit: 8 }))
+          featuredParents.map((kategori) =>
+            fetchProductPage({ kategori: kategori, limit: FEATURED_PER_CATEGORY, sort: "popular" })
+          )
         );
-        const queues = pages.map((page) => (page.products || []).slice());
-        const seen = new Set();
-        const mixed = [];
-        let added = true;
-        while (added) {
-          added = false;
-          queues.forEach((queue) => {
-            while (queue.length) {
-              const item = queue.shift();
-              if (!item || seen.has(item.id)) continue;
-              seen.add(item.id);
-              mixed.push(item);
-              added = true;
-              break;
-            }
-          });
-        }
+        const byParent = {};
+        featuredParents.forEach((slug, index) => {
+          byParent[slug] = (pages[index].products || []).slice(0, FEATURED_PER_CATEGORY);
+        });
+        window.PatygoCatalog.featuredByParent = byParent;
+        const mixed = mixFeatured(byParent, FEATURED_PER_CATEGORY);
         payload = { products: mixed, total: mixed.length, page: 1, totalPages: 1 };
+        featuredTabs = byParent;
       } else {
         payload = await fetchProductPage({
           kategori: wantsCategory ? query.parent : "",
@@ -466,6 +511,7 @@
         ? categoryResolved || { parent: { name: "Kategori" }, child: null }
         : null,
       pager: onProductsPage ? payload : null,
+      featuredTabs,
     });
   }
 

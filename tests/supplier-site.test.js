@@ -189,3 +189,44 @@ test("queryPublicCatalog pages and filters by site category", () => {
   const one = queryPublicCatalog(products, { id: "p-3" });
   assert.equal(one.products[0].id, "p-3");
 });
+
+test("queryPublicCatalog sorts popular products by sales and views first", () => {
+  const products = [
+    {
+      id: "quiet",
+      name: "Sakin Ürün",
+      brand: "NO-NAME",
+      price: 50,
+      category: "bilgisayar-tablet",
+      active: true,
+    },
+    {
+      id: "hot",
+      name: "Popüler Ürün",
+      brand: "NO-NAME",
+      price: 50,
+      category: "bilgisayar-tablet",
+      active: true,
+    },
+    {
+      id: "apple-box",
+      name: "Apple Kutu",
+      brand: "Apple",
+      price: 200,
+      category: "bilgisayar-tablet",
+      image: "https://cdn.example/a.jpg",
+      active: true,
+    },
+  ];
+  const ranked = queryPublicCatalog(products, {
+    kategori: "bilgisayar-tablet",
+    sort: "popular",
+    popularity: { hot: 80 },
+    limit: 12,
+  });
+  assert.deepEqual(
+    ranked.products.map((row) => row.id),
+    ["hot", "apple-box", "quiet"]
+  );
+  assert.equal(ranked.products.length, 3);
+});

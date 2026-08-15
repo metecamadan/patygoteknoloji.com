@@ -482,6 +482,23 @@ function mergedProducts(includeInactiveManual) {
   });
 }
 
+function popularProductScores() {
+  const scores = {};
+  try {
+    const views = analyticsStore.productViewCounts(90) || {};
+    Object.keys(views).forEach((id) => {
+      scores[id] = (Number(scores[id]) || 0) + (Number(views[id]) || 0);
+    });
+  } catch (_) {}
+  try {
+    const sold = orderStore.soldQuantities(90) || {};
+    Object.keys(sold).forEach((id) => {
+      scores[id] = (Number(scores[id]) || 0) + (Number(sold[id]) || 0) * 100;
+    });
+  } catch (_) {}
+  return scores;
+}
+
 function syncLiveXmlCategories(slotId) {
   try {
     return syncXmlSiteCategories({
@@ -784,6 +801,7 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/products") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
     const queried = queryPublicCatalog(mergedProducts(false), {
       id: requestUrl.searchParams.get("id") || "",
       ids: requestUrl.searchParams.get("ids") || "",
@@ -793,6 +811,8 @@ async function handleApi(req, res, urlPath) {
       alt: requestUrl.searchParams.get("alt") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 48,
+      sort,
+      popularity: sort === "popular" ? popularProductScores() : undefined,
     });
     const updatedAt = fs.existsSync(PRODUCTS_FILE)
       ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()

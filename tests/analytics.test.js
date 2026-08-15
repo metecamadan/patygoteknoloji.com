@@ -61,6 +61,9 @@ test("analytics tracks product detail views into topViewedProducts", () => {
     assert.equal(summary.topViewedProducts[0].productId, "thinkpad-e16");
     assert.equal(summary.topViewedProducts[0].views, 2);
     assert.equal(summary.topViewedProducts[1].productId, "macbook");
+    const counts = store.productViewCounts(7);
+    assert.equal(counts["thinkpad-e16"], 2);
+    assert.equal(counts.macbook, 1);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
