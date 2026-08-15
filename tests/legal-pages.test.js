@@ -31,7 +31,11 @@ test("legal pages include company identity and substantive sections", () => {
     const text = fs.readFileSync(path.join(root, file), "utf8");
     assert.match(text, /Patygo Teknoloji ve Bilişim/);
     assert.match(text, /info@patygoteknoloji\.com/);
-    assert.match(text, /Son güncelleme:\s*29 Temmuz 2026/);
+    if (file === "cerez.html") {
+      assert.match(text, /Son güncelleme:\s*16 Ağustos 2026/);
+    } else {
+      assert.match(text, /Son güncelleme:\s*29 Temmuz 2026/);
+    }
     assert.match(text, /<h2>/);
     const headings = (text.match(/<h2>/g) || []).length;
     assert.ok(headings >= 6, file + " should have substantive headings, got " + headings);

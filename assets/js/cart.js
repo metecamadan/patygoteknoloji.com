@@ -1,4 +1,4 @@
-/* Patygo sepet — localStorage */
+/* Patygo sepet — sessionStorage (tarayıcı oturumu kapanınca sıfırlanır) */
 (function () {
   "use strict";
   const KEY = "patygo_cart";
@@ -9,9 +9,15 @@
     return ALLOWED_VAT.includes(n) ? n : 20;
   }
 
+  function dropPersistentCart() {
+    try {
+      if (localStorage.getItem(KEY)) localStorage.removeItem(KEY);
+    } catch (_) {}
+  }
+
   function read() {
     try {
-      const raw = JSON.parse(localStorage.getItem(KEY) || "[]");
+      const raw = JSON.parse(sessionStorage.getItem(KEY) || "[]");
       return Array.isArray(raw) ? raw : [];
     } catch (_) {
       return [];
@@ -19,7 +25,8 @@
   }
 
   function write(items) {
-    localStorage.setItem(KEY, JSON.stringify(items));
+    sessionStorage.setItem(KEY, JSON.stringify(items));
+    dropPersistentCart();
     window.dispatchEvent(new CustomEvent("patygo:cart"));
   }
 
@@ -139,6 +146,7 @@
     });
   }
 
+  dropPersistentCart();
   window.addEventListener("patygo:cart", refreshBadges);
   document.addEventListener("DOMContentLoaded", refreshBadges);
   refreshBadges();
