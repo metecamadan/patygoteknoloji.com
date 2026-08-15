@@ -241,7 +241,7 @@
     const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
     let list = products.slice();
-    if (mode === "featured") list = list.slice(0, 8);
+    if (mode === "featured") list = list.slice(0, 12);
     if (opts.categoryQuery) list = productsForSiteCategory(list, opts.categoryQuery);
     grid.textContent = "";
     if (!list.length && opts.categoryResolved) {
@@ -365,7 +365,33 @@
           .join(",");
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
-        payload = await fetchProductPage({ limit: 48 });
+        const featuredParents = [
+          "oem-cevre-birimleri",
+          "cevre-baski-birimleri",
+          "tuketici-elektronigi",
+          "ev-aletleri",
+        ];
+        const pages = await Promise.all(
+          featuredParents.map((kategori) => fetchProductPage({ kategori: kategori, limit: 8 }))
+        );
+        const queues = pages.map((page) => (page.products || []).slice());
+        const seen = new Set();
+        const mixed = [];
+        let added = true;
+        while (added) {
+          added = false;
+          queues.forEach((queue) => {
+            while (queue.length) {
+              const item = queue.shift();
+              if (!item || seen.has(item.id)) continue;
+              seen.add(item.id);
+              mixed.push(item);
+              added = true;
+              break;
+            }
+          });
+        }
+        payload = { products: mixed, total: mixed.length, page: 1, totalPages: 1 };
       } else {
         payload = await fetchProductPage({
           kategori: wantsCategory ? query.parent : "",
