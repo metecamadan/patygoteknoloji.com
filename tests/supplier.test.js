@@ -55,6 +55,37 @@ test("supplier XML products are normalized", () => {
   assert.equal(products[0].image, "https://supplier.example/images/test.jpg");
 });
 
+test("bilgisayarim-style records use UrunAciklama as name and Fiyat", () => {
+  const xml = `<?xml version="1.0"?>
+    <Urunler>
+      <Urun>
+        <UrunKodu>100.10.10.0008</UrunKodu>
+        <UrunAciklama>Intel Core i3 10100</UrunAciklama>
+        <UrunAciklama2></UrunAciklama2>
+        <UrunID>8</UrunID>
+        <UreticiKodu>BX8070110100</UreticiKodu>
+        <GtipCode>8473.30</GtipCode>
+        <Durum>1</Durum>
+        <Marka>INTEL</Marka>
+        <OzelKod></OzelKod>
+        <AnaKategori>Bilgisayar</AnaKategori>
+        <AraKategori>İşlemci</AraKategori>
+        <AltKategori>Intel</AltKategori>
+        <Fiyat>70,0000</Fiyat>
+        <KDV>20</KDV>
+        <DovizTuru>USD</DovizTuru>
+        <Stok>44</Stok>
+      </Urun>
+    </Urunler>`;
+  const products = parseSupplierXml(xml, new URL("https://www.bilgisayarim.com.tr/feed.xml"));
+  assert.equal(products.length, 1);
+  assert.equal(products[0].supplierSku, "100.10.10.0008");
+  assert.equal(products[0].name, "Intel Core i3 10100");
+  assert.equal(products[0].costPrice, 70);
+  assert.equal(products[0].stockQty, 44);
+  assert.equal(products[0].brand, "INTEL");
+});
+
 test("supplier XML accepts Adi and BayiFiyat field names", () => {
   const xml = `<?xml version="1.0"?>
     <Stoklar>
