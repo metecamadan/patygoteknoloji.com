@@ -45,7 +45,7 @@ test("nav renders animated hero orbit icons from live site categories", () => {
   assert.match(navJs, /leftoverChildren/);
   assert.match(navJs, /tasinabilir-bilgisayarlar/);
   assert.match(navJs, /islemciler/);
-  assert.match(navJs, /nav-mega-groups/);
+  assert.match(navJs, /published\.forEach\(\(cat\) => root\.appendChild\(buildMegaItem\(cat\)\)\)/);
 });
 
 test("homepage featured grid uses live catalog tabs instead of demo categories", () => {

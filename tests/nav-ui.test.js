@@ -23,3 +23,15 @@ test("nav hides unpublished category nodes", () => {
   assert.match(navJs, /active !== false/);
   assert.match(navJs, /BroadcastChannel\("patygo-catalog"\)/);
 });
+
+test("nav shows each main category in the top bar instead of a single Ürünler dump", () => {
+  assert.match(navJs, /function buildMegaItem/);
+  assert.match(navJs, /published\.forEach\(\(cat\) => root\.appendChild\(buildMegaItem\(cat\)\)\)/);
+  assert.match(navJs, /nav-mega-heading/);
+  assert.match(navJs, /mouseenter/);
+  assert.doesNotMatch(navJs, /published\.length\s*>\s*4/);
+  assert.doesNotMatch(navJs, /is-catalog/);
+  assert.doesNotMatch(navJs, /nav-mega-groups/);
+  assert.match(navCss, /\.nav-links\s*\{[^}]*flex:\s*1 1 100%/s);
+  assert.match(navCss, /\.nav-mega-heading/);
+});
