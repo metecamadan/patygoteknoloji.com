@@ -7,6 +7,7 @@ const {
   buildTreeFromSupplierProducts,
   mergeCategoryTrees,
   suggestSiteCategory,
+  browseChildName,
   cleanCategoryName,
 } = require("../lib/supplier-site");
 const { createCategoryStore, slugifyCategory } = require("../lib/categories");
@@ -31,7 +32,11 @@ test("XML ana/ara kategori becomes a two-level site tree", () => {
   assert.equal(pair.siteChild, oem.children[0].slug);
 });
 
-test("XML processors map to the existing İşlemci site category even with poisoned feed overrides", () => {
+test("Intel Alt kategori folds into Ara İşlemciler, not seed İşlemci", () => {
+  assert.equal(
+    browseChildName({ mid: "İşlemciler", sub: "Intel İşlemciler" }),
+    "İşlemciler"
+  );
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
   const store = createCategoryStore(root);
   const cats = mergeCategoryTrees(store.list(), [
@@ -57,8 +62,8 @@ test("XML processors map to the existing İşlemci site category even with poiso
     },
     cats
   );
-  assert.equal(pair.siteParent, "bilgisayar-tablet");
-  assert.equal(pair.siteChild, "islemci");
+  assert.equal(pair.siteParent, "oem-cevre-birimleri");
+  assert.equal(pair.siteChild, "islemciler");
   fs.rmSync(root, { recursive: true, force: true });
 });
 

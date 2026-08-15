@@ -14,7 +14,7 @@
         { "slug": "monitor", "name": "Monitör" },
         { "slug": "ram", "name": "Ram" },
         { "slug": "ekran-karti", "name": "Ekran Kartı" },
-        { "slug": "islemci", "name": "İşlemci" },
+        { "slug": "islemciler", "name": "İşlemciler" },
         { "slug": "kasa", "name": "Kasa" }
       ]
     },

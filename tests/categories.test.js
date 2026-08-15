@@ -17,6 +17,7 @@ test("loadCategories exposes two parents with expected children", () => {
   assert.equal(cats[0].slug, "bilgisayar-tablet");
   assert.equal(cats[1].slug, "cevre-birimleri");
   assert.ok(cats[0].children.some((c) => c.slug === "notebook"));
+  assert.ok(cats[0].children.some((c) => c.slug === "islemciler" && c.name === "İşlemciler"));
   assert.ok(cats[1].children.some((c) => c.slug === "usb-bellek"));
 });
 

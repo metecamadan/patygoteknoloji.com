@@ -257,7 +257,13 @@
         { name: "Masaüstü Bilgisayarlar", children: ["Masaüstü Bilgisayarlar"] },
         { name: "Monitörler", children: ["Monitör"] },
         { name: "Çevre Birimleri", children: ["Klavye", "Mouse", "Klavye Mouse Set"] },
-        { name: "Bilgisayar Bileşenleri", children: ["Ram", "Ekran Kartı", "İşlemci", "Kasa"] },
+        { name: "Bilgisayar Bileşenleri", children: ["Ram", "Ekran Kartı", "İşlemciler", "Kasa"] },
+      ],
+    },
+    {
+      name: "OEM & ÇEVRE BİRİMLERİ",
+      children: [
+        { name: "İşlemciler", children: ["Intel İşlemciler", "AMD İşlemciler", "İşlemciler"] },
       ],
     },
     {
@@ -427,12 +433,15 @@
       supplierFeedFields.midCategory,
       supplierFeedFields.subCategory,
       {
-        main: item.mainCategory || "",
-        mid: item.midCategory || "",
-        sub: item.subCategory || "",
+        main: item.xmlMainCategory || item.mainCategory || "",
+        mid: item.xmlMidCategory || item.midCategory || "",
+        sub: item.xmlSubCategory || item.subCategory || "",
       }
     );
-    applySupplierFeedCategoryDefaults(false);
+    const hasFeedCats = Boolean(
+      (item.xmlMainCategory || item.mainCategory || "").trim()
+    );
+    if (!hasFeedCats) applySupplierFeedCategoryDefaults(false);
     supplierFeedFields.description.value = item.description || item.name || "";
     supplierFeedFields.image.value = item.image || "";
     renderSupplierFeedIssues(item.feedIssues || []);

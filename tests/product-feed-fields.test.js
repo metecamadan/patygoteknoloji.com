@@ -41,4 +41,6 @@ test("admin feed category fields cascade from a selectable tree", () => {
   assert.match(script, /bindFeedCategoryCascade/);
   assert.match(script, /setFeedCategorySelects/);
   assert.match(script, /KİŞİSEL BİLGİSAYARLAR/);
+  assert.match(script, /OEM & ÇEVRE BİRİMLERİ/);
+  assert.match(script, /xmlMainCategory \|\| item\.mainCategory/);
 });
