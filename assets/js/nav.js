@@ -337,7 +337,7 @@
   }
 
   function loadNav(root) {
-    return fetch(NAV_SOURCE, { cache: "no-store" })
+    return fetch(NAV_SOURCE)
       .then((res) => {
         if (!res.ok) throw new Error("Kategori menüsü yüklenemedi");
         return res.json();

@@ -164,6 +164,7 @@ const BLOCKED_FILES = new Set([
   "package-lock.json",
   ".gitignore",
   "README.md",
+  "admin-v2-preview.html",
 ]);
 
 const CATEGORIES = new Set(["bilgisayar", "yazici", "kucuk-ev", "beyaz-esya"]);
@@ -192,14 +193,19 @@ function securityHeaders(extra) {
   );
 }
 
-function json(res, status, body) {
+function json(res, status, body, extraHeaders) {
   const data = JSON.stringify(body);
   res.writeHead(
     status,
-    securityHeaders({
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    })
+    securityHeaders(
+      Object.assign(
+        {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+        extraHeaders || {}
+      )
+    )
   );
   res.end(data);
 }
@@ -406,6 +412,7 @@ function loadProducts() {
 
 function saveProducts(list) {
   fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), "utf8");
+  invalidateStorefrontCatalog();
 }
 
 function slugify(input) {
@@ -474,12 +481,26 @@ function normalizeProduct(p, fallbackId) {
   };
 }
 
+const STOREFRONT_CATALOG_TTL_MS = 30 * 1000;
+const storefrontCatalogMemo = { active: null, all: null };
+
+function invalidateStorefrontCatalog() {
+  storefrontCatalogMemo.active = null;
+  storefrontCatalogMemo.all = null;
+}
+
 function mergedProducts(includeInactiveManual) {
-  return mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
+  const key = includeInactiveManual ? "all" : "active";
+  const now = Date.now();
+  const hit = storefrontCatalogMemo[key];
+  if (hit && now - hit.at < STOREFRONT_CATALOG_TTL_MS) return hit.products;
+  const products = mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
     includeInactiveManual,
     normalizeProduct,
     categoryDefaults: CATEGORY_FEED_DEFAULTS,
   });
+  storefrontCatalogMemo[key] = { at: now, products };
+  return products;
 }
 
 const POPULAR_SCORES_TTL_MS = 60 * 1000;
@@ -817,7 +838,10 @@ async function handleApi(req, res, urlPath) {
         popularity: popularProductScores(),
         limit: requestUrl.searchParams.get("limit") || 12,
       });
-      return json(res, 200, {
+    return json(
+      res,
+      200,
+      {
         products: featured.products,
         byParent: featured.byParent,
         perCategory: featured.perCategory,
@@ -827,7 +851,9 @@ async function handleApi(req, res, urlPath) {
         limit: featured.perCategory,
         totalPages: 1,
         updatedAt,
-      });
+      },
+      { "Cache-Control": "public, max-age=15, stale-while-revalidate=45" }
+    );
     }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
     const queried = queryPublicCatalog(mergedProducts(false), {
@@ -842,14 +868,19 @@ async function handleApi(req, res, urlPath) {
       sort,
       popularity: sort === "popular" ? popularProductScores() : undefined,
     });
-    return json(res, 200, {
-      products: queried.products,
-      total: queried.total,
-      page: queried.page,
-      limit: queried.limit,
-      totalPages: queried.totalPages,
-      updatedAt,
-    });
+    return json(
+      res,
+      200,
+      {
+        products: queried.products,
+        total: queried.total,
+        page: queried.page,
+        limit: queried.limit,
+        totalPages: queried.totalPages,
+        updatedAt,
+      },
+      { "Cache-Control": "public, max-age=15, stale-while-revalidate=45" }
+    );
   }
 
   if (req.method === "GET" && urlPath === "/api/feeds/akakce.xml") {
@@ -1178,6 +1209,7 @@ async function handleApi(req, res, urlPath) {
         slotId: body.slotId || "supplier-1",
         root: DATA_ROOT,
       });
+      invalidateStorefrontCatalog();
       const slots = supplierManager.listSlots();
       const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
@@ -1198,7 +1230,9 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
       const result = await supplierManager.refresh(body.slotId || "supplier-1");
+      invalidateStorefrontCatalog();
       syncLiveXmlCategories(result.slotId);
+      invalidateStorefrontCatalog();
       const slots = supplierManager.listSlots();
       return json(res, 200, {
         ok: true,
@@ -1261,6 +1295,7 @@ async function handleApi(req, res, urlPath) {
         return json(res, 422, { ok: false, error: "Güncellenecek ürün seçilmedi." });
       }
       supplierManager.updateProducts(updates);
+      invalidateStorefrontCatalog();
       const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
       });
@@ -1552,7 +1587,11 @@ setTimeout(() => {
 
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,
-  afterRefresh: (slotId) => syncLiveXmlCategories(slotId),
+  afterRefresh: (slotId) => {
+    invalidateStorefrontCatalog();
+    syncLiveXmlCategories(slotId);
+    invalidateStorefrontCatalog();
+  },
   log: (message, slotId, key) => console.log(message, slotId, key),
   logError: (message, slotId, key, detail) =>
     console.error(message, slotId, key, detail || ""),
@@ -1562,6 +1601,9 @@ setImmediate(() => {
   supplierManager.listSlots().forEach((slot) => {
     if (slot.configured) syncLiveXmlCategories(slot.id);
   });
+  try {
+    mergedProducts(false);
+  } catch (_) {}
 });
 
 server.on("error", (err) => {

@@ -204,6 +204,8 @@ test("agent-ops routes are gone", async (t) => {
   });
   const page = await fetch(baseUrl + "/agent-ops");
   assert.equal(page.status, 404);
+  const v2 = await fetch(baseUrl + "/admin-v2-preview");
+  assert.equal(v2.status, 404);
   const ingest = await fetch(baseUrl + "/api/agent-ops/ingest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

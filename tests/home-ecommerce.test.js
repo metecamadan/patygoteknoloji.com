@@ -65,6 +65,8 @@ test("homepage featured grid uses live catalog tabs instead of demo categories",
   assert.match(catalogJs, /homeFeatured:\s*"1"/);
   assert.match(catalogJs, /function fetchHomeFeatured/);
   assert.match(catalogJs, /Ürünler yükleniyor/);
+  assert.match(catalogJs, /product-card--skeleton/);
+  assert.match(catalogJs, /function showCatalogLoading/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);
   assert.doesNotMatch(catalogJs, /sort:\s*"popular"/);

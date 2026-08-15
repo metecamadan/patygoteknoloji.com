@@ -416,14 +416,19 @@
     return products;
   }
 
-  function showFeaturedLoading(grid) {
+  function showCatalogLoading(grid) {
     if (!grid) return;
     grid.textContent = "";
     const note = document.createElement("p");
-    note.style.color = "var(--muted)";
-    note.style.gridColumn = "1 / -1";
+    note.className = "catalog-loading";
     note.textContent = "Ürünler yükleniyor…";
     grid.appendChild(note);
+    for (let i = 0; i < 8; i += 1) {
+      const skeleton = document.createElement("article");
+      skeleton.className = "product-card product-card--skeleton";
+      skeleton.setAttribute("aria-hidden", "true");
+      grid.appendChild(skeleton);
+    }
   }
 
   async function fetchProductPage(params) {
@@ -432,8 +437,7 @@
       const value = params[key];
       if (value !== undefined && value !== null && String(value) !== "") qs.set(key, String(value));
     });
-    qs.set("t", String(Date.now()));
-    const res = await fetch("/api/products?" + qs.toString(), { cache: "no-store" });
+    const res = await fetch("/api/products?" + qs.toString());
     if (!res.ok) throw new Error("Katalog yüklenemedi");
     const data = await res.json();
     const products = Array.isArray(data.products) ? data.products : Array.isArray(data) ? data : [];
@@ -477,7 +481,7 @@
 
   async function loadCategories() {
     try {
-      const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
+      const res = await fetch("/assets/data/categories.json");
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.categories)) return data.categories;
@@ -490,6 +494,7 @@
   }
 
   async function reloadCatalog() {
+    document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
     const path = location.pathname || "";
     const query = readCategoryQuery();
     const pageParam = Math.max(1, Number(new URLSearchParams(location.search).get("sayfa")) || 1);
@@ -517,7 +522,6 @@
           .join(",");
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
-        showFeaturedLoading(document.querySelector('.product-grid[data-catalog="featured"]'));
         let home = null;
         try {
           home = await fetchHomeFeatured();
