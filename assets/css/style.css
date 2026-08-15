@@ -41,6 +41,7 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   scroll-padding-top: calc(var(--header-h) + 12px);
+  scrollbar-gutter: stable;
 }
 body {
   font-family: var(--font);
@@ -127,6 +128,9 @@ h1, h2, h3, h4 {
   border-bottom: 1px solid var(--line-soft);
 }
 .site-header.scrolled { box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06); }
+.site-header > .container {
+  position: relative;
+}
 .nav {
   display: flex;
   flex-wrap: nowrap;
@@ -240,7 +244,10 @@ h1, h2, h3, h4 {
   transform: rotate(180deg);
 }
 .nav-mega-panel {
-  display: none;
+  display: block;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
   position: absolute;
   top: 100%;
   left: 0;
@@ -250,7 +257,8 @@ h1, h2, h3, h4 {
   min-width: 0;
   box-sizing: border-box;
   padding: 12px 16px 14px;
-  margin-top: 0;
+  margin: 0;
+  transform: none;
   border-radius: 0 0 16px 16px;
   background: #fff;
   border: 1px solid var(--line-soft);
@@ -267,11 +275,15 @@ h1, h2, h3, h4 {
   height: 12px;
 }
 .nav-mega.open > .nav-mega-panel {
-  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
 }
 @media (hover: hover) and (pointer: fine) and (min-width: 861px) {
   .nav-mega:hover > .nav-mega-panel {
-    display: block;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 .nav-mega:hover > .nav-mega-toggle {
@@ -294,8 +306,8 @@ h1, h2, h3, h4 {
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--ink-2);
+  font-weight: 400;
+  color: var(--muted);
   text-align: left;
 }
 .nav-mega-list a:hover {
@@ -305,10 +317,10 @@ h1, h2, h3, h4 {
 .nav-mega-heading {
   display: inline-block;
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.02em;
   color: var(--ink);
-  padding: 0 8px 8px;
+  padding: 0 8px 10px;
 }
 .nav-mega-groups {
   display: block;
@@ -321,15 +333,17 @@ h1, h2, h3, h4 {
 .nav-mega-group {
   break-inside: avoid;
   page-break-inside: avoid;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 .nav-mega-group-title {
   display: block;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: var(--ink);
-  padding: 0 8px 4px;
+  padding: 0 8px 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--line);
 }
 .nav-mega-group .nav-mega-list {
   max-height: none;
@@ -1778,6 +1792,9 @@ h1, h2, h3, h4 {
   .nav-mega-panel {
     position: static;
     display: none;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
     width: auto;
     min-width: 0;
     max-width: none;

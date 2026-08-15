@@ -31,12 +31,12 @@ test("seed category file falls back to the canonical ANA-ARA-ALT schema", () => 
   assert.deepEqual(
     cats.map((row) => row.slug),
     [
-      "baski-cozumleri",
-      "yapi-gerecleri",
-      "ofis-urunleri",
       "bilgisayar-tablet",
       "bilgisayar-bilesenleri",
       "kartus-toner",
+      "baski-cozumleri",
+      "yapi-gerecleri",
+      "ofis-urunleri",
     ]
   );
   const cpu = cats.find((row) => row.slug === "bilgisayar-bilesenleri");

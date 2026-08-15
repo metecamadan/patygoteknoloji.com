@@ -45,8 +45,8 @@ test("nav shows each main category in the top bar instead of a single Ürünler 
   assert.match(navCss, /\.nav-mega-groups\s*\{[^}]*overflow:\s*visible/s);
   assert.match(navCss, /\.nav-mega-groups\s*\{[^}]*column-width/s);
   assert.doesNotMatch(navCss, /\.nav-mega-groups\s*\{[^}]*overflow:\s*auto/s);
-  assert.match(navCss, /\.quote-rail\s*\{[^}]*position:\s*fixed/s);
-  assert.match(navCss, /\.quote-rail\s*\{[^}]*top:\s*50%/s);
+  assert.match(navCss, /\.nav-mega-group-title\s*\{[^}]*font-weight:\s*800/s);
+  assert.match(navCss, /scrollbar-gutter:\s*stable/);
 });
 
 test("Teklif Al sits on the right viewport edge, not in the header nav", () => {

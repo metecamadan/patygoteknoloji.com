@@ -1445,7 +1445,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (urlPath === "/assets/data/categories.json") {
-    return json(res, 200, { version: 4, categories: categoryStore.publicList() });
+    return json(res, 200, { version: 5, categories: categoryStore.publicList() });
   }
 
   // SEO: /sayfa.html → /sayfa (301)
