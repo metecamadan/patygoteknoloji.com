@@ -90,7 +90,7 @@ const ADMIN_PASSWORD =
 if (!ADMIN_PASSWORD) {
   throw new Error("Canlı ortamda ADMIN_PASSWORD tanımlanmalıdır.");
 }
-const PRODUCTS_FILE = path.join(ROOT, "assets", "data", "products.json");
+const PRODUCTS_FILE = path.join(DATA_ROOT, "assets", "data", "products.json");
 const PRODUCTS_IMG_DIR = path.join(ROOT, "assets", "img", "products");
 const SITE_BASE_URL = resolveSiteBaseUrl(process.env.SITE_BASE_URL, PORT, IS_PRODUCTION);
 const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);

@@ -215,47 +215,111 @@
   };
 
   const HERO_ORBIT_LAYOUT = [
-    { slug: "notebook", top: 6, left: 8, delay: 0, dur: 4.2 },
-    { slug: "tablet", top: 14, left: 62, delay: 0.5, dur: 3.8 },
-    { slug: "monitor", top: 38, left: 78, delay: 1.1, dur: 4.6 },
-    { slug: "klavye", top: 58, left: 4, delay: 0.3, dur: 3.6 },
-    { slug: "mouse", top: 52, left: 42, delay: 0.9, dur: 4.1 },
-    { slug: "ekran-karti", top: 72, left: 68, delay: 1.4, dur: 3.9 },
-    { slug: "laser-yazici", top: 78, left: 22, delay: 0.7, dur: 4.4 },
-    { slug: "router", top: 24, left: 32, delay: 1.2, dur: 3.7 },
-    { slug: "usb-bellek", top: 8, left: 44, delay: 0.2, dur: 4.0 },
-    { slug: "modem", top: 64, left: 52, delay: 1.6, dur: 4.3 },
+    { slugs: ["tasinabilir-bilgisayarlar", "notebook"], top: 6, left: 8, delay: 0, dur: 4.2 },
+    { slugs: ["islemciler", "islemci"], top: 14, left: 62, delay: 0.5, dur: 3.8 },
+    { slugs: ["monitorler", "monitor"], top: 38, left: 78, delay: 1.1, dur: 4.6 },
+    { slugs: ["klavye"], top: 58, left: 4, delay: 0.3, dur: 3.6 },
+    { slugs: ["mouse"], top: 52, left: 42, delay: 0.9, dur: 4.1 },
+    { slugs: ["ekran-kartlari", "ekran-karti"], top: 72, left: 68, delay: 1.4, dur: 3.9 },
+    { slugs: ["inkjet-yazicilar", "yazici-tarayici", "laser-yazici"], top: 78, left: 22, delay: 0.7, dur: 4.4 },
+    { slugs: ["access-point-ve-router", "modem-ve-switch", "router"], top: 24, left: 32, delay: 1.2, dur: 3.7 },
+    { slugs: ["usb-flash", "usb-ve-kart-bellek-urunleri", "usb-bellek"], top: 8, left: 44, delay: 0.2, dur: 4.0 },
+    { slugs: ["dsl-modemler", "modem"], top: 64, left: 52, delay: 1.6, dur: 4.3 },
   ];
 
-  function findChildCategory(categories, slug) {
-    for (const parent of categories || []) {
-      const child = (parent.children || []).find((row) => row.slug === slug);
-      if (child) return { parent, child };
+  function childKey(parent, child) {
+    return (parent && parent.slug ? parent.slug : "") + "/" + (child && child.slug ? child.slug : "");
+  }
+
+  function findChildBySlugs(categories, slugs, used) {
+    const want = slugs || [];
+    for (let i = 0; i < want.length; i += 1) {
+      const alias = want[i];
+      for (const parent of categories || []) {
+        const child = (parent.children || []).find((row) => row.slug === alias);
+        if (!child) continue;
+        const key = childKey(parent, child);
+        if (used.has(key)) continue;
+        return { parent, child, key };
+      }
     }
     return null;
+  }
+
+  function leftoverChildren(categories, used) {
+    const out = [];
+    (categories || []).forEach((parent) => {
+      (parent.children || []).forEach((child) => {
+        if (!child || child.slug === "genel") return;
+        const key = childKey(parent, child);
+        if (used.has(key)) return;
+        out.push({ parent, child, key });
+      });
+    });
+    return out;
+  }
+
+  function pickHeroOrbitChips(categories) {
+    const used = new Set();
+    const chips = [];
+    HERO_ORBIT_LAYOUT.forEach((slot) => {
+      const match = findChildBySlugs(categories, slot.slugs, used);
+      if (!match) return;
+      used.add(match.key);
+      chips.push({ slot: slot, parent: match.parent, child: match.child });
+    });
+    const extras = leftoverChildren(categories, used);
+    HERO_ORBIT_LAYOUT.forEach((slot) => {
+      if (chips.some((row) => row.slot === slot)) return;
+      const extra = extras.shift();
+      if (!extra) return;
+      used.add(extra.key);
+      chips.push({ slot: slot, parent: extra.parent, child: extra.child });
+    });
+    return chips;
+  }
+
+  function iconForChildSlug(slug) {
+    const key = String(slug || "");
+    if (HERO_ICON_SVG[key]) return HERO_ICON_SVG[key];
+    if (key.indexOf("islemci") >= 0) return HERO_ICON_SVG.islemciler;
+    if (key.indexOf("ekran-kart") >= 0) return HERO_ICON_SVG["ekran-karti"];
+    if (key.indexOf("monitor") >= 0) return HERO_ICON_SVG.monitor;
+    if (key.indexOf("notebook") >= 0 || key.indexOf("tasinabilir") >= 0) return HERO_ICON_SVG.notebook;
+    if (key.indexOf("masaust") >= 0) return HERO_ICON_SVG.masaustu;
+    if (key.indexOf("klavye") >= 0) return HERO_ICON_SVG.klavye;
+    if (key.indexOf("mouse") >= 0) return HERO_ICON_SVG.mouse;
+    if (key.indexOf("yazici") >= 0 || key.indexOf("laser") >= 0 || key.indexOf("inkjet") >= 0) {
+      return HERO_ICON_SVG["laser-yazici"];
+    }
+    if (key.indexOf("router") >= 0 || key.indexOf("access-point") >= 0) return HERO_ICON_SVG.router;
+    if (key.indexOf("modem") >= 0) return HERO_ICON_SVG.modem;
+    if (key.indexOf("usb") >= 0) return HERO_ICON_SVG["usb-bellek"];
+    if (key.indexOf("tablet") >= 0) return HERO_ICON_SVG.tablet;
+    if (key.indexOf("tarayici") >= 0) return HERO_ICON_SVG.tarayici;
+    return HERO_ICON_SVG.default;
   }
 
   function renderHeroOrbit(categories) {
     const root = document.querySelector("[data-hero-orbit]");
     if (!root) return;
     root.textContent = "";
-    HERO_ORBIT_LAYOUT.forEach((slot, index) => {
-      const match = findChildCategory(categories, slot.slug);
-      if (!match) return;
+    pickHeroOrbitChips(categories).forEach((item, index) => {
+      const slot = item.slot;
       const link = document.createElement("a");
       link.className = "hero-orbit-chip";
-      link.href = categoryHref(match.parent.slug, match.child.slug);
+      link.href = categoryHref(item.parent.slug, item.child.slug);
       link.style.setProperty("--chip-top", slot.top + "%");
       link.style.setProperty("--chip-left", slot.left + "%");
       link.style.setProperty("--float-delay", slot.delay + "s");
       link.style.setProperty("--float-dur", slot.dur + "s");
       link.style.setProperty("--chip-hue", String((index * 47 + 210) % 360));
-      link.setAttribute("aria-label", match.child.name);
+      link.setAttribute("aria-label", item.child.name);
       link.innerHTML =
         '<span class="hero-orbit-chip-icon">' +
-        (HERO_ICON_SVG[slot.slug] || HERO_ICON_SVG.default) +
+        iconForChildSlug(item.child.slug) +
         '</span><span class="hero-orbit-chip-label">' +
-        match.child.name +
+        item.child.name +
         "</span>";
       root.appendChild(link);
     });

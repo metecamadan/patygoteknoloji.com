@@ -39,10 +39,20 @@ async function waitForServer(baseUrl, child, getStderr) {
   throw new Error("Test sunucusu zamanında başlamadı.");
 }
 
-function spawnTestServer(t, envExtra) {
+function spawnTestServer(t, envExtra, options) {
   const portPromise = getFreePort();
   return portPromise.then((port) => {
     const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-data-"));
+    const productsDir = path.join(dataRoot, "assets", "data");
+    fs.mkdirSync(productsDir, { recursive: true });
+    const seedProducts = options && Object.prototype.hasOwnProperty.call(options, "products")
+      ? options.products
+      : [];
+    fs.writeFileSync(
+      path.join(productsDir, "products.json"),
+      JSON.stringify(seedProducts, null, 2),
+      "utf8"
+    );
     const stderrChunks = [];
     const child = spawn(process.execPath, ["server.js"], {
       cwd: projectRoot,

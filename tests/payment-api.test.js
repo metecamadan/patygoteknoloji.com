@@ -5,14 +5,36 @@ const { spawnTestServer } = require("./helpers/spawn-server");
 
 test("payment APIs start hosted form and verify callback", async (t) => {
   const secret = "test-akbank-secret";
-  const { baseUrl } = await spawnTestServer(t, {
-    ADMIN_PASSWORD: "test-admin-password",
-    AKBANK_MERCHANT_SAFE_ID: "merchant-safe",
-    AKBANK_TERMINAL_SAFE_ID: "terminal-safe",
-    AKBANK_SECRET_KEY: secret,
-    AKBANK_TEST_MODE: "true",
-    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
-  });
+  const { baseUrl } = await spawnTestServer(
+    t,
+    {
+      ADMIN_PASSWORD: "test-admin-password",
+      AKBANK_MERCHANT_SAFE_ID: "merchant-safe",
+      AKBANK_TERMINAL_SAFE_ID: "terminal-safe",
+      AKBANK_SECRET_KEY: secret,
+      AKBANK_TEST_MODE: "true",
+      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+    },
+    {
+      products: [
+        {
+          id: "pay-test-item",
+          brand: "TEST",
+          name: "Ödeme Test Ürünü",
+          price: 199,
+          vatPercent: 20,
+          category: "oem-cevre-birimleri",
+          featured: false,
+          active: true,
+          image: "/assets/img/products/macbook-air-m3.svg",
+          images: ["/assets/img/products/macbook-air-m3.svg"],
+          stockQty: 10,
+          currency: "TRY",
+          unit: "ADET",
+        },
+      ],
+    }
+  );
 
   const status = await fetch(baseUrl + "/api/payment/status");
   assert.equal(status.status, 200);

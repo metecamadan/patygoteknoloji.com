@@ -3,10 +3,12 @@
   "use strict";
 
   const CATEGORY_LABELS = {
-    bilgisayar: "Bilgisayar",
-    yazici: "Yazıcı",
-    "kucuk-ev": "Küçük Ev Aletleri",
-    "beyaz-esya": "Beyaz Eşya",
+    "kisisel-bilgisayarlar": "Kişisel Bilgisayarlar",
+    "oem-cevre-birimleri": "OEM & Çevre Birimleri",
+    "cevre-baski-birimleri": "Çevre & Baskı Birimleri",
+    "ev-aletleri": "Ev Aletleri",
+    "tuketici-elektronigi": "Tüketici Elektroniği",
+    "kurumsal-ag-urunleri": "Kurumsal Ağ Ürünleri",
   };
 
   window.PatygoCatalog = {
@@ -40,7 +42,13 @@
       );
     },
     categoryLabel(cat) {
-      return CATEGORY_LABELS[cat] || cat || "";
+      if (CATEGORY_LABELS[cat]) return CATEGORY_LABELS[cat];
+      const navCats = window.PatygoNav && window.PatygoNav.categories;
+      if (Array.isArray(navCats)) {
+        const parent = navCats.find((row) => row.slug === cat);
+        if (parent && parent.name) return parent.name;
+      }
+      return cat || "";
     },
   };
 
@@ -233,7 +241,7 @@
     const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
     let list = products.slice();
-    if (mode === "featured") list = list.filter((p) => p.featured);
+    if (mode === "featured") list = list.slice(0, 8);
     if (opts.categoryQuery) list = productsForSiteCategory(list, opts.categoryQuery);
     grid.textContent = "";
     if (!list.length && opts.categoryResolved) {
@@ -357,7 +365,7 @@
           .join(",");
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
-        payload = await fetchProductPage({ featured: "1", limit: 48 });
+        payload = await fetchProductPage({ limit: 48 });
       } else {
         payload = await fetchProductPage({
           kategori: wantsCategory ? query.parent : "",

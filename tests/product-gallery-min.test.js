@@ -13,15 +13,9 @@ const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "ut
 const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
 const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
 
-test("demo products each have at least 5 gallery images on disk", () => {
-  products.forEach((product) => {
-    assert.ok(Array.isArray(product.images), product.id + " missing images[]");
-    assert.ok(product.images.length >= 5, product.id + " needs >=5 images");
-    product.images.forEach((url) => {
-      assert.match(url, /^\/assets\/img\/products\//);
-      assert.ok(fs.existsSync(path.join(root, url.replace(/^\//, ""))), url + " missing");
-    });
-  });
+test("seed catalog has no demo galleries; manual products still require 5 images", () => {
+  assert.ok(Array.isArray(products));
+  assert.equal(products.length, 0);
 });
 
 test("admin and server enforce minimum 5 product images", () => {

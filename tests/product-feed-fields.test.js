@@ -2,17 +2,13 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { validateManualFeedFields } = require("../lib/product-fields");
-
 const products = JSON.parse(
   fs.readFileSync(path.join(__dirname, "..", "assets", "data", "products.json"), "utf8")
 );
 
-test("demo products include bilgisayarim-style feed required fields", () => {
-  products.forEach((product) => {
-    const missing = validateManualFeedFields(product);
-    assert.deepEqual(missing, [], product.id + " missing: " + missing.join(", "));
-  });
+test("seed catalog is empty so demo products no longer need feed fields", () => {
+  assert.ok(Array.isArray(products));
+  assert.equal(products.length, 0);
 });
 
 test("admin product form exposes feed required fields", () => {
