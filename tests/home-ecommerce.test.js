@@ -41,6 +41,14 @@ test("nav renders animated hero orbit icons from categories json", () => {
   assert.match(navJs, /renderHeroOrbit/);
   assert.match(navJs, /hero-orbit-chip/);
   assert.match(navJs, /HERO_ORBIT_LAYOUT/);
+  assert.match(navJs, /nav-mega-groups/);
+});
+
+test("storefront catalog loads paginated products by category", () => {
+  assert.match(catalogJs, /fetchProductPage/);
+  assert.match(catalogJs, /data-catalog-pager|renderCatalogPager/);
+  const urunler = fs.readFileSync(path.join(root, "urunler.html"), "utf8");
+  assert.match(urunler, /data-catalog-pager/);
 });
 
 test("public storefront copy does not mention XML catalog sourcing", () => {

@@ -89,6 +89,8 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.equal(publicCatalog.status, 200);
   const publicPayload = await publicCatalog.json();
   assert.ok(Array.isArray(publicPayload.products));
+  assert.equal(typeof publicPayload.total, "number");
+  assert.equal(typeof publicPayload.page, "number");
   for (const product of publicPayload.products) {
     assert.equal(Object.prototype.hasOwnProperty.call(product, "source"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(product, "costPrice"), false);

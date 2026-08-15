@@ -251,30 +251,69 @@
     list.forEach((product, index) => grid.appendChild(makeCard(product, index)));
   }
 
+  function renderCatalogPager(meta) {
+    const pager = document.querySelector("[data-catalog-pager]");
+    if (!pager) return;
+    pager.textContent = "";
+    const totalPages = Number(meta && meta.totalPages) || 0;
+    const page = Number(meta && meta.page) || 1;
+    if (totalPages <= 1) {
+      pager.hidden = true;
+      return;
+    }
+    pager.hidden = false;
+    const addBtn = (label, target, options) => {
+      const opts = options || {};
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts.current) btn.className = "is-current";
+      btn.disabled = !!opts.disabled;
+      btn.addEventListener("click", () => {
+        const url = new URL(location.href);
+        url.searchParams.set("sayfa", String(target));
+        history.pushState({}, "", url.pathname + url.search);
+        reloadCatalog();
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", page - 1, { disabled: page <= 1 });
+    addBtn(String(page), page, { current: true, disabled: true });
+    addBtn("›", page + 1, { disabled: page >= totalPages });
+  }
+
   function applyCatalog(all, options) {
     const opts = options || {};
     const products = (all || []).filter((p) => p && p.active !== false);
     window.PatygoCatalog.list = products;
-    window.PatygoCatalog.byId = Object.fromEntries(products.map((p) => [p.id, p]));
+    Object.assign(window.PatygoCatalog.byId, Object.fromEntries(products.map((p) => [p.id, p])));
     document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
       renderGrid(grid, products, opts);
     });
+    renderCatalogPager(opts.pager || null);
     if (!opts.categoryResolved) bindTabs(document);
     window.dispatchEvent(new CustomEvent("patygo:catalog", { detail: { products } }));
     return products;
   }
 
-  async function loadProducts() {
-    const bust = "?t=" + Date.now();
-    try {
-      const res = await fetch("/api/products" + bust, { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.products)) return data.products;
-        if (Array.isArray(data)) return data;
-      }
-    } catch (_) {}
-    return [];
+  async function fetchProductPage(params) {
+    const qs = new URLSearchParams();
+    Object.keys(params || {}).forEach((key) => {
+      const value = params[key];
+      if (value !== undefined && value !== null && String(value) !== "") qs.set(key, String(value));
+    });
+    qs.set("t", String(Date.now()));
+    const res = await fetch("/api/products?" + qs.toString(), { cache: "no-store" });
+    if (!res.ok) throw new Error("Katalog yüklenemedi");
+    const data = await res.json();
+    const products = Array.isArray(data.products) ? data.products : Array.isArray(data) ? data : [];
+    return {
+      products,
+      total: Number(data.total) || products.length,
+      page: Number(data.page) || 1,
+      limit: Number(data.limit) || products.length,
+      totalPages: Number(data.totalPages) || 0,
+    };
   }
 
   async function loadCategories() {
@@ -292,24 +331,56 @@
   }
 
   async function reloadCatalog() {
+    const path = location.pathname || "";
     const query = readCategoryQuery();
-    const onProductsPage = /\/urunler\/?$/i.test(location.pathname || "");
+    const pageParam = Math.max(1, Number(new URLSearchParams(location.search).get("sayfa")) || 1);
+    const onProductsPage = /\/urunler\/?$/i.test(path);
+    const onDetailPage = /\/urun-detay\/?$/i.test(path);
+    const onCartPage = /\/sepet\/?$/i.test(path) || /\/odeme\/?$/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.child);
-    const [all, categories] = await Promise.all([loadProducts(), loadCategories()]);
+    const categories = await loadCategories();
     let categoryResolved = null;
     if (wantsCategory) {
       categoryResolved = resolveCategoryLabels(categories, query);
       if (categoryResolved) applyCategoryHeading(categoryResolved);
     }
-    return applyCatalog(all, {
-      categoryQuery: wantsCategory ? query : null,
+
+    let payload = { products: [], total: 0, page: 1, totalPages: 0 };
+    try {
+      if (onDetailPage) {
+        const id = new URLSearchParams(location.search).get("id") || "";
+        payload = id ? await fetchProductPage({ id }) : payload;
+      } else if (onCartPage) {
+        const ids = (window.PatygoCart ? window.PatygoCart.list() : [])
+          .map((item) => item.id)
+          .filter(Boolean)
+          .join(",");
+        payload = ids ? await fetchProductPage({ ids }) : payload;
+      } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
+        payload = await fetchProductPage({ featured: "1", limit: 48 });
+      } else {
+        payload = await fetchProductPage({
+          kategori: wantsCategory ? query.parent : "",
+          alt: wantsCategory ? query.child : "",
+          page: pageParam,
+          limit: 48,
+        });
+      }
+    } catch (_) {
+      payload = { products: [], total: 0, page: 1, totalPages: 0 };
+    }
+
+    return applyCatalog(payload.products, {
+      categoryQuery: null,
       categoryResolved: wantsCategory
         ? categoryResolved || { parent: { name: "Kategori" }, child: null }
         : null,
+      pager: onProductsPage ? payload : null,
     });
   }
 
   window.PatygoCatalog.reload = reloadCatalog;
+  window.PatygoCatalog.fetchProductPage = fetchProductPage;
 
   window.PatygoCatalog.ready = reloadCatalog();
 
@@ -331,7 +402,7 @@
     if (ev.key === "patygo_catalog_version") reloadCatalog();
   });
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") reloadCatalog();
+  window.addEventListener("popstate", () => {
+    if (/\/urunler\/?$/i.test(location.pathname || "")) reloadCatalog();
   });
 })();

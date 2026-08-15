@@ -10,9 +10,10 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
+const { publishSupplierSlot } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
-const { mergeCatalogProducts, toPublicProduct } = require("./lib/catalog");
+const { mergeCatalogProducts, queryPublicCatalog } = require("./lib/catalog");
 const {
   createCategoryStore,
   setCategoryListLoader,
@@ -518,7 +519,11 @@ function normalizeImageUrl(value) {
 
 function normalizeProduct(p, fallbackId) {
   const id = slugify(p.id || p.name || fallbackId || crypto.randomBytes(4).toString("hex"));
-  const category = CATEGORIES.has(p.category) ? p.category : "bilgisayar";
+  const rawCategory = String((p && p.category) || "").trim();
+  const category =
+    CATEGORIES.has(rawCategory) || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(rawCategory)
+      ? rawCategory || "bilgisayar"
+      : "bilgisayar";
   const price = Math.max(0, Number(p.price) || 0);
   const legacyImage = normalizeImageUrl(p.image);
   const images = (Array.isArray(p.images) ? p.images : [])
@@ -845,12 +850,25 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/products") {
-    const all = mergedProducts(false).map(toPublicProduct);
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const queried = queryPublicCatalog(mergedProducts(false), {
+      id: requestUrl.searchParams.get("id") || "",
+      ids: requestUrl.searchParams.get("ids") || "",
+      featured: requestUrl.searchParams.get("featured") || "",
+      kategori: requestUrl.searchParams.get("kategori") || "",
+      alt: requestUrl.searchParams.get("alt") || "",
+      page: requestUrl.searchParams.get("page") || 1,
+      limit: requestUrl.searchParams.get("limit") || 48,
+    });
     const updatedAt = fs.existsSync(PRODUCTS_FILE)
       ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
       : null;
     return json(res, 200, {
-      products: all,
+      products: queried.products,
+      total: queried.total,
+      page: queried.page,
+      limit: queried.limit,
+      totalPages: queried.totalPages,
       updatedAt,
     });
   }
@@ -1205,6 +1223,31 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, { ok: true, config });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Bağlantı kaydedilemedi" });
+    }
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/supplier/publish") {
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const result = await publishSupplierSlot({
+        manager: supplierManager,
+        categoryStore,
+        slotId: body.slotId || "supplier-1",
+        root: DATA_ROOT,
+      });
+      const slots = supplierManager.listSlots();
+      const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
+        siteBaseUrl: SITE_BASE_URL,
+      });
+      return json(res, 200, {
+        ok: true,
+        result,
+        slots,
+        feedCount: feedAnalysis.eligible.length,
+        feedExcludedCount: feedAnalysis.excluded.length,
+      });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Kaynak yayınlanamadı" });
     }
   }
 

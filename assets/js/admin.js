@@ -475,10 +475,12 @@
 
     const ctrl = new AbortController();
     const isSupplierRefresh = path.includes("/supplier/refresh");
+    const isSupplierPublish = path.includes("/supplier/publish");
     const isSupplierProducts = path.includes("/supplier/products");
     const timer = setTimeout(
       () => ctrl.abort(),
-      Number(opts.timeout) || (isSupplierRefresh ? 100000 : isSupplierProducts ? 30000 : 12000)
+      Number(opts.timeout) ||
+        (isSupplierRefresh || isSupplierPublish ? 100000 : isSupplierProducts ? 30000 : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -495,7 +497,9 @@
         throw new Error(
           isSupplierRefresh
             ? "XML çekimi zaman aşımına uğradı. Tedarikçi IP whitelist / firewall ayarını kontrol edin."
-            : "İstek zaman aşımına uğradı. Lütfen tekrar deneyin."
+            : isSupplierPublish
+              ? "Yayın işlemi zaman aşımına uğradı. Lütfen tekrar deneyin."
+              : "İstek zaman aşımına uğradı. Lütfen tekrar deneyin."
         );
       }
       if (err && err.message && /Failed to fetch|NetworkError|Load failed|fetch/i.test(err.message)) {
@@ -2204,6 +2208,41 @@
         const slot = supplierSlots.find((item) => item.id === slotId);
         const serverError = slot && slot.lastError ? String(slot.lastError) : "";
         note(statusNote, "err", serverError || err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
+  });
+
+  document.querySelectorAll(".supplier-publish-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const slotId = button.dataset.slotId;
+      const card = button.closest("[data-supplier-card]");
+      const statusNote = card.querySelector('[data-slot-field="note"]');
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = "Yayınlanıyor…";
+      note(statusNote, "", "Kategoriler eşleniyor, ürünler siteye alınıyor…");
+      try {
+        const data = await api("/api/admin/supplier/publish", {
+          method: "POST",
+          body: JSON.stringify({ slotId }),
+          timeout: 100000,
+        });
+        selectedSupplierSkus.clear();
+        await loadSupplierData();
+        await loadCategoryTree().catch(() => {});
+        notifySite();
+        const assigned = data && data.result ? data.result.assigned : 0;
+        note(
+          statusNote,
+          "ok",
+          assigned +
+            " ürün siteye yayınlandı. Ürünler sayfasında kategorilerden görünür."
+        );
+      } catch (err) {
+        note(statusNote, "err", err.message);
       } finally {
         button.disabled = false;
         button.textContent = original;

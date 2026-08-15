@@ -277,6 +277,30 @@ h1, h2, h3, h4 {
   color: var(--brand);
   background: var(--brand-soft);
 }
+.nav-mega-panel.is-catalog {
+  width: min(980px, calc(100vw - 32px));
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  padding: 16px;
+}
+.nav-mega-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px 16px;
+}
+.nav-mega-group-title {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  padding: 4px 12px 8px;
+}
+.nav-mega-group .nav-mega-list {
+  grid-template-columns: 1fr;
+}
+  background: var(--brand-soft);
+}
 
 /* ---------- Hero ---------- */
 .hero {
@@ -700,6 +724,29 @@ h1, h2, h3, h4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
+}
+.catalog-pager {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 28px;
+}
+.catalog-pager[hidden] { display: none; }
+.catalog-pager button {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.catalog-pager button.is-current,
+.catalog-pager button:disabled.is-current {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
 }
 .product-card {
   background: #fff;

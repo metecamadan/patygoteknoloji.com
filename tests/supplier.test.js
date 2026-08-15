@@ -84,6 +84,29 @@ test("bilgisayarim-style records use UrunAciklama as name and Fiyat", () => {
   assert.equal(products[0].costPrice, 70);
   assert.equal(products[0].stockQty, 44);
   assert.equal(products[0].brand, "INTEL");
+  assert.equal(products[0].currency, "USD");
+});
+
+test("supplier XML decodes entities, prefers GorselBuyuk and upgrades http images", () => {
+  const xml = `<?xml version="1.0"?>
+    <Urunler>
+      <Urun>
+        <UrunKodu>IMG-1</UrunKodu>
+        <UrunAciklama>Test işlemci</UrunAciklama>
+        <AnaKategori>OEM &amp; ÇEVRE BİRİMLERİ</AnaKategori>
+        <AraKategori>İşlemciler</AraKategori>
+        <Fiyat>10,0000</Fiyat>
+        <DovizTuru>TL</DovizTuru>
+        <Stok>2</Stok>
+        <GorselKucuk>http://resim.example/th.jpg</GorselKucuk>
+        <GorselBuyuk>http://resim.example/big.jpg</GorselBuyuk>
+      </Urun>
+    </Urunler>`;
+  const products = parseSupplierXml(xml, new URL("https://www.bilgisayarim.com.tr/feed.xml"));
+  assert.equal(products[0].mainCategory, "OEM & ÇEVRE BİRİMLERİ");
+  assert.equal(products[0].currency, "TRY");
+  assert.equal(products[0].image, "https://resim.example/big.jpg");
+  assert.equal(products[0].category, "bilgisayar");
 });
 
 test("supplier XML accepts Adi and BayiFiyat field names", () => {

@@ -108,8 +108,75 @@
 
   function renderNav(root, categories) {
     root.textContent = "";
-    publishedCategories(categories).forEach((cat) => root.appendChild(buildMegaItem(cat)));
-    renderHeroOrbit(publishedCategories(categories));
+    const published = publishedCategories(categories);
+    if (published.length > 4) {
+      const li = document.createElement("li");
+      li.className = "nav-mega";
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "nav-mega-toggle";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-haspopup", "true");
+      toggle.innerHTML =
+        '<span>Ürünler</span><svg class="nav-mega-caret" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7l5 6 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const panel = document.createElement("div");
+      panel.className = "nav-mega-panel is-catalog";
+      panel.setAttribute("role", "region");
+      panel.setAttribute("aria-label", "Ürün kategorileri");
+      const groups = document.createElement("div");
+      groups.className = "nav-mega-groups";
+      published.forEach((cat) => {
+        const group = document.createElement("div");
+        group.className = "nav-mega-group";
+        const heading = document.createElement("a");
+        heading.className = "nav-mega-group-title";
+        heading.href = categoryHref(cat.slug);
+        heading.textContent = cat.name;
+        const list = document.createElement("ul");
+        list.className = "nav-mega-list";
+        (cat.children || []).forEach((child) => {
+          const childLi = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = categoryHref(cat.slug, child.slug);
+          a.textContent = child.name;
+          childLi.appendChild(a);
+          list.appendChild(childLi);
+        });
+        group.appendChild(heading);
+        group.appendChild(list);
+        groups.appendChild(group);
+      });
+      panel.appendChild(groups);
+      toggle.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const open = !li.classList.contains("open");
+        closeAllMega(root);
+        li.classList.toggle("open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      let hoverCloseTimer = null;
+      const isDesktopNav = () => window.matchMedia("(min-width: 861px)").matches;
+      li.addEventListener("mouseenter", () => {
+        if (!isDesktopNav()) return;
+        clearTimeout(hoverCloseTimer);
+        closeAllMega(root);
+        li.classList.add("open");
+        toggle.setAttribute("aria-expanded", "true");
+      });
+      li.addEventListener("mouseleave", () => {
+        if (!isDesktopNav()) return;
+        hoverCloseTimer = setTimeout(() => {
+          li.classList.remove("open");
+          toggle.setAttribute("aria-expanded", "false");
+        }, 140);
+      });
+      li.appendChild(toggle);
+      li.appendChild(panel);
+      root.appendChild(li);
+    } else {
+      published.forEach((cat) => root.appendChild(buildMegaItem(cat)));
+    }
+    renderHeroOrbit(published);
   }
 
   const HERO_ICON_SVG = {
