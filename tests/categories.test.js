@@ -9,47 +9,77 @@ const {
   isValidCategoryPair,
   assignedSiteCategory,
   hasSiteCategory,
+  dropRetiredParents,
 } = require("../lib/categories");
 
-test("loadCategories exposes two parents with expected children", () => {
+const SAMPLE_TREE = [
+  {
+    name: "OEM & ÇEVRE BİRİMLERİ",
+    slug: "oem-cevre-birimleri",
+    active: true,
+    children: [
+      { name: "İşlemciler", slug: "islemciler", active: true },
+      { name: "USB Bellekler", slug: "usb-bellek", active: true },
+    ],
+  },
+];
+
+test("seed category file starts empty so XML tree is the storefront menu", () => {
   const cats = loadCategories();
-  assert.equal(cats.length, 2);
-  assert.equal(cats[0].slug, "bilgisayar-tablet");
-  assert.equal(cats[1].slug, "cevre-birimleri");
-  assert.ok(cats[0].children.some((c) => c.slug === "notebook"));
-  assert.ok(cats[0].children.some((c) => c.slug === "islemciler" && c.name === "İşlemciler"));
-  assert.ok(cats[1].children.some((c) => c.slug === "usb-bellek"));
+  assert.equal(cats.length, 0);
 });
 
 test("findCategory and href helpers", () => {
-  const cats = loadCategories();
-  const found = findCategory(cats, "bilgisayar-tablet", "monitor");
-  assert.equal(found.parent.name, "Bilgisayar / Tablet");
-  assert.equal(found.child.name, "Monitör");
+  const found = findCategory(SAMPLE_TREE, "oem-cevre-birimleri", "islemciler");
+  assert.equal(found.parent.name, "OEM & ÇEVRE BİRİMLERİ");
+  assert.equal(found.child.name, "İşlemciler");
   assert.equal(
-    categoryHref("bilgisayar-tablet", "notebook"),
-    "/urunler?kategori=bilgisayar-tablet&alt=notebook"
+    categoryHref("oem-cevre-birimleri", "islemciler"),
+    "/urunler?kategori=oem-cevre-birimleri&alt=islemciler"
   );
-  assert.equal(isValidCategoryPair(cats, "cevre-birimleri", "modem"), true);
-  assert.equal(isValidCategoryPair(cats, "cevre-birimleri", "yok"), false);
+  assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "usb-bellek"), true);
+  assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "yok"), false);
 });
 
 test("hasSiteCategory requires a valid parent and child slug pair", () => {
-  const cats = loadCategories();
-  assert.equal(hasSiteCategory({}, cats), false);
-  assert.equal(hasSiteCategory({ siteParent: "bilgisayar-tablet" }, cats), false);
+  assert.equal(hasSiteCategory({}, SAMPLE_TREE), false);
+  assert.equal(hasSiteCategory({ siteParent: "oem-cevre-birimleri" }, SAMPLE_TREE), false);
   assert.equal(
-    hasSiteCategory({ siteParent: "bilgisayar-tablet", siteChild: "yok" }, cats),
+    hasSiteCategory({ siteParent: "oem-cevre-birimleri", siteChild: "yok" }, SAMPLE_TREE),
     false
   );
   const assigned = assignedSiteCategory(
-    { siteParent: "cevre-birimleri", siteChild: "usb-bellek" },
-    cats
+    { siteParent: "oem-cevre-birimleri", siteChild: "usb-bellek" },
+    SAMPLE_TREE
   );
-  assert.equal(assigned.label, "Çevre Birimleri › USB Bellekler");
+  assert.equal(assigned.label, "OEM & ÇEVRE BİRİMLERİ › USB Bellekler");
   assert.equal(
-    hasSiteCategory({ siteParent: "cevre-birimleri", siteChild: "usb-bellek" }, cats),
+    hasSiteCategory({ siteParent: "oem-cevre-birimleri", siteChild: "usb-bellek" }, SAMPLE_TREE),
     true
+  );
+});
+
+test("retired seed parents are stripped from the live tree", () => {
+  const pruned = dropRetiredParents([
+    {
+      slug: "bilgisayar-tablet",
+      name: "Bilgisayar / Tablet",
+      children: [{ slug: "notebook", name: "Notebook" }],
+    },
+    {
+      slug: "oem-cevre-birimleri",
+      name: "OEM & ÇEVRE BİRİMLERİ",
+      children: [{ slug: "islemciler", name: "İşlemciler" }],
+    },
+    {
+      slug: "cevre-birimleri",
+      name: "Çevre Birimleri",
+      children: [{ slug: "modem", name: "Modem" }],
+    },
+  ]);
+  assert.deepEqual(
+    pruned.map((row) => row.slug),
+    ["oem-cevre-birimleri"]
   );
 });
 
@@ -89,8 +119,7 @@ test("category store seeds from site tree and persists edits", () => {
   try {
     const store = createCategoryStore(root);
     const seeded = store.list();
-    assert.equal(seeded.length, 2);
-    assert.equal(seeded[0].active, true);
+    assert.equal(seeded.length, 0);
     const saved = store.save([
       {
         name: "Yeni Dal",
@@ -103,6 +132,22 @@ test("category store seeds from site tree and persists edits", () => {
     saved[0].active = true;
     assert.equal(store.save(saved).length, 1);
     assert.equal(store.publicList()[0].children[0].name, "Yaprak");
+    store.save([
+      {
+        name: "Bilgisayar / Tablet",
+        slug: "bilgisayar-tablet",
+        children: [{ name: "Notebook", slug: "notebook" }],
+      },
+      {
+        name: "OEM",
+        slug: "oem-cevre-birimleri",
+        children: [{ name: "İşlemciler", slug: "islemciler" }],
+      },
+    ]);
+    assert.deepEqual(
+      store.list().map((row) => row.slug),
+      ["oem-cevre-birimleri"]
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

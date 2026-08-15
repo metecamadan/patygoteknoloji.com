@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { mergeCatalogProducts } = require("../lib/catalog");
+const { TEST_SITE_CATEGORIES } = require("./helpers/site-categories");
 
 test("manual and active supplier products form one public catalog", () => {
   const result = mergeCatalogProducts(
@@ -34,7 +35,7 @@ test("manual and active supplier products form one public catalog", () => {
         category: "bilgisayar",
         image: "https://cdn.example/sup-1.jpg",
         active: true,
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
       },
       {
@@ -47,7 +48,7 @@ test("manual and active supplier products form one public catalog", () => {
         active: false,
       },
     ],
-    { includeInactiveManual: false }
+    { includeInactiveManual: false, categories: TEST_SITE_CATEGORIES }
   );
 
   assert.deepEqual(
@@ -122,10 +123,11 @@ test("supplier IDs cannot overwrite manual products", () => {
         salePrice: 200,
         category: "bilgisayar",
         active: true,
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
       },
-    ]
+    ],
+    { categories: TEST_SITE_CATEGORIES }
   );
   assert.equal(result.length, 1);
   assert.equal(result[0].source, "manual");
@@ -152,16 +154,17 @@ test("active supplier products without site category stay off the public catalog
         salePrice: 220,
         category: "bilgisayar",
         active: true,
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
       },
-    ]
+    ],
+    { categories: TEST_SITE_CATEGORIES }
   );
   assert.deepEqual(
     result.map((item) => item.id),
     ["sup-2"]
   );
-  assert.equal(result[0].category, "bilgisayar-tablet");
+  assert.equal(result[0].category, "oem-cevre-birimleri");
   assert.equal(result[0].siteChild, "notebook");
 });
 
@@ -172,10 +175,10 @@ test("toPublicProduct exposes site child as alt for storefront filters", () => {
     brand: "HP",
     name: "Notebook",
     price: 200,
-    category: "bilgisayar-tablet",
+    category: "oem-cevre-birimleri",
     siteChild: "notebook",
     active: true,
   });
-  assert.equal(publicProduct.category, "bilgisayar-tablet");
+  assert.equal(publicProduct.category, "oem-cevre-birimleri");
   assert.equal(publicProduct.alt, "notebook");
 });

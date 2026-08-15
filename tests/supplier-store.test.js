@@ -11,6 +11,10 @@ const {
   validateSupplierUrl,
 } = require("../lib/supplier");
 const { analyzeSupplierFeedIssues } = require("../lib/akakce");
+const {
+  installTestSiteCategories,
+  clearTestSiteCategories,
+} = require("./helpers/site-categories");
 
 const SAMPLE_XML = `<?xml version="1.0"?>
 <catalog><products><product>
@@ -156,6 +160,7 @@ test("supplier store stages products as passive and applies margin overrides", a
     fetchXml: async () => SAMPLE_XML,
   });
   try {
+    installTestSiteCategories(root);
     await store.saveUrl("https://supplier.example/feed.xml?token=secret");
     await store.refresh();
     let product = store.listProducts()[0];
@@ -168,7 +173,7 @@ test("supplier store stages products as passive and applies margin overrides", a
         active: true,
         marginPercent: 30,
         name: "Özel Ürün Adı",
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
       },
     ]);
@@ -197,6 +202,7 @@ test("supplier store stages products as passive and applies margin overrides", a
       []
     );
   } finally {
+    clearTestSiteCategories();
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
@@ -215,13 +221,14 @@ test("failed XML refresh keeps last catalog and does not empty the pool", async 
     },
   });
   try {
+    installTestSiteCategories(root);
     await store.saveUrl("https://supplier.example/feed.xml");
     await store.refresh();
     store.updateOverrides([
       {
         supplierSku: "SKU-1",
         active: true,
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
       },
     ]);
@@ -236,6 +243,7 @@ test("failed XML refresh keeps last catalog and does not empty the pool", async 
     assert.equal(product.active, true);
     assert.equal(product.catalogStale, true);
   } finally {
+    clearTestSiteCategories();
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
@@ -279,6 +287,7 @@ test("supplier store blocks publish without a valid site category", async () => 
     fetchXml: async () => SAMPLE_XML,
   });
   try {
+    installTestSiteCategories(root);
     await store.saveUrl("https://supplier.example/feed.xml");
     await store.refresh();
     assert.throws(
@@ -288,7 +297,7 @@ test("supplier store blocks publish without a valid site category", async () => 
     store.updateOverrides([
       {
         supplierSku: "SKU-1",
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
         active: true,
       },
@@ -302,6 +311,7 @@ test("supplier store blocks publish without a valid site category", async () => 
     assert.equal(cleared.active, false);
     assert.equal(cleared.siteCategoryAssigned, false);
   } finally {
+    clearTestSiteCategories();
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

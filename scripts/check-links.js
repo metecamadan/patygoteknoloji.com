@@ -57,10 +57,13 @@ function staticExists(pathname) {
   return false;
 }
 
-async function waitForServer(base, child) {
+async function waitForServer(base, child, getStderr) {
   const deadline = Date.now() + 8000;
   while (Date.now() < deadline) {
-    if (child.exitCode != null) throw new Error("server exited");
+    if (child.exitCode != null) {
+      const detail = typeof getStderr === "function" ? getStderr() : "";
+      throw new Error("server exited" + (detail ? ": " + detail : ""));
+    }
     try {
       const res = await fetch(base + "/api/payment/status");
       if (res.ok) return;
@@ -89,6 +92,7 @@ async function main() {
 
   const port = await getFreePort();
   const dataRoot = fs.mkdtempSync(path.join(require("os").tmpdir(), "patygo-links-"));
+  const stderrChunks = [];
   const child = spawn(process.execPath, ["server.js"], {
     cwd: root,
     env: {
@@ -97,12 +101,18 @@ async function main() {
       ADMIN_PASSWORD: "link-check-admin",
       PATYGO_DATA_ROOT: dataRoot,
     },
-    stdio: "ignore",
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  child.stderr.on("data", (chunk) => {
+    stderrChunks.push(Buffer.from(chunk));
+    if (stderrChunks.length > 40) stderrChunks.shift();
   });
   const base = `http://127.0.0.1:${port}`;
   const httpBroken = [];
   try {
-    await waitForServer(base, child);
+    await waitForServer(base, child, () =>
+      Buffer.concat(stderrChunks).toString("utf8").trim().slice(-1500)
+    );
     const paths = new Set([...targets.keys()].map((p) => (p.endsWith(".html") ? p.replace(/\.html$/i, "") : p)));
     paths.add("/");
     paths.add("/admin");
@@ -110,7 +120,7 @@ async function main() {
     paths.add("/sitemap.xml");
     paths.add("/robots.txt");
     paths.add("/assets/data/categories.json");
-    paths.add("/urunler?kategori=bilgisayar-tablet&alt=notebook");
+    paths.add("/urunler");
 
     for (const p of [...paths].sort()) {
       if (p.startsWith("/api/")) continue;

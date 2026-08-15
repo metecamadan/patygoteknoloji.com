@@ -77,7 +77,7 @@ test("merge keeps existing site categories and adds XML parents", () => {
       children: [{ name: "İşlemciler", slug: "islemciler" }],
     },
   ]);
-  assert.ok(merged.some((row) => row.slug === "bilgisayar-tablet"));
+  assert.ok(!merged.some((row) => row.slug === "bilgisayar-tablet"));
   assert.ok(merged.some((row) => row.slug === "oem-cevre-birimleri"));
   fs.rmSync(root, { recursive: true, force: true });
 });

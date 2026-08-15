@@ -4,6 +4,10 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { createMultiSupplierManager } = require("../lib/multi-supplier");
+const {
+  installTestSiteCategories,
+  clearTestSiteCategories,
+} = require("./helpers/site-categories");
 
 function xml(sku, name, price) {
   return `<?xml version="1.0"?>
@@ -47,6 +51,7 @@ test("three supplier slots keep configuration, products and overrides isolated",
     defaultMarginPercent: 10,
   });
   try {
+    installTestSiteCategories(root);
     for (const slot of manager.listSlots()) {
       await manager.saveConfig(slot.id, {
         url: `https://${slot.id}.example/feed.xml?token=secret`,
@@ -78,7 +83,7 @@ test("three supplier slots keep configuration, products and overrides isolated",
         supplierSku: "SKU-1",
         active: true,
         marginPercent: 25,
-        siteParent: "bilgisayar-tablet",
+        siteParent: "oem-cevre-birimleri",
         siteChild: "notebook",
       },
     ]);
@@ -99,6 +104,7 @@ test("three supplier slots keep configuration, products and overrides isolated",
     assert.ok(statuses.every((slot) => slot.configured));
     assert.doesNotMatch(JSON.stringify(statuses), /secret/);
   } finally {
+    clearTestSiteCategories();
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
