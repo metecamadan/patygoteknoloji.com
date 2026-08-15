@@ -106,7 +106,32 @@ test("supplier XML decodes entities, prefers GorselBuyuk and upgrades http image
   assert.equal(products[0].mainCategory, "OEM & ÇEVRE BİRİMLERİ");
   assert.equal(products[0].currency, "TRY");
   assert.equal(products[0].image, "https://resim.example/big.jpg");
+  assert.deepEqual(products[0].images, [
+    "https://resim.example/big.jpg",
+    "https://resim.example/th.jpg",
+  ]);
+  assert.equal(products[0].description, "");
   assert.equal(products[0].category, "bilgisayar");
+});
+
+test("supplier XML expands thumbnail URLs and keeps a gallery", () => {
+  const xml = `<?xml version="1.0"?>
+    <Urunler>
+      <Urun>
+        <UrunKodu>IMG-TH</UrunKodu>
+        <UrunAciklama>Intel işlemci</UrunAciklama>
+        <UrunAciklama2>Kutu fanlı masaüstü işlemci.</UrunAciklama2>
+        <Fiyat>10</Fiyat>
+        <GorselKucuk>https://resim.example/91095_th.jpg</GorselKucuk>
+      </Urun>
+    </Urunler>`;
+  const products = parseSupplierXml(xml, new URL("https://www.bilgisayarim.com.tr/feed.xml"));
+  assert.equal(products[0].image, "https://resim.example/91095.jpg");
+  assert.deepEqual(products[0].images, [
+    "https://resim.example/91095.jpg",
+    "https://resim.example/91095_th.jpg",
+  ]);
+  assert.equal(products[0].description, "Kutu fanlı masaüstü işlemci.");
 });
 
 test("supplier XML accepts Adi and BayiFiyat field names", () => {

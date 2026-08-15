@@ -651,13 +651,27 @@
               </div>
             </div>
             <div class="field">
-              <label for="sFeedDescription">Kısa açıklama *</label>
-              <input id="sFeedDescription" type="text" maxlength="280" required />
+              <label for="sFeedDescription">Kısa açıklama (ürün kartı)</label>
+              <textarea id="sFeedDescription" rows="3" maxlength="280" placeholder="XML açıklamasını burada revize edin"></textarea>
+              <p class="admin-field-help">Liste kartında görünür. Ürün adıyla aynıysa sitede gizlenir; buradan özgün metin yazın.</p>
             </div>
             <div class="field">
-              <label for="sFeedImage">Görsel URL *</label>
-              <input id="sFeedImage" type="url" maxlength="700" placeholder="https://..." required />
-              <p class="admin-field-help">Export ve site için en az bir görsel adresi gerekir.</p>
+              <label for="sFeedDetails">Detay açıklama (ürün sayfası)</label>
+              <textarea id="sFeedDetails" rows="6" maxlength="8000" placeholder="Ürün detay sayfasındaki uzun açıklama"></textarea>
+              <p class="admin-field-help">XML metnini revize edin, kısaltın veya yeniden yazın. Boşsa kısa açıklama kullanılır.</p>
+            </div>
+            <div class="field">
+              <label for="sFeedImageFile">Ürün görselleri</label>
+              <input id="sFeedImageFile" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+              <div class="form-row">
+                <div class="field">
+                  <label for="sFeedImageUrl">Görsel URL ekle</label>
+                  <input id="sFeedImageUrl" type="url" maxlength="700" placeholder="https://..." />
+                </div>
+              </div>
+              <p class="admin-field-help">XML görselleri otomatik gelir. Sürükleyerek sıralayın, silin, URL ekleyin veya dosya yükleyin. İlk görsel kapaktır.</p>
+              <button type="button" class="btn btn-outline btn-xs" id="sFeedImageUrlBtn">URL’yi galeriye ekle</button>
+              <div id="sFeedImagePreview" class="admin-preview-list" hidden></div>
             </div>
             <div class="admin-form-actions">
               <button type="submit" class="btn btn-primary" id="saveSupplierFeedBtn">Kaydet</button>

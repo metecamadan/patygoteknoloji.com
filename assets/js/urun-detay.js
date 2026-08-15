@@ -67,6 +67,11 @@
       const mainImage = document.createElement("img");
       mainImage.src = images[0];
       mainImage.alt = product.name;
+      mainImage.referrerPolicy = "no-referrer";
+      mainImage.addEventListener("error", () => {
+        const next = images.find((url) => url && url !== mainImage.getAttribute("src"));
+        if (next) mainImage.src = next;
+      });
       protectMedia(mainImage);
       media.appendChild(mainImage);
       gallery.appendChild(media);
@@ -82,6 +87,7 @@
           const thumb = document.createElement("img");
           thumb.src = url;
           thumb.alt = "";
+          thumb.referrerPolicy = "no-referrer";
           protectMedia(thumb);
           button.appendChild(thumb);
           button.addEventListener("click", () => {

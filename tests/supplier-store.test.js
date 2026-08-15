@@ -188,6 +188,26 @@ test("supplier store stages products as passive and applies margin overrides", a
     store.updateOverrides([
       {
         supplierSku: "SKU-1",
+        description: "Revize kısa açıklama",
+        details: "Revize detay metni",
+        images: [
+          "https://cdn.example/sku-1-b.jpg",
+          "https://cdn.example/sku-1.jpg",
+        ],
+      },
+    ]);
+    product = store.listProducts()[0];
+    assert.equal(product.description, "Revize kısa açıklama");
+    assert.equal(product.details, "Revize detay metni");
+    assert.equal(product.image, "https://cdn.example/sku-1-b.jpg");
+    assert.deepEqual(product.images, [
+      "https://cdn.example/sku-1-b.jpg",
+      "https://cdn.example/sku-1.jpg",
+    ]);
+
+    store.updateOverrides([
+      {
+        supplierSku: "SKU-1",
         barcode: "8690000000001",
         gtipCode: "84.71.30.00.00.00",
         mainCategory: "KİŞİSEL BİLGİSAYARLAR",

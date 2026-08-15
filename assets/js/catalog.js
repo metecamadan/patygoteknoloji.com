@@ -126,13 +126,34 @@
       (Array.isArray(product.images) && product.images.find(Boolean)) ||
       product.image ||
       "";
+    const gallery = (
+      Array.isArray(product.images) && product.images.length
+        ? product.images
+        : primaryImage
+          ? [primaryImage]
+          : []
+    ).filter(Boolean);
     const visual = document.createElement("div");
-    visual.className = "visual" + (primaryImage ? " has-image" : "");
-    if (primaryImage) {
+    visual.className = "visual" + (gallery.length ? " has-image" : "");
+    if (gallery.length) {
       const img = document.createElement("img");
-      img.src = primaryImage;
+      img.src = gallery[0];
       img.alt = product.name || brand;
       img.loading = "lazy";
+      img.referrerPolicy = "no-referrer";
+      img.addEventListener("error", () => {
+        const next = gallery.find((url) => url && url !== img.getAttribute("src"));
+        if (next && img.dataset.fallback !== "1") {
+          img.dataset.fallback = "1";
+          img.src = next;
+          return;
+        }
+        visual.classList.remove("has-image");
+        img.remove();
+        const brandSpan = document.createElement("span");
+        brandSpan.textContent = brand;
+        visual.appendChild(brandSpan);
+      });
       visual.appendChild(img);
     } else {
       const brandSpan = document.createElement("span");
@@ -156,7 +177,11 @@
     body.appendChild(tag);
     body.appendChild(title);
 
-    if (product.description) {
+    if (
+      product.description &&
+      String(product.description).trim() &&
+      String(product.description).trim() !== String(product.name || "").trim()
+    ) {
       const desc = document.createElement("p");
       desc.className = "product-desc";
       desc.textContent = product.description;

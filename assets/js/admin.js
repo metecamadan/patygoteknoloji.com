@@ -8,6 +8,7 @@
   let products = [];
   let selectedIndex = -1;
   let currentImages = [];
+  let supplierFeedImages = [];
   let supplierProducts = [];
   let supplierPoolMeta = { total: 0, page: 1, totalPages: 1, catalogCount: 0, activeCount: 0 };
   let supplierSlots = [];
@@ -178,7 +179,9 @@
     midCategory: document.getElementById("sFeedMidCategory"),
     subCategory: document.getElementById("sFeedSubCategory"),
     description: document.getElementById("sFeedDescription"),
-    image: document.getElementById("sFeedImage"),
+    details: document.getElementById("sFeedDetails"),
+    imageFile: document.getElementById("sFeedImageFile"),
+    imageUrl: document.getElementById("sFeedImageUrl"),
   };
   const supplierFeedIssues = document.getElementById("supplierFeedIssues");
   const supplierFeedSubtitle = document.getElementById("supplierFeedSubtitle");
@@ -409,6 +412,49 @@
     });
   }
 
+  function renderSupplierFeedImagePreviews() {
+    const root = document.getElementById("sFeedImagePreview");
+    if (!root) return;
+    root.textContent = "";
+    root.hidden = supplierFeedImages.length === 0;
+    supplierFeedImages.forEach((url, index) => {
+      const item = document.createElement("div");
+      item.className = "admin-preview-item";
+      item.draggable = true;
+      item.dataset.index = String(index);
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "XML görseli " + (index + 1);
+      img.referrerPolicy = "no-referrer";
+      const badge = document.createElement("span");
+      badge.textContent = index === 0 ? "Kapak" : String(index + 1);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Görseli kaldır");
+      remove.textContent = "×";
+      remove.addEventListener("click", () => {
+        supplierFeedImages.splice(index, 1);
+        renderSupplierFeedImagePreviews();
+      });
+      item.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("text/plain", String(index));
+      });
+      item.addEventListener("dragover", (ev) => ev.preventDefault());
+      item.addEventListener("drop", (ev) => {
+        ev.preventDefault();
+        const from = Number(ev.dataTransfer.getData("text/plain"));
+        if (!Number.isInteger(from) || from === index || !supplierFeedImages[from]) return;
+        const moved = supplierFeedImages.splice(from, 1)[0];
+        supplierFeedImages.splice(index, 0, moved);
+        renderSupplierFeedImagePreviews();
+      });
+      item.appendChild(img);
+      item.appendChild(badge);
+      item.appendChild(remove);
+      root.appendChild(item);
+    });
+  }
+
   function openSupplierFeedModal(item) {
     if (!supplierFeedModal || !item) return;
     editingSupplierFeedKey = item.supplierSlot + "|" + item.supplierSku;
@@ -442,8 +488,26 @@
       (item.xmlMainCategory || item.mainCategory || "").trim()
     );
     if (!hasFeedCats) applySupplierFeedCategoryDefaults(false);
-    supplierFeedFields.description.value = item.description || item.name || "";
-    supplierFeedFields.image.value = item.image || "";
+    supplierFeedFields.description.value =
+      item.description && item.description !== item.name ? item.description : "";
+    if (supplierFeedFields.details) {
+      supplierFeedFields.details.value =
+        item.details && item.details !== item.name && item.details !== item.description
+          ? item.details
+          : item.description && item.description !== item.name
+            ? item.description
+            : "";
+    }
+    supplierFeedImages = (
+      Array.isArray(item.images) && item.images.length
+        ? item.images
+        : item.image
+          ? [item.image]
+          : []
+    )
+      .filter(Boolean)
+      .slice(0, MAX_PRODUCT_IMAGES);
+    renderSupplierFeedImagePreviews();
     renderSupplierFeedIssues(item.feedIssues || []);
     note(supplierFeedFormNote, "", "");
     supplierFeedModal.hidden = false;
@@ -1759,16 +1823,34 @@
       const productCell = document.createElement("td");
       const product = document.createElement("div");
       product.className = "admin-table-product";
-      const media = item.image
+      const media = (Array.isArray(item.images) && item.images[0]) || item.image
         ? Object.assign(document.createElement("img"), {
-            src: item.image,
+            src: (Array.isArray(item.images) && item.images[0]) || item.image,
             alt: item.name || "",
             loading: "lazy",
+            referrerPolicy: "no-referrer",
           })
         : Object.assign(document.createElement("div"), {
             className: "ph",
             textContent: (item.brand || "?").slice(0, 3),
           });
+      if (media.tagName === "IMG") {
+        media.addEventListener("error", () => {
+          const fallback = (item.images || []).find((url) => url && url !== media.src);
+          if (fallback && media.dataset.fallback !== "1") {
+            media.dataset.fallback = "1";
+            media.src = fallback;
+            return;
+          }
+          const ph = document.createElement("div");
+          ph.className = "ph";
+          ph.textContent = (item.brand || "?").slice(0, 3);
+          media.replaceWith(ph);
+        });
+        media.style.cursor = "pointer";
+        media.title = "Görselleri ve açıklamayı düzenle";
+        media.addEventListener("click", () => openSupplierFeedModal(item));
+      }
       const text = document.createElement("div");
       const nameInput = document.createElement("input");
       nameInput.className = "admin-name-input";
@@ -2342,7 +2424,9 @@
           midCategory: supplierFeedFields.midCategory.value,
           subCategory: supplierFeedFields.subCategory.value,
           description: supplierFeedFields.description.value,
-          image: supplierFeedFields.image.value,
+          details: supplierFeedFields.details ? supplierFeedFields.details.value : "",
+          image: supplierFeedImages[0] || "",
+          images: supplierFeedImages.slice(0, MAX_PRODUCT_IMAGES),
         };
         await updateSupplierProducts([payload]);
         notifySite();
@@ -2357,6 +2441,66 @@
       } finally {
         if (saveBtn) saveBtn.disabled = false;
       }
+    });
+  }
+
+  if (supplierFeedFields.imageFile) {
+    supplierFeedFields.imageFile.addEventListener("change", async () => {
+      const files = Array.from(supplierFeedFields.imageFile.files || []).slice(
+        0,
+        Math.max(0, MAX_PRODUCT_IMAGES - supplierFeedImages.length)
+      );
+      if (!files.length) return;
+      note(supplierFeedFormNote, "", files.length + " görsel yükleniyor…");
+      try {
+        for (const file of files) {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const uploaded = await api("/api/admin/upload", {
+            method: "POST",
+            body: JSON.stringify({
+              dataUrl,
+              name: supplierFeedFields.supplierSku.value || file.name,
+            }),
+          });
+          const url = String(uploaded.url || "");
+          supplierFeedImages.push(
+            url.startsWith("/") || /^https?:\/\//i.test(url) ? url : "/" + url
+          );
+        }
+        supplierFeedFields.imageFile.value = "";
+        renderSupplierFeedImagePreviews();
+        note(supplierFeedFormNote, "ok", files.length + " görsel yüklendi.");
+      } catch (err) {
+        note(supplierFeedFormNote, "err", err.message || "Görsel yüklenemedi");
+      }
+    });
+  }
+
+  const sFeedImageUrlBtn = document.getElementById("sFeedImageUrlBtn");
+  if (sFeedImageUrlBtn && supplierFeedFields.imageUrl) {
+    sFeedImageUrlBtn.addEventListener("click", () => {
+      const href = String(supplierFeedFields.imageUrl.value || "").trim();
+      if (!href) {
+        note(supplierFeedFormNote, "err", "Eklenecek görsel adresini yazın.");
+        return;
+      }
+      if (supplierFeedImages.length >= MAX_PRODUCT_IMAGES) {
+        note(supplierFeedFormNote, "err", "En fazla " + MAX_PRODUCT_IMAGES + " görsel eklenebilir.");
+        return;
+      }
+      if (supplierFeedImages.indexOf(href) >= 0) {
+        note(supplierFeedFormNote, "err", "Bu görsel zaten galeride.");
+        return;
+      }
+      supplierFeedImages.push(href);
+      supplierFeedFields.imageUrl.value = "";
+      renderSupplierFeedImagePreviews();
+      note(supplierFeedFormNote, "ok", "Görsel galeriye eklendi.");
     });
   }
 

@@ -229,6 +229,17 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /isSupplierProducts/);
 });
 
+test("XML feed revision edits image gallery and description", () => {
+  assert.match(html, /id="sFeedImagePreview"/);
+  assert.match(html, /id="sFeedImageFile"/);
+  assert.match(html, /id="sFeedImageUrlBtn"/);
+  assert.match(html, /id="sFeedDetails"/);
+  assert.match(html, /<textarea id="sFeedDescription"/);
+  assert.match(script, /renderSupplierFeedImagePreviews/);
+  assert.match(script, /supplierFeedImages/);
+  assert.match(script, /details: supplierFeedFields.details/);
+});
+
 test("admin XML refresh errors mention supplier access not generic /admin path", () => {
   assert.doesNotMatch(script, /API'ye ulaşılamadı\. Sunucu çalışıyor mu\? Adres: \/admin/);
   assert.match(script, /XML çekimi zaman aşımına uğradı/);
