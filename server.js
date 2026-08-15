@@ -10,7 +10,7 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
-const { publishSupplierSlot } = require("./lib/supplier-site");
+const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { mergeCatalogProducts, queryPublicCatalog } = require("./lib/catalog");
@@ -480,6 +480,24 @@ function mergedProducts(includeInactiveManual) {
     normalizeProduct,
     categoryDefaults: CATEGORY_FEED_DEFAULTS,
   });
+}
+
+function syncLiveXmlCategories(slotId) {
+  try {
+    return syncXmlSiteCategories({
+      manager: supplierManager,
+      categoryStore,
+      slotId: slotId || "supplier-1",
+      activate: false,
+    });
+  } catch (err) {
+    console.warn(
+      "XML kategori senkronu atlandı:",
+      slotId || "supplier-1",
+      err && err.message ? err.message : err
+    );
+    return null;
+  }
 }
 
 function enrichSupplierProducts(products) {
@@ -1134,6 +1152,7 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
       const result = await supplierManager.refresh(body.slotId || "supplier-1");
+      syncLiveXmlCategories(result.slotId);
       const slots = supplierManager.listSlots();
       return json(res, 200, {
         ok: true,
@@ -1487,9 +1506,13 @@ setTimeout(() => {
 
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,
+  afterRefresh: (slotId) => syncLiveXmlCategories(slotId),
   log: (message, slotId, key) => console.log(message, slotId, key),
   logError: (message, slotId, key, detail) =>
     console.error(message, slotId, key, detail || ""),
+});
+supplierManager.listSlots().forEach((slot) => {
+  if (slot.configured) syncLiveXmlCategories(slot.id);
 });
 supplierScheduler.start();
 

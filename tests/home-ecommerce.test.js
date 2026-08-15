@@ -44,17 +44,18 @@ test("nav renders animated hero orbit icons from live site categories", () => {
   assert.match(navJs, /function pickHeroOrbitChips/);
   assert.match(navJs, /leftoverChildren/);
   assert.match(navJs, /tasinabilir-bilgisayarlar/);
+  assert.match(navJs, /notebooklar/);
   assert.match(navJs, /islemciler/);
   assert.match(navJs, /published\.forEach\(\(cat\) => root\.appendChild\(buildMegaItem\(cat\)\)\)/);
 });
 
 test("homepage featured grid uses live catalog tabs instead of demo categories", () => {
+  assert.match(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
   assert.match(indexHtml, /data-filter="oem-cevre-birimleri"/);
   assert.match(indexHtml, /data-filter="cevre-baski-birimleri"/);
   assert.match(indexHtml, /data-filter="tuketici-elektronigi"/);
   assert.match(indexHtml, /data-filter="ev-aletleri"/);
   assert.doesNotMatch(indexHtml, /data-filter="bilgisayar"/);
-  assert.doesNotMatch(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
   assert.doesNotMatch(indexHtml, /data-filter="kucuk-ev"/);
   assert.match(catalogJs, /if \(mode === "featured"\) list = list.slice\(0, 12\)/);
   assert.match(catalogJs, /featuredParents/);

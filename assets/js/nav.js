@@ -155,7 +155,7 @@
   };
 
   const HERO_ORBIT_LAYOUT = [
-    { slugs: ["tasinabilir-bilgisayarlar", "notebook"], top: 6, left: 8, delay: 0, dur: 4.2 },
+    { slugs: ["tasinabilir-bilgisayarlar", "notebooklar", "notebook"], top: 6, left: 8, delay: 0, dur: 4.2 },
     { slugs: ["islemciler", "islemci"], top: 14, left: 62, delay: 0.5, dur: 3.8 },
     { slugs: ["monitorler", "monitor"], top: 38, left: 78, delay: 1.1, dur: 4.6 },
     { slugs: ["klavye"], top: 58, left: 4, delay: 0.3, dur: 3.6 },

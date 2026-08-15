@@ -391,6 +391,7 @@
         payload = ids ? await fetchProductPage({ ids }) : payload;
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
         const featuredParents = [
+          "kisisel-bilgisayarlar",
           "oem-cevre-birimleri",
           "cevre-baski-birimleri",
           "tuketici-elektronigi",

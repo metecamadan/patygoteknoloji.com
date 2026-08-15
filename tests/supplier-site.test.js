@@ -9,6 +9,7 @@ const {
   suggestSiteCategory,
   browseChildName,
   cleanCategoryName,
+  syncXmlSiteCategories,
 } = require("../lib/supplier-site");
 const { createCategoryStore, slugifyCategory } = require("../lib/categories");
 const { queryPublicCatalog } = require("../lib/catalog");
@@ -118,6 +119,67 @@ test("merge keeps existing site categories and adds XML parents", () => {
   assert.ok(!merged.some((row) => row.slug === "bilgisayar-tablet"));
   assert.ok(merged.some((row) => row.slug === "oem-cevre-birimleri"));
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("sync restores missing XML parent KİŞİSEL BİLGİSAYARLAR", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-"));
+  const store = createCategoryStore(root);
+  store.save([
+    {
+      slug: "oem-cevre-birimleri",
+      name: "OEM & ÇEVRE BİRİMLERİ",
+      children: [{ slug: "islemciler", name: "İşlemciler" }],
+    },
+    {
+      slug: "kisisel-bakim-ve-kozmetik",
+      name: "KİŞİSEL BAKIM VE KOZMETİK",
+      children: [{ slug: "sampuan", name: "Şampuan" }],
+    },
+  ]);
+  const updates = [];
+  const manager = {
+    listProducts() {
+      return [
+        {
+          supplierSlot: "supplier-1",
+          supplierSku: "NB-1",
+          mainCategory: "KİŞİSEL BİLGİSAYARLAR",
+          midCategory: "Taşınabilir Bilgisayarlar",
+          subCategory: "Notebooklar",
+        },
+        {
+          supplierSlot: "supplier-1",
+          supplierSku: "CPU-1",
+          mainCategory: "OEM & ÇEVRE BİRİMLERİ",
+          midCategory: "İşlemciler",
+          subCategory: "Intel İşlemciler",
+        },
+      ];
+    },
+    updateProducts(rows) {
+      updates.push(...rows);
+    },
+  };
+  try {
+    const result = syncXmlSiteCategories({
+      manager,
+      categoryStore: store,
+      slotId: "supplier-1",
+    });
+    const tree = store.list();
+    assert.equal(result.empty, false);
+    assert.ok(tree.some((row) => row.slug === "kisisel-bilgisayarlar"));
+    assert.ok(tree.some((row) => row.slug === "oem-cevre-birimleri"));
+    assert.ok(tree.some((row) => row.slug === "kisisel-bakim-ve-kozmetik"));
+    const pc = tree.find((row) => row.slug === "kisisel-bilgisayarlar");
+    assert.ok(pc.children.some((child) => child.slug === "notebooklar"));
+    const notebook = updates.find((row) => row.supplierSku === "NB-1");
+    assert.equal(notebook.siteParent, "kisisel-bilgisayarlar");
+    assert.equal(notebook.siteChild, "notebooklar");
+    assert.equal(notebook.active, undefined);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("queryPublicCatalog pages and filters by site category", () => {
