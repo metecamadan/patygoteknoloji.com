@@ -1598,12 +1598,12 @@ const supplierScheduler = createSupplierScheduler({
 });
 supplierScheduler.start();
 setImmediate(() => {
-  supplierManager.listSlots().forEach((slot) => {
-    if (slot.configured) syncLiveXmlCategories(slot.id);
-  });
   try {
     mergedProducts(false);
   } catch (_) {}
+  supplierManager.listSlots().forEach((slot) => {
+    if (slot.configured) syncLiveXmlCategories(slot.id);
+  });
 });
 
 server.on("error", (err) => {
