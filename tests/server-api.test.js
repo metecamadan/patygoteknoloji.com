@@ -265,4 +265,48 @@ test("admin category tree API publishes only active categories to the public fee
     ["canli-dal"]
   );
   assert.deepEqual(publicJson.categories[0].children.map((row) => row.slug), ["canli-yaprak"]);
+
+  const reversed = await fetch(baseUrl + "/api/admin/categories", {
+    method: "PUT",
+    headers: Object.assign({ "Content-Type": "application/json" }, auth),
+    body: JSON.stringify({
+      categories: [
+        {
+          name: "İkinci Dal",
+          slug: "ikinci-dal",
+          active: true,
+          children: [
+            { name: "Yaprak 2", slug: "yaprak-2", active: true },
+            { name: "Yaprak 1", slug: "yaprak-1", active: true },
+          ],
+        },
+        {
+          name: "Canlı Dal",
+          slug: "canli-dal",
+          active: true,
+          children: [{ name: "Canlı Yaprak", slug: "canli-yaprak", active: true }],
+        },
+      ],
+    }),
+  });
+  assert.equal(reversed.status, 200);
+  const listed = await reversed.json();
+  assert.deepEqual(
+    listed.categories.map((row) => row.slug),
+    ["ikinci-dal", "canli-dal"]
+  );
+  assert.deepEqual(
+    listed.categories[0].children.map((row) => row.slug),
+    ["yaprak-2", "yaprak-1"]
+  );
+  const publicOrdered = await fetch(baseUrl + "/assets/data/categories.json");
+  const publicOrderedJson = await publicOrdered.json();
+  assert.deepEqual(
+    publicOrderedJson.categories.map((row) => row.slug),
+    ["ikinci-dal", "canli-dal"]
+  );
+  assert.deepEqual(
+    publicOrderedJson.categories[0].children.map((row) => row.slug),
+    ["yaprak-2", "yaprak-1"]
+  );
 });

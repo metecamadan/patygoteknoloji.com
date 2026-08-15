@@ -10,6 +10,7 @@ const {
   assignedSiteCategory,
   hasSiteCategory,
   dropRetiredParents,
+  applyCategoryDrag,
 } = require("../lib/categories");
 
 const SAMPLE_TREE = [
@@ -151,4 +152,41 @@ test("category store seeds from site tree and persists edits", () => {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("applyCategoryDrag reorders parents and sibling children", () => {
+  const tree = [
+    {
+      slug: "a",
+      name: "A",
+      children: [
+        { slug: "a1", name: "A1" },
+        { slug: "a2", name: "A2" },
+        { slug: "a3", name: "A3" },
+      ],
+    },
+    { slug: "b", name: "B", children: [{ slug: "b1", name: "B1" }] },
+  ];
+  const parents = applyCategoryDrag(tree, { kind: "parent", index: 0 }, { kind: "parent", index: 1 });
+  assert.deepEqual(
+    parents.map((row) => row.slug),
+    ["b", "a"]
+  );
+  const children = applyCategoryDrag(
+    tree,
+    { kind: "child", parentIndex: 0, childIndex: 2 },
+    { kind: "child", parentIndex: 0, childIndex: 0 }
+  );
+  assert.deepEqual(
+    children[0].children.map((row) => row.slug),
+    ["a3", "a1", "a2"]
+  );
+  assert.equal(
+    applyCategoryDrag(
+      tree,
+      { kind: "child", parentIndex: 0, childIndex: 0 },
+      { kind: "child", parentIndex: 1, childIndex: 0 }
+    ),
+    null
+  );
 });

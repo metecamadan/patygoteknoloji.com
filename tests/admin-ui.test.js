@@ -73,6 +73,12 @@ test("admin categories tab manages the site category tree", () => {
   assert.match(script, /loadCategoryTree/);
   assert.match(script, /\/api\/admin\/categories/);
   assert.match(script, /yayına alındı/);
+  assert.match(script, /applyCategoryDrag/);
+  assert.match(script, /createCategoryHandle/);
+  assert.match(script, /bindCategoryDropTarget/);
+  assert.match(script, /notifySite/);
+  assert.match(css, /\.admin-cat-handle/);
+  assert.match(html, /Tutamacı sürükleyerek/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

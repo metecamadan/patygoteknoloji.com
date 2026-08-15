@@ -3609,7 +3609,107 @@
     siteCategories = categoryTree;
     renderCategoryTree();
     notifySite();
-    note(categoryTreeNote, "ok", message || "Kategori ağacı kaydedildi.");
+    note(categoryTreeNote, "ok", message || "Kategori ağacı kaydedildi. Site menüsü güncellendi.");
+  }
+
+  function cloneCategoryTree(tree) {
+    return (tree || []).map((parent) =>
+      Object.assign({}, parent, {
+        children: (parent.children || []).map((child) => Object.assign({}, child)),
+      })
+    );
+  }
+
+  function moveCategoryItem(list, fromIndex, toIndex) {
+    const next = list.slice();
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= next.length ||
+      toIndex >= next.length
+    ) {
+      return null;
+    }
+    const moved = next.splice(fromIndex, 1)[0];
+    next.splice(toIndex, 0, moved);
+    return next;
+  }
+
+  function applyCategoryDrag(tree, from, to) {
+    if (!from || !to || from.kind !== to.kind) return null;
+    if (from.kind === "parent") {
+      return moveCategoryItem(cloneCategoryTree(tree), from.index, to.index);
+    }
+    if (from.kind === "child" && from.parentIndex === to.parentIndex) {
+      const next = cloneCategoryTree(tree);
+      const parent = next[from.parentIndex];
+      if (!parent) return null;
+      const children = moveCategoryItem(parent.children, from.childIndex, to.childIndex);
+      if (!children) return null;
+      parent.children = children;
+      return next;
+    }
+    return null;
+  }
+
+  async function dropCategory(from, to) {
+    const next = applyCategoryDrag(categoryTree, from, to);
+    if (!next) return;
+    await persistCategoryTree(next, "Sıra kaydedildi. Site menüsü güncellendi.");
+  }
+
+  function createCategoryHandle(payload) {
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "admin-cat-handle";
+    handle.draggable = true;
+    handle.setAttribute("aria-label", "Sürükleyerek sırayı değiştir");
+    handle.textContent = "⋮⋮";
+    handle.addEventListener("dragstart", (ev) => {
+      ev.dataTransfer.effectAllowed = "move";
+      const raw = JSON.stringify(payload);
+      ev.dataTransfer.setData("text/plain", raw);
+      const row = handle.closest("[data-cat-drop]");
+      if (row) row.classList.add("is-dragging");
+    });
+    handle.addEventListener("dragend", () => {
+      if (!categoryTreeList) return;
+      categoryTreeList.querySelectorAll(".is-dragging, .is-drop-target").forEach((node) => {
+        node.classList.remove("is-dragging");
+        node.classList.remove("is-drop-target");
+      });
+    });
+    return handle;
+  }
+
+  function bindCategoryDropTarget(el, toPayload) {
+    el.setAttribute("data-cat-drop", toPayload.kind);
+    el.addEventListener("dragover", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.dataTransfer.dropEffect = "move";
+      el.classList.add("is-drop-target");
+    });
+    el.addEventListener("dragleave", (ev) => {
+      if (!el.contains(ev.relatedTarget)) el.classList.remove("is-drop-target");
+    });
+    el.addEventListener("drop", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      el.classList.remove("is-drop-target");
+      let from = null;
+      try {
+        from = JSON.parse(ev.dataTransfer.getData("text/plain") || "null");
+      } catch (_) {
+        return;
+      }
+      try {
+        await dropCategory(from, toPayload);
+      } catch (err) {
+        note(categoryTreeNote, "err", err.message);
+      }
+    });
   }
 
   function renderCategoryTree() {
@@ -3626,6 +3726,7 @@
     categoryTree.forEach((parent, parentIndex) => {
       const card = document.createElement("article");
       card.className = "admin-cat-parent";
+      bindCategoryDropTarget(card, { kind: "parent", index: parentIndex });
       const head = document.createElement("div");
       head.className = "admin-cat-row";
       const title = document.createElement("div");
@@ -3664,6 +3765,7 @@
         catDeleteBtn.hidden = false;
         if (categoryFormTitle) categoryFormTitle.textContent = "Ana kategori düzenle";
       });
+      head.appendChild(createCategoryHandle({ kind: "parent", index: parentIndex }));
       head.appendChild(title);
       head.appendChild(publish);
       head.appendChild(editBtn);
@@ -3674,6 +3776,11 @@
       (parent.children || []).forEach((child, childIndex) => {
         const row = document.createElement("div");
         row.className = "admin-cat-row admin-cat-row-child";
+        bindCategoryDropTarget(row, {
+          kind: "child",
+          parentIndex: parentIndex,
+          childIndex: childIndex,
+        });
         const childTitle = document.createElement("div");
         const childName = document.createElement("strong");
         childName.textContent = child.name;
@@ -3715,6 +3822,13 @@
           catDeleteBtn.hidden = false;
           if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori düzenle";
         });
+        row.appendChild(
+          createCategoryHandle({
+            kind: "child",
+            parentIndex: parentIndex,
+            childIndex: childIndex,
+          })
+        );
         row.appendChild(childTitle);
         row.appendChild(childPublish);
         row.appendChild(childEdit);
