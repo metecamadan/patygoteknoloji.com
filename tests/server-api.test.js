@@ -180,38 +180,19 @@ test("legacy patygo-admin env password maps to 1234 for login", async (t) => {
   assert.equal(updated.status, 200);
 });
 
-test("agent-ops ingest accepts keyed prompt events without admin session", async (t) => {
-  const ingestKey = "test-ingest-key";
+test("agent-ops routes are gone", async (t) => {
   const { baseUrl } = await spawnTestServer(t, {
     ADMIN_PASSWORD: "test-admin-password",
-    AGENT_OPS_INGEST_KEY: ingestKey,
     SUPPLIER_ALLOWED_HOSTS: "supplier.example",
   });
-
-  const denied = await fetch(baseUrl + "/api/agent-ops/ingest", {
+  const page = await fetch(baseUrl + "/agent-ops");
+  assert.equal(page.status, 404);
+  const ingest = await fetch(baseUrl + "/api/agent-ops/ingest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "prompt", from: "user", summary: "no key" }),
+    body: JSON.stringify({ type: "prompt", summary: "gone" }),
   });
-  assert.equal(denied.status, 401);
-
-  const accepted = await fetch(baseUrl + "/api/agent-ops/ingest", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Agent-Ops-Key": ingestKey,
-    },
-    body: JSON.stringify({
-      type: "prompt",
-      from: "user",
-      to: "orchestrator",
-      summary: "Agent ops canlı görünsün",
-      status: "live",
-    }),
-  });
-  assert.equal(accepted.status, 200);
-  const payload = await accepted.json();
-  assert.equal(payload.event.type, "prompt");
+  assert.equal(ingest.status, 404);
 });
 
 test("admin category tree API publishes only active categories to the public feed", async (t) => {

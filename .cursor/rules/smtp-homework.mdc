@@ -1,0 +1,12 @@
+---
+description: Canlı SMTP kurulumu ödev; her yanıtın altında hatırlat
+alwaysApply: true
+---
+
+# SMTP ödev (ertelendi)
+
+Canlı VPS `.env` içinde `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` boş. Sipariş ve takvim mailleri yalnızca SMTP ile gider; FormSubmit’e düşürme. Kullanıcı açıkça istemedikçe SMTP kurulumuna başlama. Şifreyi sohbete isteme.
+
+**Her kullanıcı yanıtının en altında** şu satırı ekle (başka işin parçası olsa da):
+
+Ödev: canlı SMTP kurulumu (sipariş mailleri) — sonra bakacağız.

@@ -336,6 +336,35 @@ test("supplier store blocks publish without a valid site category", async () => 
   }
 });
 
+test("disallowed stored feed host is dropped and cache is emptied", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-dropfeed-"));
+  const runtime = path.join(root, ".runtime");
+  fs.mkdirSync(runtime, { recursive: true });
+  fs.writeFileSync(
+    path.join(runtime, "supplier-2-config.json"),
+    JSON.stringify({ url: "https://xml.avansas.com/feed.xml", name: "Test XML" }),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(runtime, "supplier-2-cache.json"),
+    JSON.stringify([{ id: "x", name: "Test", costPrice: 10 }]),
+    "utf8"
+  );
+  try {
+    const store = createSupplierStore(root, {
+      filePrefix: "supplier-2",
+      allowedHosts: ["www.bilgisayarim.com.tr", "xml.avansas.com"],
+      defaultName: "XML Kaynağı 2",
+    });
+    assert.equal(store.status().configured, false);
+    assert.equal(store.listProducts().length, 0);
+    const saved = JSON.parse(fs.readFileSync(path.join(runtime, "supplier-2-config.json"), "utf8"));
+    assert.equal(saved.url, "");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("failed parse keeps last XML on disk for later import", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-lastxml-"));
   const store = createSupplierStore(root, {

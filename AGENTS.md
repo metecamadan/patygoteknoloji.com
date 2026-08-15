@@ -101,6 +101,11 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 
 ## Kurallar
 
-- `.cursor/rules/test-and-deploy.mdc` — test kapısı, alan adı, canlı doğrulama.
-- `.cursor/rules/github-sync-after-success.mdc` — başarılı akışta GitHub güncelleme.
-- `.cursor/rules/agent-task-breakdown.mdc` — agent içi görev parçalama.
+- `.cursor/rules/real-storefront.mdc` — gerçek vitrin, test XML yok, Agent Ops yok
+- `.cursor/rules/test-and-deploy.mdc` — test kapısı, alan adı, canlı doğrulama
+- `.cursor/rules/github-sync-after-success.mdc` — başarılı akışta GitHub güncelleme
+- `.cursor/rules/github-deploy-fallback.mdc` — Deploy SSH kırmızıysa sahte yeşil yok
+- `.cursor/rules/no-cover-up.mdc` — hatayı örtme; geleceği düşün
+- `.cursor/rules/supplier-xml-ip.mdc` — tedarikçi XML yalnızca kayıtlı IP
+- `.cursor/rules/smtp-homework.mdc` — SMTP ödevi (ertelendi)
+- `.cursor/rules/agent-task-breakdown.mdc` — agent içi görev parçalama

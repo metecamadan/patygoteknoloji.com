@@ -77,7 +77,7 @@ flowchart TB
 ## 4) Fazlar ve agent paslaşması
 
 ### Faz 0 — Orchestrator (şimdi)
-- Plan + görev listesi + Agent Ops kararı  
+- Plan + görev listesi
 - Sıra: Backend şema → FE panel → SEO metin → QA → Release  
 
 ### Faz 1 — Temel DB + Sipariş paneli + KVKK kanıtı *(bu sprint)*

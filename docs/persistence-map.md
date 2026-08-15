@@ -2,7 +2,7 @@
 
 Son durum (Ağustos 2026): **SQLite** (`.runtime/patygo.sqlite`) sipariş / müşteri / consent / audit; panel kullanıcıları hâlâ JSON + e-posta girişi.
 
-Plan: `docs/plan-commerce-db-kvkk.md` · Canlı paslaşma: `/agent-ops`
+Plan: `docs/plan-commerce-db-kvkk.md`
 
 ## Mevcut depolar
 

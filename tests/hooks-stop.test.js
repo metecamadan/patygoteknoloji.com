@@ -15,6 +15,15 @@ test("stop hook invokes node --test via process.execPath (not bare npm)", () => 
   assert.doesNotMatch(source, /spawnSync\(\s*["']npm["']/);
 });
 
+test("cursor hooks do not ingest agent-ops prompts", () => {
+  const config = JSON.parse(
+    fs.readFileSync(path.join(root, ".cursor", "hooks.json"), "utf8")
+  );
+  assert.deepEqual(Object.keys(config.hooks || {}), ["stop"]);
+  assert.equal(fs.existsSync(path.join(root, ".cursor", "hooks", "agent-ops-live.js")), false);
+  assert.equal(fs.existsSync(path.join(root, "agent-ops.html")), false);
+});
+
 test("stop hook dry-run reports ok without nesting the suite", () => {
   const result = spawnSync(process.execPath, [hook], {
     cwd: root,

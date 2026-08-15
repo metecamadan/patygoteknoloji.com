@@ -116,8 +116,10 @@ test("admin XML schedule is editable under critical stock", () => {
   assert.match(script, /scheduleIntervalMinutes/);
   assert.match(css, /\.admin-schedule-row/);
   assert.doesNotMatch(html, /07:00’da başlar, günde 10 kez/);
-  assert.match(html, /Avansas \(test\)/);
-  assert.match(html, /Yayına almayın/);
+  assert.doesNotMatch(html, /Avansas/i);
+  assert.doesNotMatch(html, /Agent Ops/i);
+  assert.doesNotMatch(html, /Yayına almayın/);
+  assert.doesNotMatch(html, /cdnsta\.avansas\.com/);
   assert.match(html, /id="supplierPoolPager"/);
   assert.match(html, /Stok \(son XML\)/);
   assert.match(html, /Site kategorisi/);

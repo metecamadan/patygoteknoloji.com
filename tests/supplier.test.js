@@ -41,7 +41,6 @@ test("supplier XML products are normalized", () => {
           <Marka>Örnek</Marka>
           <Fiyat>12.345,50</Fiyat>
           <Stok>7</Stok>
-          <custom_label_1>99</custom_label_1>
           <Kategori>Bilgisayar</Kategori>
           <ResimUrl>/images/test.jpg</ResimUrl>
         </product>
@@ -184,72 +183,6 @@ test("utf-8 fault XML declared as windows-1254 still reads Turkish text", () => 
     () => parseSupplierXml(xml, new URL("https://supplier.example/feed.xml")),
     /Günlük erişim sınırınız aşılmış/
   );
-});
-
-test("google merchant RSS items fill the supplier pool without publishing", () => {
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-    <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
-      <channel>
-        <title>Avansas products</title>
-        <link>https://www.avansas.com/</link>
-        <item>
-          <g:id>73213</g:id>
-          <title>Mühlen Sage MT-402</title>
-          <g:brand>Mühlen</g:brand>
-          <g:price>2524,00 TRY</g:price>
-          <g:availability>in stock</g:availability>
-          <g:custom_label_1>195</g:custom_label_1>
-          <g:image_link>https://cdnsta.avansas.com/urun/73213.jpg</g:image_link>
-          <link>https://www.avansas.com/p-73213</link>
-          <g:gtin>1974199720221</g:gtin>
-          <g:product_type>Teknoloji &gt; Ofis Teknolojisi &gt; Kağıt Kesme Makinesi</g:product_type>
-          <description>Giyotin</description>
-        </item>
-        <item>
-          <g:id>50129</g:id>
-          <title>Çaykur Tiryaki 1000 g</title>
-          <g:brand>Çaykur</g:brand>
-          <g:price>389,90</g:price>
-          <g:availability>out of stock</g:availability>
-          <g:image_link>https://cdnsta.avansas.com/urun/50129.jpg</g:image_link>
-        </item>
-      </channel>
-    </rss>`;
-  const products = parseSupplierXml(
-    xml,
-    new URL("https://cdnsta.avansas.com/export/google/product/merchant.xml")
-  );
-  assert.equal(products.length, 2);
-  assert.equal(products[0].supplierSku, "73213");
-  assert.equal(products[0].costPrice, 2524);
-  assert.equal(products[0].stockQty, 195);
-  assert.equal(products[0].currency, "TRY");
-  assert.equal(products[0].barcode, "1974199720221");
-  assert.equal(products[0].mainCategory, "Teknoloji");
-  assert.match(products[0].image, /73213\.jpg/);
-  assert.equal(products[1].stockQty, 0);
-  assert.equal(products[1].costPrice, 389.9);
-});
-
-test("google merchant in-stock without quantity still maps to 1", () => {
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-    <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
-      <channel>
-        <item>
-          <g:id>1</g:id>
-          <title>Kalem</title>
-          <g:brand>Test</g:brand>
-          <g:price>10,00 TRY</g:price>
-          <g:availability>in stock</g:availability>
-          <g:image_link>https://cdnsta.avansas.com/urun/1.jpg</g:image_link>
-        </item>
-      </channel>
-    </rss>`;
-  const products = parseSupplierXml(
-    xml,
-    new URL("https://cdnsta.avansas.com/export/google/product/merchant.xml")
-  );
-  assert.equal(products[0].stockQty, 1);
 });
 
 test("broken supplier XML is rejected without changing data", () => {

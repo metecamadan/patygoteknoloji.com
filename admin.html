@@ -61,7 +61,6 @@
         </nav>
         <div class="admin-sidebar-foot">
           <a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a>
-          <a href="/agent-ops" target="_blank" rel="noopener">Agent Ops (canlı) ↗</a>
           <button type="button" id="logoutBtn">Çıkış yap</button>
         </div>
       </aside>
@@ -808,8 +807,8 @@
                   <span class="admin-status pending" data-slot-field="badge">Yapılandırılmadı</span>
                 </div>
                 <form class="admin-form supplier-config-form" data-slot-id="supplier-2">
-                  <div class="field"><label for="supplierName2">Kaynak adı</label><input id="supplierName2" type="text" maxlength="60" value="Avansas (test)" data-slot-input="name" /></div>
-                  <div class="field"><label for="supplierUrl2">Tedarikçi XML bağlantısı</label><input id="supplierUrl2" type="url" placeholder="https://cdnsta.avansas.com/export/google/product/merchant.xml" autocomplete="off" data-slot-input="url" /><p class="admin-field-help">Test kaynağı: ürünler havuzda pasif kalır, siteye ve Akakçe’ye çıkmaz. Yayına almayın.</p></div>
+                  <div class="field"><label for="supplierName2">Kaynak adı</label><input id="supplierName2" type="text" maxlength="60" value="XML Kaynağı 2" data-slot-input="name" /></div>
+                  <div class="field"><label for="supplierUrl2">Tedarikçi XML bağlantısı</label><input id="supplierUrl2" type="url" placeholder="https://tedarikci.com/xml?..." autocomplete="off" data-slot-input="url" /><p class="admin-field-help">Yalnızca gerçek tedarikçi bağlanır. Test XML kullanılmaz.</p></div>
                   <div class="admin-form-actions"><button type="submit" class="btn btn-outline">Bağlantıyı Kaydet</button><button type="button" class="btn btn-primary supplier-refresh-btn" data-slot-id="supplier-2">XML’i Güncelle</button></div>
                 </form>
                 <dl class="admin-xml-meta">

@@ -36,7 +36,6 @@ const {
 const { createOrderStore, ORDER_STATUSES } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
-const { createAgentOpsStore } = require("./lib/agent-ops");
 const { createConsentStore } = require("./lib/consent");
 const { createAuditStore } = require("./lib/audit");
 const { resolveSiteBaseUrl } = require("./lib/site-url");
@@ -98,7 +97,7 @@ const ADMIN_IDLE_MS =
   Number.isFinite(rawIdleMs) && rawIdleMs > 0 ? rawIdleMs : 30 * 60 * 1000;
 const supplierAllowedHosts = String(
   process.env.SUPPLIER_ALLOWED_HOSTS ||
-    "www.bilgisayarim.com.tr,cdnsta.avansas.com,www.avansas.com"
+    "www.bilgisayarim.com.tr"
 )
   .split(",")
   .map((value) => value.trim())
@@ -133,92 +132,8 @@ const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
 setCategoryListLoader(() => categoryStore.list());
 const adminUserStore = createAdminUserStore(DATA_ROOT);
-const agentOpsStore = createAgentOpsStore(DATA_ROOT);
 const consentStore = createConsentStore(DATA_ROOT);
 const auditStore = createAuditStore(DATA_ROOT);
-
-agentOpsStore.seedIfEmpty([
-  {
-    type: "decision",
-    from: "orchestrator",
-    summary: "Yarım kalan 3 iş: ödeme spacing, takvim mail, kullanıcı yönetimi — sıra: FE → BE → QA → Release",
-    taskId: "resume-aug2",
-    status: "planned",
-  },
-  {
-    type: "handoff",
-    from: "orchestrator",
-    to: "frontend",
-    summary: "Ödeme sayfası dikey boşlukları sıkılaştır",
-    files: ["odeme.html", "assets/css/style.css"],
-    taskId: "checkout-compact",
-  },
-  {
-    type: "change",
-    from: "frontend",
-    summary: "checkout-page compact hero/section eklendi",
-    files: ["odeme.html", "assets/css/style.css", "tests/checkout-layout.test.js"],
-    taskId: "checkout-compact",
-  },
-  {
-    type: "handoff",
-    from: "orchestrator",
-    to: "backend",
-    summary: "notifyEmail + admin kullanıcı store",
-    files: ["lib/calendar.js", "lib/admin-users.js", "server.js"],
-    taskId: "users-calendar",
-  },
-  {
-    type: "change",
-    from: "backend",
-    summary: "admin-users API ve takvim e-posta hedefi",
-    files: ["lib/admin-users.js", "lib/contact.js", "server.js"],
-    taskId: "users-calendar",
-  },
-  {
-    type: "handoff",
-    from: "backend",
-    to: "frontend",
-    summary: "Kullanıcılar sekmesi + takvim e-posta alanı",
-    files: ["admin.html", "assets/js/admin.js"],
-    taskId: "users-calendar",
-  },
-  {
-    type: "handoff",
-    from: "frontend",
-    to: "qa",
-    summary: "Regression: checkout + users + calendar",
-    taskId: "resume-aug2",
-  },
-  {
-    type: "gate",
-    from: "qa",
-    summary: "npm test 117/117 yeşil",
-    status: "pass",
-    taskId: "resume-aug2",
-  },
-  {
-    type: "handoff",
-    from: "qa",
-    to: "release",
-    summary: "Commit + push main",
-    taskId: "resume-aug2",
-  },
-  {
-    type: "gate",
-    from: "release",
-    summary: "GitHub Actions CI and Deploy success",
-    status: "pass",
-    taskId: "resume-aug2",
-  },
-  {
-    type: "decision",
-    from: "orchestrator",
-    summary: "Canlı agent-ops paneli: görev paslaşmalarını kullanıcıya göster",
-    taskId: "agent-ops-live",
-    status: "planned",
-  },
-]);
 const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
@@ -887,26 +802,6 @@ async function handleApi(req, res, urlPath) {
     return res.end(xml);
   }
 
-  if (req.method === "POST" && urlPath === "/api/agent-ops/ingest") {
-    const expected = String(process.env.AGENT_OPS_INGEST_KEY || "").trim();
-    const got = String(req.headers["x-agent-ops-key"] || "").trim();
-    if (!expected) {
-      return json(res, 503, { ok: false, error: "Agent Ops ingest kapalı" });
-    }
-    const a = crypto.createHash("sha256").update(expected).digest();
-    const b = crypto.createHash("sha256").update(got).digest();
-    if (!crypto.timingSafeEqual(a, b)) {
-      return json(res, 401, { ok: false, error: "Anahtar geçersiz" });
-    }
-    try {
-      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
-      const event = agentOpsStore.append(body);
-      return json(res, 200, { ok: true, event });
-    } catch (err) {
-      return json(res, 400, { ok: false, error: (err && err.message) || "Olay yazılamadı" });
-    }
-  }
-
   if (req.method === "POST" && urlPath === "/api/admin/login") {
     try {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
@@ -946,22 +841,6 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/admin/me") {
     return json(res, 200, { ok: true, user: sessionUser(req) });
-  }
-
-  if (req.method === "GET" && urlPath === "/api/admin/agent-ops") {
-    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
-    const limit = requestUrl.searchParams.get("limit");
-    return json(res, 200, { ok: true, snapshot: agentOpsStore.snapshot(), events: agentOpsStore.list(limit) });
-  }
-
-  if (req.method === "POST" && urlPath === "/api/admin/agent-ops") {
-    try {
-      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
-      const event = agentOpsStore.append(body);
-      return json(res, 200, { ok: true, event });
-    } catch (err) {
-      return json(res, 400, { ok: false, error: (err && err.message) || "Olay yazılamadı" });
-    }
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/users") {
@@ -1488,7 +1367,7 @@ function sendFile(res, filePath, method) {
   fs.readFile(filePath, (readErr, data) => {
     if (readErr) return serveNotFound(res, method);
     const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
-    if (rel === "admin.html" || rel === "agent-ops.html") {
+    if (rel === "admin.html") {
       headers["X-Robots-Tag"] = "noindex, nofollow";
       headers["Cache-Control"] = "no-store";
     }

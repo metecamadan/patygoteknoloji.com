@@ -1,0 +1,37 @@
+---
+description: Gerçek vitrin ve işletim kural seti
+alwaysApply: true
+---
+
+# Patygo işletim kural seti
+
+Site yalnızca gerçek tedarikçi ürünleriyle durur. Demo, ops paneli ve test XML yok.
+
+## Vitrin
+
+- Kaynak: `www.bilgisayarim.com.tr` (slot 1). Slot 2–3 boş kalır; yalnızca gerçek tedarikçi bağlanır.
+- Test / Google Merchant / Avansas XML yok. Allowlist dışı kayıtlı URL açılışta düşer, cache boşalır, scheduler çekmez.
+- Agent Ops paneli, ingest, Cursor hook günlükleri yok. Geri ekleme.
+- Demo `products.json` tohumu, sahte vitrin kartı, “sunucu online” self-report yok.
+- Stok 0 veya son 7 günde stok okunamadıysa ürün sitede ve Akakçe XML’de durmaz.
+- Ana kategoriler üst menüde; alt kategoriler hover/tıkla.
+- XML görselleri tam boy; açıklama XML’den (kısa + detay).
+
+## XML çekimi
+
+- Yalnızca VPS `87.76.157.41` (kota + IP whitelist). Entegratör: `195.155.129.41`.
+- Bu PC / ev-ofis ağı / localhost Node’dan tedarikçiye istek yok.
+- Kota doluysa aynı gün ekstra çekim yok. URL’deki sır sohbete yazılmaz.
+
+## Doğrulama ve yayın
+
+- `npm test` yeşil → `main` push → Actions SSH yeşil → `https://patygoteknoloji.com` (IP değil).
+- Deploy kırmızıysa sahte yeşil job yok; SSH anahtar eşlemesi düzeltilir.
+- Secret, `.env`, XML parola sohbete/commit’e yazılmaz.
+- SMTP: kullanıcı istemedikçe kurulum yok. Sipariş maili FormSubmit’e düşmez.
+
+## Bilinçli boşluklar (güncellenebilir)
+
+- Canlı SMTP henüz yok (ödev).
+- Slot 2–3 mimarisi durur; bağlanana kadar boş ve çekimsiz.
+- 3 XML slotu ileride ikinci gerçek tedarikçi içindir.

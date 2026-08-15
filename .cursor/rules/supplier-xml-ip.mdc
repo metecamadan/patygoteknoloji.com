@@ -1,0 +1,35 @@
+---
+description: Tedarikçi XML yalnızca kayıtlı çıkış IP’lerinden okunur; yerel PC yasak
+alwaysApply: true
+---
+
+# Tedarikçi XML — IP whitelist
+
+Tedarikçi (bilgisayarim.com.tr) en fazla iki sabit IP kabul eder. Kayıtlı çıkışlar:
+
+| IP | Rol |
+|----|-----|
+| `87.76.157.41` | patygoteknoloji.com VPS (`/var/www/patygoteknoloji.com`, PM2 `patygo`) |
+| `195.155.129.41` | Entegratör Windows sunucusu |
+
+## Zorunlu — göz ardı etme
+
+Kullanıcının PC’si **ve** o an bağlı olduğu ev/ofis ağının çıkış IP’si whitelist’te **yok**. Cursor agent, yerel `curl`, yerel Node, yerel Python/urllib hepsi aynı yasak çıkıştan gider.
+
+- Canlı XML **yalnızca sunucudan** istenir: VPS `87.76.157.41` üzerinde admin refresh, PM2 içi `refresh`, veya SSH ile VPS’te `curl` / `127.0.0.1:5173`.
+- Yerel PC, ofis/ev Wi‑Fi, `localhost` Node, Windows agent shell → **yasak**. Tedarikçi “IP adresiniz tanımlı değil” döner; kota da yanmış sayılır.
+- “Bir bakayım / URL açayım / health check” dahil: tedarikçi host’una bu PC’den istek yok.
+- Kota doluysa (`Günlük erişim sınırınız…`) aynı gün ekstra çekim yok.
+- URL’deki kullanıcı/şifreyi sohbete, commit’e veya log’a yazma.
+
+## Yanlış
+
+```bash
+# yerel PC — IP engeli
+curl "https://www.bilgisayarim.com.tr/..."
+node -e "require('./lib/supplier').fetchSupplierXml(...)"
+```
+
+## Doğru
+
+VPS’te (`root@87.76.157.41`) admin “XML’i Güncelle”, zamanlanmış okuma veya SSH ile uygulama içi refresh. Doğrulama alan adı: `https://patygoteknoloji.com/admin`.
