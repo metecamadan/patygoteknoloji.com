@@ -33,6 +33,13 @@ test("nav shows each main category in the top bar instead of a single Ürünler 
   assert.doesNotMatch(navJs, /is-catalog/);
   assert.match(navJs, /nav-mega-groups/);
   assert.match(navJs, /nav-mega-group-title/);
-  assert.match(navCss, /\.nav-links\s*\{[^}]*flex:\s*1 1 100%/s);
-  assert.match(navCss, /\.nav-mega-heading/);
+  assert.match(navCss, /\.nav-links\s*\{[^}]*flex:\s*1 1 auto/s);
+  assert.match(navCss, /\.nav-links\s*\{[^}]*flex-wrap:\s*nowrap/s);
+  assert.match(navCss, /\.nav-links\s*\{[^}]*overflow:\s*visible/s);
+  assert.match(navCss, /\.nav-mega-panel\s*\{[^}]*left:\s*0/s);
+  assert.match(navCss, /\.nav-mega-panel\s*\{[^}]*right:\s*0/s);
+  assert.match(navCss, /\.nav-mega-panel\s*\{[^}]*width:\s*100%/s);
+  assert.doesNotMatch(navCss, /\.nav-mega-panel\s*\{[^}]*width:\s*max-content/s);
+  assert.doesNotMatch(navCss, /\.nav-links\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(navCss, /--header-h:\s*72px/);
 });

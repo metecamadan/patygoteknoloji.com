@@ -25,7 +25,7 @@
   --radius-xl: 20px;
   --container: 1160px;
   --gutter: clamp(20px, 4vw, 40px);
-  --header-h: 128px;
+  --header-h: 72px;
 
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
@@ -120,6 +120,7 @@ h1, h2, h3, h4 {
   z-index: 100;
   height: auto;
   min-height: 72px;
+  overflow: visible;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -128,13 +129,14 @@ h1, h2, h3, h4 {
 .site-header.scrolled { box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06); }
 .nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   min-height: 72px;
   height: auto;
-  gap: 0 20px;
+  gap: 0 12px;
   position: relative;
+  overflow: visible;
 }
 .brand { display: flex; align-items: center; line-height: 0; flex-shrink: 0; }
 .brand img {
@@ -145,15 +147,17 @@ h1, h2, h3, h4 {
 }
 .nav-links {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 0 2px;
-  flex: 1 1 100%;
-  order: 3;
+  align-items: stretch;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 0;
+  flex: 1 1 auto;
+  order: 0;
   min-width: 0;
-  padding: 2px 0 8px;
-  border-top: 1px solid var(--line-soft);
+  padding: 0;
+  border-top: 0;
+  overflow: visible;
+  position: relative;
 }
 .nav-links a {
   padding: 8px 14px;
@@ -194,20 +198,29 @@ h1, h2, h3, h4 {
 /* ---------- Mega nav ---------- */
 .nav-mega {
   position: static;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .nav-mega-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  padding: 4px 2px;
   border-radius: 8px;
   border: 0;
   background: transparent;
   font: inherit;
   font-weight: 600;
-  font-size: 0.78rem;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
+  font-size: clamp(0.58rem, 0.65vw, 0.72rem);
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
   color: var(--ink-2);
   cursor: pointer;
   transition: color var(--t), background var(--t);
@@ -237,11 +250,11 @@ h1, h2, h3, h4 {
   min-width: 0;
   box-sizing: border-box;
   padding: 16px 20px 20px;
-  margin-top: -1px;
+  margin-top: 0;
   border-radius: 0 0 16px 16px;
   background: #fff;
   border: 1px solid var(--line-soft);
-  border-top: 0;
+  border-top: 1px solid var(--line-soft);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
   z-index: 120;
 }
@@ -297,15 +310,6 @@ h1, h2, h3, h4 {
   color: var(--ink);
   padding: 4px 12px 10px;
 }
-.nav-mega-panel {
-  min-width: min(640px, calc(100vw - 32px));
-  width: max-content;
-  max-width: min(1080px, calc(100vw - 32px));
-}
-.nav-mega:nth-last-child(-n+2) .nav-mega-panel {
-  left: auto;
-  right: 0;
-}
 .nav-mega-groups {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
@@ -325,6 +329,13 @@ h1, h2, h3, h4 {
   max-height: none;
   overflow: visible;
   grid-template-columns: 1fr;
+}
+@media (max-width: 1180px) and (min-width: 861px) {
+  .nav-mega-toggle {
+    white-space: normal;
+    font-size: 0.64rem;
+    padding: 4px 2px;
+  }
 }
 
 /* ---------- Hero ---------- */
