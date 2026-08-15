@@ -42,4 +42,18 @@ test("nav shows each main category in the top bar instead of a single Ürünler 
   assert.doesNotMatch(navCss, /\.nav-mega-panel\s*\{[^}]*width:\s*max-content/s);
   assert.doesNotMatch(navCss, /\.nav-links\s*\{[^}]*overflow-x:\s*auto/s);
   assert.match(navCss, /--header-h:\s*72px/);
+  assert.match(navCss, /\.nav-mega-groups\s*\{[^}]*overflow:\s*visible/s);
+  assert.match(navCss, /\.nav-mega-groups\s*\{[^}]*column-width/s);
+  assert.doesNotMatch(navCss, /\.nav-mega-groups\s*\{[^}]*overflow:\s*auto/s);
+  assert.match(navCss, /\.quote-rail\s*\{[^}]*position:\s*fixed/s);
+  assert.match(navCss, /\.quote-rail\s*\{[^}]*top:\s*50%/s);
+});
+
+test("Teklif Al sits on the right viewport edge, not in the header nav", () => {
+  const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const mainJs = fs.readFileSync(path.join(root, "assets", "js", "main.js"), "utf8");
+  const navBlock = indexHtml.match(/<div class="nav-actions">[\s\S]*?<\/div>/)[0];
+  assert.doesNotMatch(navBlock, /Teklif Al/);
+  assert.match(mainJs, /quote-rail/);
+  assert.match(mainJs, /Teklif Al/);
 });

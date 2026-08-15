@@ -196,4 +196,12 @@
   document.querySelectorAll("[data-year]").forEach((el) => {
     el.textContent = new Date().getFullYear();
   });
+
+  if (!document.querySelector(".quote-rail")) {
+    const quote = document.createElement("a");
+    quote.className = "quote-rail";
+    quote.href = document.getElementById("teklif") ? "#teklif" : "/#teklif";
+    quote.textContent = "Teklif Al";
+    document.body.appendChild(quote);
+  }
 })();
