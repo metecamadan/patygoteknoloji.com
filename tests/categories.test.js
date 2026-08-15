@@ -111,7 +111,7 @@ test("slugifyCategory and publicCategories hide unpublished nodes", () => {
   );
 });
 
-test("category store seeds from site tree and persists edits", () => {
+test("category store seeds from site tree and persists display-name edits", () => {
   const fs = require("node:fs");
   const os = require("node:os");
   const path = require("node:path");
@@ -135,20 +135,20 @@ test("category store seeds from site tree and persists edits", () => {
     assert.equal(store.publicList()[0].children[0].name, "Yaprak");
     store.save([
       {
-        name: "Bilgisayar / Tablet",
-        slug: "bilgisayar-tablet",
-        children: [{ name: "Notebook", slug: "notebook" }],
-      },
-      {
         name: "OEM",
         slug: "oem-cevre-birimleri",
+        xmlNames: ["OEM & ÇEVRE BİRİMLERİ"],
         children: [{ name: "İşlemciler", slug: "islemciler" }],
       },
     ]);
-    assert.deepEqual(
-      store.list().map((row) => row.slug),
-      ["oem-cevre-birimleri"]
-    );
+    const listed = store.list();
+    listed[0].name = "Bilgisayar Parçaları";
+    const renamed = store.save(listed);
+    assert.equal(renamed[0].slug, "oem-cevre-birimleri");
+    assert.equal(renamed[0].name, "Bilgisayar Parçaları");
+    assert.deepEqual(renamed[0].xmlNames, ["OEM & ÇEVRE BİRİMLERİ"]);
+    assert.equal(store.publicList()[0].name, "Bilgisayar Parçaları");
+    assert.equal(Object.prototype.hasOwnProperty.call(store.publicList()[0], "xmlNames"), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

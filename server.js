@@ -1140,7 +1140,7 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "PUT" && urlPath === "/api/admin/categories") {
     try {
-      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const body = JSON.parse((await readBody(req, 256 * 1024)).toString("utf8") || "{}");
       const categories = categoryStore.save(body.categories);
       return json(res, 200, { ok: true, categories });
     } catch (err) {

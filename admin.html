@@ -678,8 +678,12 @@
                   <div>
                     <span class="admin-eyebrow">WEB MENÜSÜ</span>
                     <h2>Kategori ağacı</h2>
-                    <p class="admin-field-help">Yalnızca yayındaki ana ve alt kategoriler sitede görünür. Tutamacı sürükleyerek sıra değiştirin; kayıt anında site menüsüne yansır.</p>
+                    <p class="admin-field-help">Sitede görünen adı buradan değiştirin; XML ürünleri aynı kategori koduna bağlanmaya devam eder. Tutamacı sürükleyerek sıra değiştirin. Alt kategoriler için ana satıra tıklayın.</p>
                   </div>
+                </div>
+                <div class="admin-cat-toolbar">
+                  <button type="button" class="btn btn-ghost btn-xs" id="catExpandAllBtn">Tümünü aç</button>
+                  <button type="button" class="btn btn-ghost btn-xs" id="catCollapseAllBtn">Tümünü kapat</button>
                 </div>
                 <div id="categoryTreeList" class="admin-cat-tree"></div>
                 <p class="admin-note" id="categoryTreeNote" role="status"></p>
@@ -707,7 +711,7 @@
                   <div class="field">
                     <label for="catSlug">Adres kodu</label>
                     <input id="catSlug" type="text" maxlength="80" placeholder="otomatik" />
-                    <p class="admin-field-help">Boş bırakılırsa addan üretilir. Örnek: notebook</p>
+                    <p class="admin-field-help">Düzenlerken adres kodu kilitlenir; sitede yalnızca ad değişir. XML eşlemesi bu koda göre kalır.</p>
                   </div>
                   <label class="admin-checks"><input type="checkbox" id="catActive" checked /> Webde yayında</label>
                   <div class="admin-form-actions">

@@ -3532,6 +3532,7 @@
   }
 
   let categoryTree = [];
+  const expandedCategorySlugs = new Set();
   const categoryTreeList = document.getElementById("categoryTreeList");
   const categoryTreeNote = document.getElementById("categoryTreeNote");
   const categoryForm = document.getElementById("categoryForm");
@@ -3564,6 +3565,7 @@
     catParentSlug.value = "";
     catName.value = "";
     catSlug.value = "";
+    catSlug.readOnly = false;
     catActive.checked = true;
     catDeleteBtn.hidden = true;
     if (categoryFormTitle) categoryFormTitle.textContent = "Kategori ekle";
@@ -3725,18 +3727,35 @@
     }
     categoryTree.forEach((parent, parentIndex) => {
       const card = document.createElement("article");
-      card.className = "admin-cat-parent";
+      const expanded = expandedCategorySlugs.has(parent.slug);
+      card.className = "admin-cat-parent" + (expanded ? "" : " is-collapsed");
       bindCategoryDropTarget(card, { kind: "parent", index: parentIndex });
       const head = document.createElement("div");
       head.className = "admin-cat-row";
       const title = document.createElement("div");
       const strong = document.createElement("strong");
       strong.textContent = parent.name;
+      const count = document.createElement("span");
+      count.className = "admin-cat-count";
+      count.textContent = (parent.children || []).length + " alt";
+      strong.appendChild(count);
       const slug = document.createElement("span");
       slug.className = "admin-cat-slug";
       slug.textContent = parent.slug + (parent.active ? "" : " · taslak");
       title.appendChild(strong);
       title.appendChild(slug);
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "admin-cat-toggle";
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      toggle.setAttribute("aria-label", parent.name + (expanded ? " altlarını gizle" : " altlarını göster"));
+      toggle.textContent = "▸";
+      toggle.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (expandedCategorySlugs.has(parent.slug)) expandedCategorySlugs.delete(parent.slug);
+        else expandedCategorySlugs.add(parent.slug);
+        renderCategoryTree();
+      });
       const publish = makePublishSwitch(parent.active, parent.name + " yayın", async (input) => {
         const next = categoryTree.map((row, index) =>
           index === parentIndex ? Object.assign({}, row, { active: input.checked }) : row
@@ -3756,16 +3775,20 @@
       editBtn.className = "btn btn-ghost btn-xs";
       editBtn.textContent = "Düzenle";
       editBtn.addEventListener("click", () => {
+        expandedCategorySlugs.add(parent.slug);
         catEditKey.value = parent.slug;
         catParentSlug.value = "";
         catParentSlug.disabled = true;
         catName.value = parent.name;
         catSlug.value = parent.slug;
+        catSlug.readOnly = true;
         catActive.checked = parent.active !== false;
         catDeleteBtn.hidden = false;
         if (categoryFormTitle) categoryFormTitle.textContent = "Ana kategori düzenle";
+        renderCategoryTree();
       });
       head.appendChild(createCategoryHandle({ kind: "parent", index: parentIndex }));
+      head.appendChild(toggle);
       head.appendChild(title);
       head.appendChild(publish);
       head.appendChild(editBtn);
@@ -3813,11 +3836,13 @@
         childEdit.className = "btn btn-ghost btn-xs";
         childEdit.textContent = "Düzenle";
         childEdit.addEventListener("click", () => {
+          expandedCategorySlugs.add(parent.slug);
           catEditKey.value = parent.slug + "/" + child.slug;
           catParentSlug.value = parent.slug;
           catParentSlug.disabled = true;
           catName.value = child.name;
           catSlug.value = child.slug;
+          catSlug.readOnly = true;
           catActive.checked = child.active !== false;
           catDeleteBtn.hidden = false;
           if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori düzenle";
@@ -3839,11 +3864,13 @@
       addChild.className = "btn btn-outline btn-xs";
       addChild.textContent = "+ Alt kategori";
       addChild.addEventListener("click", () => {
+        expandedCategorySlugs.add(parent.slug);
         resetCategoryForm();
         catParentSlug.value = parent.slug;
         catParentSlug.disabled = false;
         if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori ekle";
         if (catName) catName.focus();
+        renderCategoryTree();
       });
       children.appendChild(addChild);
       card.appendChild(children);
@@ -3857,6 +3884,21 @@
     categoryTree = Array.isArray(data.categories) ? data.categories : [];
     siteCategories = categoryTree;
     renderCategoryTree();
+  }
+
+  const catExpandAllBtn = document.getElementById("catExpandAllBtn");
+  const catCollapseAllBtn = document.getElementById("catCollapseAllBtn");
+  if (catExpandAllBtn) {
+    catExpandAllBtn.addEventListener("click", () => {
+      categoryTree.forEach((parent) => expandedCategorySlugs.add(parent.slug));
+      renderCategoryTree();
+    });
+  }
+  if (catCollapseAllBtn) {
+    catCollapseAllBtn.addEventListener("click", () => {
+      expandedCategorySlugs.clear();
+      renderCategoryTree();
+    });
   }
 
   if (catName && catSlug) {
@@ -3874,7 +3916,9 @@
     categoryForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const name = catName.value.trim();
-      const slug = slugifyAdminCategory(catSlug.value || catName.value);
+      const slug = catEditKey.value
+        ? ""
+        : slugifyAdminCategory(catSlug.value || catName.value);
       const active = catActive.checked;
       const parentSlug = catParentSlug.value;
       const editKey = catEditKey.value;
@@ -3885,7 +3929,7 @@
         if (editKey && !editKey.includes("/")) {
           const index = next.findIndex((row) => row.slug === editKey);
           if (index < 0) throw new Error("Ana kategori bulunamadı.");
-          next[index] = Object.assign({}, next[index], { name, slug, active });
+          next[index] = Object.assign({}, next[index], { name, active });
         } else if (editKey.includes("/")) {
           const parts = editKey.split("/");
           const parent = next.find((row) => row.slug === parts[0]);
@@ -3894,7 +3938,6 @@
           if (childIndex < 0) throw new Error("Alt kategori bulunamadı.");
           parent.children[childIndex] = Object.assign({}, parent.children[childIndex], {
             name,
-            slug,
             active,
           });
         } else if (parentSlug) {
@@ -3904,7 +3947,7 @@
         } else {
           next.push({ name, slug, active, children: [] });
         }
-        await persistCategoryTree(next, "Kategori kaydedildi. Yayındaysa web menüsünde görünür.");
+        await persistCategoryTree(next, "Kategori adı kaydedildi. XML ürünleri aynı koda bağlanmaya devam eder.");
         resetCategoryForm();
         catSlug.dataset.manual = "";
       } catch (err) {

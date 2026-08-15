@@ -67,6 +67,44 @@ test("Intel Alt kategori folds into Ara İşlemciler, not seed İşlemci", () =>
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("rename keeps slug so XML products stay on the same nav category", () => {
+  const existing = [
+    {
+      slug: "oem-cevre-birimleri",
+      name: "Bilgisayar Parçaları",
+      xmlNames: ["OEM & ÇEVRE BİRİMLERİ"],
+      children: [
+        {
+          slug: "islemciler",
+          name: "İşlemci",
+          xmlNames: ["İşlemciler"],
+        },
+      ],
+    },
+  ];
+  const pair = suggestSiteCategory(
+    {
+      xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+      xmlMidCategory: "İşlemciler",
+      xmlSubCategory: "Intel İşlemciler",
+    },
+    existing
+  );
+  assert.equal(pair.siteParent, "oem-cevre-birimleri");
+  assert.equal(pair.siteChild, "islemciler");
+  const merged = mergeCategoryTrees(existing, [
+    {
+      name: "OEM & ÇEVRE BİRİMLERİ",
+      slug: "oem-cevre-birimleri",
+      children: [{ name: "İşlemciler", slug: "islemciler" }],
+    },
+  ]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].slug, "oem-cevre-birimleri");
+  assert.equal(merged[0].name, "Bilgisayar Parçaları");
+  assert.ok((merged[0].xmlNames || []).includes("OEM & ÇEVRE BİRİMLERİ"));
+});
+
 test("merge keeps existing site categories and adds XML parents", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
   const store = createCategoryStore(root);
