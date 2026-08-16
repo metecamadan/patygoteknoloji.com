@@ -110,6 +110,208 @@
     };
   }
 
+  function readFacetQuery() {
+    const params = new URLSearchParams(location.search || "");
+    const brands = String(params.get("marka") || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const minRaw = Number(params.get("minFiyat"));
+    const maxRaw = Number(params.get("maxFiyat"));
+    return {
+      brands,
+      minFiyat: Number.isFinite(minRaw) && minRaw > 0 ? String(Math.round(minRaw)) : "",
+      maxFiyat: Number.isFinite(maxRaw) && maxRaw > 0 ? String(Math.round(maxRaw)) : "",
+    };
+  }
+
+  function writeFacetQuery(next) {
+    const url = new URL(location.href);
+    const brands = (next.brands || []).map((item) => String(item || "").trim()).filter(Boolean);
+    if (brands.length) url.searchParams.set("marka", brands.join(","));
+    else url.searchParams.delete("marka");
+    if (next.minFiyat) url.searchParams.set("minFiyat", String(next.minFiyat));
+    else url.searchParams.delete("minFiyat");
+    if (next.maxFiyat) url.searchParams.set("maxFiyat", String(next.maxFiyat));
+    else url.searchParams.delete("maxFiyat");
+    url.searchParams.delete("sayfa");
+    history.pushState({}, "", url.pathname + url.search);
+    reloadCatalog();
+  }
+
+  function renderCatalogMeta(total, applied) {
+    const meta = document.querySelector("[data-catalog-meta]");
+    if (!meta) return;
+    const count = Number(total) || 0;
+    const active =
+      (applied && applied.brands && applied.brands.length) ||
+      (applied && applied.minFiyat) ||
+      (applied && applied.maxFiyat);
+    meta.hidden = false;
+    meta.textContent = count + " ürün";
+    if (active) meta.textContent += " (filtrelenmiş)";
+  }
+
+  function renderFacets(facets, applied) {
+    const root = document.querySelector("[data-catalog-facets]");
+    const layout = document.querySelector(".catalog-layout");
+    if (!root) return;
+    const data = facets || {};
+    const brands = Array.isArray(data.brands) ? data.brands : [];
+    const presets = Array.isArray(data.pricePresets) ? data.pricePresets : [];
+    const price = data.price || { min: 0, max: 0 };
+    const selected = new Set(
+      ((applied && applied.brands) || []).map((name) => String(name).toLocaleUpperCase("tr-TR"))
+    );
+    const hasPanel = brands.length > 0 || price.max > 0;
+    root.hidden = !hasPanel;
+    if (layout) layout.classList.toggle("has-facets", hasPanel);
+    if (!hasPanel) {
+      root.textContent = "";
+      return;
+    }
+
+    const selectedMin = applied && applied.minFiyat ? Number(applied.minFiyat) : 0;
+    const selectedMax = applied && applied.maxFiyat ? Number(applied.maxFiyat) : 0;
+    const filterActive = selected.size || selectedMin || selectedMax;
+
+    root.textContent = "";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "catalog-facets-toggle";
+    toggle.textContent = "Filtrele";
+    toggle.setAttribute("aria-expanded", root.classList.contains("is-open") ? "true" : "false");
+    toggle.addEventListener("click", () => {
+      root.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", root.classList.contains("is-open") ? "true" : "false");
+    });
+    root.appendChild(toggle);
+
+    const body = document.createElement("div");
+    body.className = "catalog-facets-body";
+
+    const heading = document.createElement("h2");
+    heading.className = "catalog-facets-title";
+    heading.textContent = "Filtreler";
+    body.appendChild(heading);
+
+    if (brands.length) {
+      const group = document.createElement("fieldset");
+      group.className = "catalog-facet";
+      const legend = document.createElement("legend");
+      legend.textContent = "Marka";
+      group.appendChild(legend);
+      const list = document.createElement("div");
+      list.className = "catalog-facet-brands";
+      brands.forEach((row) => {
+        const label = document.createElement("label");
+        label.className = "catalog-facet-option";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.value = row.name;
+        input.checked = selected.has(String(row.name).toLocaleUpperCase("tr-TR"));
+        input.addEventListener("change", () => {
+          const next = Array.from(list.querySelectorAll("input:checked")).map((el) => el.value);
+          writeFacetQuery({
+            brands: next,
+            minFiyat: applied.minFiyat || "",
+            maxFiyat: applied.maxFiyat || "",
+          });
+        });
+        const name = document.createElement("span");
+        name.textContent = row.name;
+        const count = document.createElement("em");
+        count.textContent = String(row.count);
+        label.appendChild(input);
+        label.appendChild(name);
+        label.appendChild(count);
+        list.appendChild(label);
+      });
+      group.appendChild(list);
+      body.appendChild(group);
+    }
+
+    if (price.max > 0) {
+      const group = document.createElement("fieldset");
+      group.className = "catalog-facet";
+      const legend = document.createElement("legend");
+      legend.textContent = "Fiyat aralığı";
+      group.appendChild(legend);
+      if (presets.length) {
+        const chips = document.createElement("div");
+        chips.className = "catalog-price-presets";
+        presets.forEach((row) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          const rowMin = Number(row.min) || 0;
+          const rowMax = row.max == null ? 0 : Number(row.max) || 0;
+          const pressed = selectedMin === rowMin && selectedMax === rowMax;
+          btn.className = "catalog-price-chip" + (pressed ? " is-active" : "");
+          btn.textContent = row.label;
+          btn.addEventListener("click", () => {
+            writeFacetQuery({
+              brands: applied.brands || [],
+              minFiyat: rowMin ? String(rowMin) : "",
+              maxFiyat: rowMax ? String(rowMax) : "",
+            });
+          });
+          chips.appendChild(btn);
+        });
+        group.appendChild(chips);
+      }
+      const inputs = document.createElement("div");
+      inputs.className = "catalog-price-inputs";
+      const minInput = document.createElement("input");
+      minInput.type = "number";
+      minInput.min = "0";
+      minInput.step = "100";
+      minInput.placeholder = "En az";
+      minInput.setAttribute("aria-label", "En az fiyat");
+      minInput.value = applied.minFiyat || "";
+      const maxInput = document.createElement("input");
+      maxInput.type = "number";
+      maxInput.min = "0";
+      maxInput.step = "100";
+      maxInput.placeholder = "En çok";
+      maxInput.setAttribute("aria-label", "En çok fiyat");
+      maxInput.value = applied.maxFiyat || "";
+      const applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.className = "btn btn-outline catalog-price-apply";
+      applyBtn.textContent = "Uygula";
+      applyBtn.addEventListener("click", () => {
+        writeFacetQuery({
+          brands: applied.brands || [],
+          minFiyat: minInput.value && Number(minInput.value) > 0 ? String(Math.round(Number(minInput.value))) : "",
+          maxFiyat: maxInput.value && Number(maxInput.value) > 0 ? String(Math.round(Number(maxInput.value))) : "",
+        });
+      });
+      const applyOnEnter = (ev) => {
+        if (ev.key === "Enter") applyBtn.click();
+      };
+      minInput.addEventListener("keydown", applyOnEnter);
+      maxInput.addEventListener("keydown", applyOnEnter);
+      inputs.appendChild(minInput);
+      inputs.appendChild(maxInput);
+      group.appendChild(inputs);
+      group.appendChild(applyBtn);
+      body.appendChild(group);
+    }
+
+    if (filterActive) {
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "catalog-facets-clear";
+      clear.textContent = "Filtreleri temizle";
+      clear.addEventListener("click", () => {
+        writeFacetQuery({ brands: [], minFiyat: "", maxFiyat: "" });
+      });
+      body.appendChild(clear);
+    }
+
+    root.appendChild(body);
+  }
+
   function resolveCategoryLabels(categories, query) {
     const parents = Array.isArray(categories) ? categories : [];
     const parent = parents.find((cat) => cat.slug === query.parent) || null;
@@ -475,6 +677,10 @@
       renderGrid(grid, products, opts);
     });
     renderCatalogPager(opts.pager || null);
+    if (document.querySelector("[data-catalog-facets]")) {
+      renderFacets(opts.facets, readFacetQuery());
+      renderCatalogMeta((opts.pager && opts.pager.total) || products.length, readFacetQuery());
+    }
     if (opts.featuredTabs) bindFeaturedTabs(opts.featuredTabs);
     else if (!opts.categoryResolved) bindTabs(document);
     window.dispatchEvent(new CustomEvent("patygo:catalog", { detail: { products } }));
@@ -513,6 +719,7 @@
       limit: Number(data.limit) || products.length,
       totalPages: Number(data.totalPages) || 0,
       byParent: data.byParent && typeof data.byParent === "object" ? data.byParent : null,
+      facets: data.facets && typeof data.facets === "object" ? data.facets : null,
     };
   }
 
@@ -613,10 +820,14 @@
         };
         featuredTabs = home.byParent;
       } else {
+        const facets = readFacetQuery();
         payload = await fetchProductPage({
           kategori: wantsCategory ? query.parent : "",
           ara: wantsCategory ? query.mid : "",
           alt: wantsCategory ? query.child : "",
+          marka: facets.brands.join(","),
+          minFiyat: facets.minFiyat,
+          maxFiyat: facets.maxFiyat,
           page: pageParam,
           limit: 48,
         });
@@ -631,6 +842,7 @@
         ? categoryResolved || { parent: { name: "Kategori" }, child: null }
         : null,
       pager: onProductsPage ? payload : null,
+      facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });
   }

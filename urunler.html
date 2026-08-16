@@ -38,10 +38,14 @@
     </section>
 
     <section class="section section-soft catalog-section" id="liste">
-      <div class="container">
-        <div class="product-grid" data-catalog="all" aria-live="polite"></div>
-        <nav class="catalog-pager" data-catalog-pager hidden aria-label="Ürün sayfaları"></nav>
-      </div>
+        <div class="container catalog-layout">
+          <aside class="catalog-facets" data-catalog-facets hidden></aside>
+          <div class="catalog-results">
+            <p class="catalog-result-meta" data-catalog-meta hidden></p>
+            <div class="product-grid" data-catalog="all" aria-live="polite"></div>
+            <nav class="catalog-pager" data-catalog-pager hidden aria-label="Ürün sayfaları"></nav>
+          </div>
+        </div>
     </section>
 
     <section class="section">
@@ -116,7 +120,7 @@
   </div>
 
   <script src="/assets/js/cart.js"></script>
-  <script src="/assets/js/catalog.js?v=site-cat-2"></script>
+  <script src="/assets/js/catalog.js?v=facets-1"></script>
   <script src="/assets/js/nav.js"></script>
   <script src="/assets/js/main.js"></script>
 </body>

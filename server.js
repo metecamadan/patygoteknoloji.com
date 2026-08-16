@@ -863,6 +863,9 @@ async function handleApi(req, res, urlPath) {
       kategori: requestUrl.searchParams.get("kategori") || "",
       ara: requestUrl.searchParams.get("ara") || "",
       alt: requestUrl.searchParams.get("alt") || "",
+      marka: requestUrl.searchParams.get("marka") || "",
+      minFiyat: requestUrl.searchParams.get("minFiyat") || "",
+      maxFiyat: requestUrl.searchParams.get("maxFiyat") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 48,
       sort,
@@ -877,6 +880,7 @@ async function handleApi(req, res, urlPath) {
         page: queried.page,
         limit: queried.limit,
         totalPages: queried.totalPages,
+        facets: queried.facets || null,
         updatedAt,
       },
       { "Cache-Control": "public, max-age=15, stale-while-revalidate=45" }
