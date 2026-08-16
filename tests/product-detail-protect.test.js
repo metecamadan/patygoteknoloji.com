@@ -16,12 +16,13 @@ test("product detail caps image size and disables enlarge/drag", () => {
   assert.match(script, /draggable["']?,\s*["']false/);
 });
 
-test("product detail blocks copy while keeping SEO text in DOM", () => {
+test("product detail allows copying name and description", () => {
   assert.match(html, /product-detail-page/);
-  assert.match(html, /class="[^"]*no-copy/);
-  assert.match(css, /user-select:\s*none/);
-  assert.match(script, /bindCopyGuard/);
-  assert.match(script, /["']copy["']/);
+  assert.doesNotMatch(html, /no-copy/);
+  assert.doesNotMatch(script, /bindCopyGuard/);
+  assert.doesNotMatch(script, /selectstart/);
+  assert.doesNotMatch(css, /\.product-detail-page \.no-copy/);
+  assert.doesNotMatch(css, /\.product-detail-page \.detail-info h1[\s\S]{0,200}user-select:\s*none/);
   assert.match(script, /meta\[name="description"\]|name\s*=\s*["']description["']/);
   assert.match(script, /textContent\s*=\s*product\.(description|details|name)/);
 });

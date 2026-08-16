@@ -2286,26 +2286,6 @@ h1, h2, h3, h4 {
 .product-description .detail-desc { font-weight: 600; }
 .product-description .detail-body { margin-bottom: 0; }
 
-/* Ürün detay: içerik SEO için HTML'de kalır; kullanıcı kopyalayamaz */
-.product-detail-page .no-copy,
-.product-detail-page .product-description,
-.product-detail-page .detail-info h1,
-.product-detail-page .detail-info .detail-cat,
-.product-detail-page .detail-info .price,
-.product-detail-page .detail-info .brand-tag,
-.product-detail-page .detail-desc,
-.product-detail-page .detail-body {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-.product-detail-page .no-copy a,
-.product-detail-page .no-copy button,
-.product-detail-page .detail-info .actions {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
 .detail-info .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 @media (max-width: 900px) {
   .cart-layout,
