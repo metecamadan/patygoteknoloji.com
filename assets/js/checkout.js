@@ -155,7 +155,7 @@
           (posStatus.testMode ? " (TEST ortamı)." : ".");
       } else {
         els.posBox.textContent =
-          "Sanal POS anahtarları henüz tanımlı değil. .env dosyasına AKBANK_* değerlerini ekleyin.";
+          "Ödeme şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin veya info@patygoteknoloji.com ile iletişime geçin.";
       }
     }
     if (els.payBtn) {
@@ -391,7 +391,7 @@
                 email,
                 phone: tel,
                 taxId: (els.form.vergi && els.form.vergi.value.trim()) || "",
-                note: (els.form.not && els.form.not.value.trim()) || "",
+                note: "",
                 billingAddress,
                 shippingAddress,
               },

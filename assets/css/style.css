@@ -1077,16 +1077,35 @@ h1, h2, h3, h4 {
 }
 
 /* Checkout / POS */
+.checkout-page .nav-links,
+.checkout-page .nav-toggle,
+.cart-page .nav-links,
+.cart-page .nav-toggle,
+.checkout-page .quote-rail,
+.cart-page .quote-rail {
+  display: none !important;
+}
 .checkout-page .checkout-hero {
-  padding: clamp(20px, 3vw, 28px) 0 clamp(12px, 2vw, 16px);
+  padding: clamp(16px, 2.4vw, 22px) 0 8px;
+}
+.checkout-page .checkout-hero .container,
+.checkout-page .checkout-section .container {
+  max-width: 960px;
 }
 .checkout-page .checkout-hero h1 {
-  margin: 6px 0 6px;
-  font-size: clamp(1.55rem, 2.8vw, 2rem);
+  margin: 4px 0 4px;
+  font-size: clamp(1.45rem, 2.6vw, 1.85rem);
 }
 .checkout-page .checkout-hero p {
   margin: 0;
-  font-size: 0.95rem;
+  max-width: none;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .checkout-page .checkout-hero p {
+    white-space: normal;
+  }
 }
 .checkout-page .checkout-section {
   padding: 0 0 clamp(40px, 5vw, 64px);
@@ -1096,8 +1115,8 @@ h1, h2, h3, h4 {
   grid-template-columns: 1.1fr 0.9fr;
   gap: 20px;
   align-items: start;
-  max-width: 960px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 #checkoutRoot[hidden],
 #orderSuccess[hidden] {
@@ -1115,14 +1134,26 @@ h1, h2, h3, h4 {
   margin: 0 0 12px;
 }
 .checkout-page .checkout-card .field {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+.checkout-page .checkout-card .field label {
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+}
+.checkout-page .checkout-card .field input,
+.checkout-page .checkout-card .field textarea {
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+.checkout-page .checkout-card .field textarea {
+  min-height: 56px;
 }
 .checkout-page .checkout-card .form-row {
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 0;
 }
 .checkout-page .checkout-card .check-inline {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .checkout-page .checkout-card .form-note {
   margin: 8px 0;
@@ -1134,6 +1165,11 @@ h1, h2, h3, h4 {
 .checkout-page .pos-box {
   margin-top: 12px;
   padding: 12px;
+}
+.checkout-order-id {
+  margin-top: 12px;
+  font-size: 0.82rem;
+  color: var(--muted-2);
 }
 .checkout-product {
   display: flex;
@@ -1212,9 +1248,12 @@ h1, h2, h3, h4 {
 }
 .qty-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 0;
+}
+.qty-row[hidden] {
+  display: none !important;
 }
 .qty-row label { font-weight: 600; font-size: 0.9rem; }
 .qty-row input {

@@ -21,10 +21,6 @@
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
-          <a href="/urunler" class="btn btn-outline">Ürün kataloğuna dön</a>
-          <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks">
-            <span></span><span></span><span></span>
-          </button>
         </div>
       </nav>
     </div>
@@ -70,10 +66,10 @@
                   <label for="vergi">Vergi No / T.C. (opsiyonel)</label>
                   <input type="text" id="vergi" name="vergi" inputmode="numeric" />
                 </div>
-                <div class="qty-row" style="align-items:flex-end;margin-bottom:0;padding-bottom:2px">
-                  <div class="field" style="margin:0">
+                <div class="qty-row" hidden>
+                  <div class="field">
                     <label for="adet">Adet *</label>
-                    <input type="number" id="adet" name="adet" min="1" max="99" value="1" required />
+                    <input type="number" id="adet" name="adet" min="1" max="99" value="1" />
                   </div>
                 </div>
               </div>
@@ -84,10 +80,6 @@
               <div class="field">
                 <label for="teslimatAdres">Teslimat adresi *</label>
                 <textarea id="teslimatAdres" name="teslimatAdres" rows="2" required placeholder="Fatura ile aynıysa tekrar yazın"></textarea>
-              </div>
-              <div class="field">
-                <label for="not">Sipariş notu</label>
-                <textarea id="not" name="not" rows="2" placeholder="Teslimat veya fatura ile ilgili notunuz..."></textarea>
               </div>
               <div class="check-inline">
                 <input type="checkbox" id="onayOnBilgi" name="onayOnBilgi" required />
@@ -127,8 +119,7 @@
             <div class="pos-box" id="posBox">
               Ödeme Akbank SecurePay (3D Pay Hosting) ile alınır. Kart bilgileriniz yalnızca bankanın güvenli sayfasında girilir.
             </div>
-            <p style="margin-top:14px;font-size:0.82rem;color:var(--muted-2)">Sipariş no: <strong id="orderIdPreview">—</strong></p>
-            <a href="/urunler" class="btn btn-outline btn-block" style="margin-top:12px">Ürün kataloğuna dön</a>
+            <p class="checkout-order-id">Sipariş no: <strong id="orderIdPreview">—</strong></p>
           </aside>
         </div>
 

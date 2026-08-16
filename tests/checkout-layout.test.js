@@ -16,3 +16,14 @@ test("checkout page uses compact hero and section spacing", () => {
   assert.match(css, /\.checkout-page \.checkout-section/);
   assert.match(css, /checkout-card-title/);
 });
+
+test("checkout funnel hides catalog nav and extra exits", () => {
+  assert.doesNotMatch(html, /Sipariş notu/);
+  assert.doesNotMatch(html, /id="not"/);
+  assert.doesNotMatch(html, /Ürün kataloğuna dön/);
+  assert.doesNotMatch(html, /nav-toggle/);
+  assert.match(css, /\.checkout-page \.nav-links/);
+  assert.match(css, /\.checkout-page \.checkout-hero p\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(css, /\.checkout-page \.checkout-hero \.container/);
+  assert.match(css, /\.qty-row\[hidden\]/);
+});
