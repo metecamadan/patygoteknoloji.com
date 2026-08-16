@@ -103,6 +103,33 @@ test("toPublicProduct strips supplier internals and cost", () => {
   assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "supplierSku"), false);
 });
 
+test("list catalog omits details while id lookup keeps full copy", () => {
+  const { queryPublicCatalog, toPublicProduct } = require("../lib/catalog");
+  const longDetails = "D".repeat(400);
+  const products = [
+    {
+      id: "p1",
+      brand: "HP",
+      name: "Notebook",
+      price: 100,
+      category: "bilgisayar-tablet",
+      description: "Kısa özet",
+      details: longDetails,
+      images: ["https://cdn.example/a.jpg", "https://cdn.example/b.jpg", "https://cdn.example/c.jpg"],
+      active: true,
+    },
+  ];
+  const listed = queryPublicCatalog(products, { limit: 48 });
+  assert.equal(listed.products[0].details, undefined);
+  assert.equal(listed.products[0].description, "Kısa özet");
+  assert.equal(listed.products[0].images.length, 2);
+  const one = queryPublicCatalog(products, { id: "p1" });
+  assert.equal(one.products[0].details, longDetails);
+  const compact = toPublicProduct(products[0], { compact: true });
+  assert.equal(compact.details, undefined);
+  assert.ok(compact.description.length <= 160);
+});
+
 test("supplier IDs cannot overwrite manual products", () => {
   const result = mergeCatalogProducts(
     [

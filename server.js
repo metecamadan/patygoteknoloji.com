@@ -481,26 +481,40 @@ function normalizeProduct(p, fallbackId) {
   };
 }
 
-const STOREFRONT_CATALOG_TTL_MS = 30 * 1000;
 const storefrontCatalogMemo = { active: null, all: null };
+let akakceXmlMemo = null;
 
 function invalidateStorefrontCatalog() {
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
+  akakceXmlMemo = null;
 }
 
 function mergedProducts(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
-  const now = Date.now();
   const hit = storefrontCatalogMemo[key];
-  if (hit && now - hit.at < STOREFRONT_CATALOG_TTL_MS) return hit.products;
+  if (hit && Array.isArray(hit.products)) return hit.products;
   const products = mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
     includeInactiveManual,
     normalizeProduct,
     categoryDefaults: CATEGORY_FEED_DEFAULTS,
   });
-  storefrontCatalogMemo[key] = { at: now, products };
+  storefrontCatalogMemo[key] = { products };
   return products;
+}
+
+function warmStorefrontCatalog() {
+  try {
+    mergedProducts(false);
+  } catch (_) {}
+}
+
+function storefrontAkakceXml() {
+  const products = mergedProducts(false);
+  if (akakceXmlMemo && akakceXmlMemo.products === products) return akakceXmlMemo.xml;
+  const xml = buildAkakceXml(products, { siteBaseUrl: SITE_BASE_URL });
+  akakceXmlMemo = { products, xml };
+  return xml;
 }
 
 const POPULAR_SCORES_TTL_MS = 60 * 1000;
@@ -888,9 +902,7 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/feeds/akakce.xml") {
-    const xml = buildAkakceXml(mergedProducts(false), {
-      siteBaseUrl: SITE_BASE_URL,
-    });
+    const xml = storefrontAkakceXml();
     res.writeHead(
       200,
       securityHeaders({
@@ -1214,6 +1226,7 @@ async function handleApi(req, res, urlPath) {
         root: DATA_ROOT,
       });
       invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
       const slots = supplierManager.listSlots();
       const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
@@ -1237,6 +1250,7 @@ async function handleApi(req, res, urlPath) {
       invalidateStorefrontCatalog();
       syncLiveXmlCategories(result.slotId);
       invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
       const slots = supplierManager.listSlots();
       return json(res, 200, {
         ok: true,
@@ -1474,6 +1488,8 @@ function sendFile(res, filePath, method) {
     if (rel === "admin.html") {
       headers["X-Robots-Tag"] = "noindex, nofollow";
       headers["Cache-Control"] = "no-store";
+    } else if ([".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".woff2", ".ico"].includes(ext)) {
+      headers["Cache-Control"] = "public, max-age=3600";
     }
     res.writeHead(200, securityHeaders(headers));
     if (method === "HEAD") return res.end();
@@ -1595,6 +1611,7 @@ const supplierScheduler = createSupplierScheduler({
     invalidateStorefrontCatalog();
     syncLiveXmlCategories(slotId);
     invalidateStorefrontCatalog();
+    warmStorefrontCatalog();
   },
   log: (message, slotId, key) => console.log(message, slotId, key),
   logError: (message, slotId, key, detail) =>
@@ -1602,9 +1619,7 @@ const supplierScheduler = createSupplierScheduler({
 });
 supplierScheduler.start();
 setImmediate(() => {
-  try {
-    mergedProducts(false);
-  } catch (_) {}
+  warmStorefrontCatalog();
   supplierManager.listSlots().forEach((slot) => {
     if (slot.configured) syncLiveXmlCategories(slot.id);
   });

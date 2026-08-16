@@ -48,6 +48,11 @@ server {
   listen 80;
   server_name ${SITE_DOMAIN} www.${SITE_DOMAIN};
   root ${APP_DIR};
+  gzip on;
+  gzip_vary on;
+  gzip_proxied any;
+  gzip_min_length 256;
+  gzip_types text/plain text/css text/xml application/json application/javascript application/xml image/svg+xml;
   location ^~ /api/ {
     proxy_pass http://127.0.0.1:${APP_PORT};
     proxy_http_version 1.1;
@@ -65,7 +70,7 @@ server {
     proxy_set_header X-Forwarded-Proto \$scheme;
   }
   location ^~ /assets/data/ { return 404; }
-  location ^~ /assets/ { try_files \$uri @node; }
+  location ^~ /assets/ { expires 1h; add_header Cache-Control "public"; try_files \$uri @node; }
   location = / { try_files /index.html @node; }
   location / { try_files \$uri.html @node; }
   location @node {

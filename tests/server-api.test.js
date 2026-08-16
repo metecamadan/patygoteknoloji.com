@@ -96,6 +96,7 @@ test("admin supplier APIs require authentication and return feed status", async 
     assert.equal(Object.prototype.hasOwnProperty.call(product, "costPrice"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(product, "supplierSku"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(product, "stockQty"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(product, "details"), false);
   }
 
   const featuredHome = await fetch(baseUrl + "/api/products?homeFeatured=1");
