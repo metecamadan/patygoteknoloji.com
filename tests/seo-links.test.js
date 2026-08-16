@@ -50,10 +50,11 @@ test("product cards wrap media in a real product-detail href", () => {
   assert.match(catalogJs, /searchParams\.set\("sayfa"/);
 });
 
-test("product detail breadcrumbs and JSON-LD link back to category pages", () => {
-  assert.match(detailJs, /Ürün kataloğu/);
-  assert.match(detailJs, /categoryHref/);
+test("product detail breadcrumbs follow ANA / ARA / ALT then the product", () => {
+  assert.match(detailJs, /resolveProductCategoryTrail/);
   assert.match(detailJs, /BreadcrumbList/);
   assert.match(detailJs, /"@type": "Product"/);
   assert.match(detailJs, /Ürün kataloğuna dön/);
+  assert.match(catalogJs, /function resolveProductCategoryTrail|resolveProductCategoryTrail\(product/);
+  assert.match(catalogJs, /prettyCategoryName/);
 });

@@ -8,7 +8,7 @@
     img.addEventListener("dragstart", (ev) => ev.preventDefault());
   }
 
-  function render(product) {
+  function render(product, categories) {
     root.textContent = "";
     if (!product) {
       root.innerHTML =
@@ -84,27 +84,20 @@
 
     const info = document.createElement("div");
     info.className = "detail-info";
+    const trail = window.PatygoCatalog.resolveProductCategoryTrail
+      ? window.PatygoCatalog.resolveProductCategoryTrail(product, categories)
+      : [];
     const crumb = document.createElement("nav");
     crumb.className = "breadcrumb";
     crumb.setAttribute("aria-label", "Sayfa konumu");
-    const parentSlug = String(product.category || "").trim();
-    const parentHref = window.PatygoCatalog.categoryHref
-      ? window.PatygoCatalog.categoryHref(parentSlug)
-      : parentSlug
-        ? "/urunler?kategori=" + encodeURIComponent(parentSlug)
-        : "/urunler";
-    const parentLabel = window.PatygoCatalog.categoryLabel(parentSlug) || "Kategori";
-    const crumbParts = [
-      { href: "/", text: "Ana Sayfa" },
-      { href: "/urunler", text: "Ürün kataloğu" },
-    ];
-    if (parentSlug) crumbParts.push({ href: parentHref, text: parentLabel });
-    crumbParts.forEach((part, index) => {
-      if (index) {
-        const sep = document.createElement("span");
-        sep.textContent = "/";
-        crumb.appendChild(sep);
-      }
+    const crumbHome = document.createElement("a");
+    crumbHome.href = "/";
+    crumbHome.textContent = "Ana Sayfa";
+    crumb.appendChild(crumbHome);
+    trail.forEach((part) => {
+      const sep = document.createElement("span");
+      sep.textContent = "/";
+      crumb.appendChild(sep);
       const link = document.createElement("a");
       link.href = part.href;
       link.textContent = part.text;
@@ -124,15 +117,14 @@
     const h1 = document.createElement("h1");
     h1.textContent = product.name;
 
+    const leaf = trail.length ? trail[trail.length - 1] : null;
     const cat = document.createElement("p");
     cat.className = "detail-cat";
-    if (parentSlug) {
+    if (leaf) {
       const catLink = document.createElement("a");
-      catLink.href = parentHref;
-      catLink.textContent = parentLabel;
+      catLink.href = leaf.href;
+      catLink.textContent = leaf.text;
       cat.appendChild(catLink);
-    } else {
-      cat.textContent = parentLabel;
     }
 
     const price = document.createElement("div");
@@ -163,7 +155,6 @@
     actions.appendChild(add);
     actions.appendChild(buy);
 
-    info.appendChild(crumb);
     info.appendChild(tag);
     info.appendChild(h1);
     info.appendChild(cat);
@@ -172,6 +163,7 @@
 
     grid.appendChild(gallery);
     grid.appendChild(info);
+    root.appendChild(crumb);
     root.appendChild(grid);
 
     if (product.description || product.details) {
@@ -195,7 +187,7 @@
       root.appendChild(description);
     }
 
-    upsertProductJsonLd(product, parentSlug, parentHref, parentLabel);
+    upsertProductJsonLd(product, trail);
   }
 
   function upsertJsonLd(scriptId, data) {
@@ -209,7 +201,7 @@
     el.textContent = JSON.stringify(data);
   }
 
-  function upsertProductJsonLd(product, parentSlug, parentHref, parentLabel) {
+  function upsertProductJsonLd(product, trail) {
     const pageUrl =
       "https://patygoteknoloji.com/urun-detay?id=" + encodeURIComponent(product.id);
     const images = (
@@ -240,21 +232,15 @@
     });
     const crumbs = [
       { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: "https://patygoteknoloji.com/" },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Ürün kataloğu",
-        item: "https://patygoteknoloji.com/urunler",
-      },
     ];
-    if (parentSlug) {
+    (Array.isArray(trail) ? trail : []).forEach((part, index) => {
       crumbs.push({
         "@type": "ListItem",
-        position: 3,
-        name: parentLabel,
-        item: "https://patygoteknoloji.com" + parentHref,
+        position: index + 2,
+        name: part.text,
+        item: "https://patygoteknoloji.com" + part.href,
       });
-    }
+    });
     crumbs.push({
       "@type": "ListItem",
       position: crumbs.length + 1,
@@ -268,7 +254,32 @@
     });
   }
 
-  window.PatygoCatalog.ready.then(() => {
-    render(window.PatygoCatalog.byId[id] || null);
+  const ready = window.PatygoCatalog.ready || Promise.resolve();
+  const categoriesReady =
+    typeof window.PatygoCatalog.loadCategories === "function"
+      ? window.PatygoCatalog.loadCategories()
+      : Promise.resolve([]);
+  Promise.all([ready, categoriesReady]).then((results) => {
+    const finish = (categories) => {
+      render(window.PatygoCatalog.byId[id] || null, categories || []);
+    };
+    let categories = Array.isArray(results[1]) ? results[1] : [];
+    if (categories.length) {
+      finish(categories);
+      return;
+    }
+    if (window.PatygoNav && Array.isArray(window.PatygoNav.categories) && window.PatygoNav.categories.length) {
+      finish(window.PatygoNav.categories);
+      return;
+    }
+    const timer = setTimeout(() => finish(categories), 600);
+    document.addEventListener(
+      "patygo:nav-ready",
+      () => {
+        clearTimeout(timer);
+        finish((window.PatygoNav && window.PatygoNav.categories) || categories);
+      },
+      { once: true }
+    );
   });
 })();

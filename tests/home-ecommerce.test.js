@@ -75,8 +75,9 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /Ürünler yükleniyor/);
   assert.match(catalogJs, /product-card--skeleton/);
   assert.match(catalogJs, /function showCatalogLoading/);
+  assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.match(catalogJs, /function applyCategoryHeading/);
-  assert.match(catalogJs, /addLink\("\/urunler", "Ürün kataloğu"\)/);
+  assert.match(catalogJs, /prettyCategoryName/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);
   assert.doesNotMatch(catalogJs, /sort:\s*"popular"/);
 });

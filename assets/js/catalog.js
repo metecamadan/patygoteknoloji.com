@@ -71,6 +71,83 @@
       const q = params.toString();
       return q ? "/urunler?" + q : "/urunler";
     },
+    prettyCategoryName(name) {
+      const text = String(name || "").trim();
+      if (!text) return "";
+      if (text !== text.toLocaleUpperCase("tr-TR")) return text;
+      return text
+        .split(/(\s+)/)
+        .map((token) => {
+          if (!token.trim()) return token;
+          if (token.length <= 3) return token;
+          const lower = token.toLocaleLowerCase("tr-TR");
+          return lower.charAt(0).toLocaleUpperCase("tr-TR") + lower.slice(1);
+        })
+        .join("");
+    },
+    resolveProductCategoryTrail(product, categories) {
+      const parentSlug = String((product && product.category) || "").trim();
+      const midSlug = String((product && product.mid) || "").trim();
+      const childSlug = String((product && (product.alt || product.child)) || "").trim();
+      if (!parentSlug) return [];
+      const parents = (Array.isArray(categories) && categories.length
+        ? categories
+        : (window.PatygoNav && window.PatygoNav.categories) || []);
+      const parent = parents.find((row) => row.slug === parentSlug) || null;
+      const pretty = (name, fallback) =>
+        window.PatygoCatalog.prettyCategoryName(name) ||
+        window.PatygoCatalog.categoryLabel(fallback) ||
+        name ||
+        fallback;
+      const trail = [];
+      if (parent) {
+        trail.push({
+          href: window.PatygoCatalog.categoryHref(parent.slug),
+          text: pretty(parent.name, parent.slug),
+          slug: parent.slug,
+        });
+      } else {
+        trail.push({
+          href: window.PatygoCatalog.categoryHref(parentSlug),
+          text: window.PatygoCatalog.categoryLabel(parentSlug) || parentSlug,
+          slug: parentSlug,
+        });
+        return trail;
+      }
+      const mids = Array.isArray(parent.children) ? parent.children : [];
+      let mid = midSlug ? mids.find((row) => row.slug === midSlug) || null : null;
+      let child = null;
+      if (!mid && childSlug) {
+        mid = mids.find((row) => row.slug === childSlug) || null;
+        if (!mid) {
+          for (let i = 0; i < mids.length; i += 1) {
+            const found = (mids[i].children || []).find((leaf) => leaf.slug === childSlug);
+            if (found) {
+              mid = mids[i];
+              child = found;
+              break;
+            }
+          }
+        }
+      } else if (mid && childSlug) {
+        child = (mid.children || []).find((leaf) => leaf.slug === childSlug) || null;
+      }
+      if (mid) {
+        trail.push({
+          href: window.PatygoCatalog.categoryHref(parent.slug, mid.slug),
+          text: pretty(mid.name, mid.slug),
+          slug: mid.slug,
+        });
+      }
+      if (child) {
+        trail.push({
+          href: window.PatygoCatalog.categoryHref(parent.slug, mid.slug, child.slug),
+          text: pretty(child.name, child.slug),
+          slug: child.slug,
+        });
+      }
+      return trail;
+    },
   };
 
   function renderCategoryEmpty(grid, resolved) {
@@ -355,35 +432,36 @@
         nav.appendChild(a);
       };
       addLink("/", "Ana Sayfa");
-      addSep();
-      addLink("/urunler", "Ürün kataloğu");
-      addSep();
-      if (resolved.child || resolved.mid) {
-        addLink(window.PatygoCatalog.categoryHref(resolved.parent.slug), resolved.parent.name);
+      if (resolved.parent && (resolved.mid || resolved.child)) {
         addSep();
-        if (resolved.child && resolved.mid) {
-          addLink(
-            window.PatygoCatalog.categoryHref(resolved.parent.slug, resolved.mid.slug),
-            resolved.mid.name
-          );
-          addSep();
-        }
+        addLink(
+          window.PatygoCatalog.categoryHref(resolved.parent.slug),
+          window.PatygoCatalog.prettyCategoryName(resolved.parent.name) || resolved.parent.name
+        );
       }
+      if (resolved.child && resolved.mid) {
+        addSep();
+        addLink(
+          window.PatygoCatalog.categoryHref(resolved.parent.slug, resolved.mid.slug),
+          window.PatygoCatalog.prettyCategoryName(resolved.mid.name) || resolved.mid.name
+        );
+      }
+      addSep();
       const current = document.createElement("span");
       current.setAttribute("data-catalog-crumb", "");
-      current.textContent = label;
+      current.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
       nav.appendChild(current);
     } else if (crumb) {
       crumb.textContent = label;
     }
-    if (title) title.textContent = label;
+    if (title) title.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
     if (lead) {
       const parts = [resolved.parent.name];
       if (resolved.mid) parts.push(resolved.mid.name);
       if (resolved.child) parts.push(resolved.child.name);
       lead.textContent = parts.join(" / ") + " kategorisindeki ürünler.";
     }
-    document.title = label + " | Patygo Teknoloji";
+    document.title = (window.PatygoCatalog.prettyCategoryName(label) || label) + " | Patygo Teknoloji";
   }
 
   function makeCard(product, index) {
@@ -849,6 +927,7 @@
 
   window.PatygoCatalog.reload = reloadCatalog;
   window.PatygoCatalog.fetchProductPage = fetchProductPage;
+  window.PatygoCatalog.loadCategories = loadCategories;
 
   window.PatygoCatalog.ready = reloadCatalog();
 
