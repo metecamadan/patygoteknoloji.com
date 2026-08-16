@@ -51,3 +51,13 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /\/api\/payment\/status/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
 });
+
+test("nginx serves checkout HTML from disk when Node is busy", () => {
+  const nginx = fs.readFileSync(
+    path.join(root, "deploy", "nginx-patygoteknoloji.com.conf"),
+    "utf8"
+  );
+  assert.match(nginx, /try_files \$uri\.html @node/);
+  assert.match(nginx, /location \^~ \/api\//);
+  assert.match(nginx, /location \^~ \/assets\/data\/ \{\s*return 404;/);
+});

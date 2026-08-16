@@ -133,6 +133,57 @@ test("normalizeSupplierFeedUrl upgrades http to https", () => {
   );
 });
 
+test("supplier catalog stays in memory after first read so disk parse does not block the storefront", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cache-memo-"));
+  const cacheFile = path.join(root, ".runtime", "supplier-cache.json");
+  try {
+    fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+    const store = createSupplierStore(root, {
+      allowedHosts: ["supplier.example"],
+      defaultMarginPercent: 20,
+      validateUrl: async (raw) => new URL(raw),
+      fetchXml: async () => SAMPLE_XML,
+    });
+    fs.writeFileSync(
+      cacheFile,
+      JSON.stringify([
+        {
+          supplierSku: "SKU-MEMO",
+          name: "Bellekte kalan",
+          brand: "Patygo",
+          costPrice: 10,
+          currency: "TRY",
+          stockQty: 2,
+        },
+      ]),
+      "utf8"
+    );
+    const first = store.listProducts();
+    assert.equal(first.length, 1);
+    assert.equal(first[0].supplierSku, "SKU-MEMO");
+    const second = store.listProducts();
+    assert.equal(second[0].name, "Bellekte kalan");
+    fs.writeFileSync(
+      cacheFile,
+      JSON.stringify([
+        {
+          supplierSku: "SKU-NEW",
+          name: "Diskten yeni",
+          brand: "Patygo",
+          costPrice: 10,
+          currency: "TRY",
+          stockQty: 2,
+        },
+      ]),
+      "utf8"
+    );
+    const third = store.listProducts();
+    assert.equal(third[0].supplierSku, "SKU-NEW");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("atomic JSON writes leave one complete target and no temp file", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-atomic-"));
   const target = path.join(root, "state.json");
