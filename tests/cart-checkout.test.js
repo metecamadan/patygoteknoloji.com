@@ -91,3 +91,46 @@ test("checkout waits for catalog and binds cart mode", () => {
   assert.match(checkout, /patygo:catalog/);
   assert.match(checkout, /Ürünler yükleniyor/);
 });
+
+test("header cart count skips ghost lines that the cart page cannot resolve", () => {
+  const { cart, sessionStorage } = loadCart();
+  sessionStorage.setItem(
+    "patygo_cart",
+    JSON.stringify([
+      { id: "gone-1", qty: 1 },
+      { id: "gone-2", qty: 1 },
+      { id: "sku-live", qty: 1, name: "Frisby Fan", price: 63, vatPercent: 20 },
+    ])
+  );
+  assert.equal(cart.count(), 1);
+  assert.equal(cart.totals({}).lines.length, 1);
+  assert.equal(cart.totals({}).lines[0].product.name, "Frisby Fan");
+
+  const pruned = cart.pruneUnresolved({});
+  assert.equal(pruned.length, 1);
+  assert.equal(cart.count(), 1);
+  assert.equal(JSON.parse(sessionStorage.getItem("patygo_cart")).length, 1);
+});
+
+test("cart merges duplicate ids so the badge matches a single line", () => {
+  const { cart, sessionStorage } = loadCart();
+  sessionStorage.setItem(
+    "patygo_cart",
+    JSON.stringify([
+      { id: 12, qty: 1, name: "Fan", price: 10 },
+      { id: "12", qty: 2, name: "Fan", price: 10 },
+    ])
+  );
+  assert.equal(cart.list().length, 1);
+  assert.equal(cart.count(), 3);
+  assert.equal(cart.list()[0].id, "12");
+});
+
+test("cart page catalog reload prunes unresolved lines after ids fetch", () => {
+  const catalog = fs.readFileSync(
+    path.join(__dirname, "..", "assets", "js", "catalog.js"),
+    "utf8"
+  );
+  assert.match(catalog, /cartIdsFetched/);
+  assert.match(catalog, /pruneUnresolved/);
+});

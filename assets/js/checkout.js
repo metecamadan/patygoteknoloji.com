@@ -188,7 +188,9 @@
     let mode = "cart";
     let lines = [];
     let product = null;
-    const cartCount = window.PatygoCart ? window.PatygoCart.count() : 0;
+    const storedQty = window.PatygoCart
+      ? window.PatygoCart.list().reduce((n, item) => n + (Number(item.qty) || 0), 0)
+      : 0;
 
     if (directId && catalogById[directId]) {
       mode = "direct";
@@ -237,12 +239,12 @@
 
     if (!lines.length && mode === "cart") {
       if (els.name) {
-        els.name.textContent = cartCount > 0 ? "Ürünler yükleniyor…" : "Sepetiniz boş";
+        els.name.textContent = storedQty > 0 ? "Ürünler yükleniyor…" : "Sepetiniz boş";
       }
       if (els.note) {
         els.note.classList.add("err");
         els.note.textContent =
-          cartCount > 0
+          storedQty > 0
             ? "Sepetinizde ürün var; katalog yükleniyor. Sayfa otomatik güncellenecek."
             : "Önce sepete ürün ekleyin veya ürün sayfasından Hemen Al seçin.";
       }

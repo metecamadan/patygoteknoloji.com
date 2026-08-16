@@ -861,6 +861,7 @@
 
     let payload = { products: [], total: 0, page: 1, totalPages: 0 };
     let featuredTabs = null;
+    let cartIdsFetched = false;
     try {
       if (onDetailPage) {
         const id = new URLSearchParams(location.search).get("id") || "";
@@ -870,7 +871,12 @@
           .map((item) => item.id)
           .filter(Boolean)
           .join(",");
-        payload = ids ? await fetchProductPage({ ids }) : payload;
+        if (ids) {
+          payload = await fetchProductPage({ ids });
+          cartIdsFetched = true;
+        } else {
+          cartIdsFetched = true;
+        }
       } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
         let home = null;
         try {
@@ -914,7 +920,7 @@
       payload = { products: [], total: 0, page: 1, totalPages: 0 };
     }
 
-    return applyCatalog(payload.products, {
+    const products = applyCatalog(payload.products, {
       categoryQuery: null,
       categoryResolved: wantsCategory
         ? categoryResolved || { parent: { name: "Kategori" }, child: null }
@@ -923,6 +929,14 @@
       facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });
+    if (
+      cartIdsFetched &&
+      window.PatygoCart &&
+      typeof window.PatygoCart.pruneUnresolved === "function"
+    ) {
+      window.PatygoCart.pruneUnresolved(window.PatygoCatalog.byId);
+    }
+    return products;
   }
 
   window.PatygoCatalog.reload = reloadCatalog;
