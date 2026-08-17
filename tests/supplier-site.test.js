@@ -10,6 +10,7 @@ const {
   browseChildName,
   cleanCategoryName,
   syncXmlSiteCategories,
+  syncXmlSiteCategoriesAsync,
 } = require("../lib/supplier-site");
 const { createCategoryStore, slugifyCategory } = require("../lib/categories");
 const { queryPublicCatalog } = require("../lib/catalog");
@@ -207,6 +208,42 @@ test("sync maps XML products onto the curated schema without rebuilding the menu
     assert.equal(cpu.siteMid, "islemciler");
     assert.equal(cpu.siteChild, "intel-islemciler");
     assert.equal(cpu.active, undefined);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("async XML category sync assigns the same leaves as the sync path", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-async-"));
+  const store = createCategoryStore(root);
+  const updates = [];
+  const manager = {
+    listProducts() {
+      return [
+        {
+          supplierSlot: "supplier-1",
+          supplierSku: "NB-1",
+          mainCategory: "KİŞİSEL BİLGİSAYARLAR",
+          midCategory: "Taşınabilir Bilgisayarlar",
+          subCategory: "Notebooklar",
+        },
+      ];
+    },
+    updateProducts(rows) {
+      updates.push(...rows);
+    },
+  };
+  try {
+    const result = await syncXmlSiteCategoriesAsync({
+      manager,
+      categoryStore: store,
+      slotId: "supplier-1",
+      yieldEvery: 8,
+    });
+    assert.equal(result.empty, false);
+    assert.equal(updates[0].siteParent, "bilgisayar-tablet");
+    assert.equal(updates[0].siteMid, "tasinabilir-bilgisayarlar");
+    assert.equal(updates[0].siteChild, "notebooklar");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

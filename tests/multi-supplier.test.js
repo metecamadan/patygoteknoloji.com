@@ -71,6 +71,9 @@ test("three supplier slots keep configuration, products and overrides isolated",
     const products = manager.listProducts();
     assert.equal(products.length, 3);
     assert.equal(new Set(products.map((item) => item.id)).size, 3);
+    assert.equal(manager.getProductById(products[0].id).name, products[0].name);
+    assert.equal(manager.getProductById(products[1].id).supplierSlot, "supplier-2");
+    assert.equal(manager.getProductById("missing-id"), null);
     assert.deepEqual(
       products.map((item) => item.supplierSlot),
       ["supplier-1", "supplier-2", "supplier-3"]

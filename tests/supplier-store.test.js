@@ -375,6 +375,13 @@ test("supplier store blocks publish without a valid site category", async () => 
     ]);
     assert.equal(store.listProducts()[0].active, true);
     assert.equal(store.listProducts()[0].siteCategoryAssigned, true);
+    const listed = store.listProducts()[0];
+    const byId = store.getProductById(listed.id);
+    assert.ok(byId);
+    assert.equal(byId.id, listed.id);
+    assert.equal(byId.name, listed.name);
+    assert.equal(byId.salePrice, listed.salePrice);
+    assert.equal(store.getProductById("missing-id"), null);
     store.updateOverrides([
       { supplierSku: "SKU-1", siteParent: "", siteChild: "" },
     ]);

@@ -11,7 +11,7 @@ const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { atomicWriteJson } = require("./lib/supplier");
-const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
+const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths } = require("./lib/product-image-mirror");
@@ -519,6 +519,34 @@ function storefrontIndex(includeInactiveManual) {
   return memo.index;
 }
 
+function requestedCatalogIds(productId, idsRaw) {
+  if (productId) return [productId];
+  return String(idsRaw || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 50);
+}
+
+function lookupPublicProductsByIds(productId, idsRaw) {
+  const memo = storefrontCatalogMemo.active;
+  if (memo && Array.isArray(memo.products) && memo.products.length) {
+    return queryPublicCatalog(memo.products, { id: productId, ids: idsRaw });
+  }
+  const ids = requestedCatalogIds(productId, idsRaw);
+  const idSet = new Set(ids);
+  const manuals = loadProducts().filter((item) => item && idSet.has(item.id));
+  const suppliers = ids.map((id) => supplierManager.getProductById(id)).filter(Boolean);
+  return queryPublicCatalog(
+    mergeCatalogProducts(manuals, suppliers, {
+      includeInactiveManual: false,
+      normalizeProduct,
+      categoryDefaults: CATEGORY_FEED_DEFAULTS,
+    }),
+    { id: productId, ids: idsRaw }
+  );
+}
+
 let warmCatalogTimer = null;
 
 function bootstrapSnapshotsReady() {
@@ -656,22 +684,42 @@ function popularProductScores() {
   return scores;
 }
 
-function syncLiveXmlCategories(slotId) {
-  try {
-    return syncXmlSiteCategories({
-      manager: supplierManager,
-      categoryStore,
-      slotId: slotId || "supplier-1",
-      activate: false,
-    });
-  } catch (err) {
+function syncLiveXmlCategoriesAsync(slotId) {
+  return syncXmlSiteCategoriesAsync({
+    manager: supplierManager,
+    categoryStore,
+    slotId: slotId || "supplier-1",
+    activate: false,
+  }).catch((err) => {
     console.warn(
       "XML kategori senkronu atlandı:",
       slotId || "supplier-1",
       err && err.message ? err.message : err
     );
     return null;
-  }
+  });
+}
+
+let xmlCategorySyncQueue = Promise.resolve();
+function enqueueXmlCategorySync(slotId) {
+  xmlCategorySyncQueue = xmlCategorySyncQueue
+    .then(() => {
+      if (slotId) return syncLiveXmlCategoriesAsync(slotId);
+      return supplierManager
+        .listSlots()
+        .filter((slot) => slot.configured)
+        .reduce(
+          (prev, slot) => prev.then(() => syncLiveXmlCategoriesAsync(slot.id)),
+          Promise.resolve()
+        );
+    })
+    .then((result) => {
+      invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
+      return result;
+    })
+    .catch(() => null);
+  return xmlCategorySyncQueue;
 }
 
 function enrichSupplierProducts(products) {
@@ -1007,10 +1055,7 @@ async function handleApi(req, res, urlPath) {
     const productId = String(requestUrl.searchParams.get("id") || "").trim();
     const idsRaw = String(requestUrl.searchParams.get("ids") || "").trim();
     if (productId || idsRaw) {
-      const queried = queryPublicCatalog(mergedProducts(false), {
-        id: productId,
-        ids: idsRaw,
-      });
+      const queried = lookupPublicProductsByIds(productId, idsRaw);
       return json(
         res,
         200,
@@ -1434,10 +1479,7 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
       const result = await supplierManager.refresh(body.slotId || "supplier-1");
-      invalidateStorefrontCatalog();
-      syncLiveXmlCategories(result.slotId);
-      invalidateStorefrontCatalog();
-      warmStorefrontCatalog();
+      await enqueueXmlCategorySync(result.slotId);
       scheduleAkakceImageMirror();
       const slots = supplierManager.listSlots();
       return json(res, 200, {
@@ -1957,10 +1999,7 @@ setTimeout(() => {
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,
   afterRefresh: (slotId) => {
-    invalidateStorefrontCatalog();
-    syncLiveXmlCategories(slotId);
-    invalidateStorefrontCatalog();
-    warmStorefrontCatalog();
+    enqueueXmlCategorySync(slotId);
     scheduleAkakceImageMirror();
   },
   log: (message, slotId, key) => console.log(message, slotId, key),
@@ -1973,11 +2012,7 @@ setImmediate(() => {
   scheduleAkakceImageMirror();
 });
 const xmlCategorySyncTimer = setTimeout(() => {
-  supplierManager.listSlots().forEach((slot) => {
-    if (slot.configured) syncLiveXmlCategories(slot.id);
-  });
-  invalidateStorefrontCatalog();
-  warmStorefrontCatalog();
+  enqueueXmlCategorySync();
 }, 15000);
 if (typeof xmlCategorySyncTimer.unref === "function") xmlCategorySyncTimer.unref();
 
