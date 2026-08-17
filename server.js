@@ -518,7 +518,19 @@ function storefrontIndex(includeInactiveManual) {
 
 let warmCatalogTimer = null;
 
+function bootstrapSnapshotsReady() {
+  const file = path.join(CATALOG_BOOTSTRAP_DIR, "all.json");
+  if (!fs.existsSync(file)) return false;
+  try {
+    const stat = fs.statSync(file);
+    return stat.size > 100;
+  } catch (_) {
+    return false;
+  }
+}
+
 function scheduleWarmStorefrontCatalog() {
+  if (bootstrapSnapshotsReady()) return;
   if (warmCatalogTimer) clearTimeout(warmCatalogTimer);
   warmCatalogTimer = setTimeout(() => {
     warmCatalogTimer = null;
