@@ -493,9 +493,6 @@ function invalidateStorefrontCatalog() {
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
   akakceXmlMemo = null;
-  try {
-    fs.rmSync(CATALOG_BOOTSTRAP_DIR, { recursive: true, force: true });
-  } catch (_) {}
 }
 
 function mergedProducts(includeInactiveManual) {
@@ -519,11 +516,21 @@ function storefrontIndex(includeInactiveManual) {
   return memo.index;
 }
 
+let warmCatalogTimer = null;
+
+function scheduleWarmStorefrontCatalog() {
+  if (warmCatalogTimer) clearTimeout(warmCatalogTimer);
+  warmCatalogTimer = setTimeout(() => {
+    warmCatalogTimer = null;
+    try {
+      writeCatalogBootstrapSnapshots();
+    } catch (_) {}
+  }, 4000);
+  if (typeof warmCatalogTimer.unref === "function") warmCatalogTimer.unref();
+}
+
 function warmStorefrontCatalog() {
-  try {
-    storefrontIndex(false);
-    writeCatalogBootstrapSnapshots();
-  } catch (_) {}
+  scheduleWarmStorefrontCatalog();
 }
 
 function writeCatalogBootstrapSnapshots() {
@@ -878,6 +885,17 @@ async function handleApi(req, res, urlPath) {
     } catch (_) {
       return json(res, 422, { ok: false, error: "Analitik olayı geçersiz." });
     }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/catalog-bootstrap") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const bootstrap = catalogBootstrapPayload(requestUrl);
+    if (!bootstrap) {
+      return json(res, 404, { ok: false, error: "Katalog önbelleği hazır değil." });
+    }
+    return json(res, 200, bootstrap, {
+      "Cache-Control": "public, max-age=15, stale-while-revalidate=45",
+    });
   }
 
   if (req.method === "GET" && urlPath === "/api/products") {

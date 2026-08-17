@@ -1028,6 +1028,25 @@
     }
   }
 
+  async function loadCatalogBootstrap() {
+    const embedded = readCatalogBootstrap();
+    if (embedded) return embedded;
+    const qs = new URLSearchParams(location.search);
+    if (qs.get("marka") || qs.get("minFiyat") || qs.get("maxFiyat")) return null;
+    if (qs.get("ara") || qs.get("alt")) return null;
+    try {
+      const apiQs = new URLSearchParams();
+      if (qs.get("kategori")) apiQs.set("kategori", qs.get("kategori"));
+      const res = await fetch("/api/catalog-bootstrap?" + apiQs.toString());
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || !Array.isArray(data.products)) return null;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function facetQueryActive() {
     const facets = readFacetQuery();
     return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat);
@@ -1115,8 +1134,8 @@
     const onProductsPage = /\/urunler\/?$/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const facets = readFacetQuery();
-    const bootstrap =
-      onProductsPage && !facetQueryActive() ? readCatalogBootstrap() : null;
+    const hasEmbeddedBootstrap = Boolean(document.getElementById("patygo-catalog-bootstrap"));
+    const usedBootstrapRef = { value: false };
 
     if (onProductsPage) {
       resetListingScroll();
@@ -1126,7 +1145,7 @@
         history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
       }
     }
-    if (!bootstrap) {
+    if (onProductsPage && !hasEmbeddedBootstrap && !facetQueryActive()) {
       document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
     }
 
@@ -1135,7 +1154,13 @@
 
     const categoriesPromise = loadCategories();
     const payloadPromise = (async () => {
-      if (bootstrap) return bootstrap;
+      if (onProductsPage && !facetQueryActive()) {
+        const boot = await loadCatalogBootstrap();
+        if (boot) {
+          usedBootstrapRef.value = true;
+          return boot;
+        }
+      }
       try {
         if (onDetailPage) {
           const id = new URLSearchParams(location.search).get("id") || "";
@@ -1225,7 +1250,7 @@
     ) {
       window.PatygoCart.pruneUnresolved(window.PatygoCatalog.byId);
     }
-    if (bootstrap && onProductsPage) {
+    if (usedBootstrapRef.value && onProductsPage) {
       fetchListingPayload(query, wantsCategory, facets)
         .then((fresh) => {
           if (!fresh || !Array.isArray(fresh.products)) return;

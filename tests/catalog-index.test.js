@@ -67,10 +67,11 @@ test("buildStorefrontIndex stores compact list with limited images", () => {
   assert.ok(index.compactAll.every((item) => Array.isArray(item.images) && item.images.length <= 2));
 });
 
-test("server injects catalog bootstrap for urunler HTML", () => {
+test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /sendCatalogHtml/);
-  assert.match(serverJs, /patygo-catalog-bootstrap/);
+  assert.match(serverJs, /\/api\/catalog-bootstrap/);
   assert.match(serverJs, /readCatalogBootstrapSnapshot/);
   assert.match(serverJs, /writeCatalogBootstrapSnapshots/);
+  assert.match(serverJs, /scheduleWarmStorefrontCatalog/);
 });

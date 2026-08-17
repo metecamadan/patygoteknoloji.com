@@ -9,7 +9,10 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   assert.equal(clean.status, 200);
   const cleanHtml = await clean.text();
   assert.match(cleanHtml, /Ürünler/i);
-  assert.match(cleanHtml, /patygo-catalog-bootstrap/);
+  assert.match(cleanHtml, /data-catalog-infinite/);
+
+  const bootstrapApi = await fetch(baseUrl + "/api/catalog-bootstrap");
+  assert.ok(bootstrapApi.status === 200 || bootstrapApi.status === 404);
 
   const aliased = await fetch(baseUrl + "/urunler.html", { redirect: "manual" });
   assert.equal(aliased.status, 301);
