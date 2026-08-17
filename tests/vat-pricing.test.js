@@ -84,3 +84,13 @@ test("storefront shows KDV dahil prices", () => {
   assert.match(detailJs, /KDV dahil/);
   assert.doesNotMatch(detailJs, /\+KDV/);
 });
+
+test("storefront money format keeps kuruş instead of rounding to lira", () => {
+  const catalogJs = fs.readFileSync(path.join(root, "assets", "js", "catalog.js"), "utf8");
+  const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
+  assert.match(catalogJs, /minimumFractionDigits:\s*2/);
+  assert.match(catalogJs, /maximumFractionDigits:\s*2/);
+  assert.doesNotMatch(catalogJs, /Math\.round\(Number\(amount\)/);
+  assert.doesNotMatch(checkoutJs, /Math\.round\(amount\)\.toLocaleString/);
+  assert.match(checkoutJs, /PatygoCatalog\.formatPrice/);
+});

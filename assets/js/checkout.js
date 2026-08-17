@@ -51,10 +51,16 @@
   let posStatus = { enabled: false, testMode: true, provider: "akbank" };
 
   function formatTRY(amount) {
+    if (window.PatygoCatalog && typeof window.PatygoCatalog.formatPrice === "function") {
+      return window.PatygoCatalog.formatPrice(amount);
+    }
+    const n = Number(amount);
+    const value = Number.isFinite(n) ? n : 0;
     return (
       "₺" +
-      Math.round(amount).toLocaleString("tr-TR", {
-        maximumFractionDigits: 0,
+      value.toLocaleString("tr-TR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       })
     );
   }

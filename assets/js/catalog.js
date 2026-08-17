@@ -44,10 +44,13 @@
       return Math.round(net * (1 + vat / 100) * 100) / 100;
     },
     formatPrice(amount) {
+      const n = Number(amount);
+      const value = Number.isFinite(n) ? n : 0;
       return (
         "₺" +
-        Math.round(Number(amount) || 0).toLocaleString("tr-TR", {
-          maximumFractionDigits: 0,
+        value.toLocaleString("tr-TR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
         })
       );
     },
