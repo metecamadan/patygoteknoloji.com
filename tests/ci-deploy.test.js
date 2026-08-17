@@ -64,6 +64,7 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(nginx, /gzip_proxied any;/);
   assert.match(nginx, /expires 1h;/);
   assert.doesNotMatch(nginx, /location ~ \^\/urunler/);
+  assert.match(nginx, /location \^~ \/media\/catalog\//);
   const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
   assert.match(serverJs, /\/api\/catalog-bootstrap/);
 });

@@ -16,6 +16,7 @@ const { resolveCategoryQuerySlug } = require("./lib/categories");
 const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
+const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths } = require("./lib/product-image-mirror");
 const { mergeCatalogProducts, queryPublicCatalog, queryPublicCatalogIndexed, buildStorefrontIndex, homeFeaturedCatalog } = require("./lib/catalog");
 const {
   createCategoryStore,
@@ -566,12 +567,54 @@ function writeCatalogBootstrapSnapshots() {
   REQUIRED_PARENT_SLUGS.forEach((slug) => writeKey(slug, { kategori: slug }));
 }
 
+function akakceMirrorIndexStamp() {
+  const { indexFile } = mirrorPaths(DATA_ROOT);
+  try {
+    return fs.statSync(indexFile).mtimeMs;
+  } catch (_) {
+    return 0;
+  }
+}
+
 function storefrontAkakceXml() {
   const products = mergedProducts(false);
-  if (akakceXmlMemo && akakceXmlMemo.products === products) return akakceXmlMemo.xml;
-  const xml = buildAkakceXml(products, { siteBaseUrl: SITE_BASE_URL });
-  akakceXmlMemo = { products, xml };
+  const mirrorIndex = loadMirrorIndex(DATA_ROOT);
+  const mirrorStamp = akakceMirrorIndexStamp();
+  if (
+    akakceXmlMemo &&
+    akakceXmlMemo.products === products &&
+    akakceXmlMemo.mirrorStamp === mirrorStamp
+  ) {
+    return akakceXmlMemo.xml;
+  }
+  const xml = buildAkakceXml(products, {
+    siteBaseUrl: SITE_BASE_URL,
+    mirrorIndex,
+  });
+  akakceXmlMemo = { products, mirrorStamp, xml };
   return xml;
+}
+
+let akakceMirrorTimer = null;
+
+function scheduleAkakceImageMirror() {
+  if (akakceMirrorTimer) clearTimeout(akakceMirrorTimer);
+  akakceMirrorTimer = setTimeout(() => {
+    akakceMirrorTimer = null;
+    mirrorAkakceCatalogImages(mergedProducts(false), {
+      dataRoot: DATA_ROOT,
+      siteBaseUrl: SITE_BASE_URL,
+      logError: (message, source, detail) =>
+        console.warn("Akakçe görsel aynası", source, detail || message),
+    })
+      .then(() => {
+        invalidateStorefrontCatalog();
+      })
+      .catch((err) => {
+        console.warn("Akakçe görsel aynası atlandı:", err.message || err);
+      });
+  }, 6000);
+  if (typeof akakceMirrorTimer.unref === "function") akakceMirrorTimer.unref();
 }
 
 const POPULAR_SCORES_TTL_MS = 60 * 1000;
@@ -1267,6 +1310,7 @@ async function handleApi(req, res, urlPath) {
       nextScheduled: primary.nextScheduled || getNextScheduledAt(new Date()),
       feed: buildAkakceFeedSummary(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
+        mirrorIndex: loadMirrorIndex(DATA_ROOT),
       }),
     });
   }
@@ -1295,9 +1339,11 @@ async function handleApi(req, res, urlPath) {
       });
       invalidateStorefrontCatalog();
       warmStorefrontCatalog();
+      scheduleAkakceImageMirror();
       const slots = supplierManager.listSlots();
       const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
+        mirrorIndex: loadMirrorIndex(DATA_ROOT),
       });
       return json(res, 200, {
         ok: true,
@@ -1319,6 +1365,7 @@ async function handleApi(req, res, urlPath) {
       syncLiveXmlCategories(result.slotId);
       invalidateStorefrontCatalog();
       warmStorefrontCatalog();
+      scheduleAkakceImageMirror();
       const slots = supplierManager.listSlots();
       return json(res, 200, {
         ok: true,
@@ -1384,6 +1431,7 @@ async function handleApi(req, res, urlPath) {
       invalidateStorefrontCatalog();
       const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
+        mirrorIndex: loadMirrorIndex(DATA_ROOT),
       });
       return json(res, 200, {
         ok: true,
@@ -1541,6 +1589,23 @@ function serveNotFound(res, method) {
   });
 }
 
+function sendMirroredCatalogImage(res, filePath, method) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (!ALLOWED_EXT.has(ext)) {
+    return serveNotFound(res, method);
+  }
+  fs.readFile(filePath, (readErr, data) => {
+    if (readErr) return serveNotFound(res, method);
+    const headers = {
+      "Content-Type": MIME[ext] || "application/octet-stream",
+      "Cache-Control": "public, max-age=604800",
+    };
+    res.writeHead(200, securityHeaders(headers));
+    if (method === "HEAD") return res.end();
+    res.end(data);
+  });
+}
+
 function sendFile(res, filePath, method) {
   const rel = path.relative(ROOT, filePath).split(path.sep).join("/");
   if (isBlocked(rel) || rel.split("/").some((p) => p.startsWith("."))) {
@@ -1684,6 +1749,19 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (urlPath.startsWith("/media/catalog/")) {
+    const rel = urlPath.slice("/media/catalog/".length).replace(/\\/g, "/");
+    if (!rel || rel.includes("..")) {
+      return serveNotFound(res, req.method);
+    }
+    const mediaRoot = path.join(DATA_ROOT, ".runtime", "media", "catalog");
+    const filePath = path.resolve(mediaRoot, rel.split("/").join(path.sep));
+    if (!filePath.startsWith(mediaRoot + path.sep) && filePath !== mediaRoot) {
+      return serveNotFound(res, req.method);
+    }
+    return sendMirroredCatalogImage(res, filePath, req.method);
+  }
+
   serveStatic(req, res, urlPath);
 });
 
@@ -1732,6 +1810,7 @@ const supplierScheduler = createSupplierScheduler({
     syncLiveXmlCategories(slotId);
     invalidateStorefrontCatalog();
     warmStorefrontCatalog();
+    scheduleAkakceImageMirror();
   },
   log: (message, slotId, key) => console.log(message, slotId, key),
   logError: (message, slotId, key, detail) =>
@@ -1740,6 +1819,7 @@ const supplierScheduler = createSupplierScheduler({
 supplierScheduler.start();
 setImmediate(() => {
   warmStorefrontCatalog();
+  scheduleAkakceImageMirror();
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   supplierManager.listSlots().forEach((slot) => {
