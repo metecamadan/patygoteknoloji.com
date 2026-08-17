@@ -1740,10 +1740,13 @@ const supplierScheduler = createSupplierScheduler({
 supplierScheduler.start();
 setImmediate(() => {
   warmStorefrontCatalog();
+});
+const xmlCategorySyncTimer = setTimeout(() => {
   supplierManager.listSlots().forEach((slot) => {
     if (slot.configured) syncLiveXmlCategories(slot.id);
   });
-});
+}, 15000);
+if (typeof xmlCategorySyncTimer.unref === "function") xmlCategorySyncTimer.unref();
 
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
