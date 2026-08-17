@@ -71,7 +71,9 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(indexHtml, /href="\/urunler\?kategori=kartus-toner"/);
   assert.match(indexHtml, /href="\/urunler\?kategori=baski-cozumleri"/);
   assert.match(indexHtml, /href="\/urunler\?kategori=yapi-gerecleri"/);
-  assert.match(indexHtml, /href="\/urunler\?kategori=ofis-urunleri"/);
+  const featuredTabs = indexHtml.match(/<nav class="product-tabs[\s\S]*?<\/nav>/);
+  assert.ok(featuredTabs, "featured product tabs nav");
+  assert.doesNotMatch(featuredTabs[0], /ofis-urunleri/);
   assert.match(indexHtml, /<nav class="product-tabs/);
   assert.doesNotMatch(indexHtml, /<div class="product-tabs/);
   assert.match(indexHtml, /data-filter="bilgisayar-tablet"/);
@@ -79,7 +81,7 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(indexHtml, /data-filter="kartus-toner"/);
   assert.match(indexHtml, /data-filter="baski-cozumleri"/);
   assert.match(indexHtml, /data-filter="yapi-gerecleri"/);
-  assert.match(indexHtml, /data-filter="ofis-urunleri"/);
+  assert.doesNotMatch(indexHtml, /data-filter="ofis-urunleri"/);
   assert.doesNotMatch(indexHtml, /data-filter="bilgisayar"/);
   assert.doesNotMatch(indexHtml, /data-filter="kucuk-ev"/);
   assert.doesNotMatch(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
@@ -92,6 +94,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /product-card--skeleton/);
   assert.match(catalogJs, /function showCatalogLoading/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
+  assert.match(catalogJs, /cartOnly:\s*mode === "featured"/);
+  assert.match(indexHtml, /home-featured-lead/);
   assert.match(catalogJs, /function applyCategoryHeading/);
   assert.match(catalogJs, /function resetCatalogHeading/);
   assert.match(catalogJs, /if \(lead\) lead\.hidden = true/);

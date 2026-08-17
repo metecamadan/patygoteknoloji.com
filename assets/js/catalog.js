@@ -611,6 +611,23 @@
       });
       actions.appendChild(qtyRow);
       actions.appendChild(cartBtn);
+    } else if (cardOpts.cartOnly) {
+      cartBtn.addEventListener("click", () => {
+        if (window.PatygoCart) {
+          window.PatygoCart.add(product.id, 1, {
+            brand: product.brand,
+            name: product.name,
+            price: product.price,
+            vatPercent: product.vatPercent,
+          });
+          cartBtn.textContent = "Eklendi";
+          setTimeout(() => {
+            cartBtn.textContent = "Sepete Ekle";
+          }, 1200);
+        }
+      });
+      actions.classList.add("actions--cart-only");
+      actions.appendChild(cartBtn);
     } else {
       cartBtn.addEventListener("click", () => {
         if (window.PatygoCart) {
@@ -822,7 +839,6 @@
     "kartus-toner",
     "baski-cozumleri",
     "yapi-gerecleri",
-    "ofis-urunleri",
   ];
 
   function mixFeatured(byParent, limit) {
@@ -914,7 +930,10 @@
     }
     list.forEach((product, index) => {
       grid.appendChild(
-        makeCard(product, index, { compactListing: compactListing && mode === "all" })
+        makeCard(product, index, {
+          compactListing: compactListing && mode === "all",
+          cartOnly: mode === "featured",
+        })
       );
     });
   }
