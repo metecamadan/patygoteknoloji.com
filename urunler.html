@@ -43,7 +43,10 @@
           <div class="catalog-results">
             <p class="catalog-result-meta" data-catalog-meta hidden></p>
             <div class="product-grid" data-catalog="all" aria-live="polite"></div>
-            <nav class="catalog-pager" data-catalog-pager hidden aria-label="Ürün sayfaları"></nav>
+            <div class="catalog-infinite" data-catalog-infinite hidden>
+              <div data-catalog-load-sentinel aria-hidden="true"></div>
+              <p class="catalog-load-status" data-catalog-load-status hidden aria-live="polite"></p>
+            </div>
           </div>
         </div>
     </section>

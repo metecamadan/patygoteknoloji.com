@@ -73,4 +73,7 @@ test("storefront catalog renders brand and price facets", () => {
   assert.match(script, /maxFiyat/);
   assert.match(script, /marka/);
   assert.match(script, /Filtreleri temizle/);
+  assert.match(script, /btn btn-primary catalog-price-apply/);
+  assert.match(script, /btn btn-primary catalog-facets-toggle/);
+  assert.match(script, /prettyBrandName/);
 });

@@ -4,6 +4,7 @@
   const linesEl = document.getElementById("cartLines");
   const note = document.getElementById("cartNote");
   const checkoutBtn = document.getElementById("cartCheckout");
+  const continueBtn = document.getElementById("cartContinue");
 
   function money(n) {
     return window.PatygoCatalog.formatPrice(n);
@@ -28,10 +29,12 @@
       linesEl.appendChild(empty);
       checkoutBtn.classList.add("disabled");
       checkoutBtn.setAttribute("aria-disabled", "true");
-      checkoutBtn.href = "/urunler";
-      checkoutBtn.textContent = "Ürün kataloğuna git";
-      note.textContent = "";
-      note.hidden = true;
+      checkoutBtn.removeAttribute("href");
+      checkoutBtn.textContent = "Ödemeye geç";
+      if (continueBtn) continueBtn.hidden = true;
+      note.textContent =
+        "Sepete ürün eklediğinizde tutarlar burada görünür ve ödeme adımına geçebilirsiniz.";
+      note.hidden = false;
       return;
     }
 
@@ -39,6 +42,7 @@
     checkoutBtn.removeAttribute("aria-disabled");
     checkoutBtn.href = "/odeme";
     checkoutBtn.textContent = "Sipariş talebine geç";
+    if (continueBtn) continueBtn.hidden = false;
     note.textContent = "Bu adımda ödeme alınmaz. Bilgilerinizi tamamladıktan sonra sipariş talebiniz oluşturulur.";
     note.hidden = false;
 

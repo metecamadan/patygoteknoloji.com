@@ -85,6 +85,12 @@
         })
         .join("");
     },
+    prettyBrandName(name) {
+      const text = String(name || "").trim();
+      if (!text) return "";
+      const lower = text.toLocaleLowerCase("tr-TR");
+      return lower.charAt(0).toLocaleUpperCase("tr-TR") + lower.slice(1);
+    },
     resolveProductCategoryTrail(product, categories) {
       const parentSlug = String((product && product.category) || "").trim();
       const midSlug = String((product && product.mid) || "").trim();
@@ -255,7 +261,7 @@
     root.textContent = "";
     const toggle = document.createElement("button");
     toggle.type = "button";
-    toggle.className = "catalog-facets-toggle";
+    toggle.className = "btn btn-primary catalog-facets-toggle";
     toggle.textContent = "Filtrele";
     toggle.setAttribute("aria-expanded", root.classList.contains("is-open") ? "true" : "false");
     toggle.addEventListener("click", () => {
@@ -296,7 +302,8 @@
           });
         });
         const name = document.createElement("span");
-        name.textContent = row.name;
+        name.textContent =
+          window.PatygoCatalog.prettyBrandName(row.name) || row.name;
         const count = document.createElement("em");
         count.textContent = String(row.count);
         label.appendChild(input);
@@ -354,7 +361,7 @@
       maxInput.value = applied.maxFiyat || "";
       const applyBtn = document.createElement("button");
       applyBtn.type = "button";
-      applyBtn.className = "btn btn-outline catalog-price-apply";
+      applyBtn.className = "btn btn-primary catalog-price-apply";
       applyBtn.textContent = "Uygula";
       applyBtn.addEventListener("click", () => {
         writeFacetQuery({
@@ -407,6 +414,36 @@
     return { parent, mid, child };
   }
 
+  function resetCatalogHeading() {
+    const crumb = document.querySelector("[data-catalog-crumb]");
+    const title = document.querySelector("[data-catalog-title]");
+    const lead = document.querySelector("[data-catalog-lead]");
+    const nav = crumb && crumb.closest(".breadcrumb");
+    if (nav) {
+      nav.textContent = "";
+      const home = document.createElement("a");
+      home.href = "/";
+      home.textContent = "Ana Sayfa";
+      nav.appendChild(home);
+      const sep = document.createElement("span");
+      sep.textContent = "/";
+      nav.appendChild(sep);
+      const current = document.createElement("span");
+      current.setAttribute("data-catalog-crumb", "");
+      current.textContent = "Ürün kataloğu";
+      nav.appendChild(current);
+    } else if (crumb) {
+      crumb.textContent = "Ürün kataloğu";
+    }
+    if (title) title.textContent = "Ürün kataloğu";
+    if (lead) {
+      lead.textContent =
+        "Kategorilere göre ürünleri keşfedin; sepete ekleyin ve güvenle online ödeme yapın.";
+      lead.hidden = false;
+    }
+    document.title = "Ürünler | Patygo Teknoloji — Online Elektronik Mağaza";
+  }
+
   function applyCategoryHeading(resolved) {
     const crumb = document.querySelector("[data-catalog-crumb]");
     const title = document.querySelector("[data-catalog-title]");
@@ -449,25 +486,24 @@
       addSep();
       const current = document.createElement("span");
       current.setAttribute("data-catalog-crumb", "");
+      current.setAttribute("aria-current", "page");
       current.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
       nav.appendChild(current);
     } else if (crumb) {
       crumb.textContent = label;
     }
     if (title) title.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
-    if (lead) {
-      const parts = [resolved.parent.name];
-      if (resolved.mid) parts.push(resolved.mid.name);
-      if (resolved.child) parts.push(resolved.child.name);
-      lead.textContent = parts.join(" / ") + " kategorisindeki ürünler.";
-    }
+    if (lead) lead.hidden = true;
     document.title = (window.PatygoCatalog.prettyCategoryName(label) || label) + " | Patygo Teknoloji";
   }
 
-  function makeCard(product, index) {
+  function makeCard(product, index, options) {
+    const cardOpts = options || {};
+    const compactListing = Boolean(cardOpts.compactListing);
     const article = document.createElement("article");
     const delay = index % 3 === 1 ? " d1" : index % 3 === 2 ? " d2" : "";
-    article.className = "product-card reveal" + delay + " in";
+    article.className =
+      "product-card reveal" + delay + " in" + (compactListing ? " product-card--listing" : "");
     article.dataset.cat = product.category || "";
 
     const brand = String(product.brand || "").toUpperCase();
@@ -527,6 +563,7 @@
     body.appendChild(title);
 
     if (
+      !compactListing &&
       product.description &&
       String(product.description).trim() &&
       String(product.description).trim() !== String(product.name || "").trim()
@@ -549,34 +586,55 @@
     price.appendChild(small);
 
     const actions = document.createElement("div");
-    actions.className = "actions";
+    actions.className = "actions" + (compactListing ? " actions--listing" : "");
 
     const cartBtn = document.createElement("button");
     cartBtn.type = "button";
     cartBtn.className = "btn btn-buy";
     cartBtn.textContent = "Sepete Ekle";
-    cartBtn.addEventListener("click", () => {
-      if (window.PatygoCart) {
-        window.PatygoCart.add(product.id, 1, {
-          brand: product.brand,
-          name: product.name,
-          price: product.price,
-          vatPercent: product.vatPercent,
-        });
-        cartBtn.textContent = "Eklendi";
-        setTimeout(() => {
-          cartBtn.textContent = "Sepete Ekle";
-        }, 1200);
-      }
-    });
 
-    const buy = document.createElement("a");
-    buy.className = "btn btn-outline";
-    buy.href = "/odeme?id=" + encodeURIComponent(product.id);
-    buy.textContent = "Hemen Al";
+    if (compactListing) {
+      const qtyRow = createQtyStepper(1);
+      cartBtn.addEventListener("click", () => {
+        if (window.PatygoCart) {
+          window.PatygoCart.add(product.id, qtyRow.getQty(), {
+            brand: product.brand,
+            name: product.name,
+            price: product.price,
+            vatPercent: product.vatPercent,
+          });
+          cartBtn.textContent = "Eklendi";
+          setTimeout(() => {
+            cartBtn.textContent = "Sepete Ekle";
+          }, 1200);
+        }
+      });
+      actions.appendChild(qtyRow);
+      actions.appendChild(cartBtn);
+    } else {
+      cartBtn.addEventListener("click", () => {
+        if (window.PatygoCart) {
+          window.PatygoCart.add(product.id, 1, {
+            brand: product.brand,
+            name: product.name,
+            price: product.price,
+            vatPercent: product.vatPercent,
+          });
+          cartBtn.textContent = "Eklendi";
+          setTimeout(() => {
+            cartBtn.textContent = "Sepete Ekle";
+          }, 1200);
+        }
+      });
 
-    actions.appendChild(cartBtn);
-    actions.appendChild(buy);
+      const buy = document.createElement("a");
+      buy.className = "btn btn-outline";
+      buy.href = "/odeme?id=" + encodeURIComponent(product.id);
+      buy.textContent = "Hemen Al";
+
+      actions.appendChild(cartBtn);
+      actions.appendChild(buy);
+    }
     body.appendChild(price);
     body.appendChild(actions);
     const visualWrap = document.createElement("a");
@@ -605,6 +663,159 @@
   }
 
   const FEATURED_PER_CATEGORY = 12;
+  const LISTING_PAGE_SIZE = 20;
+  const listingScroll = { page: 1, totalPages: 0, total: 0, loading: false, observer: null };
+
+  function resetListingScroll() {
+    if (listingScroll.observer) {
+      listingScroll.observer.disconnect();
+      listingScroll.observer = null;
+    }
+    listingScroll.page = 1;
+    listingScroll.totalPages = 0;
+    listingScroll.total = 0;
+    listingScroll.loading = false;
+  }
+
+  function updateListingLoadStatus(text, visible) {
+    const status = document.querySelector("[data-catalog-load-status]");
+    const wrap = document.querySelector("[data-catalog-infinite]");
+    if (status) {
+      status.textContent = text || "";
+      status.hidden = !visible;
+    }
+    if (wrap) wrap.hidden = !visible && !(text && listingScroll.totalPages > 1);
+  }
+
+  function createQtyStepper(initial) {
+    let qty = Math.max(1, Math.min(99, Number(initial) || 1));
+    const row = document.createElement("div");
+    row.className = "product-qty-row";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "Adet");
+
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.className = "product-qty-btn";
+    minus.textContent = "−";
+    minus.setAttribute("aria-label", "Adeti azalt");
+
+    const value = document.createElement("span");
+    value.className = "product-qty-value";
+    value.textContent = String(qty);
+
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "product-qty-btn";
+    plus.textContent = "+";
+    plus.setAttribute("aria-label", "Adeti artır");
+
+    function sync() {
+      value.textContent = String(qty);
+      minus.disabled = qty <= 1;
+      plus.disabled = qty >= 99;
+    }
+
+    minus.addEventListener("click", () => {
+      if (qty <= 1) return;
+      qty -= 1;
+      sync();
+    });
+    plus.addEventListener("click", () => {
+      if (qty >= 99) return;
+      qty += 1;
+      sync();
+    });
+    sync();
+
+    row.appendChild(minus);
+    row.appendChild(value);
+    row.appendChild(plus);
+    row.getQty = () => qty;
+    return row;
+  }
+
+  async function fetchListingPage(page) {
+    const query = readCategoryQuery();
+    const facets = readFacetQuery();
+    const wantsCategory = query.parent || query.mid || query.child;
+    return fetchProductPage({
+      kategori: wantsCategory ? query.parent : "",
+      ara: wantsCategory ? query.mid : "",
+      alt: wantsCategory ? query.child : "",
+      marka: facets.brands.join(","),
+      minFiyat: facets.minFiyat,
+      maxFiyat: facets.maxFiyat,
+      page,
+      limit: LISTING_PAGE_SIZE,
+    });
+  }
+
+  function appendListingProducts(grid, products) {
+    const start = grid.querySelectorAll(".product-card:not(.product-card--skeleton)").length;
+    products.forEach((product, index) => {
+      grid.appendChild(makeCard(product, start + index, { compactListing: true }));
+    });
+  }
+
+  async function loadMoreListing() {
+    if (listingScroll.loading) return;
+    if (listingScroll.page >= listingScroll.totalPages) {
+      if (listingScroll.total > 0) updateListingLoadStatus("Tüm ürünler listelendi.", true);
+      return;
+    }
+    listingScroll.loading = true;
+    updateListingLoadStatus("Daha fazla ürün yükleniyor…", true);
+    const nextPage = listingScroll.page + 1;
+    try {
+      const payload = await fetchListingPage(nextPage);
+      const grid = document.querySelector('.product-grid[data-catalog="all"]');
+      if (grid && payload.products.length) {
+        appendListingProducts(grid, payload.products);
+        payload.products.forEach((product) => {
+          window.PatygoCatalog.byId[product.id] = product;
+        });
+      }
+      listingScroll.page = nextPage;
+      listingScroll.totalPages = payload.totalPages || listingScroll.totalPages;
+      listingScroll.total = payload.total || listingScroll.total;
+    } catch (_) {}
+    listingScroll.loading = false;
+    if (listingScroll.page >= listingScroll.totalPages) {
+      updateListingLoadStatus("Tüm ürünler listelendi.", true);
+    } else {
+      updateListingLoadStatus("", false);
+    }
+  }
+
+  function bindListingInfiniteScroll() {
+    const sentinel = document.querySelector("[data-catalog-load-sentinel]");
+    const wrap = document.querySelector("[data-catalog-infinite]");
+    if (!sentinel || !wrap) return;
+    if (listingScroll.observer) listingScroll.observer.disconnect();
+    if (listingScroll.totalPages <= 1) {
+      wrap.hidden = true;
+      updateListingLoadStatus("", false);
+      return;
+    }
+    wrap.hidden = false;
+    updateListingLoadStatus("", false);
+    listingScroll.observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMoreListing();
+      },
+      { rootMargin: "280px 0px" }
+    );
+    listingScroll.observer.observe(sentinel);
+  }
+
+  function setupListingInfinite(meta) {
+    listingScroll.page = Number(meta && meta.page) || 1;
+    listingScroll.totalPages = Number(meta && meta.totalPages) || 0;
+    listingScroll.total = Number(meta && meta.total) || 0;
+    bindListingInfiniteScroll();
+  }
+
   const FEATURED_PARENTS = [
     "bilgisayar-tablet",
     "bilgisayar-bilesenleri",
@@ -684,6 +895,7 @@
   function renderGrid(grid, products, options) {
     const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
+    const compactListing = Boolean(opts.compactListing) || mode === "all";
     let list = products.slice();
     if (mode === "featured") list = list.slice(0, FEATURED_PER_CATEGORY);
     if (opts.categoryQuery) list = productsForSiteCategory(list, opts.categoryQuery);
@@ -700,7 +912,11 @@
       grid.appendChild(empty);
       return;
     }
-    list.forEach((product, index) => grid.appendChild(makeCard(product, index)));
+    list.forEach((product, index) => {
+      grid.appendChild(
+        makeCard(product, index, { compactListing: compactListing && mode === "all" })
+      );
+    });
   }
 
   function renderCatalogPager(meta) {
@@ -754,7 +970,9 @@
     document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
       renderGrid(grid, products, opts);
     });
-    renderCatalogPager(opts.pager || null);
+    renderCatalogPager(opts.listingInfinite ? null : opts.pager || null);
+    if (opts.listingInfinite) setupListingInfinite(opts.listingInfinite);
+    else resetListingScroll();
     if (document.querySelector("[data-catalog-facets]")) {
       renderFacets(opts.facets, readFacetQuery());
       renderCatalogMeta((opts.pager && opts.pager.total) || products.length, readFacetQuery());
@@ -772,7 +990,8 @@
     note.className = "catalog-loading";
     note.textContent = "Ürünler yükleniyor…";
     grid.appendChild(note);
-    for (let i = 0; i < 8; i += 1) {
+    const skeletonCount = grid.getAttribute("data-catalog") === "all" ? 10 : 8;
+    for (let i = 0; i < skeletonCount; i += 1) {
       const skeleton = document.createElement("article");
       skeleton.className = "product-card product-card--skeleton";
       skeleton.setAttribute("aria-hidden", "true");
@@ -847,8 +1066,15 @@
     document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
     const path = location.pathname || "";
     const query = readCategoryQuery();
-    const pageParam = Math.max(1, Number(new URLSearchParams(location.search).get("sayfa")) || 1);
     const onProductsPage = /\/urunler\/?$/i.test(path);
+    if (onProductsPage) {
+      resetListingScroll();
+      const cleanUrl = new URL(location.href);
+      if (cleanUrl.searchParams.has("sayfa")) {
+        cleanUrl.searchParams.delete("sayfa");
+        history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
+      }
+    }
     const onDetailPage = /\/urun-detay\/?$/i.test(path);
     const onCartPage = /\/sepet\/?$/i.test(path) || /\/odeme\/?$/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
@@ -857,6 +1083,8 @@
     if (wantsCategory) {
       categoryResolved = resolveCategoryLabels(categories, query);
       if (categoryResolved) applyCategoryHeading(categoryResolved);
+    } else if (onProductsPage) {
+      resetCatalogHeading();
     }
 
     let payload = { products: [], total: 0, page: 1, totalPages: 0 };
@@ -912,8 +1140,8 @@
           marka: facets.brands.join(","),
           minFiyat: facets.minFiyat,
           maxFiyat: facets.maxFiyat,
-          page: pageParam,
-          limit: 48,
+          page: 1,
+          limit: LISTING_PAGE_SIZE,
         });
       }
     } catch (_) {
@@ -925,7 +1153,8 @@
       categoryResolved: wantsCategory
         ? categoryResolved || { parent: { name: "Kategori" }, child: null }
         : null,
-      pager: onProductsPage ? payload : null,
+      pager: null,
+      listingInfinite: onProductsPage ? payload : null,
       facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });

@@ -26,6 +26,19 @@ test("catalog product cards use cart flow without quote button", () => {
   assert.match(catalogJs, /Hemen Al/);
 });
 
+test("category listing uses five-column cards with qty stepper and infinite scroll", () => {
+  const urunler = fs.readFileSync(path.join(root, "urunler.html"), "utf8");
+  assert.match(catalogJs, /LISTING_PAGE_SIZE = 20/);
+  assert.match(catalogJs, /product-card--listing/);
+  assert.match(catalogJs, /createQtyStepper/);
+  assert.match(catalogJs, /product-qty-row/);
+  assert.match(catalogJs, /loadMoreListing/);
+  assert.match(catalogJs, /IntersectionObserver/);
+  assert.match(catalogJs, /if \(compactListing\)/);
+  assert.match(urunler, /data-catalog-infinite/);
+  assert.match(urunler, /data-catalog-load-sentinel/);
+});
+
 test("catalog filters storefront products by site category query instead of always emptying", () => {
   assert.match(catalogJs, /function productsForSiteCategory/);
   assert.match(catalogJs, /categoryQuery/);
@@ -77,6 +90,9 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /function showCatalogLoading/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.match(catalogJs, /function applyCategoryHeading/);
+  assert.match(catalogJs, /function resetCatalogHeading/);
+  assert.match(catalogJs, /if \(lead\) lead\.hidden = true/);
+  assert.doesNotMatch(catalogJs, /kategorisindeki ürünler/);
   assert.match(catalogJs, /prettyCategoryName/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);
   assert.doesNotMatch(catalogJs, /sort:\s*"popular"/);
@@ -84,9 +100,10 @@ test("homepage featured tabs are crawlable category links", () => {
 
 test("storefront catalog loads paginated products by category", () => {
   assert.match(catalogJs, /fetchProductPage/);
-  assert.match(catalogJs, /data-catalog-pager|renderCatalogPager/);
+  assert.match(catalogJs, /LISTING_PAGE_SIZE/);
+  assert.match(catalogJs, /loadMoreListing/);
   const urunler = fs.readFileSync(path.join(root, "urunler.html"), "utf8");
-  assert.match(urunler, /data-catalog-pager/);
+  assert.match(urunler, /data-catalog-infinite/);
 });
 
 test("public storefront copy does not mention XML catalog sourcing", () => {
