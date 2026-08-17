@@ -687,7 +687,30 @@
   const LISTING_CACHE_STORE = "patygo_listing_v1";
   const LISTING_CACHE_TTL_MS = 10 * 60 * 1000;
   const LISTING_CACHE_MAX = 30;
+  const LISTING_FETCH_MS = 8000;
   const listingScroll = { page: 1, totalPages: 0, total: 0, loading: false, observer: null };
+  let listingReloadToken = 0;
+
+  function listingSnapshotFileName(query) {
+    const safe = (value) =>
+      String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "")
+        .slice(0, 80);
+    const parent = String((query && (query.kategori || query.parent)) || "").trim();
+    const mid = String((query && (query.ara || query.mid)) || "").trim();
+    const child = String((query && (query.alt || query.child)) || "").trim();
+    if (!parent && !mid && !child) return "all.json";
+    if (!mid && !child) return safe(parent || "all") + ".json";
+    if (!child) return (safe(parent) || "all") + "__" + (safe(mid) || "_") + ".json";
+    return (safe(parent) || "all") + "__" + (safe(mid) || "_") + "__" + safe(child) + ".json";
+  }
+
+  async function fetchJsonCached(url) {
+    const res = await fetch(url, { cache: "default", signal: AbortSignal.timeout(LISTING_FETCH_MS) });
+    if (!res.ok) throw new Error("http " + res.status);
+    return res.json();
+  }
 
   function listingCacheKey(params) {
     const keys = ["kategori", "ara", "alt", "marka", "minFiyat", "maxFiyat", "page", "limit", "id", "ids", "homeFeatured"];
@@ -1061,6 +1084,24 @@
     }
   }
 
+  function showCatalogFailed(grid) {
+    if (!grid) return;
+    grid.textContent = "";
+    grid.removeAttribute("aria-busy");
+    const wrap = document.createElement("div");
+    wrap.className = "catalog-empty";
+    const p = document.createElement("p");
+    p.textContent = "Ürünler şu anda yüklenemedi. Sayfayı yenileyin.";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-outline";
+    btn.textContent = "Tekrar dene";
+    btn.addEventListener("click", () => reloadCatalog());
+    wrap.appendChild(p);
+    wrap.appendChild(btn);
+    grid.appendChild(wrap);
+  }
+
   function readCatalogBootstrap() {
     const el = document.getElementById("patygo-catalog-bootstrap");
     if (!el) return null;
@@ -1079,19 +1120,25 @@
     if (embedded) return embedded;
     const qs = new URLSearchParams(location.search);
     if (qs.get("marka") || qs.get("minFiyat") || qs.get("maxFiyat")) return null;
+    const query = readCategoryQuery();
+    const file = listingSnapshotFileName({
+      kategori: query.parent,
+      ara: query.mid,
+      alt: query.child,
+    });
+    try {
+      const data = await fetchJsonCached("/listing/" + file);
+      if (data && Array.isArray(data.products)) return data;
+    } catch (_) {}
     try {
       const apiQs = new URLSearchParams();
       ["kategori", "ara", "alt"].forEach((key) => {
         if (qs.get(key)) apiQs.set(key, qs.get(key));
       });
-      const res = await fetch("/api/catalog-bootstrap?" + apiQs.toString(), { cache: "default" });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data || !Array.isArray(data.products)) return null;
-      return data;
-    } catch (_) {
-      return null;
-    }
+      const data = await fetchJsonCached("/api/catalog-bootstrap?" + apiQs.toString());
+      if (data && Array.isArray(data.products)) return data;
+    } catch (_) {}
+    return null;
   }
 
   function facetQueryActive() {
@@ -1118,9 +1165,7 @@
       const value = params[key];
       if (value !== undefined && value !== null && String(value) !== "") qs.set(key, String(value));
     });
-    const res = await fetch("/api/products?" + qs.toString(), { cache: "default" });
-    if (!res.ok) throw new Error("Katalog yüklenemedi");
-    const data = await res.json();
+    const data = await fetchJsonCached("/api/products?" + qs.toString());
     const products = Array.isArray(data.products) ? data.products : Array.isArray(data) ? data : [];
     const payload = {
       products,
@@ -1165,11 +1210,12 @@
 
   async function loadCategories() {
     try {
-      const res = await fetch("/assets/data/categories.json");
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.categories)) return data.categories;
-      }
+      const data = await fetchJsonCached("/listing/categories.json");
+      if (Array.isArray(data.categories)) return data.categories;
+    } catch (_) {}
+    try {
+      const data = await fetchJsonCached("/assets/data/categories.json");
+      if (Array.isArray(data.categories)) return data.categories;
     } catch (_) {}
     if (window.PatygoNav && Array.isArray(window.PatygoNav.categories)) {
       return window.PatygoNav.categories;
@@ -1199,6 +1245,7 @@
   }
 
   async function reloadCatalog() {
+    const token = ++listingReloadToken;
     const path = location.pathname || "";
     const query = readCategoryQuery();
     const onProductsPage = /\/urunler\/?$/i.test(path);
@@ -1219,7 +1266,10 @@
       }
     }
     if (onProductsPage && !cachedListing && !hasEmbeddedBootstrap) {
-      document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
+      document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
+        const hasCards = grid.querySelector(".product-card:not(.product-card--skeleton)");
+        if (!hasCards) showCatalogLoading(grid);
+      });
     }
 
     const onDetailPage = /\/urun-detay\/?$/i.test(path);
@@ -1278,21 +1328,12 @@
         }
         return await fetchListingPayload(query, wantsCategory, facets);
       } catch (_) {
-        return { products: [], total: 0, page: 1, totalPages: 0 };
+        return { products: [], total: 0, page: 1, totalPages: 0, failed: true };
       }
     })();
 
-    const categories = await categoriesPromise;
-    window.PatygoCatalog._lastCategories = categories;
-    let categoryResolved = null;
-    if (wantsCategory) {
-      categoryResolved = resolveCategoryLabels(categories, query);
-      if (categoryResolved) applyCategoryHeading(categoryResolved);
-    } else if (onProductsPage) {
-      resetCatalogHeading();
-    }
-
     const payloadResult = await payloadPromise;
+    if (token !== listingReloadToken) return [];
     const featuredTabs = payloadResult.featuredTabs || null;
     const payload = {
       products: payloadResult.products || [],
@@ -1302,14 +1343,18 @@
       facets: payloadResult.facets || null,
     };
 
+    if (onProductsPage && payloadResult.failed && !payload.products.length) {
+      document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogFailed);
+      return [];
+    }
+
     let cartIdsFetched = false;
     if (onCartPage) cartIdsFetched = true;
 
+    const headingFallback = wantsCategory ? { parent: { name: "Kategori" }, child: null } : null;
     const products = paintListing(payload, {
       categoryQuery: null,
-      categoryResolved: wantsCategory
-        ? categoryResolved || { parent: { name: "Kategori" }, child: null }
-        : null,
+      categoryResolved: headingFallback,
       pager: null,
       listingInfinite: onProductsPage ? payload : null,
       facets: onProductsPage ? payload.facets : null,
@@ -1322,15 +1367,28 @@
     ) {
       window.PatygoCart.pruneUnresolved(window.PatygoCatalog.byId);
     }
+
+    categoriesPromise
+      .then((categories) => {
+        if (token !== listingReloadToken) return;
+        window.PatygoCatalog._lastCategories = categories;
+        if (wantsCategory) {
+          const categoryResolved = resolveCategoryLabels(categories, query);
+          if (categoryResolved) applyCategoryHeading(categoryResolved);
+        } else if (onProductsPage) {
+          resetCatalogHeading();
+        }
+      })
+      .catch(() => {});
+
     if (usedFastPath.value && onProductsPage) {
       fetchListingPayload(query, wantsCategory, facets)
         .then((fresh) => {
+          if (token !== listingReloadToken) return;
           if (!fresh || !Array.isArray(fresh.products)) return;
           paintListing(fresh, {
             categoryQuery: null,
-            categoryResolved: wantsCategory
-              ? categoryResolved || { parent: { name: "Kategori" }, child: null }
-              : null,
+            categoryResolved: headingFallback,
             pager: null,
             listingInfinite: fresh,
             facets: fresh.facets || null,
@@ -1354,7 +1412,13 @@
         limit: LISTING_PAGE_SIZE,
       };
       if (readListingCache(listingCacheKey(params))) return;
-      fetchProductPage(params).catch(() => {});
+      const file = listingSnapshotFileName(params);
+      fetch("/listing/" + file, { cache: "default" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && Array.isArray(data.products)) writeListingCache(listingCacheKey(params), data);
+        })
+        .catch(() => {});
     } catch (_) {}
   }
 
@@ -1374,9 +1438,12 @@
   );
 
   document.addEventListener("patygo:nav-ready", () => {
-    if (/\/urunler\/?$/i.test(location.pathname || "") && location.search) {
-      reloadCatalog();
-    }
+    if (!/\/urunler\/?$/i.test(location.pathname || "") || !location.search) return;
+    const query = readCategoryQuery();
+    const cats = window.PatygoNav && window.PatygoNav.categories;
+    if (!Array.isArray(cats) || !cats.length) return;
+    const resolved = resolveCategoryLabels(cats, query);
+    if (resolved) applyCategoryHeading(resolved);
   });
 
   // Panel kaydettiğinde açık site sekmeleri güncellensin

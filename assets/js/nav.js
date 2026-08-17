@@ -2,7 +2,8 @@
 (function () {
   "use strict";
 
-  const NAV_SOURCE = "/assets/data/categories.json";
+  const NAV_SOURCE = "/listing/categories.json";
+  const NAV_SOURCE_FALLBACK = "/assets/data/categories.json";
 
   function categoryHref(parentSlug, midSlug, childSlug) {
     const params = new URLSearchParams();
@@ -337,11 +338,17 @@
   }
 
   function loadNav(root) {
-    return fetch(NAV_SOURCE)
+    return fetch(NAV_SOURCE, { cache: "default" })
       .then((res) => {
         if (!res.ok) throw new Error("Kategori menüsü yüklenemedi");
         return res.json();
       })
+      .catch(() =>
+        fetch(NAV_SOURCE_FALLBACK, { cache: "default" }).then((res) => {
+          if (!res.ok) throw new Error("Kategori menüsü yüklenemedi");
+          return res.json();
+        })
+      )
       .then((data) => {
         const categories = Array.isArray(data && data.categories) ? data.categories : [];
         renderNav(root, categories);

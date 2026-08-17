@@ -96,6 +96,9 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /readListingCache/);
   assert.match(catalogJs, /prefetchListingHref/);
   assert.match(catalogJs, /\/api\/catalog-bootstrap/);
+  assert.match(catalogJs, /\/listing\//);
+  assert.match(catalogJs, /listingSnapshotFileName/);
+  assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.match(catalogJs, /cartOnly:\s*mode === "featured"/);

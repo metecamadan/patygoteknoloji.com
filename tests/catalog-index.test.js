@@ -67,6 +67,25 @@ test("buildStorefrontIndex stores compact list with limited images", () => {
   assert.ok(index.compactAll.every((item) => Array.isArray(item.images) && item.images.length <= 2));
 });
 
+test("listing snapshots cover parent mid and child keys", () => {
+  const { listingSnapshotFileName, listingSnapshotJobs, buildStorefrontIndex } = require("../lib/catalog");
+  assert.equal(listingSnapshotFileName({}), "all.json");
+  assert.equal(
+    listingSnapshotFileName({
+      kategori: "bilgisayar-tablet",
+      ara: "klavye-mouse-urunleri",
+      alt: "klavye-ve-mouse",
+    }),
+    "bilgisayar-tablet__klavye-mouse-urunleri__klavye-ve-mouse.json"
+  );
+  const index = buildStorefrontIndex(sample);
+  const files = listingSnapshotJobs(index).map((job) => job.file);
+  assert.ok(files.includes("all.json"));
+  assert.ok(files.includes("bilgisayar-tablet.json"));
+  assert.ok(files.includes("bilgisayar-tablet__notebooklar.json"));
+  assert.ok(files.includes("bilgisayar-tablet__notebooklar__nb-a.json"));
+});
+
 test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /sendCatalogHtml/);
@@ -77,4 +96,6 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /catalogBootstrapSnapshotName/);
   assert.match(serverJs, /storefrontIndex\(false\)/);
   assert.match(serverJs, /max-age=120/);
+  assert.match(serverJs, /\/listing\//);
+  assert.match(serverJs, /listingSnapshotJobs/);
 });

@@ -11,13 +11,11 @@ const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { atomicWriteJson } = require("./lib/supplier");
-const { REQUIRED_PARENT_SLUGS } = require("./lib/site-category-schema");
-const { resolveCategoryQuerySlug } = require("./lib/categories");
 const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths } = require("./lib/product-image-mirror");
-const { mergeCatalogProducts, queryPublicCatalog, queryPublicCatalogIndexed, buildStorefrontIndex, homeFeaturedCatalog } = require("./lib/catalog");
+const { mergeCatalogProducts, queryPublicCatalog, queryPublicCatalogIndexed, buildStorefrontIndex, homeFeaturedCatalog, listingSnapshotFileName, listingSnapshotJobs } = require("./lib/catalog");
 const {
   createCategoryStore,
   setCategoryListLoader,
@@ -542,7 +540,7 @@ function scheduleWarmStorefrontCatalog() {
       storefrontIndex(false);
       writeCatalogBootstrapSnapshots();
     } catch (_) {}
-  }, 2500);
+  }, 400);
   if (typeof warmCatalogTimer.unref === "function") warmCatalogTimer.unref();
 }
 
@@ -553,12 +551,12 @@ function warmStorefrontCatalog() {
 function writeCatalogBootstrapSnapshots() {
   const index = storefrontIndex(false);
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
-  const writeKey = (key, params) => {
+  listingSnapshotJobs(index).forEach((job) => {
     const payload = queryPublicCatalogIndexed(
       index,
-      Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, params)
+      Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
     );
-    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, key + ".json"), {
+    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, job.file), {
       products: payload.products,
       total: payload.total,
       page: payload.page,
@@ -566,9 +564,13 @@ function writeCatalogBootstrapSnapshots() {
       totalPages: payload.totalPages,
       facets: payload.facets || null,
     });
-  };
-  writeKey("all", {});
-  REQUIRED_PARENT_SLUGS.forEach((slug) => writeKey(slug, { kategori: slug }));
+  });
+  try {
+    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "categories.json"), {
+      version: 5,
+      categories: categoryStore.publicList(),
+    });
+  } catch (_) {}
 }
 
 function akakceMirrorIndexStamp() {
@@ -995,6 +997,34 @@ async function handleApi(req, res, urlPath) {
     );
     }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
+    const page = Number(requestUrl.searchParams.get("page") || 1) || 1;
+    const hasListingFilters = Boolean(
+      requestUrl.searchParams.get("marka") ||
+        requestUrl.searchParams.get("minFiyat") ||
+        requestUrl.searchParams.get("maxFiyat") ||
+        requestUrl.searchParams.get("id") ||
+        requestUrl.searchParams.get("ids") ||
+        requestUrl.searchParams.get("featured")
+    );
+    if (page <= 1 && !hasListingFilters && !sort) {
+      const snap = readCatalogBootstrapSnapshot(requestUrl);
+      if (snap) {
+        return json(
+          res,
+          200,
+          {
+            products: snap.products,
+            total: snap.total,
+            page: snap.page || 1,
+            limit: snap.limit || CATALOG_BOOTSTRAP_LIMIT,
+            totalPages: snap.totalPages,
+            facets: snap.facets || null,
+            updatedAt,
+          },
+          { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
+        );
+      }
+    }
     const queried = queryPublicCatalogIndexed(storefrontIndex(false), {
       id: requestUrl.searchParams.get("id") || "",
       ids: requestUrl.searchParams.get("ids") || "",
@@ -1646,16 +1676,11 @@ function sendFile(res, filePath, method) {
 
 function catalogBootstrapSnapshotName(params) {
   if (params.get("marka") || params.get("minFiyat") || params.get("maxFiyat")) return null;
-  const parent = resolveCategoryQuerySlug(params.get("kategori") || "") || "all";
-  const mid = String(params.get("ara") || "").trim();
-  const child = String(params.get("alt") || "").trim();
-  const safe = (value) =>
-    String(value || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "")
-      .slice(0, 80);
-  if (!mid && !child) return parent + ".json";
-  return parent + "__" + (safe(mid) || "_") + "__" + (safe(child) || "_") + ".json";
+  return listingSnapshotFileName({
+    kategori: params.get("kategori") || "",
+    ara: params.get("ara") || "",
+    alt: params.get("alt") || "",
+  });
 }
 
 function readCatalogBootstrapSnapshot(requestUrl) {
@@ -1794,7 +1819,40 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (urlPath === "/assets/data/categories.json") {
-    return json(res, 200, { version: 5, categories: categoryStore.publicList() });
+    return json(
+      res,
+      200,
+      { version: 5, categories: categoryStore.publicList() },
+      { "Cache-Control": "public, max-age=60, stale-while-revalidate=600" }
+    );
+  }
+
+  if (urlPath.startsWith("/listing/")) {
+    const name = urlPath.slice("/listing/".length);
+    if (!/^[A-Za-z0-9._-]+\.json$/.test(name)) {
+      return serveNotFound(res, req.method);
+    }
+    const filePath = path.resolve(CATALOG_BOOTSTRAP_DIR, name);
+    const rootDir = path.resolve(CATALOG_BOOTSTRAP_DIR);
+    if (!filePath.startsWith(rootDir + path.sep)) {
+      return serveNotFound(res, req.method);
+    }
+    if (!fs.existsSync(filePath)) {
+      return serveNotFound(res, req.method);
+    }
+    fs.readFile(filePath, (readErr, data) => {
+      if (readErr) return serveNotFound(res, req.method);
+      res.writeHead(
+        200,
+        securityHeaders({
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=600",
+        })
+      );
+      if (req.method === "HEAD") return res.end();
+      res.end(data);
+    });
+    return;
   }
 
   // SEO: /sayfa.html → /sayfa (301)

@@ -57,3 +57,8 @@ test("Teklif Al sits on the right viewport edge, not in the header nav", () => {
   assert.match(mainJs, /quote-rail/);
   assert.match(mainJs, /Teklif Al/);
 });
+
+test("nav reads category tree from disk listing snapshot first", () => {
+  assert.match(navJs, /\/listing\/categories\.json/);
+  assert.match(navJs, /NAV_SOURCE_FALLBACK/);
+});
