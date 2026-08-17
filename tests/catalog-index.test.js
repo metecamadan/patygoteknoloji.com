@@ -71,5 +71,6 @@ test("server injects catalog bootstrap for urunler HTML", () => {
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /sendCatalogHtml/);
   assert.match(serverJs, /patygo-catalog-bootstrap/);
-  assert.match(serverJs, /queryPublicCatalogIndexed/);
+  assert.match(serverJs, /readCatalogBootstrapSnapshot/);
+  assert.match(serverJs, /writeCatalogBootstrapSnapshots/);
 });

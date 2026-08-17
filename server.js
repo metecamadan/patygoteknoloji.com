@@ -10,6 +10,9 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
+const { atomicWriteJson } = require("./lib/supplier");
+const { REQUIRED_PARENT_SLUGS } = require("./lib/site-category-schema");
+const { resolveCategoryQuerySlug } = require("./lib/categories");
 const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
@@ -484,11 +487,15 @@ function normalizeProduct(p, fallbackId) {
 const storefrontCatalogMemo = { active: null, all: null };
 let akakceXmlMemo = null;
 const CATALOG_BOOTSTRAP_LIMIT = 20;
+const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 
 function invalidateStorefrontCatalog() {
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
   akakceXmlMemo = null;
+  try {
+    fs.rmSync(CATALOG_BOOTSTRAP_DIR, { recursive: true, force: true });
+  } catch (_) {}
 }
 
 function mergedProducts(includeInactiveManual) {
@@ -514,8 +521,30 @@ function storefrontIndex(includeInactiveManual) {
 
 function warmStorefrontCatalog() {
   try {
-    mergedProducts(false);
+    storefrontIndex(false);
+    writeCatalogBootstrapSnapshots();
   } catch (_) {}
+}
+
+function writeCatalogBootstrapSnapshots() {
+  const index = storefrontIndex(false);
+  fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+  const writeKey = (key, params) => {
+    const payload = queryPublicCatalogIndexed(
+      index,
+      Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, params)
+    );
+    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, key + ".json"), {
+      products: payload.products,
+      total: payload.total,
+      page: payload.page,
+      limit: payload.limit,
+      totalPages: payload.totalPages,
+      facets: payload.facets || null,
+    });
+  };
+  writeKey("all", {});
+  REQUIRED_PARENT_SLUGS.forEach((slug) => writeKey(slug, { kategori: slug }));
 }
 
 function storefrontAkakceXml() {
@@ -1506,30 +1535,25 @@ function sendFile(res, filePath, method) {
   });
 }
 
-function catalogBootstrapPayload(requestUrl) {
+function readCatalogBootstrapSnapshot(requestUrl) {
   const params = requestUrl.searchParams;
-  const hasFacetFilters =
-    params.get("marka") || params.get("minFiyat") || params.get("maxFiyat");
-  if (hasFacetFilters) return null;
+  if (params.get("marka") || params.get("minFiyat") || params.get("maxFiyat")) return null;
+  if (params.get("ara") || params.get("alt")) return null;
+  const parent = resolveCategoryQuerySlug(params.get("kategori") || "") || "all";
+  const file = path.join(CATALOG_BOOTSTRAP_DIR, parent + ".json");
+  if (!fs.existsSync(file)) return null;
   try {
-    const queried = queryPublicCatalogIndexed(storefrontIndex(false), {
-      kategori: params.get("kategori") || "",
-      ara: params.get("ara") || "",
-      alt: params.get("alt") || "",
-      page: 1,
-      limit: CATALOG_BOOTSTRAP_LIMIT,
-    });
-    return {
-      products: queried.products,
-      total: queried.total,
-      page: queried.page,
-      limit: queried.limit,
-      totalPages: queried.totalPages,
-      facets: queried.facets || null,
-    };
+    const raw = fs.readFileSync(file, "utf8");
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.products)) return null;
+    return data;
   } catch (_) {
     return null;
   }
+}
+
+function catalogBootstrapPayload(requestUrl) {
+  return readCatalogBootstrapSnapshot(requestUrl);
 }
 
 function sendCatalogHtml(res, req, filePath, method) {
