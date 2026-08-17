@@ -681,7 +681,50 @@
 
   const FEATURED_PER_CATEGORY = 12;
   const LISTING_PAGE_SIZE = 20;
+  const LISTING_CACHE_STORE = "patygo_listing_v1";
+  const LISTING_CACHE_TTL_MS = 10 * 60 * 1000;
+  const LISTING_CACHE_MAX = 30;
   const listingScroll = { page: 1, totalPages: 0, total: 0, loading: false, observer: null };
+
+  function listingCacheKey(params) {
+    const keys = ["kategori", "ara", "alt", "marka", "minFiyat", "maxFiyat", "page", "limit", "id", "ids", "homeFeatured"];
+    const qs = new URLSearchParams();
+    keys.forEach((key) => {
+      const value = params && params[key];
+      if (value !== undefined && value !== null && String(value) !== "") qs.set(key, String(value));
+    });
+    return qs.toString() || "all";
+  }
+
+  function readListingCache(key) {
+    try {
+      const store = JSON.parse(sessionStorage.getItem(LISTING_CACHE_STORE) || "{}");
+      const entry = store[key];
+      if (!entry || Date.now() - Number(entry.at || 0) > LISTING_CACHE_TTL_MS) return null;
+      if (!entry.data || !Array.isArray(entry.data.products)) return null;
+      return entry.data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeListingCache(key, data) {
+    if (!key || !data || !Array.isArray(data.products)) return;
+    try {
+      const store = JSON.parse(sessionStorage.getItem(LISTING_CACHE_STORE) || "{}");
+      store[key] = { at: Date.now(), data: data };
+      const keys = Object.keys(store);
+      if (keys.length > LISTING_CACHE_MAX) {
+        keys
+          .sort((a, b) => Number((store[a] && store[a].at) || 0) - Number((store[b] && store[b].at) || 0))
+          .slice(0, keys.length - LISTING_CACHE_MAX)
+          .forEach((oldKey) => {
+            delete store[oldKey];
+          });
+      }
+      sessionStorage.setItem(LISTING_CACHE_STORE, JSON.stringify(store));
+    } catch (_) {}
+  }
 
   function resetListingScroll() {
     if (listingScroll.observer) {
@@ -1033,11 +1076,12 @@
     if (embedded) return embedded;
     const qs = new URLSearchParams(location.search);
     if (qs.get("marka") || qs.get("minFiyat") || qs.get("maxFiyat")) return null;
-    if (qs.get("ara") || qs.get("alt")) return null;
     try {
       const apiQs = new URLSearchParams();
-      if (qs.get("kategori")) apiQs.set("kategori", qs.get("kategori"));
-      const res = await fetch("/api/catalog-bootstrap?" + apiQs.toString());
+      ["kategori", "ara", "alt"].forEach((key) => {
+        if (qs.get(key)) apiQs.set(key, qs.get(key));
+      });
+      const res = await fetch("/api/catalog-bootstrap?" + apiQs.toString(), { cache: "default" });
       if (!res.ok) return null;
       const data = await res.json();
       if (!data || !Array.isArray(data.products)) return null;
@@ -1071,11 +1115,11 @@
       const value = params[key];
       if (value !== undefined && value !== null && String(value) !== "") qs.set(key, String(value));
     });
-    const res = await fetch("/api/products?" + qs.toString());
+    const res = await fetch("/api/products?" + qs.toString(), { cache: "default" });
     if (!res.ok) throw new Error("Katalog yüklenemedi");
     const data = await res.json();
     const products = Array.isArray(data.products) ? data.products : Array.isArray(data) ? data : [];
-    return {
+    const payload = {
       products,
       total: Number(data.total) || products.length,
       page: Number(data.page) || 1,
@@ -1084,6 +1128,8 @@
       byParent: data.byParent && typeof data.byParent === "object" ? data.byParent : null,
       facets: data.facets && typeof data.facets === "object" ? data.facets : null,
     };
+    writeListingCache(listingCacheKey(params), payload);
+    return payload;
   }
 
   async function fetchHomeFeatured() {
@@ -1128,14 +1174,38 @@
     return [];
   }
 
+  function listingParamsFromPage(query, wantsCategory, facets) {
+    return {
+      kategori: wantsCategory ? query.parent : "",
+      ara: wantsCategory ? query.mid : "",
+      alt: wantsCategory ? query.child : "",
+      marka: facets.brands.join(","),
+      minFiyat: facets.minFiyat,
+      maxFiyat: facets.maxFiyat,
+      page: 1,
+      limit: LISTING_PAGE_SIZE,
+    };
+  }
+
+  function paintListing(payload, opts) {
+    const products = applyCatalog(payload.products || [], opts);
+    document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
+      grid.removeAttribute("aria-busy");
+    });
+    return products;
+  }
+
   async function reloadCatalog() {
     const path = location.pathname || "";
     const query = readCategoryQuery();
     const onProductsPage = /\/urunler\/?$/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const facets = readFacetQuery();
+    const listingParams = listingParamsFromPage(query, wantsCategory, facets);
+    const cacheKey = listingCacheKey(listingParams);
+    const cachedListing = onProductsPage ? readListingCache(cacheKey) : null;
     const hasEmbeddedBootstrap = Boolean(document.getElementById("patygo-catalog-bootstrap"));
-    const usedBootstrapRef = { value: false };
+    const usedFastPath = { value: Boolean(cachedListing) };
 
     if (onProductsPage) {
       resetListingScroll();
@@ -1145,7 +1215,7 @@
         history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
       }
     }
-    if (onProductsPage && !hasEmbeddedBootstrap && !facetQueryActive()) {
+    if (onProductsPage && !cachedListing && !hasEmbeddedBootstrap) {
       document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
     }
 
@@ -1154,10 +1224,12 @@
 
     const categoriesPromise = loadCategories();
     const payloadPromise = (async () => {
+      if (cachedListing) return cachedListing;
       if (onProductsPage && !facetQueryActive()) {
         const boot = await loadCatalogBootstrap();
         if (boot) {
-          usedBootstrapRef.value = true;
+          usedFastPath.value = true;
+          writeListingCache(cacheKey, boot);
           return boot;
         }
       }
@@ -1230,7 +1302,7 @@
     let cartIdsFetched = false;
     if (onCartPage) cartIdsFetched = true;
 
-    const products = applyCatalog(payload.products, {
+    const products = paintListing(payload, {
       categoryQuery: null,
       categoryResolved: wantsCategory
         ? categoryResolved || { parent: { name: "Kategori" }, child: null }
@@ -1240,9 +1312,6 @@
       facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });
-    document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
-      grid.removeAttribute("aria-busy");
-    });
     if (
       cartIdsFetched &&
       window.PatygoCart &&
@@ -1250,11 +1319,11 @@
     ) {
       window.PatygoCart.pruneUnresolved(window.PatygoCatalog.byId);
     }
-    if (usedBootstrapRef.value && onProductsPage) {
+    if (usedFastPath.value && onProductsPage) {
       fetchListingPayload(query, wantsCategory, facets)
         .then((fresh) => {
           if (!fresh || !Array.isArray(fresh.products)) return;
-          applyCatalog(fresh.products, {
+          paintListing(fresh, {
             categoryQuery: null,
             categoryResolved: wantsCategory
               ? categoryResolved || { parent: { name: "Kategori" }, child: null }
@@ -1270,11 +1339,36 @@
     return products;
   }
 
+  function prefetchListingHref(href) {
+    try {
+      const url = new URL(href, location.origin);
+      if (!/\/urunler\/?$/i.test(url.pathname)) return;
+      const params = {
+        kategori: url.searchParams.get("kategori") || "",
+        ara: url.searchParams.get("ara") || "",
+        alt: url.searchParams.get("alt") || "",
+        page: 1,
+        limit: LISTING_PAGE_SIZE,
+      };
+      if (readListingCache(listingCacheKey(params))) return;
+      fetchProductPage(params).catch(() => {});
+    } catch (_) {}
+  }
+
   window.PatygoCatalog.reload = reloadCatalog;
   window.PatygoCatalog.fetchProductPage = fetchProductPage;
   window.PatygoCatalog.loadCategories = loadCategories;
 
   window.PatygoCatalog.ready = reloadCatalog();
+
+  document.addEventListener(
+    "pointerenter",
+    (ev) => {
+      const link = ev.target && ev.target.closest ? ev.target.closest('a[href*="/urunler"]') : null;
+      if (link) prefetchListingHref(link.getAttribute("href"));
+    },
+    true
+  );
 
   document.addEventListener("patygo:nav-ready", () => {
     if (/\/urunler\/?$/i.test(location.pathname || "") && location.search) {

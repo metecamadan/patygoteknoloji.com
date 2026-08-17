@@ -531,14 +531,14 @@ function bootstrapSnapshotsReady() {
 }
 
 function scheduleWarmStorefrontCatalog() {
-  if (bootstrapSnapshotsReady()) return;
   if (warmCatalogTimer) clearTimeout(warmCatalogTimer);
   warmCatalogTimer = setTimeout(() => {
     warmCatalogTimer = null;
     try {
+      storefrontIndex(false);
       writeCatalogBootstrapSnapshots();
     } catch (_) {}
-  }, 4000);
+  }, 2500);
   if (typeof warmCatalogTimer.unref === "function") warmCatalogTimer.unref();
 }
 
@@ -949,7 +949,7 @@ async function handleApi(req, res, urlPath) {
       return json(res, 404, { ok: false, error: "Katalog önbelleği hazır değil." });
     }
     return json(res, 200, bootstrap, {
-      "Cache-Control": "public, max-age=15, stale-while-revalidate=45",
+      "Cache-Control": "public, max-age=120, stale-while-revalidate=600",
     });
   }
 
@@ -977,7 +977,7 @@ async function handleApi(req, res, urlPath) {
         totalPages: 1,
         updatedAt,
       },
-      { "Cache-Control": "public, max-age=15, stale-while-revalidate=45" }
+      { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
     );
     }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
@@ -1008,7 +1008,7 @@ async function handleApi(req, res, urlPath) {
         facets: queried.facets || null,
         updatedAt,
       },
-      { "Cache-Control": "public, max-age=15, stale-while-revalidate=45" }
+      { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
     );
   }
 
@@ -1630,12 +1630,24 @@ function sendFile(res, filePath, method) {
   });
 }
 
-function readCatalogBootstrapSnapshot(requestUrl) {
-  const params = requestUrl.searchParams;
+function catalogBootstrapSnapshotName(params) {
   if (params.get("marka") || params.get("minFiyat") || params.get("maxFiyat")) return null;
-  if (params.get("ara") || params.get("alt")) return null;
   const parent = resolveCategoryQuerySlug(params.get("kategori") || "") || "all";
-  const file = path.join(CATALOG_BOOTSTRAP_DIR, parent + ".json");
+  const mid = String(params.get("ara") || "").trim();
+  const child = String(params.get("alt") || "").trim();
+  const safe = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "")
+      .slice(0, 80);
+  if (!mid && !child) return parent + ".json";
+  return parent + "__" + (safe(mid) || "_") + "__" + (safe(child) || "_") + ".json";
+}
+
+function readCatalogBootstrapSnapshot(requestUrl) {
+  const name = catalogBootstrapSnapshotName(requestUrl.searchParams);
+  if (!name) return null;
+  const file = path.join(CATALOG_BOOTSTRAP_DIR, name);
   if (!fs.existsSync(file)) return null;
   try {
     const raw = fs.readFileSync(file, "utf8");
@@ -1647,8 +1659,46 @@ function readCatalogBootstrapSnapshot(requestUrl) {
   }
 }
 
+function writeBootstrapSnapshotFile(name, payload) {
+  fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+  atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, name), {
+    products: payload.products,
+    total: payload.total,
+    page: payload.page,
+    limit: payload.limit,
+    totalPages: payload.totalPages,
+    facets: payload.facets || null,
+  });
+}
+
 function catalogBootstrapPayload(requestUrl) {
-  return readCatalogBootstrapSnapshot(requestUrl);
+  const fromDisk = readCatalogBootstrapSnapshot(requestUrl);
+  if (fromDisk) return fromDisk;
+  const params = requestUrl.searchParams;
+  if (params.get("marka") || params.get("minFiyat") || params.get("maxFiyat")) return null;
+  const memo = storefrontCatalogMemo.active;
+  if (!memo || !memo.index) return null;
+  const payload = queryPublicCatalogIndexed(memo.index, {
+    kategori: params.get("kategori") || "",
+    ara: params.get("ara") || "",
+    alt: params.get("alt") || "",
+    page: 1,
+    limit: CATALOG_BOOTSTRAP_LIMIT,
+  });
+  const name = catalogBootstrapSnapshotName(params);
+  if (name) {
+    try {
+      writeBootstrapSnapshotFile(name, payload);
+    } catch (_) {}
+  }
+  return {
+    products: payload.products,
+    total: payload.total,
+    page: payload.page,
+    limit: payload.limit,
+    totalPages: payload.totalPages,
+    facets: payload.facets || null,
+  };
 }
 
 function sendCatalogHtml(res, req, filePath, method) {
