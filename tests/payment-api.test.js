@@ -111,4 +111,99 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   assert.equal(orderBody.order.paymentStatus, "paid");
   assert.equal(orderBody.order.paymentTaken, true);
   assert.equal(orderBody.order.status, "paid");
+  assert.ok(!orderBody.order.customer, "genel sipariş bakışında müşteri PII olmamalı");
+});
+
+test("unsigned callback and amount mismatch cannot mark order paid or failed", async (t) => {
+  const secret = "test-akbank-secret";
+  const { baseUrl } = await spawnTestServer(
+    t,
+    {
+      ADMIN_PASSWORD: "test-admin-password",
+      AKBANK_MERCHANT_SAFE_ID: "merchant-safe",
+      AKBANK_TERMINAL_SAFE_ID: "terminal-safe",
+      AKBANK_SECRET_KEY: secret,
+      AKBANK_TEST_MODE: "true",
+      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+    },
+    {
+      products: [
+        {
+          id: "pay-sec-item",
+          brand: "TEST",
+          name: "Ödeme Güvenlik Ürünü",
+          price: 80,
+          vatPercent: 20,
+          category: "oem-cevre-birimleri",
+          featured: false,
+          active: true,
+          image: "/assets/img/products/macbook-air-m3.svg",
+          images: ["/assets/img/products/macbook-air-m3.svg"],
+          stockQty: 10,
+          currency: "TRY",
+          unit: "ADET",
+        },
+      ],
+    }
+  );
+
+  const productsRes = await fetch(baseUrl + "/api/products");
+  const productsBody = await productsRes.json();
+  const product = (productsBody.products || []).find((row) => row.active !== false);
+
+  async function startOrder() {
+    const start = await fetch(baseUrl + "/api/payment/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ productId: product.id, qty: 1 }],
+        customer: {
+          name: "Test Musteri",
+          email: "test@example.com",
+          phone: "05555555555",
+          billingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+          shippingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+        },
+        contractsAccepted: true,
+        kvkkAccepted: true,
+      }),
+    });
+    const body = await start.json();
+    assert.equal(body.ok, true);
+    return body;
+  }
+
+  const unsigned = await startOrder();
+  const unsignedGet = await fetch(
+    baseUrl + "/api/payment/callback?orderId=" + encodeURIComponent(unsigned.orderId),
+    { redirect: "manual" }
+  );
+  assert.equal(unsignedGet.status, 303);
+  const pending = await (await fetch(baseUrl + "/api/payment/order?orderId=" + unsigned.orderId)).json();
+  assert.equal(pending.order.paymentStatus, "pending");
+  assert.equal(pending.order.paymentTaken, false);
+
+  const mismatch = await startOrder();
+  const badPayload = {
+    orderId: mismatch.orderId,
+    responseCode: "VPS-0000",
+    responseMessage: "Success",
+    amount: "1.00",
+    hashParams: "orderId+responseCode+amount",
+  };
+  badPayload.hash = hmacSha512Base64(
+    badPayload.orderId + badPayload.responseCode + badPayload.amount,
+    secret
+  );
+  const badCb = await fetch(baseUrl + "/api/payment/callback", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(badPayload).toString(),
+    redirect: "manual",
+  });
+  assert.equal(badCb.status, 303);
+  assert.match(badCb.headers.get("location") || "", /payment=failed/);
+  const afterMismatch = await (await fetch(baseUrl + "/api/payment/order?orderId=" + mismatch.orderId)).json();
+  assert.equal(afterMismatch.order.paymentTaken, false);
+  assert.notEqual(afterMismatch.order.paymentStatus, "paid");
 });

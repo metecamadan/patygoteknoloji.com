@@ -36,6 +36,7 @@ const {
   verifyCallbackHash,
   isPaymentSuccess,
   publicPosStatus,
+  formatAmount,
 } = require("./lib/akbank-pos");
 const { createOrderStore, ORDER_STATUSES } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
@@ -868,10 +869,16 @@ async function handleApi(req, res, urlPath) {
       const orderId = String(payload.orderId || payload.merchantData || "").slice(0, 64);
       const order = orderId ? orderStore.get(orderId) : null;
       const hashOk = akbankConfig.enabled && verifyCallbackHash(payload, akbankConfig.secretKey);
-      const paid = hashOk && isPaymentSuccess(payload);
+      const amountOk =
+        Boolean(order) &&
+        payload.amount != null &&
+        String(payload.amount).trim() !== "" &&
+        formatAmount(payload.amount) === formatAmount(order.total);
+      const paid = hashOk && amountOk && isPaymentSuccess(payload);
       const alreadyPaid = Boolean(order && (order.paymentTaken || order.paymentStatus === "paid"));
 
-      if (order && !(alreadyPaid && !paid)) {
+      // İmzasız GET/POST sipariş durumunu değiştiremez; tutarsız tutar da "ödendi" yazmaz.
+      if (order && hashOk && !(alreadyPaid && !paid)) {
         orderStore.update(orderId, {
           paymentStatus: paid ? "paid" : "failed",
           paymentTaken: paid,
@@ -880,6 +887,7 @@ async function handleApi(req, res, urlPath) {
             responseCode: String(payload.responseCode || "").slice(0, 40),
             responseMessage: String(payload.responseMessage || "").slice(0, 200),
             hashOk,
+            amountOk,
             at: new Date().toISOString(),
           },
         });
