@@ -49,6 +49,7 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /git reset --hard origin\/main/);
   assert.match(workflow, /pm2 restart/);
   assert.match(workflow, /\/api\/payment\/status/);
+  assert.match(workflow, /while \[ "\$i" -lt 12 \]/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
 });
 
