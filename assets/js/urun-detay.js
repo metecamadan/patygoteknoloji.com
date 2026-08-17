@@ -254,32 +254,43 @@
     });
   }
 
-  const ready = window.PatygoCatalog.ready || Promise.resolve();
-  const categoriesReady =
-    typeof window.PatygoCatalog.loadCategories === "function"
-      ? window.PatygoCatalog.loadCategories()
-      : Promise.resolve([]);
-  Promise.all([ready, categoriesReady]).then((results) => {
-    const finish = (categories) => {
-      render(window.PatygoCatalog.byId[id] || null, categories || []);
-    };
-    let categories = Array.isArray(results[1]) ? results[1] : [];
-    if (categories.length) {
-      finish(categories);
+  async function loadDetail() {
+    if (!id) {
+      render(null, []);
       return;
     }
-    if (window.PatygoNav && Array.isArray(window.PatygoNav.categories) && window.PatygoNav.categories.length) {
-      finish(window.PatygoNav.categories);
-      return;
+    let product = (window.PatygoCatalog.byId && window.PatygoCatalog.byId[id]) || null;
+    if (!product) {
+      try {
+        const res = await fetch("/api/products?id=" + encodeURIComponent(id), {
+          cache: "default",
+          signal: AbortSignal.timeout(8000),
+        });
+        const data = await res.json();
+        product = Array.isArray(data.products) && data.products.length ? data.products[0] : null;
+        if (product) {
+          window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+          window.PatygoCatalog.byId[product.id] = product;
+        }
+      } catch (_) {
+        product = null;
+      }
     }
-    const timer = setTimeout(() => finish(categories), 600);
-    document.addEventListener(
-      "patygo:nav-ready",
-      () => {
-        clearTimeout(timer);
-        finish((window.PatygoNav && window.PatygoNav.categories) || categories);
-      },
-      { once: true }
-    );
-  });
+    const cats =
+      (window.PatygoCatalog._lastCategories && window.PatygoCatalog._lastCategories.length
+        ? window.PatygoCatalog._lastCategories
+        : null) ||
+      (window.PatygoNav && Array.isArray(window.PatygoNav.categories) ? window.PatygoNav.categories : []) ||
+      [];
+    render(product, cats);
+    if (typeof window.PatygoCatalog.loadCategories === "function") {
+      window.PatygoCatalog.loadCategories()
+        .then((categories) => {
+          if (Array.isArray(categories) && categories.length) render(product, categories);
+        })
+        .catch(() => {});
+    }
+  }
+
+  loadDetail();
 })();

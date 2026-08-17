@@ -26,3 +26,9 @@ test("product detail allows copying name and description", () => {
   assert.match(script, /meta\[name="description"\]|name\s*=\s*["']description["']/);
   assert.match(script, /textContent\s*=\s*product\.(description|details|name)/);
 });
+
+test("product detail fetches by id without waiting for full catalog ready", () => {
+  assert.match(script, /\/api\/products\?id=/);
+  assert.match(script, /function loadDetail/);
+  assert.doesNotMatch(script, /Promise\.all\(\[ready/);
+});

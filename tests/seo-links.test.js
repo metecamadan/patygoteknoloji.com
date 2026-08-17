@@ -55,6 +55,7 @@ test("product detail breadcrumbs follow ANA / ARA / ALT then the product", () =>
   assert.match(detailJs, /BreadcrumbList/);
   assert.match(detailJs, /"@type": "Product"/);
   assert.match(detailJs, /Ürün kataloğuna dön/);
+  assert.match(detailJs, /\/api\/products\?id=/);
   assert.match(catalogJs, /function resolveProductCategoryTrail|resolveProductCategoryTrail\(product/);
   assert.match(catalogJs, /prettyCategoryName/);
 });

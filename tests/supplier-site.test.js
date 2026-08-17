@@ -57,6 +57,51 @@ test("Intel Alt kategori maps onto schema ANA/ARA/ALT leaves", () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("DDR5 XML categories map onto PC and notebook memory leaves", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-ddr5-"));
+  const store = createCategoryStore(root);
+  const tree = store.list();
+  const desktop = suggestSiteCategory(
+    {
+      xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+      xmlMidCategory: "Bellekler",
+      xmlSubCategory: "PC Belleği DDR5",
+      name: "Kingston Fury Beast DDR5 16GB",
+    },
+    tree
+  );
+  assert.equal(desktop.siteParent, "bilgisayar-bilesenleri");
+  assert.equal(desktop.siteMid, "bellekler");
+  assert.equal(desktop.siteChild, "pc-bellegi-ddr5");
+
+  const short = suggestSiteCategory(
+    {
+      xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+      xmlMidCategory: "Bellekler",
+      xmlSubCategory: "DDR5",
+      name: "Corsair Vengeance DDR5 32GB",
+    },
+    tree
+  );
+  assert.equal(short.siteChild, "pc-bellegi-ddr5");
+
+  const notebook = suggestSiteCategory(
+    {
+      xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+      xmlMidCategory: "Bellekler",
+      xmlSubCategory: "Notebook Belleği DDR5",
+      name: "Notebook SODIMM DDR5 16GB",
+    },
+    tree
+  );
+  assert.equal(notebook.siteChild, "notebook-bellegi-ddr5");
+  assert.equal(
+    browseChildName({ mid: "Bellekler", sub: "PC Belleği DDR5" }),
+    "PC Belleği DDR5"
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("rename keeps slug so XML products stay on the same nav category", () => {
   const existing = [
     {

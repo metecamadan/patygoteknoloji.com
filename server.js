@@ -537,6 +537,10 @@ function scheduleWarmStorefrontCatalog() {
   warmCatalogTimer = setTimeout(() => {
     warmCatalogTimer = null;
     try {
+      supplierManager.listSlots().forEach((slot) => {
+        if (slot.configured) syncLiveXmlCategories(slot.id);
+      });
+      invalidateStorefrontCatalog();
       storefrontIndex(false);
       writeCatalogBootstrapSnapshots();
     } catch (_) {}
@@ -551,7 +555,8 @@ function warmStorefrontCatalog() {
 function writeCatalogBootstrapSnapshots() {
   const index = storefrontIndex(false);
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
-  listingSnapshotJobs(index).forEach((job) => {
+  const jobs = listingSnapshotJobs(index);
+  const writeJob = (job) => {
     const payload = queryPublicCatalogIndexed(
       index,
       Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
@@ -564,13 +569,20 @@ function writeCatalogBootstrapSnapshots() {
       totalPages: payload.totalPages,
       facets: payload.facets || null,
     });
-  });
+  };
   try {
     atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "categories.json"), {
       version: 5,
       categories: categoryStore.publicList(),
     });
   } catch (_) {}
+  let offset = 0;
+  const runChunk = () => {
+    const end = Math.min(offset + 12, jobs.length);
+    for (; offset < end; offset += 1) writeJob(jobs[offset]);
+    if (offset < jobs.length) setImmediate(runChunk);
+  };
+  runChunk();
 }
 
 function akakceMirrorIndexStamp() {
@@ -995,6 +1007,27 @@ async function handleApi(req, res, urlPath) {
       },
       { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
     );
+    }
+    const productId = String(requestUrl.searchParams.get("id") || "").trim();
+    const idsRaw = String(requestUrl.searchParams.get("ids") || "").trim();
+    if (productId || idsRaw) {
+      const queried = queryPublicCatalog(mergedProducts(false), {
+        id: productId,
+        ids: idsRaw,
+      });
+      return json(
+        res,
+        200,
+        {
+          products: queried.products,
+          total: queried.total,
+          page: queried.page,
+          limit: queried.limit,
+          totalPages: queried.totalPages,
+          updatedAt,
+        },
+        { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" }
+      );
     }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
     const page = Number(requestUrl.searchParams.get("page") || 1) || 1;
