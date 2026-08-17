@@ -13,7 +13,7 @@ const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { publishSupplierSlot, syncXmlSiteCategories } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
-const { mergeCatalogProducts, queryPublicCatalog, homeFeaturedCatalog } = require("./lib/catalog");
+const { mergeCatalogProducts, queryPublicCatalog, queryPublicCatalogIndexed, buildStorefrontIndex, homeFeaturedCatalog } = require("./lib/catalog");
 const {
   createCategoryStore,
   setCategoryListLoader,
@@ -483,6 +483,7 @@ function normalizeProduct(p, fallbackId) {
 
 const storefrontCatalogMemo = { active: null, all: null };
 let akakceXmlMemo = null;
+const CATALOG_BOOTSTRAP_LIMIT = 20;
 
 function invalidateStorefrontCatalog() {
   storefrontCatalogMemo.active = null;
@@ -499,8 +500,16 @@ function mergedProducts(includeInactiveManual) {
     normalizeProduct,
     categoryDefaults: CATEGORY_FEED_DEFAULTS,
   });
-  storefrontCatalogMemo[key] = { products };
+  storefrontCatalogMemo[key] = { products, index: null };
   return products;
+}
+
+function storefrontIndex(includeInactiveManual) {
+  const key = includeInactiveManual ? "all" : "active";
+  const products = mergedProducts(includeInactiveManual);
+  const memo = storefrontCatalogMemo[key];
+  if (!memo.index) memo.index = buildStorefrontIndex(products);
+  return memo.index;
 }
 
 function warmStorefrontCatalog() {
@@ -870,7 +879,7 @@ async function handleApi(req, res, urlPath) {
     );
     }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
-    const queried = queryPublicCatalog(mergedProducts(false), {
+    const queried = queryPublicCatalogIndexed(storefrontIndex(false), {
       id: requestUrl.searchParams.get("id") || "",
       ids: requestUrl.searchParams.get("ids") || "",
       featured: requestUrl.searchParams.get("featured") || "",
@@ -1497,6 +1506,60 @@ function sendFile(res, filePath, method) {
   });
 }
 
+function catalogBootstrapPayload(requestUrl) {
+  const params = requestUrl.searchParams;
+  const hasFacetFilters =
+    params.get("marka") || params.get("minFiyat") || params.get("maxFiyat");
+  if (hasFacetFilters) return null;
+  try {
+    const queried = queryPublicCatalogIndexed(storefrontIndex(false), {
+      kategori: params.get("kategori") || "",
+      ara: params.get("ara") || "",
+      alt: params.get("alt") || "",
+      page: 1,
+      limit: CATALOG_BOOTSTRAP_LIMIT,
+    });
+    return {
+      products: queried.products,
+      total: queried.total,
+      page: queried.page,
+      limit: queried.limit,
+      totalPages: queried.totalPages,
+      facets: queried.facets || null,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function sendCatalogHtml(res, req, filePath, method) {
+  const rel = path.relative(ROOT, filePath).split(path.sep).join("/");
+  if (isBlocked(rel) || rel.split("/").some((p) => p.startsWith("."))) {
+    return serveNotFound(res, method);
+  }
+  fs.readFile(filePath, (readErr, data) => {
+    if (readErr) return serveNotFound(res, method);
+    let html = data.toString("utf8");
+    const requestUrl = new URL(req.url || "/urunler", `http://${req.headers.host || "localhost"}`);
+    const bootstrap = catalogBootstrapPayload(requestUrl);
+    if (bootstrap) {
+      const json = JSON.stringify(bootstrap).replace(/</g, "\\u003c");
+      const tag =
+        '<script type="application/json" id="patygo-catalog-bootstrap">' +
+        json +
+        "</script>\n  ";
+      html = html.replace('<script src="/assets/js/cart.js">', tag + '<script src="/assets/js/cart.js">');
+    }
+    const headers = {
+      "Content-Type": MIME[".html"],
+      "Cache-Control": "public, max-age=0, must-revalidate",
+    };
+    res.writeHead(200, securityHeaders(headers));
+    if (method === "HEAD") return res.end();
+    res.end(html);
+  });
+}
+
 function serveStatic(req, res, pathname) {
   let filePath = safeJoin(ROOT, pathname === "/" ? "/index.html" : pathname);
   if (!filePath) {
@@ -1517,6 +1580,9 @@ function serveStatic(req, res, pathname) {
     if (!path.extname(pathname) && pathname !== "/") {
       const htmlPath = safeJoin(ROOT, pathname + ".html");
       if (htmlPath && fs.existsSync(htmlPath)) {
+        if (pathname === "/urunler" || pathname.endsWith("/urunler")) {
+          return sendCatalogHtml(res, req, htmlPath, req.method);
+        }
         return sendFile(res, htmlPath, req.method);
       }
     }

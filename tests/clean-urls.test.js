@@ -7,7 +7,9 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
 
   const clean = await fetch(baseUrl + "/urunler");
   assert.equal(clean.status, 200);
-  assert.match(await clean.text(), /Ürünler/i);
+  const cleanHtml = await clean.text();
+  assert.match(cleanHtml, /Ürünler/i);
+  assert.match(cleanHtml, /patygo-catalog-bootstrap/);
 
   const aliased = await fetch(baseUrl + "/urunler.html", { redirect: "manual" });
   assert.equal(aliased.status, 301);

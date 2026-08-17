@@ -90,9 +90,10 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /featuredParents|FEATURED_PARENTS/);
   assert.match(catalogJs, /homeFeatured:\s*"1"/);
   assert.match(catalogJs, /function fetchHomeFeatured/);
-  assert.match(catalogJs, /Ürünler yükleniyor/);
   assert.match(catalogJs, /product-card--skeleton/);
   assert.match(catalogJs, /function showCatalogLoading/);
+  assert.match(catalogJs, /patygo-catalog-bootstrap/);
+  assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.match(catalogJs, /cartOnly:\s*mode === "featured"/);
   assert.match(indexHtml, /home-featured-lead/);

@@ -63,4 +63,5 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(nginx, /gzip on;/);
   assert.match(nginx, /gzip_proxied any;/);
   assert.match(nginx, /expires 1h;/);
+  assert.match(nginx, /location ~ \^\/urunler/);
 });

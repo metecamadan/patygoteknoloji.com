@@ -1005,17 +1005,45 @@
   function showCatalogLoading(grid) {
     if (!grid) return;
     grid.textContent = "";
-    const note = document.createElement("p");
-    note.className = "catalog-loading";
-    note.textContent = "Ürünler yükleniyor…";
-    grid.appendChild(note);
-    const skeletonCount = grid.getAttribute("data-catalog") === "all" ? 10 : 8;
+    grid.setAttribute("aria-busy", "true");
+    const skeletonCount = grid.getAttribute("data-catalog") === "all" ? 8 : 6;
     for (let i = 0; i < skeletonCount; i += 1) {
       const skeleton = document.createElement("article");
       skeleton.className = "product-card product-card--skeleton";
       skeleton.setAttribute("aria-hidden", "true");
       grid.appendChild(skeleton);
     }
+  }
+
+  function readCatalogBootstrap() {
+    const el = document.getElementById("patygo-catalog-bootstrap");
+    if (!el) return null;
+    try {
+      const data = JSON.parse(el.textContent || "");
+      el.remove();
+      if (!data || !Array.isArray(data.products)) return null;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function facetQueryActive() {
+    const facets = readFacetQuery();
+    return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat);
+  }
+
+  async function fetchListingPayload(query, wantsCategory, facets) {
+    return fetchProductPage({
+      kategori: wantsCategory ? query.parent : "",
+      ara: wantsCategory ? query.mid : "",
+      alt: wantsCategory ? query.child : "",
+      marka: facets.brands.join(","),
+      minFiyat: facets.minFiyat,
+      maxFiyat: facets.maxFiyat,
+      page: 1,
+      limit: LISTING_PAGE_SIZE,
+    });
   }
 
   async function fetchProductPage(params) {
@@ -1082,10 +1110,14 @@
   }
 
   async function reloadCatalog() {
-    document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
     const path = location.pathname || "";
     const query = readCategoryQuery();
     const onProductsPage = /\/urunler\/?$/i.test(path);
+    const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
+    const facets = readFacetQuery();
+    const bootstrap =
+      onProductsPage && !facetQueryActive() ? readCatalogBootstrap() : null;
+
     if (onProductsPage) {
       resetListingScroll();
       const cleanUrl = new URL(location.href);
@@ -1094,10 +1126,64 @@
         history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
       }
     }
+    if (!bootstrap) {
+      document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogLoading);
+    }
+
     const onDetailPage = /\/urun-detay\/?$/i.test(path);
     const onCartPage = /\/sepet\/?$/i.test(path) || /\/odeme\/?$/i.test(path);
-    const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
-    const categories = await loadCategories();
+
+    const categoriesPromise = loadCategories();
+    const payloadPromise = (async () => {
+      if (bootstrap) return bootstrap;
+      try {
+        if (onDetailPage) {
+          const id = new URLSearchParams(location.search).get("id") || "";
+          return id ? await fetchProductPage({ id }) : { products: [], total: 0, page: 1, totalPages: 0 };
+        }
+        if (onCartPage) {
+          const ids = (window.PatygoCart ? window.PatygoCart.list() : [])
+            .map((item) => item.id)
+            .filter(Boolean)
+            .join(",");
+          if (ids) return await fetchProductPage({ ids });
+          return { products: [], total: 0, page: 1, totalPages: 0 };
+        }
+        if (document.querySelector('.product-grid[data-catalog="featured"]')) {
+          let home = null;
+          try {
+            home = await fetchHomeFeatured();
+          } catch (_) {
+            home = null;
+          }
+          const hasAny =
+            home &&
+            FEATURED_PARENTS.some((slug) => ((home.byParent && home.byParent[slug]) || []).length);
+          if (!hasAny) {
+            try {
+              home = await fetchHomeFeaturedFallback();
+            } catch (_) {
+              home = { byParent: {}, mixed: [] };
+            }
+          }
+          if (!home) home = { byParent: {}, mixed: [] };
+          window.PatygoCatalog.featuredByParent = home.byParent;
+          return {
+            products: home.mixed,
+            total: home.mixed.length,
+            page: 1,
+            totalPages: 1,
+            featuredTabs: home.byParent,
+          };
+        }
+        return await fetchListingPayload(query, wantsCategory, facets);
+      } catch (_) {
+        return { products: [], total: 0, page: 1, totalPages: 0 };
+      }
+    })();
+
+    const categories = await categoriesPromise;
+    window.PatygoCatalog._lastCategories = categories;
     let categoryResolved = null;
     if (wantsCategory) {
       categoryResolved = resolveCategoryLabels(categories, query);
@@ -1106,66 +1192,18 @@
       resetCatalogHeading();
     }
 
-    let payload = { products: [], total: 0, page: 1, totalPages: 0 };
-    let featuredTabs = null;
+    const payloadResult = await payloadPromise;
+    const featuredTabs = payloadResult.featuredTabs || null;
+    const payload = {
+      products: payloadResult.products || [],
+      total: payloadResult.total || 0,
+      page: payloadResult.page || 1,
+      totalPages: payloadResult.totalPages || 0,
+      facets: payloadResult.facets || null,
+    };
+
     let cartIdsFetched = false;
-    try {
-      if (onDetailPage) {
-        const id = new URLSearchParams(location.search).get("id") || "";
-        payload = id ? await fetchProductPage({ id }) : payload;
-      } else if (onCartPage) {
-        const ids = (window.PatygoCart ? window.PatygoCart.list() : [])
-          .map((item) => item.id)
-          .filter(Boolean)
-          .join(",");
-        if (ids) {
-          payload = await fetchProductPage({ ids });
-          cartIdsFetched = true;
-        } else {
-          cartIdsFetched = true;
-        }
-      } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
-        let home = null;
-        try {
-          home = await fetchHomeFeatured();
-        } catch (_) {
-          home = null;
-        }
-        const hasAny =
-          home &&
-          FEATURED_PARENTS.some((slug) => ((home.byParent && home.byParent[slug]) || []).length);
-        if (!hasAny) {
-          try {
-            home = await fetchHomeFeaturedFallback();
-          } catch (_) {
-            home = { byParent: {}, mixed: [] };
-          }
-        }
-        if (!home) home = { byParent: {}, mixed: [] };
-        window.PatygoCatalog.featuredByParent = home.byParent;
-        payload = {
-          products: home.mixed,
-          total: home.mixed.length,
-          page: 1,
-          totalPages: 1,
-        };
-        featuredTabs = home.byParent;
-      } else {
-        const facets = readFacetQuery();
-        payload = await fetchProductPage({
-          kategori: wantsCategory ? query.parent : "",
-          ara: wantsCategory ? query.mid : "",
-          alt: wantsCategory ? query.child : "",
-          marka: facets.brands.join(","),
-          minFiyat: facets.minFiyat,
-          maxFiyat: facets.maxFiyat,
-          page: 1,
-          limit: LISTING_PAGE_SIZE,
-        });
-      }
-    } catch (_) {
-      payload = { products: [], total: 0, page: 1, totalPages: 0 };
-    }
+    if (onCartPage) cartIdsFetched = true;
 
     const products = applyCatalog(payload.products, {
       categoryQuery: null,
@@ -1177,12 +1215,32 @@
       facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });
+    document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
+      grid.removeAttribute("aria-busy");
+    });
     if (
       cartIdsFetched &&
       window.PatygoCart &&
       typeof window.PatygoCart.pruneUnresolved === "function"
     ) {
       window.PatygoCart.pruneUnresolved(window.PatygoCatalog.byId);
+    }
+    if (bootstrap && onProductsPage) {
+      fetchListingPayload(query, wantsCategory, facets)
+        .then((fresh) => {
+          if (!fresh || !Array.isArray(fresh.products)) return;
+          applyCatalog(fresh.products, {
+            categoryQuery: null,
+            categoryResolved: wantsCategory
+              ? categoryResolved || { parent: { name: "Kategori" }, child: null }
+              : null,
+            pager: null,
+            listingInfinite: fresh,
+            facets: fresh.facets || null,
+            featuredTabs: null,
+          });
+        })
+        .catch(() => {});
     }
     return products;
   }
