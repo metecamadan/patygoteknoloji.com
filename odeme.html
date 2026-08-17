@@ -127,9 +127,11 @@
           <h2 style="margin-bottom:10px" id="successTitle">Ödeme sonucu</h2>
           <p style="color:var(--muted);margin-bottom:18px" id="successLead">İşlem sonucu aşağıdadır.</p>
           <p style="font-size:1.05rem;margin-bottom:8px">Sipariş no: <strong id="successOrderId"></strong></p>
+          <p style="color:var(--muted-2);font-size:0.9rem;margin-bottom:12px">Bu numarayı saklayın; sipariş takibi ve destek için kullanılır.</p>
           <p style="color:var(--muted-2);font-size:0.9rem;margin-bottom:22px" id="successSummary"></p>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <a href="/sepet" class="btn btn-primary">Sepete dön</a>
+            <a href="/urunler" class="btn btn-primary">Alışverişe devam</a>
+            <a href="/sepet" class="btn btn-outline">Sepete dön</a>
             <a href="/odeme" class="btn btn-outline" id="retryPayBtn">Tekrar dene</a>
             <a href="/iletisim" class="btn btn-outline">İletişim</a>
           </div>
@@ -194,6 +196,6 @@
   <script src="/assets/js/catalog.js"></script>
   <script src="/assets/js/nav.js"></script>
   <script src="/assets/js/main.js"></script>
-  <script src="/assets/js/checkout.js"></script>
+  <script src="/assets/js/checkout.js?v=pay-return-1"></script>
 </body>
 </html>

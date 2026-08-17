@@ -90,6 +90,8 @@ test("checkout waits for catalog and binds cart mode", () => {
   assert.match(checkout, /tryBoot/);
   assert.match(checkout, /patygo:catalog/);
   assert.match(checkout, /Ürünler yükleniyor/);
+  assert.match(checkout, /patygo_pending_order/);
+  assert.match(checkout, /searchParams.set\("orderId"/);
 });
 
 test("header cart count skips ghost lines that the cart page cannot resolve", () => {

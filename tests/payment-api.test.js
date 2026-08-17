@@ -92,6 +92,17 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   });
   assert.equal(callback.status, 303);
   assert.match(callback.headers.get("location") || "", /payment=success/);
+  assert.match(await callback.text(), /Sipariş özetine git/);
+
+  const getCallback = await fetch(
+    baseUrl + "/api/payment/callback?orderId=" + encodeURIComponent(startBody.orderId),
+    { redirect: "manual" }
+  );
+  assert.equal(getCallback.status, 303);
+  assert.match(getCallback.headers.get("location") || "", /payment=success/);
+
+  const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
+  assert.match(serverJs, /setImmediate\(\(\) => \{\s*sendOrderStatusMail/);
 
   const order = await fetch(baseUrl + "/api/payment/order?orderId=" + startBody.orderId);
   assert.equal(order.status, 200);

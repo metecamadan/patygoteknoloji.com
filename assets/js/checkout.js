@@ -1,4 +1,5 @@
 (function () {
+  const PENDING_ORDER_KEY = "patygo_pending_order";
   const params = new URLSearchParams(window.location.search);
   const directId = params.get("id") || "";
   const paymentResult = params.get("payment") || "";
@@ -109,18 +110,24 @@
           (paid ? " (KDV dahil) · Ödeme alındı" : " (KDV dahil)");
       } else {
         els.successSummary.textContent = paid
-          ? "Ödeme başarıyla alındı."
+          ? "Ödeme başarıyla alındı. Sipariş numaranızı saklayın."
           : "Sipariş için ödeme alınmadı.";
       }
     }
+    const retry = document.getElementById("retryPayBtn");
+    if (retry) retry.hidden = paid;
     if (paid && window.PatygoAnalytics) window.PatygoAnalytics.track("order_submitted");
     if (paid && window.PatygoCart) window.PatygoCart.clear();
-    // URL'deki payment= parametresini temizle (yenilemede aynı ekranı tekrar açmasın)
+    try {
+      if (paid) sessionStorage.removeItem(PENDING_ORDER_KEY);
+    } catch (_) {}
     try {
       const clean = new URL(window.location.href);
       if (clean.searchParams.has("payment")) {
+        const keepId = (order && order.id) || returnedOrderId || "";
         clean.searchParams.delete("payment");
-        clean.searchParams.delete("orderId");
+        if (keepId) clean.searchParams.set("orderId", keepId);
+        else clean.searchParams.delete("orderId");
         window.history.replaceState({}, "", clean.pathname + (clean.search || ""));
       }
     } catch (_) {}
@@ -164,20 +171,36 @@
     }
   }
 
+  async function fetchOrder(orderId) {
+    if (!orderId) return null;
+    const res = await fetch("/api/payment/order?orderId=" + encodeURIComponent(orderId));
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.order || null;
+  }
+
   async function hydratePaymentReturn() {
-    if (!paymentResult) return false;
+    let pendingId = "";
+    try {
+      pendingId = sessionStorage.getItem(PENDING_ORDER_KEY) || "";
+    } catch (_) {}
+    const orderId = returnedOrderId || pendingId;
+    if (!paymentResult && !orderId) return false;
+
     let order = null;
-    if (returnedOrderId) {
-      try {
-        const res = await fetch("/api/payment/order?orderId=" + encodeURIComponent(returnedOrderId));
-        if (res.ok) {
-          const data = await res.json();
-          order = data.order;
-        }
-      } catch (_) {}
+    try {
+      order = await fetchOrder(orderId);
+    } catch (_) {}
+
+    if (paymentResult) {
+      showResult(paymentResult === "success" ? "success" : "failed", order);
+      return true;
     }
-    showResult(paymentResult === "success" ? "success" : "failed", order);
-    return true;
+    if (order && (order.paymentTaken || order.paymentStatus === "paid")) {
+      showResult("success", order);
+      return true;
+    }
+    return false;
   }
 
   let booted = false;
@@ -404,6 +427,9 @@
             throw new Error(data.error || "Ödeme başlatılamadı.");
           }
           if (els.orderIdPreview) els.orderIdPreview.textContent = data.orderId;
+          try {
+            sessionStorage.setItem(PENDING_ORDER_KEY, data.orderId);
+          } catch (_) {}
           postToBank(data.action, data.fields);
         } catch (err) {
           els.note.classList.add("err");

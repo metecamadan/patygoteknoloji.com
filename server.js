@@ -360,7 +360,10 @@ function htmlRedirect(res, location) {
     "\" /><title>Yönlendiriliyor</title></head><body>" +
     "<p>Yönlendiriliyorsunuz… <a href=\"" +
     safe +
-    "\">Devam</a></p></body></html>";
+    "\">Sipariş özetine git</a></p>" +
+    "<script>location.replace(\"" +
+    safe +
+    "\");</script></body></html>";
   res.writeHead(
     303,
     securityHeaders({
@@ -856,16 +859,19 @@ async function handleApi(req, res, urlPath) {
     }
   }
 
-  if (req.method === "POST" && urlPath === "/api/payment/callback") {
+  if ((req.method === "POST" || req.method === "GET") && urlPath === "/api/payment/callback") {
     try {
-      const raw = await readBody(req, 256 * 1024);
-      const payload = parseFormBody(raw);
+      const payload =
+        req.method === "GET"
+          ? Object.fromEntries(new URL(req.url || urlPath, "http://localhost").searchParams.entries())
+          : parseFormBody(await readBody(req, 256 * 1024));
       const orderId = String(payload.orderId || payload.merchantData || "").slice(0, 64);
       const order = orderId ? orderStore.get(orderId) : null;
       const hashOk = akbankConfig.enabled && verifyCallbackHash(payload, akbankConfig.secretKey);
       const paid = hashOk && isPaymentSuccess(payload);
+      const alreadyPaid = Boolean(order && (order.paymentTaken || order.paymentStatus === "paid"));
 
-      if (order) {
+      if (order && !(alreadyPaid && !paid)) {
         orderStore.update(orderId, {
           paymentStatus: paid ? "paid" : "failed",
           paymentTaken: paid,
@@ -878,16 +884,16 @@ async function handleApi(req, res, urlPath) {
           },
         });
         if (paid) {
-          try {
-            const updated = orderStore.get(orderId);
-            await sendOrderStatusMail(updated, "paid", { store: orderStore });
-          } catch (err) {
-            console.error("order paid mail failed:", err.message);
-          }
+          const updated = orderStore.get(orderId);
+          setImmediate(() => {
+            sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
+              console.error("order paid mail failed:", err.message);
+            });
+          });
         }
       }
 
-      const result = paid ? "success" : "failed";
+      const result = paid || alreadyPaid ? "success" : "failed";
       const location =
         SITE_BASE_URL +
         "/odeme?payment=" +
