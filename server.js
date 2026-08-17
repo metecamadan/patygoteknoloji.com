@@ -2008,8 +2008,10 @@ const supplierScheduler = createSupplierScheduler({
 });
 supplierScheduler.start();
 setImmediate(() => {
-  warmStorefrontCatalog();
-  scheduleAkakceImageMirror();
+  if (!bootstrapSnapshotsReady()) {
+    warmStorefrontCatalog();
+    scheduleAkakceImageMirror();
+  }
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   enqueueXmlCategorySync();

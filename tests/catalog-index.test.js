@@ -93,6 +93,7 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /readCatalogBootstrapSnapshot/);
   assert.match(serverJs, /writeCatalogBootstrapSnapshots/);
   assert.match(serverJs, /scheduleWarmStorefrontCatalog/);
+  assert.match(serverJs, /bootstrapSnapshotsReady/);
   assert.match(serverJs, /catalogBootstrapSnapshotName/);
   assert.match(serverJs, /storefrontIndex\(false\)/);
   assert.match(serverJs, /max-age=120/);
