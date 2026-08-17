@@ -26,8 +26,9 @@ test("catalog product cards use cart flow without quote button", () => {
   assert.match(catalogJs, /Hemen Al/);
 });
 
-test("category listing uses five-column cards with qty stepper and infinite scroll", () => {
+test("category listing uses four-column cards with qty stepper and infinite scroll", () => {
   const urunler = fs.readFileSync(path.join(root, "urunler.html"), "utf8");
+  const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
   assert.match(catalogJs, /LISTING_PAGE_SIZE = 20/);
   assert.match(catalogJs, /product-card--listing/);
   assert.match(catalogJs, /createQtyStepper/);
@@ -37,6 +38,8 @@ test("category listing uses five-column cards with qty stepper and infinite scro
   assert.match(catalogJs, /if \(compactListing\)/);
   assert.match(urunler, /data-catalog-infinite/);
   assert.match(urunler, /data-catalog-load-sentinel/);
+  assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(css, /repeat\(5, minmax\(0, 1fr\)\)/);
 });
 
 test("catalog filters storefront products by site category query instead of always emptying", () => {
