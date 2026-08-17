@@ -6,7 +6,7 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true
 const fs = require("fs");
 const { createMultiSupplierManager } = require("../lib/multi-supplier");
 const { mergeCatalogProducts } = require("../lib/catalog");
-const { createCategoryStore } = require("../lib/categories");
+const { CATEGORY_FEED_DEFAULTS } = require("../lib/product-fields");
 const { mirrorAkakceCatalogImages, loadMirrorIndex } = require("../lib/product-image-mirror");
 const { resolveSiteBaseUrl } = require("../lib/site-url");
 
