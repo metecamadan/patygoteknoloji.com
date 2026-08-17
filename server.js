@@ -537,10 +537,6 @@ function scheduleWarmStorefrontCatalog() {
   warmCatalogTimer = setTimeout(() => {
     warmCatalogTimer = null;
     try {
-      supplierManager.listSlots().forEach((slot) => {
-        if (slot.configured) syncLiveXmlCategories(slot.id);
-      });
-      invalidateStorefrontCatalog();
       storefrontIndex(false);
       writeCatalogBootstrapSnapshots();
     } catch (_) {}
@@ -1980,6 +1976,8 @@ const xmlCategorySyncTimer = setTimeout(() => {
   supplierManager.listSlots().forEach((slot) => {
     if (slot.configured) syncLiveXmlCategories(slot.id);
   });
+  invalidateStorefrontCatalog();
+  warmStorefrontCatalog();
 }, 15000);
 if (typeof xmlCategorySyncTimer.unref === "function") xmlCategorySyncTimer.unref();
 
