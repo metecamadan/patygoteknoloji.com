@@ -11,6 +11,7 @@ const {
   cleanCategoryName,
   syncXmlSiteCategories,
   syncXmlSiteCategoriesAsync,
+  ensureCanonicalSiteTree,
 } = require("../lib/supplier-site");
 const { createCategoryStore, slugifyCategory } = require("../lib/categories");
 const { queryPublicCatalog } = require("../lib/catalog");
@@ -86,6 +87,19 @@ test("DDR5 XML categories map onto PC and notebook memory leaves", () => {
   );
   assert.equal(short.siteChild, "pc-bellegi-ddr5");
 
+  const hyphen = suggestSiteCategory(
+    {
+      xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+      xmlMidCategory: "Bellekler",
+      xmlSubCategory: "PC Belleği - DDR5",
+      name: "XPG Lancer Blade DDR5 16GB",
+    },
+    tree
+  );
+  assert.equal(hyphen.siteParent, "bilgisayar-bilesenleri");
+  assert.equal(hyphen.siteMid, "bellekler");
+  assert.equal(hyphen.siteChild, "pc-bellegi-ddr5");
+
   const notebook = suggestSiteCategory(
     {
       xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
@@ -100,6 +114,26 @@ test("DDR5 XML categories map onto PC and notebook memory leaves", () => {
     browseChildName({ mid: "Bellekler", sub: "PC Belleği DDR5" }),
     "PC Belleği DDR5"
   );
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("canonical merge adds missing DDR5 leaves onto a live Bellekler tree", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-merge-ddr5-"));
+  const store = createCategoryStore(root);
+  const tree = store.list();
+  const parent = tree.find((row) => row.slug === "bilgisayar-bilesenleri");
+  const mid = parent.children.find((row) => row.slug === "bellekler");
+  mid.children = mid.children.filter((row) => row.slug !== "notebook-bellegi-ddr5");
+  store.save(tree);
+  const next = ensureCanonicalSiteTree(store);
+  const bellekler = next
+    .find((row) => row.slug === "bilgisayar-bilesenleri")
+    .children.find((row) => row.slug === "bellekler");
+  const slugs = bellekler.children.map((row) => row.slug);
+  assert.ok(slugs.includes("pc-bellegi-ddr5"));
+  assert.ok(slugs.includes("notebook-bellegi-ddr5"));
+  const leaf = bellekler.children.find((row) => row.slug === "pc-bellegi-ddr5");
+  assert.ok((leaf.xmlNames || []).some((name) => String(name).includes("PC Belleği - DDR5")));
   fs.rmSync(root, { recursive: true, force: true });
 });
 

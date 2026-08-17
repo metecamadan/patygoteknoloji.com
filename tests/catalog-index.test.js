@@ -84,6 +84,13 @@ test("listing snapshots cover parent mid and child keys", () => {
   assert.ok(files.includes("bilgisayar-tablet.json"));
   assert.ok(files.includes("bilgisayar-tablet__notebooklar.json"));
   assert.ok(files.includes("bilgisayar-tablet__notebooklar__nb-a.json"));
+  const { canonicalCategoryTree } = require("../lib/site-category-schema");
+  const { normalizeTree } = require("../lib/categories");
+  const treeFiles = listingSnapshotJobs({ compactAll: [], byParent: {} }, normalizeTree(canonicalCategoryTree())).map(
+    (job) => job.file
+  );
+  assert.ok(treeFiles.includes("bilgisayar-bilesenleri__bellekler__pc-bellegi-ddr5.json"));
+  assert.ok(treeFiles.includes("bilgisayar-bilesenleri__bellekler__notebook-bellegi-ddr5.json"));
 });
 
 test("server exposes fast catalog bootstrap API and snapshot writers", () => {
@@ -94,6 +101,7 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /writeCatalogBootstrapSnapshots/);
   assert.match(serverJs, /scheduleWarmStorefrontCatalog/);
   assert.match(serverJs, /bootstrapSnapshotsReady/);
+  assert.match(serverJs, /ensureListingTreeSnapshotFiles/);
   assert.match(serverJs, /catalogBootstrapSnapshotName/);
   assert.match(serverJs, /storefrontIndex\(false\)/);
   assert.match(serverJs, /max-age=120/);

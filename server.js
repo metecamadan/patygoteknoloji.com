@@ -576,10 +576,34 @@ function warmStorefrontCatalog() {
   scheduleWarmStorefrontCatalog();
 }
 
+function emptyListingSnapshotPayload() {
+  return {
+    products: [],
+    total: 0,
+    page: 1,
+    limit: CATALOG_BOOTSTRAP_LIMIT,
+    totalPages: 0,
+    facets: null,
+  };
+}
+
+function ensureListingTreeSnapshotFiles() {
+  fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+  const jobs = listingSnapshotJobs({ compactAll: [], byParent: {} }, categoryStore.list());
+  jobs.forEach((job) => {
+    if (!job.file || !job.file.includes("__")) return;
+    const file = path.join(CATALOG_BOOTSTRAP_DIR, job.file);
+    try {
+      if (fs.existsSync(file) && fs.statSync(file).size > 20) return;
+      atomicWriteJson(file, emptyListingSnapshotPayload());
+    } catch (_) {}
+  });
+}
+
 function writeCatalogBootstrapSnapshots() {
   const index = storefrontIndex(false);
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
-  const jobs = listingSnapshotJobs(index);
+  const jobs = listingSnapshotJobs(index, categoryStore.list());
   const writeJob = (job) => {
     const payload = queryPublicCatalogIndexed(
       index,
@@ -2008,6 +2032,9 @@ const supplierScheduler = createSupplierScheduler({
 });
 supplierScheduler.start();
 setImmediate(() => {
+  try {
+    ensureListingTreeSnapshotFiles();
+  } catch (_) {}
   if (!bootstrapSnapshotsReady()) {
     warmStorefrontCatalog();
     scheduleAkakceImageMirror();
