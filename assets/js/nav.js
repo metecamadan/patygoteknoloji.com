@@ -18,6 +18,42 @@
     return q ? "/urunler?" + q : "/urunler";
   }
 
+  function splitNavCategoryName(name) {
+    const text = String(name || "").trim();
+    if (!text) return { line1: "", line2: "" };
+    const slashMarker = " / ";
+    const slashIdx = text.indexOf(slashMarker);
+    if (slashIdx >= 0) {
+      return {
+        line1: text.slice(0, slashIdx + slashMarker.length - 1).trim(),
+        line2: text.slice(slashIdx + slashMarker.length).trim(),
+      };
+    }
+    const spaceIdx = text.lastIndexOf(" ");
+    if (spaceIdx <= 0) return { line1: text, line2: "" };
+    return {
+      line1: text.slice(0, spaceIdx).trim(),
+      line2: text.slice(spaceIdx + 1).trim(),
+    };
+  }
+
+  function buildNavCategoryLabel(name) {
+    const parts = splitNavCategoryName(name);
+    const wrap = document.createElement("span");
+    wrap.className = "nav-mega-label";
+    const line1 = document.createElement("span");
+    line1.className = "nav-mega-label-line";
+    line1.textContent = parts.line1;
+    wrap.appendChild(line1);
+    if (parts.line2) {
+      const line2 = document.createElement("span");
+      line2.className = "nav-mega-label-line";
+      line2.textContent = parts.line2;
+      wrap.appendChild(line2);
+    }
+    return wrap;
+  }
+
   function closeAllMega(root) {
     root.querySelectorAll(".nav-mega").forEach((item) => {
       item.classList.remove("open");
@@ -35,10 +71,11 @@
     toggle.className = "nav-mega-toggle";
     toggle.setAttribute("aria-expanded", "false");
     toggle.setAttribute("aria-haspopup", "true");
-    toggle.innerHTML =
-      '<span>' +
-      category.name +
-      '</span><svg class="nav-mega-caret" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7l5 6 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    toggle.appendChild(buildNavCategoryLabel(category.name));
+    toggle.insertAdjacentHTML(
+      "beforeend",
+      '<svg class="nav-mega-caret" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7l5 6 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    );
 
     const panel = document.createElement("div");
     panel.className = "nav-mega-panel";

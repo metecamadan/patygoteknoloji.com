@@ -148,12 +148,7 @@
       });
       add.textContent = "Sepete eklendi";
     });
-    const buy = document.createElement("a");
-    buy.className = "btn btn-outline btn-lg";
-    buy.href = "/odeme?id=" + encodeURIComponent(product.id);
-    buy.textContent = "Hemen Al";
     actions.appendChild(add);
-    actions.appendChild(buy);
 
     info.appendChild(tag);
     info.appendChild(h1);

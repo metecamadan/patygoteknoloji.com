@@ -579,12 +579,12 @@
 
     const price = document.createElement("div");
     price.className = "price";
-    price.appendChild(
-      document.createTextNode(
-        window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) + " "
-      )
-    );
+    const amount = document.createElement("span");
+    amount.className = "price-amount";
+    amount.textContent = window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product));
+    price.appendChild(amount);
     const small = document.createElement("small");
+    small.className = "price-vat";
     small.textContent = "KDV dahil";
     price.appendChild(small);
 

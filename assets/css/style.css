@@ -212,22 +212,35 @@ h1, h2, h3, h4 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   width: 100%;
-  padding: 4px 2px;
+  padding: 6px 2px;
   border-radius: 8px;
   border: 0;
   background: transparent;
   font: inherit;
   font-weight: 600;
-  font-size: clamp(0.64rem, 0.78vw, 0.82rem);
+  font-size: clamp(0.62rem, 0.74vw, 0.78rem);
   letter-spacing: 0;
-  line-height: 1.15;
+  line-height: 1.08;
   text-align: center;
   white-space: normal;
   color: var(--ink-2);
   cursor: pointer;
   transition: color var(--t), background var(--t);
+}
+.nav-mega-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  text-align: center;
+}
+.nav-mega-label-line {
+  display: block;
+  white-space: nowrap;
 }
 .nav-mega-toggle:hover,
 .nav-mega.open > .nav-mega-toggle {
@@ -1022,11 +1035,23 @@ h1, h2, h3, h4 {
   margin-bottom: 4px;
 }
 .product-card--listing .price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   font-size: 1.12rem;
   margin-bottom: 12px;
 }
-.product-card--listing .price small {
+.product-card--listing .price-amount {
+  display: block;
+  line-height: 1.15;
+}
+.product-card--listing .price small,
+.product-card--listing .price-vat {
+  display: block;
   font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 .product-card .actions.actions--listing {
   display: flex;
@@ -2125,6 +2150,10 @@ h1, h2, h3, h4 {
     justify-content: space-between;
     padding: 14px 12px;
     font-size: 1rem;
+  }
+  .nav-mega-label {
+    align-items: flex-start;
+    text-align: left;
   }
   .nav-mega {
     position: relative;

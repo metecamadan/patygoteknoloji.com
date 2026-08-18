@@ -32,3 +32,9 @@ test("product detail fetches by id without waiting for full catalog ready", () =
   assert.match(script, /function loadDetail/);
   assert.doesNotMatch(script, /Promise\.all\(\[ready/);
 });
+
+test("product detail keeps add-to-cart only without buy-now shortcut", () => {
+  assert.match(script, /Sepete Ekle/);
+  assert.doesNotMatch(script, /Hemen Al/);
+  assert.doesNotMatch(script, /\/odeme\?id=/);
+});

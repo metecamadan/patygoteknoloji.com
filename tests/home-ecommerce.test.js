@@ -12,7 +12,8 @@ test("homepage keeps teklif form and e-commerce hero", () => {
   assert.doesNotMatch(indexHtml, /quote-card/);
   assert.match(indexHtml, /id="teklif"/);
   assert.match(indexHtml, /data-hero-orbit/);
-  assert.match(indexHtml, /Ürün kataloğunu incele/);
+  assert.match(indexHtml, /btn btn-primary btn-lg">Ürün kataloğunu incele/);
+  assert.doesNotMatch(indexHtml, /home-featured-lead[\s\S]*Ürün kataloğunu incele/);
   assert.match(indexHtml, /Teklif Al/);
   assert.doesNotMatch(indexHtml, /hero-cta[\s\S]*Sepetim/);
   assert.doesNotMatch(indexHtml, /Güncel Katalog/);
@@ -33,6 +34,8 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.match(catalogJs, /product-card--listing/);
   assert.match(catalogJs, /createQtyStepper/);
   assert.match(catalogJs, /product-qty-row/);
+  assert.match(css, /\.product-card--listing \.price\s*\{[^}]*flex-direction:\s*column/s);
+  assert.match(css, /\.product-card--listing \.price-vat/);
   assert.match(catalogJs, /loadMoreListing/);
   assert.match(catalogJs, /IntersectionObserver/);
   assert.match(catalogJs, /if \(compactListing\)/);

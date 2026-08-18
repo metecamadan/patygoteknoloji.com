@@ -58,6 +58,13 @@ test("Teklif Al sits on the right viewport edge, not in the header nav", () => {
   assert.match(mainJs, /Teklif Al/);
 });
 
+test("main nav categories render as two-line labels", () => {
+  assert.match(navJs, /function splitNavCategoryName/);
+  assert.match(navJs, /function buildNavCategoryLabel/);
+  assert.match(navJs, /nav-mega-label-line/);
+  assert.match(navCss, /\.nav-mega-label\s*\{[^}]*flex-direction:\s*column/s);
+});
+
 test("nav reads category tree from disk listing snapshot first", () => {
   assert.match(navJs, /\/listing\/categories\.json/);
   assert.match(navJs, /NAV_SOURCE_FALLBACK/);
