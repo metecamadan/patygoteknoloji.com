@@ -129,13 +129,6 @@
 
       const list = document.createElement("ul");
       list.className = "nav-mega-list";
-      const browseLi = document.createElement("li");
-      browseLi.className = "nav-mega-list-browse";
-      const browse = document.createElement("a");
-      browse.href = categoryHref(category.slug, child.slug, "");
-      browse.textContent = "Tüm " + child.name;
-      browseLi.appendChild(browse);
-      list.appendChild(browseLi);
       leaves.forEach((leaf) => {
         const leafLi = document.createElement("li");
         const a = document.createElement("a");

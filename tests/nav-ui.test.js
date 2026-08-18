@@ -10,6 +10,8 @@ const navCss = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "u
 test("category mega menu does not render Tümü parent link", () => {
   assert.doesNotMatch(navJs, /Tümü:/);
   assert.doesNotMatch(navJs, /nav-mega-parent/);
+  assert.doesNotMatch(navJs, /Tüm " \+ child\.name/);
+  assert.doesNotMatch(navJs, /nav-mega-list-browse/);
 });
 
 test("mega menu keeps hover bridge for submenu access", () => {
