@@ -24,6 +24,17 @@ test("nav hides unpublished category nodes", () => {
   assert.match(navJs, /BroadcastChannel\("patygo-catalog"\)/);
 });
 
+test("storefront category feed hides empty leaf categories server-side", () => {
+  const categoriesJs = fs.readFileSync(path.join(root, "lib", "categories.js"), "utf8");
+  const catalogJs = fs.readFileSync(path.join(root, "lib", "catalog.js"), "utf8");
+  const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  assert.match(categoriesJs, /function mapPublicAraNode/);
+  assert.match(categoriesJs, /setPublicCategoryLeafKeysLoader/);
+  assert.match(catalogJs, /function buildStorefrontLeafKeys/);
+  assert.match(serverJs, /setPublicCategoryLeafKeysLoader/);
+  assert.match(serverJs, /name === "categories\.json"/);
+});
+
 test("nav shows each main category in the top bar instead of a single Ürünler dump", () => {
   assert.match(navJs, /function buildMegaItem/);
   assert.match(navJs, /function buildMegaGroup/);

@@ -125,6 +125,74 @@ test("retired seed parents are stripped from the live tree", () => {
   );
 });
 
+test("publicCategories hides leaf categories without storefront products", () => {
+  const { publicCategories, leafProductKey } = require("../lib/categories");
+  const tree = [
+    {
+      name: "Ana",
+      slug: "ana",
+      active: true,
+      children: [
+        {
+          name: "Ara",
+          slug: "ara",
+          active: true,
+          children: [
+            { name: "Dolu", slug: "dolu", active: true },
+            { name: "Bos", slug: "bos", active: true },
+          ],
+        },
+        {
+          name: "Tek",
+          slug: "tek",
+          active: true,
+          children: [{ name: "Yalniz Bos", slug: "yalniz-bos", active: true }],
+        },
+        {
+          name: "Terminal Bos",
+          slug: "terminal-bos",
+          active: true,
+        },
+        {
+          name: "Terminal Dolu",
+          slug: "terminal-dolu",
+          active: true,
+        },
+      ],
+    },
+  ];
+  const leafKeys = new Set([
+    leafProductKey("ana", "ara", "dolu"),
+    leafProductKey("ana", "terminal-dolu", ""),
+  ]);
+  const published = publicCategories(tree, { leafKeys });
+  assert.equal(published.length, 1);
+  assert.deepEqual(
+    published[0].children.map((row) => row.slug),
+    ["ara", "terminal-dolu"]
+  );
+  assert.deepEqual(
+    published[0].children[0].children.map((row) => row.slug),
+    ["dolu"]
+  );
+});
+
+test("buildStorefrontLeafKeys maps compact catalog rows to leaf keys", () => {
+  const { buildStorefrontLeafKeys } = require("../lib/catalog");
+  const { leafProductKey } = require("../lib/categories");
+  const keys = buildStorefrontLeafKeys({
+    compactAll: [
+      { category: "ana", mid: "ara", alt: "dolu" },
+      { category: "ana", mid: "terminal-dolu" },
+      { category: "ana", alt: "legacy-alt" },
+    ],
+  });
+  assert.equal(keys.has(leafProductKey("ana", "ara", "dolu")), true);
+  assert.equal(keys.has(leafProductKey("ana", "terminal-dolu", "")), true);
+  assert.equal(keys.has(leafProductKey("ana", "", "legacy-alt")), true);
+  assert.equal(keys.size, 3);
+});
+
 test("slugifyCategory and publicCategories hide unpublished nodes", () => {
   const { slugifyCategory, publicCategories, normalizeTree } = require("../lib/categories");
   assert.equal(slugifyCategory("USB Bellekler"), "usb-bellekler");

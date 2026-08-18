@@ -231,6 +231,45 @@ test("admin category tree API publishes only active categories to the public fee
   });
   const session = await login.json();
   const auth = { Authorization: "Bearer " + session.token };
+  const jsonAuth = Object.assign({ "Content-Type": "application/json" }, auth);
+  const gallery = Array.from({ length: 5 }, (_, index) => `/assets/img/products/macbook-air-m3.svg?v=${index}`);
+  function productPayload(id, parent, mid, child) {
+    return {
+      id,
+      brand: "TEST",
+      name: "Test " + id,
+      price: 1000,
+      vatPercent: 20,
+      category: "bilgisayar",
+      siteParent: parent,
+      siteMid: mid,
+      siteChild: child,
+      stockQty: 3,
+      currency: "TRY",
+      unit: "ADET",
+      manufacturerCode: "MFG-" + id,
+      barcode: "869000" + String(id).replace(/\D/g, "").slice(0, 7).padStart(7, "0"),
+      gtipCode: "84713000",
+      mainCategory: "TEST ANA",
+      midCategory: "TEST ARA",
+      subCategory: "TEST ALT",
+      description: "Test urunu kisa aciklama metni.",
+      images: gallery,
+      active: true,
+    };
+  }
+  async function seedProducts(entries) {
+    const savedProduct = await fetch(baseUrl + "/api/admin/products", {
+      method: "PUT",
+      headers: jsonAuth,
+      body: JSON.stringify({
+        products: entries.map((entry) =>
+          productPayload(entry.id, entry.parent, entry.mid, entry.child)
+        ),
+      }),
+    });
+    assert.equal(savedProduct.status, 200, await savedProduct.text());
+  }
 
   const current = await fetch(baseUrl + "/api/admin/categories", { headers: auth });
   assert.equal(current.status, 200);
@@ -240,14 +279,21 @@ test("admin category tree API publishes only active categories to the public fee
 
   const saved = await fetch(baseUrl + "/api/admin/categories", {
     method: "PUT",
-    headers: Object.assign({ "Content-Type": "application/json" }, auth),
+    headers: jsonAuth,
     body: JSON.stringify({
       categories: [
         {
           name: "Canlı Dal",
           slug: "canli-dal",
           active: true,
-          children: [{ name: "Canlı Yaprak", slug: "canli-yaprak", active: true }],
+          children: [
+            {
+              name: "Canlı Ara",
+              slug: "canli-ara",
+              active: true,
+              children: [{ name: "Canlı Yaprak", slug: "canli-yaprak", active: true }],
+            },
+          ],
         },
         {
           name: "Taslak Dal",
@@ -259,6 +305,9 @@ test("admin category tree API publishes only active categories to the public fee
     }),
   });
   assert.equal(saved.status, 200);
+  await seedProducts([
+    { id: "cat-live-leaf", parent: "canli-dal", mid: "canli-ara", child: "canli-yaprak" },
+  ]);
   const publicFeed = await fetch(baseUrl + "/assets/data/categories.json");
   assert.equal(publicFeed.status, 200);
   const publicJson = await publicFeed.json();
@@ -266,11 +315,18 @@ test("admin category tree API publishes only active categories to the public fee
     publicJson.categories.map((row) => row.slug),
     ["canli-dal"]
   );
-  assert.deepEqual(publicJson.categories[0].children.map((row) => row.slug), ["canli-yaprak"]);
+  assert.deepEqual(
+    publicJson.categories[0].children.map((row) => row.slug),
+    ["canli-ara"]
+  );
+  assert.deepEqual(
+    publicJson.categories[0].children[0].children.map((row) => row.slug),
+    ["canli-yaprak"]
+  );
 
   const reversed = await fetch(baseUrl + "/api/admin/categories", {
     method: "PUT",
-    headers: Object.assign({ "Content-Type": "application/json" }, auth),
+    headers: jsonAuth,
     body: JSON.stringify({
       categories: [
         {
@@ -278,20 +334,39 @@ test("admin category tree API publishes only active categories to the public fee
           slug: "ikinci-dal",
           active: true,
           children: [
-            { name: "Yaprak 2", slug: "yaprak-2", active: true },
-            { name: "Yaprak 1", slug: "yaprak-1", active: true },
+            {
+              name: "İkinci Ara",
+              slug: "ikinci-ara",
+              active: true,
+              children: [
+                { name: "Yaprak 2", slug: "yaprak-2", active: true },
+                { name: "Yaprak 1", slug: "yaprak-1", active: true },
+              ],
+            },
           ],
         },
         {
           name: "Canlı Dal",
           slug: "canli-dal",
           active: true,
-          children: [{ name: "Canlı Yaprak", slug: "canli-yaprak", active: true }],
+          children: [
+            {
+              name: "Canlı Ara",
+              slug: "canli-ara",
+              active: true,
+              children: [{ name: "Canlı Yaprak", slug: "canli-yaprak", active: true }],
+            },
+          ],
         },
       ],
     }),
   });
   assert.equal(reversed.status, 200);
+  await seedProducts([
+    { id: "cat-live-leaf", parent: "canli-dal", mid: "canli-ara", child: "canli-yaprak" },
+    { id: "cat-leaf-2", parent: "ikinci-dal", mid: "ikinci-ara", child: "yaprak-2" },
+    { id: "cat-leaf-1", parent: "ikinci-dal", mid: "ikinci-ara", child: "yaprak-1" },
+  ]);
   const listed = await reversed.json();
   assert.deepEqual(
     listed.categories.map((row) => row.slug),
@@ -299,6 +374,10 @@ test("admin category tree API publishes only active categories to the public fee
   );
   assert.deepEqual(
     listed.categories[0].children.map((row) => row.slug),
+    ["ikinci-ara"]
+  );
+  assert.deepEqual(
+    listed.categories[0].children[0].children.map((row) => row.slug),
     ["yaprak-2", "yaprak-1"]
   );
   const publicOrdered = await fetch(baseUrl + "/assets/data/categories.json");
@@ -309,6 +388,10 @@ test("admin category tree API publishes only active categories to the public fee
   );
   assert.deepEqual(
     publicOrderedJson.categories[0].children.map((row) => row.slug),
+    ["ikinci-ara"]
+  );
+  assert.deepEqual(
+    publicOrderedJson.categories[0].children[0].children.map((row) => row.slug),
     ["yaprak-2", "yaprak-1"]
   );
 });

@@ -15,10 +15,20 @@ const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/suppl
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths } = require("./lib/product-image-mirror");
-const { mergeCatalogProducts, queryPublicCatalog, queryPublicCatalogIndexed, buildStorefrontIndex, homeFeaturedCatalog, listingSnapshotFileName, listingSnapshotJobs } = require("./lib/catalog");
+const {
+  mergeCatalogProducts,
+  queryPublicCatalog,
+  queryPublicCatalogIndexed,
+  buildStorefrontIndex,
+  buildStorefrontLeafKeys,
+  homeFeaturedCatalog,
+  listingSnapshotFileName,
+  listingSnapshotJobs,
+} = require("./lib/catalog");
 const {
   createCategoryStore,
   setCategoryListLoader,
+  setPublicCategoryLeafKeysLoader,
 } = require("./lib/categories");
 const {
   CATEGORY_FEED_DEFAULTS,
@@ -447,9 +457,14 @@ function normalizeImageUrl(value) {
 
 function normalizeProduct(p, fallbackId) {
   const id = slugify(p.id || p.name || fallbackId || crypto.randomBytes(4).toString("hex"));
+  const siteParent = String((p && (p.siteParent || p.siteParentSlug)) || "").trim();
+  const siteMid = String((p && (p.siteMid || p.siteMidSlug)) || "").trim();
+  const siteChild = String((p && (p.siteChild || p.siteChildSlug)) || "").trim();
   const rawCategory = String((p && p.category) || "").trim();
-  const category =
-    CATEGORIES.has(rawCategory) || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(rawCategory)
+  const slugOk = (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(value || "").trim());
+  const category = slugOk(siteParent)
+    ? siteParent
+    : CATEGORIES.has(rawCategory) || slugOk(rawCategory)
       ? rawCategory || "bilgisayar"
       : "bilgisayar";
   const price = Math.max(0, Number(p.price) || 0);
@@ -484,6 +499,9 @@ function normalizeProduct(p, fallbackId) {
     vatPercent: normalizeVatPercent(p.vatPercent),
     currency: String(p.currency || "TRY").trim().toUpperCase().slice(0, 8) || "TRY",
     unit: String(p.unit || "ADET").trim().toUpperCase().slice(0, 20) || "ADET",
+    siteParent: siteParent || undefined,
+    siteMid: siteMid || undefined,
+    siteChild: siteChild || undefined,
   };
 }
 
@@ -510,6 +528,8 @@ function mergedProducts(includeInactiveManual) {
   storefrontCatalogMemo[key] = { products, index: null };
   return products;
 }
+
+setPublicCategoryLeafKeysLoader(() => buildStorefrontLeafKeys(storefrontIndex(false)));
 
 function storefrontIndex(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
@@ -1955,6 +1975,14 @@ const server = http.createServer(async (req, res) => {
     const name = urlPath.slice("/listing/".length);
     if (!/^[A-Za-z0-9._-]+\.json$/.test(name)) {
       return serveNotFound(res, req.method);
+    }
+    if (name === "categories.json") {
+      return json(
+        res,
+        200,
+        { version: 5, categories: categoryStore.publicList() },
+        { "Cache-Control": "public, max-age=60, stale-while-revalidate=600" }
+      );
     }
     const filePath = path.resolve(CATALOG_BOOTSTRAP_DIR, name);
     const rootDir = path.resolve(CATALOG_BOOTSTRAP_DIR);
