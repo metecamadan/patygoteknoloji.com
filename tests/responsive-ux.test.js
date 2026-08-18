@@ -54,7 +54,11 @@ test("mobile catalog: single column grid, static facets, no quote rail overlap",
 test("mobile nav drawer aligns category labels to the left", () => {
   assert.match(
     css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-categories-btn[\s\S]*?display:\s*inline-flex/s
+    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega\s*\{[^}]*flex-direction:\s*column/s
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega-group-title[\s\S]*?display:\s*none/s
   );
   assert.match(
     css,

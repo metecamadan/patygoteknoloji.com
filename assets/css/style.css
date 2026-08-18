@@ -207,12 +207,11 @@ h1, h2, h3, h4 {
   display: none;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 52px;
-  padding: 2px 4px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: var(--ink-2);
   font: inherit;
@@ -223,10 +222,7 @@ h1, h2, h3, h4 {
   height: 22px;
 }
 .nav-categories-label {
-  font-size: 0.62rem;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.01em;
+  display: none;
 }
 .nav-categories-btn.open {
   color: var(--brand);
@@ -2338,12 +2334,16 @@ h1, h2, h3, h4 {
     position: relative;
     flex: none;
     width: 100%;
-    justify-content: stretch;
+    flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
   }
-  .nav-mega-group-title,
-  .nav-mega-heading {
-    text-align: left;
+  .nav-mega-group-title {
+    display: none;
+  }
+  .nav-mega-group-head {
+    display: block;
+    width: 100%;
   }
   .nav-mega-heading {
     display: none;
@@ -2354,7 +2354,7 @@ h1, h2, h3, h4 {
     justify-content: space-between;
     gap: 10px;
     width: 100%;
-    padding: 12px 16px 12px 28px;
+    padding: 12px 16px;
     border: 0;
     border-bottom: 1px solid var(--line-soft);
     border-radius: 0;
@@ -2387,11 +2387,11 @@ h1, h2, h3, h4 {
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
-    width: auto;
+    width: 100%;
     min-width: 0;
     max-width: none;
-    margin: 0 0 8px;
-    padding: 0 0 8px 8px;
+    margin: 0;
+    padding: 0;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -2419,14 +2419,16 @@ h1, h2, h3, h4 {
     gap: 0;
   }
   .nav-mega-list a {
-    padding: 11px 16px 11px 40px;
+    padding: 11px 16px 11px 16px;
     border-bottom: 1px solid var(--line-soft);
     border-radius: 0;
     font-size: 0.84rem;
+    text-align: left;
   }
   .nav-mega-list-browse a {
-    padding-left: 28px;
+    padding-left: 16px;
     font-size: 0.86rem;
+    font-weight: 600;
   }
   .quote-rail {
     padding: 14px 8px;

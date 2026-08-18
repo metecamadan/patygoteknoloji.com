@@ -89,8 +89,7 @@
       catBtn.setAttribute("aria-expanded", "false");
       catBtn.setAttribute("aria-label", "Kategoriler");
       catBtn.innerHTML =
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>' +
-        '<span class="nav-categories-label">Kategoriler</span>';
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>';
       nav.insertBefore(catBtn, brand);
     }
 
