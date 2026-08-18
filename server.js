@@ -644,7 +644,7 @@ function ensureListingTreeSnapshotFiles() {
 function writeCatalogBootstrapSnapshots() {
   const index = storefrontIndex(false);
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
-  const jobs = listingSnapshotJobs(index, categoryStore.list());
+  const jobs = listingSnapshotJobs(index, categoryStore.publicList());
   const writeJob = (job) => {
     const payload = queryPublicCatalogIndexed(
       index,

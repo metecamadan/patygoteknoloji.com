@@ -97,7 +97,12 @@ test("mobile category tab opens sheet below header", () => {
   );
 });
 
-test("nav reads category tree from disk listing snapshot first", () => {
+test("nav reads filtered category tree from listing snapshot first", () => {
   assert.match(navJs, /\/listing\/categories\.json/);
   assert.match(navJs, /NAV_SOURCE_FALLBACK/);
+  const nginx = fs.readFileSync(
+    path.join(root, "deploy", "nginx-patygoteknoloji.com.conf"),
+    "utf8"
+  );
+  assert.match(nginx, /location = \/listing\/categories\.json/);
 });
