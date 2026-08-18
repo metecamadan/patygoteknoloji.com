@@ -3271,6 +3271,21 @@
     return "₺" + Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function formatOrderDate(iso) {
+    const text = String(iso || "").trim();
+    if (!text) return "—";
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString("tr-TR", {
+      timeZone: "Europe/Istanbul",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
   function orderStatusLabel(status) {
     const map = {
       payment_pending: "Ödeme bekliyor",
@@ -3442,6 +3457,9 @@
     return (
       "<div class='admin-order-detail-grid'>" +
       "<dl class='admin-xml-meta'>" +
+      "<div><dt>Sipariş tarihi</dt><dd>" +
+      escapeHtml(formatOrderDate(order.createdAt)) +
+      "</dd></div>" +
       "<div><dt>Durum</dt><dd>" +
       fulfillmentStatusBadge(order) +
       "</dd></div>" +
@@ -3688,6 +3706,11 @@
         "<span class='admin-order-id'>" +
         escapeHtml(order.id) +
         "</span>" +
+        "<time class='admin-order-date' datetime='" +
+        escapeAttr(order.createdAt || "") +
+        "'>" +
+        escapeHtml(formatOrderDate(order.createdAt)) +
+        "</time>" +
         "<span class='admin-order-customer'>" +
         escapeHtml(who) +
         "</span>" +

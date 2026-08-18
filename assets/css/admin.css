@@ -285,7 +285,8 @@
 .admin-order-row {
   display: grid;
   grid-template-columns:
-    minmax(140px, 1.2fr)
+    minmax(128px, 1fr)
+    112px
     minmax(120px, 1.4fr)
     118px
     118px
@@ -301,6 +302,11 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
+}
+.admin-order-head-date,
+.admin-order-date {
+  justify-self: end;
+  text-align: right;
 }
 .admin-order-head-total {
   justify-self: end;
@@ -336,6 +342,13 @@
   font-weight: 700;
   font-size: 0.92rem;
   word-break: break-all;
+  min-width: 0;
+}
+.admin-order-date {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .admin-order-customer {
   color: var(--muted);
@@ -407,11 +420,13 @@
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "id chevron"
+      "date date"
       "customer customer"
       "payment fulfillment"
       "total total";
   }
   .admin-order-id { grid-area: id; }
+  .admin-order-date { grid-area: date; justify-self: end; }
   .admin-order-customer { grid-area: customer; }
   .admin-order-payment-cell { grid-area: payment; }
   .admin-order-fulfillment-cell { grid-area: fulfillment; }
