@@ -264,12 +264,14 @@
     root.textContent = "";
     const toggle = document.createElement("button");
     toggle.type = "button";
-    toggle.className = "btn btn-primary catalog-facets-toggle";
-    toggle.textContent = "Filtrele";
+    toggle.className = "btn btn-outline btn-block catalog-facets-toggle";
+    toggle.textContent = root.classList.contains("is-open") ? "Filtreleri gizle" : "Filtrele";
     toggle.setAttribute("aria-expanded", root.classList.contains("is-open") ? "true" : "false");
     toggle.addEventListener("click", () => {
       root.classList.toggle("is-open");
-      toggle.setAttribute("aria-expanded", root.classList.contains("is-open") ? "true" : "false");
+      const open = root.classList.contains("is-open");
+      toggle.textContent = open ? "Filtreleri gizle" : "Filtrele";
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
     });
     root.appendChild(toggle);
 
