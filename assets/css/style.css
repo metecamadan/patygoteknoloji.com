@@ -2161,6 +2161,22 @@ h1, h2, h3, h4 {
   .site-header {
     height: var(--header-h);
     min-height: var(--header-h);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #fff;
+  }
+  body.nav-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    top: var(--header-h);
+    z-index: 98;
+    background: rgba(15, 23, 42, 0.42);
+    pointer-events: none;
+  }
+  body.nav-open .hero-orbit,
+  body.nav-open .hero-visual {
+    visibility: hidden;
   }
   .nav {
     flex-wrap: nowrap;
@@ -2173,6 +2189,8 @@ h1, h2, h3, h4 {
     top: var(--header-h);
     left: 0;
     right: 0;
+    width: 100%;
+    max-width: none;
     bottom: auto;
     z-index: 99;
     flex: none;
@@ -2188,8 +2206,9 @@ h1, h2, h3, h4 {
     box-shadow: var(--shadow);
     transform: translateY(-110%);
     transition: transform var(--t), visibility var(--t);
-    max-height: calc(100vh - var(--header-h));
+    max-height: calc(100dvh - var(--header-h));
     overflow-y: auto;
+    overscroll-behavior: contain;
     pointer-events: none;
     visibility: hidden;
   }
@@ -2245,6 +2264,19 @@ h1, h2, h3, h4 {
   }
   .nav-mega.open > .nav-mega-panel {
     display: block;
+    max-height: min(52dvh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-left: 3px solid var(--brand-soft);
+    margin-left: 10px;
+    padding-left: 10px;
+  }
+  .nav-mega-groups {
+    column-count: 1;
+    column-width: auto;
+    display: grid;
+    gap: 8px;
   }
   .nav-mega-list {
     grid-template-columns: 1fr;
@@ -2256,10 +2288,6 @@ h1, h2, h3, h4 {
   .nav-mega-heading {
     display: block;
     padding: 8px 12px 4px;
-  }
-  .nav-mega-groups {
-    column-count: 1;
-    column-width: auto;
   }
   .quote-rail {
     padding: 14px 8px;
@@ -2439,7 +2467,7 @@ h1, h2, h3, h4 {
 }
 @media (max-width: 720px) {
   .home .product-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-start;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;

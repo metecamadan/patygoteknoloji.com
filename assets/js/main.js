@@ -79,6 +79,7 @@
       links.classList.toggle("open", open);
       toggle.classList.toggle("open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      document.body.classList.toggle("nav-open", open);
       document.body.style.overflow = open ? "hidden" : "";
       if (!open) {
         links.querySelectorAll(".nav-mega.open").forEach((item) => {

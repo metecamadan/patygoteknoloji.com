@@ -18,6 +18,7 @@ const odemeHtml = fs.readFileSync(path.join(root, "odeme.html"), "utf8");
 test("storefront skip link and global focus ring", () => {
   assert.match(mainJs, /skip-link/);
   assert.match(mainJs, /main-content/);
+  assert.match(mainJs, /nav-open/);
   assert.match(css, /\.skip-link:focus/);
   assert.match(css, /a:focus-visible/);
   assert.match(css, /button:focus-visible/);

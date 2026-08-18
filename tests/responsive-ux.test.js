@@ -58,6 +58,18 @@ test("mobile nav drawer aligns category labels to the left", () => {
   );
   assert.match(
     css,
+    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-links\s*\{[^}]*width:\s*100%/s
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.site-header\s*\{[^}]*backdrop-filter:\s*none/s
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?body\.nav-open::before/s
+  );
+  assert.match(
+    css,
     /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega\s*\{[^}]*width:\s*100%/s
   );
   assert.match(
