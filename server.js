@@ -2191,6 +2191,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "POST" && (urlPath === "/admin" || urlPath === "/admin.html")) {
+    const htmlPath = safeJoin(ROOT, "/admin.html");
+    if (htmlPath) return sendFile(res, htmlPath, "GET");
+  }
+
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405, securityHeaders({ Allow: "GET, HEAD" }));
     return res.end("405 Method Not Allowed");

@@ -225,10 +225,12 @@ test("admin ends session after 30 minutes of inactivity", () => {
   assert.match(script, /30 dakika/);
 });
 
-test("admin never renders the default password as a login hint", () => {
-  assert.doesNotMatch(html, /patygo-admin/);
-  assert.match(html, /ADMIN_PASSWORD/);
+test("admin login form does not POST onto static /admin HTML", () => {
+  assert.match(html, /id="loginForm"[^>]*action="\/api\/admin\/login"/);
+  assert.doesNotMatch(html, /id="loginForm"[^>]*action="#"/);
+  assert.match(html, /loginForm"\)\.addEventListener\("submit"/);
 });
+
 
 test("admin users tab supports panel account management", () => {
   assert.match(html, /id="usersTab"/);

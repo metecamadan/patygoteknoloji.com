@@ -279,6 +279,23 @@ test("agent-ops routes are gone", async (t) => {
   assert.equal(ingest.status, 404);
 });
 
+test("POST /admin serves login HTML instead of 405", async (t) => {
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: "test-admin-password",
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+  const getPage = await fetch(baseUrl + "/admin");
+  assert.equal(getPage.status, 200);
+  assert.match(await getPage.text(), /Ürün paneli/);
+  const posted = await fetch(baseUrl + "/admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "email=x&password=y",
+  });
+  assert.equal(posted.status, 200);
+  assert.match(await posted.text(), /id="loginForm"/);
+});
+
 test("admin category tree API publishes only active categories to the public feed", async (t) => {
   const password = "test-admin-password";
   const { baseUrl } = await spawnTestServer(t, {

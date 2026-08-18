@@ -23,7 +23,7 @@
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
-    <form id="loginForm" class="admin-login-card" method="post" action="#">
+    <form id="loginForm" class="admin-login-card" method="post" action="/api/admin/login">
       <a id="loginBrandLink" href="/" class="admin-login-brand" target="_blank" rel="noopener" title="Web sitesini aç">
         <img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" class="admin-logo" width="123" height="48" />
       </a>
@@ -37,11 +37,16 @@
       <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
       <p class="admin-note" id="loginNote" role="status"></p>
     </form>
+    <script>
+      document.getElementById("loginForm").addEventListener("submit", function (ev) {
+        ev.preventDefault();
+      });
+    </script>
   </div>
 
   <div id="panelView" class="admin-panel" hidden>
     <div id="passwordChangeGate" class="admin-password-gate" hidden>
-      <form id="passwordChangeForm" class="admin-login-card" method="post" action="#">
+      <form id="passwordChangeForm" class="admin-login-card" method="post" action="/api/admin/change-password">
         <h1>Panel şifresini güncelleyin</h1>
         <p id="passwordChangeReason" class="admin-hint">Güvenlik için en az 12 karakterli yeni bir şifre belirleyin.</p>
         <label for="currentPasswordChange">Mevcut şifre</label>
@@ -958,6 +963,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=no-fake-1"></script>
+  <script src="/assets/js/admin.js?v=admin-405-1"></script>
 </body>
 </html>
