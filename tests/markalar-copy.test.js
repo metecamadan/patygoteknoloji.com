@@ -11,8 +11,9 @@ const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 test("markalar why section uses left-aligned copy and spaced metrics", () => {
   assert.match(html, /section-head--start/);
   assert.match(html, /class="metrics"/);
-  assert.match(html, /<strong>43\+<\/strong><span>Marka portföyü<\/span>/);
   assert.match(html, /<strong>%100<\/strong><span>Faturalı satış<\/span>/);
+  assert.match(html, /<strong>KDV dahil<\/strong><span>Vitrin fiyatı<\/span>/);
+  assert.doesNotMatch(html, /43\+/);
   assert.match(html, /<strong>B2B<\/strong><span>Kurumsal odak<\/span>/);
   assert.match(html, /<strong>TR<\/strong><span>Yerel tedarik<\/span>/);
   assert.doesNotMatch(html, /<strong>100%<\/strong>/);
@@ -25,4 +26,5 @@ test("markalar why section uses left-aligned copy and spaced metrics", () => {
 test("homepage dark stats use Turkish percent order", () => {
   assert.match(indexHtml, /<strong>%100<\/strong><span>Faturalı satış<\/span>/);
   assert.doesNotMatch(indexHtml, /<strong>100%<\/strong>/);
+  assert.doesNotMatch(indexHtml, /7\/24/);
 });

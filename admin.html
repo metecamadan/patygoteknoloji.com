@@ -136,7 +136,7 @@
             <div class="admin-kpis admin-kpis-digital">
               <article class="admin-kpi"><span>Ziyaretçi</span><strong id="dashVisitors">0</strong><small id="dashVisitorsDelta">—</small></article>
               <article class="admin-kpi"><span>Sayfa görüntüleme</span><strong id="dashPageViews">0</strong><small id="dashPageViewsDelta">—</small></article>
-              <article class="admin-kpi"><span>Talep (form)</span><strong id="dashLeads">0</strong><small>FormSubmit başarılı gönderim</small></article>
+              <article class="admin-kpi"><span>Talep (form)</span><strong id="dashLeads">0</strong><small>Kaydedilen form</small></article>
               <article class="admin-kpi"><span>Ödenen sipariş</span><strong id="dashOrdersPaid">0</strong><small id="dashOrdersMeta">—</small></article>
               <article class="admin-kpi"><span>Gelir</span><strong id="dashRevenue">₺0</strong><small>Ödenen siparişler</small></article>
               <article class="admin-kpi"><span>AOV</span><strong id="dashAov">₺0</strong><small>Ortalama sipariş tutarı</small></article>
@@ -150,20 +150,16 @@
                 <ul class="admin-top-pages" id="dashTopPages"></ul>
               </section>
               <section class="admin-card">
-                <div class="admin-card-head"><div><span class="admin-eyebrow">UYGULAMA</span><h2>Süreç özeti</h2></div>
+                <div class="admin-card-head"><div><span class="admin-eyebrow">ÖDEME</span><h2>POS ve site adresi</h2></div>
                   <div class="admin-card-head-actions">
                     <button type="button" class="btn btn-outline btn-sm" id="dashRefreshBtn">Yenile</button>
-                    <span class="admin-status pending" id="dashServerStatus">Yükleniyor</span>
                   </div>
                 </div>
-                <p class="admin-hint">Panel API yanıtı süreç metrikleridir; canlı site sağlığı alan adı smoke ile doğrulanır.</p>
+                <p class="admin-hint">POS ve SITE_BASE_URL yapılandırması. Bu kart sitenin ayakta olduğunu kanıtlamaz.</p>
                 <dl class="admin-xml-meta">
-                  <div><dt>Uptime</dt><dd id="dashUptime">—</dd></div>
-                  <div><dt>Bellek (RSS)</dt><dd id="dashMemory">—</dd></div>
-                  <div><dt>Node</dt><dd id="dashNode">—</dd></div>
                   <div><dt>POS</dt><dd id="dashPos">—</dd></div>
                   <div><dt>Site URL</dt><dd id="dashSiteBaseUrl">—</dd></div>
-                  <div><dt>Kontrol</dt><dd id="dashCheckedAt">—</dd></div>
+                  <div><dt>SMTP</dt><dd id="dashSmtp">—</dd></div>
                 </dl>
                 <p class="admin-hint" id="dashServerNote" hidden></p>
               </section>
@@ -212,7 +208,7 @@
                 <dl class="admin-xml-meta">
                   <div><dt>Son senkron</dt><dd id="dashboardLastSync">Henüz yok</dd></div>
                   <div><dt>Kaynak</dt><dd id="dashboardXmlHost">Tanımlanmadı</dd></div>
-                  <div><dt>Genel kâr oranı</dt><dd id="dashboardMargin">%15</dd></div>
+                  <div><dt>Genel kâr oranı</dt><dd id="dashboardMargin">—</dd></div>
                   <div><dt>Son hata</dt><dd id="dashboardXmlError">—</dd></div>
                 </dl>
                 <p class="admin-note" id="dashboardXmlNote" role="status"></p>
@@ -344,7 +340,7 @@
                       <input id="calendarEntryTime" type="time" />
                     </div>
                   </div>
-                  <p class="admin-field-help">Hatırlatıcıda saat boşsa 09:00’da e-posta gider. Saat gelince panel açıksa tarayıcı bildirimi de çıkar (Europe/Istanbul).</p>
+                  <p class="admin-field-help" data-smtp-mail-help>Hatırlatıcı panelde saklanır. Saat gelince panel açıksa tarayıcı bildirimi çıkar. E-posta yalnızca SMTP kurulunca gider.</p>
                   <div class="admin-form-actions" style="margin-bottom: 12px;">
                     <button type="button" class="btn btn-outline btn-sm" id="calendarNotifyPermissionBtn">Tarayıcı bildirimine izin ver</button>
                   </div>
@@ -355,7 +351,7 @@
                   <div class="field" id="calendarNotifyEmailField">
                     <label for="calendarNotifyEmail">Hatırlatma e-postası *</label>
                     <input id="calendarNotifyEmail" type="email" maxlength="160" placeholder="ornek@firma.com" autocomplete="email" />
-                    <p class="admin-field-help">Hatırlatıcı kaydedilince ve saat gelince bu adrese e-posta gider.</p>
+                    <p class="admin-field-help" data-smtp-mail-help>Canlı SMTP yoksa bu adrese e-posta gitmez; kayıt yine de takvimde durur.</p>
                   </div>
                   <div class="field">
                     <label for="calendarEntryBody">Açıklama</label>
@@ -962,6 +958,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=ops-health-1"></script>
+  <script src="/assets/js/admin.js?v=no-fake-1"></script>
 </body>
 </html>

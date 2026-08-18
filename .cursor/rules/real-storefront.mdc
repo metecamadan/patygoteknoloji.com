@@ -16,6 +16,15 @@ Site yalnızca gerçek tedarikçi ürünleriyle durur. Demo, ops paneli ve test 
 - Stok 0 veya son 7 günde stok okunamadıysa ürün sitede ve Akakçe XML’de durmaz.
 - Ana kategoriler üst menüde; alt kategoriler hover/tıkla.
 - XML görselleri tam boy; açıklama XML’den (kısa + detay).
+- Kanıtsız istatistik yok (43+ marka, 7/24 destek, binlerce ürün). Marka şeridi uydurma liste olmaz.
+- Form “mail gitti” demez; talep kaydı ≠ gelen kutusu.
+
+## Panel
+
+- “Sistem hazır / API yanıt verdi / sunucu online” yok. Yeşil rozet yalnızca gerçek XML/POS uyarısıdır; uyarı yoksa gizlenir.
+- Süreç uptime/bellek site sağlığı değildir; gösterilmez.
+- SMTP yokken takvim/sipariş “e-posta gider” yazmaz.
+- FormSubmit teslimatı gelen kutusu kanıtı değildir.
 
 ## XML çekimi
 

@@ -63,6 +63,7 @@ const {
   validateContactPayload,
   deliverContactMail,
   deliverSimpleMail,
+  smtpConfigured,
 } = require("./lib/contact");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
@@ -1412,6 +1413,7 @@ async function handleApi(req, res, urlPath) {
       user: sessionUser(req),
       mustChangePassword: sessionMustChangePassword(session),
       minPasswordLength: MIN_ADMIN_PASSWORD_LENGTH,
+      smtpConfigured: smtpConfigured(process.env),
       passwordChangeReason: sessionMustChangePassword(session)
         ? adminSecurityStore.read().reason || ""
         : "",
@@ -1674,7 +1676,6 @@ async function handleApi(req, res, urlPath) {
     const to = requestUrl.searchParams.get("to");
     const days = requestUrl.searchParams.get("days");
     const range = from && to ? { from, to } : days;
-    const mem = process.memoryUsage();
     const analytics = analyticsStore.summary(range);
     const commerce = orderStore.commerceSummary(range);
     const viewedIds = (analytics.topViewedProducts || []).map((row) => row.productId);
@@ -1688,22 +1689,17 @@ async function handleApi(req, res, urlPath) {
         brand: product ? product.brand : "",
       };
     });
-    // Process metrics only — never expose host IP / “server online” as site health.
     return json(res, 200, {
       ok: true,
       analytics: Object.assign({}, analytics, { topViewedProducts }),
       commerce,
       process: {
-        apiReachable: true,
-        uptimeSec: Math.floor(process.uptime()),
-        node: process.version,
-        memoryMB: Math.round((mem.rss / (1024 * 1024)) * 10) / 10,
         pos: publicPosStatus(akbankConfig),
         siteBaseUrl: SITE_BASE_URL,
-        checkedAt: new Date().toISOString(),
+        smtpConfigured: smtpConfigured(process.env),
       },
       leadsNote:
-        "Talep sayısı, formun FormSubmit ile başarıyla gönderildiği anları sayar. Posta kutusu teslimatı FormSubmit/e-posta sağlayıcısına bağlıdır.",
+        "Talep sayısı, iletişim formunun sunucuya kaydedildiği anları sayar. Gelen kutusu teslimatı ayrıdır.",
       catalog: manualCatalogCounts(),
     });
   }

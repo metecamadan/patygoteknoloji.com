@@ -59,6 +59,8 @@ test("admin calendar tab supports reminders and notes", () => {
   assert.match(script, /\/api\/admin\/calendar/);
   assert.match(script, /"calendar"/);
   assert.match(html, /id="calendarNotifyPermissionBtn"/);
+  assert.match(html, /data-smtp-mail-help/);
+  assert.doesNotMatch(html, /e-posta gider/);
   assert.match(script, /checkBrowserCalendarReminders/);
   assert.match(script, /Notification\.requestPermission|ensureCalendarNotificationPermission/);
 });
@@ -161,7 +163,10 @@ test("admin overview exposes digital dashboard metrics", () => {
   assert.match(html, /id="dashLeads"/);
   assert.match(html, /id="dashRevenue"/);
   assert.match(html, /id="dashAov"/);
-  assert.match(html, /id="dashServerStatus"/);
+  assert.match(html, /id="dashPos"/);
+  assert.match(html, /id="dashSmtp"/);
+  assert.doesNotMatch(html, /id="dashServerStatus"/);
+  assert.doesNotMatch(script, /API yanıt verdi/);
   assert.match(script, /\/api\/admin\/dashboard/);
   assert.match(script, /loadDigitalDashboard/);
   assert.match(html, /id="dashTopViewed"/);

@@ -715,6 +715,7 @@
         return;
       }
       showPasswordChangeGate(false);
+      applySmtpMailHelp(me.smtpConfigured === true);
     } catch (err) {
       if (err && /şifre|password/i.test(String(err.message || ""))) {
         showPanel(true);
@@ -1228,14 +1229,13 @@
     return "önceki döneme göre " + sign + value + "%";
   }
 
-  function formatUptime(sec) {
-    const s = Math.max(0, Number(sec) || 0);
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    if (d) return d + "g " + h + "s";
-    if (h) return h + "s " + m + "dk";
-    return m + " dk";
+  function applySmtpMailHelp(smtpOn) {
+    const configured = smtpOn === true;
+    document.querySelectorAll("[data-smtp-mail-help]").forEach((el) => {
+      el.textContent = configured
+        ? "Hatırlatıcı kaydedilince ve saat gelince bu adrese e-posta gider. Panel açıksa tarayıcı bildirimi de çıkar (Europe/Istanbul)."
+        : "Canlı SMTP yok; e-posta gönderilmez. Saat gelince yalnızca panel açıksa tarayıcı bildirimi çıkar.";
+    });
   }
 
   function renderDigitalDashboard(payload) {
@@ -1246,10 +1246,6 @@
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     };
-    const live =
-      (payload && payload.ok === true) ||
-      proc.apiReachable === true ||
-      Boolean(proc.checkedAt);
 
     setText("dashVisitors", String(analytics.visitors || 0));
     setText("dashPageViews", String(analytics.pageViews || 0));
@@ -1283,18 +1279,9 @@
     if (noteEl) {
       noteEl.textContent =
         payload.leadsNote ||
-        "Talep sayısı, formun başarıyla gönderildiği anları sayar.";
+        "Talep sayısı, iletişim formunun sunucuya kaydedildiği anları sayar.";
     }
 
-    const status = document.getElementById("dashServerStatus");
-    if (status) {
-      status.className = "admin-status " + (live ? "on" : payload && payload.loadError ? "err" : "pending");
-      status.textContent = live
-        ? "API yanıt verdi"
-        : payload && payload.loadError
-          ? "Veri alınamadı"
-          : "Yükleniyor";
-    }
     const serverNote = document.getElementById("dashServerNote");
     if (serverNote) {
       if (payload && payload.loadError) {
@@ -1306,20 +1293,27 @@
         serverNote.textContent = "";
       }
     }
-    setText("dashUptime", live ? formatUptime(proc.uptimeSec) : "—");
-    setText("dashMemory", live && proc.memoryMB != null ? proc.memoryMB + " MB" : "—");
-    setText("dashNode", live ? proc.node || "—" : "—");
-    setText("dashSiteBaseUrl", live ? proc.siteBaseUrl || "—" : "—");
+    setText("dashSiteBaseUrl", proc.siteBaseUrl || "—");
     const pos = proc.pos || {};
     setText(
       "dashPos",
-      live
-        ? pos.enabled
-          ? "Akbank " + (pos.testMode ? "TEST" : "CANLI")
+      pos.enabled
+        ? "Akbank " + (pos.testMode ? "TEST" : "CANLI")
+        : payload && payload.loadError
+          ? "—"
           : "Yapılandırılmadı"
-        : "—"
     );
-    setText("dashCheckedAt", live ? formatDate(proc.checkedAt) : "—");
+    setText(
+      "dashSmtp",
+      payload && payload.loadError
+        ? "—"
+        : proc.smtpConfigured === true
+          ? "Kurulu"
+          : "Yok (sipariş/takvim maili gitmez)"
+    );
+    if (proc.smtpConfigured === true || proc.smtpConfigured === false) {
+      applySmtpMailHelp(proc.smtpConfigured);
+    }
 
     const spark = document.getElementById("dashSpark");
     if (spark) {
@@ -1460,11 +1454,6 @@
   }
 
   async function loadDigitalDashboard() {
-    const status = document.getElementById("dashServerStatus");
-    if (status) {
-      status.className = "admin-status pending";
-      status.textContent = "Yükleniyor";
-    }
     try {
       const data = await api("/api/admin/dashboard?" + currentPeriodQuery());
       if (data.analytics && data.analytics.from && data.analytics.to) {

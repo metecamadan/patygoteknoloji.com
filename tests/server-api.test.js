@@ -85,8 +85,11 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.equal(typeof dash.commerce.aov, "number");
   assert.equal(typeof dash.catalog.manualCount, "number");
   assert.equal(typeof dash.catalog.manualActiveCount, "number");
-  assert.equal(dash.process.apiReachable, true);
-  assert.equal(typeof dash.process.uptimeSec, "number");
+  assert.ok(dash.process.pos);
+  assert.equal(typeof dash.process.siteBaseUrl, "string");
+  assert.equal(typeof dash.process.smtpConfigured, "boolean");
+  assert.equal(dash.process.apiReachable, undefined);
+  assert.equal(dash.process.uptimeSec, undefined);
   assert.ok(dash.leadsNote);
 
   const privateData = await fetch(baseUrl + "/assets/data/products.json");
