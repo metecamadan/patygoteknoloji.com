@@ -346,6 +346,25 @@
 
     if (els.form && !submitBound) {
       submitBound = true;
+      const sameAddress = document.getElementById("sameAddress");
+      const billField = els.form.faturaAdres;
+      const shipField = els.form.teslimatAdres;
+      if (sameAddress && billField && shipField && !sameAddress.dataset.bound) {
+        sameAddress.dataset.bound = "1";
+        const syncAddresses = () => {
+          if (sameAddress.checked) {
+            shipField.value = billField.value;
+            shipField.readOnly = true;
+          } else {
+            shipField.readOnly = false;
+          }
+        };
+        sameAddress.addEventListener("change", syncAddresses);
+        billField.addEventListener("input", () => {
+          if (sameAddress.checked) shipField.value = billField.value;
+        });
+        syncAddresses();
+      }
       els.form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
         const ad = els.form.ad.value.trim();
@@ -376,8 +395,14 @@
           return;
         }
         const billingAddress = (els.form.faturaAdres && els.form.faturaAdres.value.trim()) || "";
+        const sameAddressChecked =
+          document.getElementById("sameAddress") &&
+          document.getElementById("sameAddress").checked;
         const shippingAddress =
-          (els.form.teslimatAdres && els.form.teslimatAdres.value.trim()) || billingAddress;
+          sameAddressChecked
+            ? billingAddress
+            : (els.form.teslimatAdres && els.form.teslimatAdres.value.trim()) ||
+              billingAddress;
         if (!billingAddress || !shippingAddress) {
           els.note.classList.remove("ok");
           els.note.classList.add("err");

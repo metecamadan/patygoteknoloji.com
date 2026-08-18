@@ -135,26 +135,45 @@
 
     const actions = document.createElement("div");
     actions.className = "actions";
+    let addQty = 1;
+    if (window.PatygoCatalog.createQtyStepper) {
+      const qtyRow = window.PatygoCatalog.createQtyStepper(1);
+      qtyRow.classList.add("detail-qty-row");
+      actions.appendChild(qtyRow);
+      addQty = () => qtyRow.getQty();
+    }
     const add = document.createElement("button");
     add.type = "button";
-    add.className = "btn btn-primary btn-lg";
+    add.className = "btn btn-primary btn-lg btn-buy";
     add.textContent = "Sepete Ekle";
     add.addEventListener("click", () => {
-      window.PatygoCart.add(product.id, 1, {
+      const qty = typeof addQty === "function" ? addQty() : 1;
+      window.PatygoCart.add(product.id, qty, {
         brand: product.brand,
         name: product.name,
         price: product.price,
         vatPercent: product.vatPercent,
       });
       add.textContent = "Sepete eklendi";
+      add.disabled = true;
+      window.setTimeout(() => {
+        add.textContent = "Sepete Ekle";
+        add.disabled = false;
+      }, 1800);
     });
     actions.appendChild(add);
+
+    const trust = document.createElement("ul");
+    trust.className = "detail-trust";
+    trust.innerHTML =
+      "<li>Stokta · KDV dahil fiyat</li><li>3D Secure güvenli ödeme</li><li>Faturalı satış</li>";
 
     info.appendChild(tag);
     info.appendChild(h1);
     info.appendChild(cat);
     info.appendChild(price);
     info.appendChild(actions);
+    info.appendChild(trust);
 
     grid.appendChild(gallery);
     grid.appendChild(info);

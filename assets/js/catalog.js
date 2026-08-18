@@ -238,6 +238,76 @@
     if (active) meta.textContent += " (filtrelenmiş)";
   }
 
+  function ensureActiveFiltersHost() {
+    const results = document.querySelector(".catalog-results");
+    if (!results) return null;
+    let host = results.querySelector("[data-catalog-active-filters]");
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "catalog-active-filters";
+      host.setAttribute("data-catalog-active-filters", "");
+      host.hidden = true;
+      const meta = results.querySelector("[data-catalog-meta]");
+      if (meta) results.insertBefore(host, meta);
+      else results.prepend(host);
+    }
+    return host;
+  }
+
+  function renderActiveFilterChips(applied, priceRange) {
+    const host = ensureActiveFiltersHost();
+    if (!host) return;
+    const brands = (applied && applied.brands) || [];
+    const min = applied && applied.minFiyat ? Number(applied.minFiyat) : 0;
+    const max = applied && applied.maxFiyat ? Number(applied.maxFiyat) : 0;
+    const hasPrice = min > 0 || max > 0;
+    if (!brands.length && !hasPrice) {
+      host.hidden = true;
+      host.textContent = "";
+      return;
+    }
+    host.hidden = false;
+    host.textContent = "";
+    brands.forEach((brand) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "catalog-active-filter-chip";
+      chip.textContent =
+        (window.PatygoCatalog.prettyBrandName(brand) || brand) + " ×";
+      chip.addEventListener("click", () => {
+        writeFacetQuery({
+          brands: brands.filter((item) => item !== brand),
+          minFiyat: applied.minFiyat || "",
+          maxFiyat: applied.maxFiyat || "",
+        });
+      });
+      host.appendChild(chip);
+    });
+    if (hasPrice) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "catalog-active-filter-chip";
+      const maxLabel =
+        max > 0
+          ? window.PatygoCatalog.formatPrice(max)
+          : priceRange && priceRange.max
+            ? window.PatygoCatalog.formatPrice(priceRange.max)
+            : "";
+      chip.textContent =
+        (min > 0 ? window.PatygoCatalog.formatPrice(min) + " – " : "≤ ") +
+        maxLabel +
+        " ×";
+      chip.addEventListener("click", () => {
+        writeFacetQuery({
+          brands: applied.brands || [],
+          minFiyat: "",
+          maxFiyat: "",
+        });
+      });
+      host.appendChild(chip);
+    }
+  }
+
   function renderFacets(facets, applied) {
     const root = document.querySelector("[data-catalog-facets]");
     const layout = document.querySelector(".catalog-layout");
@@ -254,6 +324,7 @@
     if (layout) layout.classList.toggle("has-facets", hasPanel);
     if (!hasPanel) {
       root.textContent = "";
+      renderActiveFilterChips(readFacetQuery(), price);
       return;
     }
 
@@ -265,15 +336,30 @@
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "btn btn-outline btn-block catalog-facets-toggle";
-    toggle.textContent = root.classList.contains("is-open") ? "Filtreleri gizle" : "Filtrele";
+    const activeCount =
+      selected.size + (selectedMin || selectedMax ? 1 : 0);
+    const open = root.classList.contains("is-open");
+    toggle.textContent = open
+      ? "Filtreleri gizle"
+      : activeCount
+        ? "Filtrele (" + activeCount + ")"
+        : "Filtrele";
     toggle.setAttribute("aria-expanded", root.classList.contains("is-open") ? "true" : "false");
     toggle.addEventListener("click", () => {
       root.classList.toggle("is-open");
-      const open = root.classList.contains("is-open");
-      toggle.textContent = open ? "Filtreleri gizle" : "Filtrele";
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      const isOpen = root.classList.contains("is-open");
+      const count =
+        selected.size + (selectedMin || selectedMax ? 1 : 0);
+      toggle.textContent = isOpen
+        ? "Filtreleri gizle"
+        : count
+          ? "Filtrele (" + count + ")"
+          : "Filtrele";
+      toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
     root.appendChild(toggle);
+
+    renderActiveFilterChips(applied, price);
 
     const body = document.createElement("div");
     body.className = "catalog-facets-body";
@@ -1427,6 +1513,7 @@
   window.PatygoCatalog.reload = reloadCatalog;
   window.PatygoCatalog.fetchProductPage = fetchProductPage;
   window.PatygoCatalog.loadCategories = loadCategories;
+  window.PatygoCatalog.createQtyStepper = createQtyStepper;
 
   window.PatygoCatalog.ready = reloadCatalog();
 

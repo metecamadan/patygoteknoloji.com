@@ -34,7 +34,7 @@
     if (toggle) {
       toggle.setAttribute("aria-pressed", String(!!dark));
       const label = toggle.querySelector(".admin-theme-toggle-label");
-      if (label) label.textContent = dark ? "Light" : "Dark";
+      if (label) label.textContent = dark ? "Açık" : "Koyu";
       toggle.title = dark ? "Açık temaya geç" : "Koyu temaya geç";
     }
     try {

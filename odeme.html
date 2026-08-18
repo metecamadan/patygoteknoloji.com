@@ -20,6 +20,7 @@
         <a class="brand" href="/" aria-label="Patygo Teknoloji ana sayfa"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji logosu" /></a>
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
+          <a href="/urunler" class="btn btn-ghost checkout-continue-link">Alışverişe devam</a>
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
         </div>
       </nav>
@@ -32,6 +33,13 @@
         <div class="breadcrumb reveal"><a href="/">Ana Sayfa</a> <span>/</span> <a href="/urunler">Ürün kataloğu</a> <span>/</span> <span>Ödeme</span></div>
         <h1 class="reveal">Satın alma</h1>
         <p class="reveal d1">Bilgilerinizi girin; ödeme Akbank’ın güvenli sanal POS sayfasında tamamlanır.</p>
+        <nav class="checkout-funnel reveal d1" aria-label="Satın alma adımları">
+          <ol>
+            <li class="is-done"><span>1</span> Sepet</li>
+            <li class="is-current" aria-current="step"><span>2</span> Bilgiler</li>
+            <li><span>3</span> Ödeme</li>
+          </ol>
+        </nav>
       </div>
     </section>
 
@@ -77,9 +85,13 @@
                 <label for="faturaAdres">Fatura adresi *</label>
                 <textarea id="faturaAdres" name="faturaAdres" rows="2" required placeholder="Mahalle, sokak, no, ilçe / il"></textarea>
               </div>
+              <div class="check-inline">
+                <input type="checkbox" id="sameAddress" name="sameAddress" checked />
+                <label for="sameAddress">Teslimat adresi fatura adresi ile aynı</label>
+              </div>
               <div class="field">
                 <label for="teslimatAdres">Teslimat adresi *</label>
-                <textarea id="teslimatAdres" name="teslimatAdres" rows="2" required placeholder="Fatura ile aynıysa tekrar yazın"></textarea>
+                <textarea id="teslimatAdres" name="teslimatAdres" rows="2" required placeholder="Fatura ile aynıysa otomatik doldurulur"></textarea>
               </div>
               <div class="check-inline">
                 <input type="checkbox" id="onayOnBilgi" name="onayOnBilgi" required />

@@ -2,6 +2,16 @@
 (function () {
   "use strict";
 
+  const mainEl = document.querySelector("main");
+  if (mainEl && !mainEl.id) mainEl.id = "main-content";
+  if (!document.querySelector(".skip-link")) {
+    const skip = document.createElement("a");
+    skip.className = "skip-link";
+    skip.href = "#main-content";
+    skip.textContent = "Ana içeriğe geç";
+    document.body.insertBefore(skip, document.body.firstChild);
+  }
+
   const analyticsDisabled =
     navigator.doNotTrack === "1" || window.doNotTrack === "1";
   let analyticsSession = "";

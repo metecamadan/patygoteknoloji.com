@@ -41,9 +41,10 @@
     checkoutBtn.classList.remove("disabled");
     checkoutBtn.removeAttribute("aria-disabled");
     checkoutBtn.href = "/odeme";
-    checkoutBtn.textContent = "Sipariş talebine geç";
+    checkoutBtn.textContent = "Ödemeye geç";
     if (continueBtn) continueBtn.hidden = false;
-    note.textContent = "Bu adımda ödeme alınmaz. Bilgilerinizi tamamladıktan sonra sipariş talebiniz oluşturulur.";
+    note.textContent =
+      "Listelenen fiyatlar KDV dahildir. Sonraki adımda bilgilerinizi girip güvenli ödeme ile satın almayı tamamlayın.";
     note.hidden = false;
 
     const header = document.createElement("div");
