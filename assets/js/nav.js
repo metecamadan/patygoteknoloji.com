@@ -37,6 +37,19 @@
     };
   }
 
+  function formatNavMobileName(name) {
+    return String(name || "")
+      .split(/\s*\/\s*/)
+      .map((part) => {
+        const text = part.trim();
+        if (!text) return "";
+        const lower = text.toLocaleLowerCase("tr-TR");
+        return lower.charAt(0).toLocaleUpperCase("tr-TR") + lower.slice(1);
+      })
+      .filter(Boolean)
+      .join(" · ");
+  }
+
   function buildNavCategoryLabel(name) {
     const parts = splitNavCategoryName(name);
     const wrap = document.createElement("span");
@@ -162,6 +175,10 @@
     toggle.setAttribute("aria-expanded", "false");
     toggle.setAttribute("aria-haspopup", "true");
     toggle.appendChild(buildNavCategoryLabel(category.name));
+    const mobileLabel = document.createElement("span");
+    mobileLabel.className = "nav-mega-mobile-label";
+    mobileLabel.textContent = formatNavMobileName(category.name);
+    toggle.appendChild(mobileLabel);
     toggle.insertAdjacentHTML(
       "beforeend",
       '<svg class="nav-mega-caret" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7l5 6 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'

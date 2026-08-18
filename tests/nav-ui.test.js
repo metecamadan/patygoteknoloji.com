@@ -63,8 +63,25 @@ test("Teklif Al sits on the right viewport edge, not in the header nav", () => {
 test("main nav categories render as two-line labels", () => {
   assert.match(navJs, /function splitNavCategoryName/);
   assert.match(navJs, /function buildNavCategoryLabel/);
+  assert.match(navJs, /function formatNavMobileName/);
   assert.match(navJs, /nav-mega-label-line/);
+  assert.match(navJs, /nav-mega-mobile-label/);
   assert.match(navCss, /\.nav-mega-label\s*\{[^}]*flex-direction:\s*column/s);
+  assert.match(navCss, /\.nav-mega-mobile-label/);
+});
+
+test("mobile category tab opens sheet below header", () => {
+  const mainJs = fs.readFileSync(path.join(root, "assets", "js", "main.js"), "utf8");
+  assert.match(mainJs, /function initCategoryNav/);
+  assert.match(mainJs, /nav-categories-btn/);
+  assert.match(mainJs, /nav\.insertBefore\(catBtn,\s*brand\)/);
+  assert.match(mainJs, /nav-sheet/);
+  assert.match(mainJs, /document\.body\.appendChild\(links\)/);
+  assert.match(navCss, /\.nav-categories-btn/);
+  assert.match(
+    navCss,
+    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-links\.open[\s\S]*?transform:\s*translateY\(0\)/s
+  );
 });
 
 test("nav reads category tree from disk listing snapshot first", () => {
