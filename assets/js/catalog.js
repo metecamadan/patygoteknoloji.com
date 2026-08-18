@@ -588,6 +588,26 @@
     document.title = (window.PatygoCatalog.prettyCategoryName(label) || label) + " | Patygo Teknoloji";
   }
 
+  const prefetchingIds = new Set();
+  function prefetchProductDetail(id) {
+    const key = String(id || "").trim();
+    if (!key) return;
+    if (window.PatygoCatalog.byId && window.PatygoCatalog.byId[key]) return;
+    if (prefetchingIds.has(key)) return;
+    prefetchingIds.add(key);
+    fetch("/api/products?id=" + encodeURIComponent(key), { cache: "default" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const product =
+          data && Array.isArray(data.products) && data.products.length ? data.products[0] : null;
+        if (!product) return;
+        window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+        window.PatygoCatalog.byId[product.id] = product;
+      })
+      .catch(() => {})
+      .finally(() => prefetchingIds.delete(key));
+  }
+
   function makeCard(product, index, options) {
     const cardOpts = options || {};
     const compactListing = Boolean(cardOpts.compactListing);
@@ -647,6 +667,9 @@
     const title = document.createElement("h3");
     const titleLink = document.createElement("a");
     titleLink.href = window.PatygoCatalog.productHref(product.id);
+    titleLink.addEventListener("pointerenter", () => prefetchProductDetail(product.id), {
+      once: true,
+    });
     titleLink.textContent = product.name || "";
     title.appendChild(titleLink);
 
@@ -748,6 +771,9 @@
     const visualWrap = document.createElement("a");
     visualWrap.className = "product-card-media";
     visualWrap.href = window.PatygoCatalog.productHref(product.id);
+    visualWrap.addEventListener("pointerenter", () => prefetchProductDetail(product.id), {
+      once: true,
+    });
     visualWrap.appendChild(visual);
     article.appendChild(visualWrap);
     article.appendChild(body);
@@ -1376,8 +1402,7 @@
       }
       try {
         if (onDetailPage) {
-          const id = new URLSearchParams(location.search).get("id") || "";
-          return id ? await fetchProductPage({ id }) : { products: [], total: 0, page: 1, totalPages: 0 };
+          return { products: [], total: 0, page: 1, totalPages: 0 };
         }
         if (onCartPage) {
           const ids = (window.PatygoCart ? window.PatygoCart.list() : [])

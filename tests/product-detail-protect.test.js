@@ -38,3 +38,9 @@ test("product detail keeps add-to-cart only without buy-now shortcut", () => {
   assert.doesNotMatch(script, /Hemen Al/);
   assert.doesNotMatch(script, /\/odeme\?id=/);
 });
+
+test("product detail paints cached card then fetches full copy by id", () => {
+  assert.match(script, /const cached = \(window\.PatygoCatalog\.byId/);
+  assert.match(script, /if \(cached\) render\(cached, cats\)/);
+  assert.match(script, /\/api\/products\?id=/);
+});

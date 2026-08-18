@@ -273,34 +273,44 @@
       render(null, []);
       return;
     }
-    let product = (window.PatygoCatalog.byId && window.PatygoCatalog.byId[id]) || null;
-    if (!product) {
-      try {
-        const res = await fetch("/api/products?id=" + encodeURIComponent(id), {
-          cache: "default",
-          signal: AbortSignal.timeout(8000),
-        });
-        const data = await res.json();
-        product = Array.isArray(data.products) && data.products.length ? data.products[0] : null;
-        if (product) {
-          window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
-          window.PatygoCatalog.byId[product.id] = product;
-        }
-      } catch (_) {
-        product = null;
-      }
-    }
+    const cached = (window.PatygoCatalog.byId && window.PatygoCatalog.byId[id]) || null;
     const cats =
       (window.PatygoCatalog._lastCategories && window.PatygoCatalog._lastCategories.length
         ? window.PatygoCatalog._lastCategories
         : null) ||
-      (window.PatygoNav && Array.isArray(window.PatygoNav.categories) ? window.PatygoNav.categories : []) ||
+      (window.PatygoNav && Array.isArray(window.PatygoNav.categories)
+        ? window.PatygoNav.categories
+        : []) ||
       [];
-    render(product, cats);
+    if (cached) render(cached, cats);
+
+    let product = cached;
+    try {
+      const res = await fetch("/api/products?id=" + encodeURIComponent(id), {
+        cache: "default",
+        signal: AbortSignal.timeout(8000),
+      });
+      const data = await res.json();
+      const fresh =
+        Array.isArray(data.products) && data.products.length ? data.products[0] : null;
+      if (fresh) {
+        window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+        window.PatygoCatalog.byId[fresh.id] = fresh;
+        product = fresh;
+        render(fresh, cats);
+      } else if (!cached) {
+        render(null, cats);
+      }
+    } catch (_) {
+      if (!cached) render(null, cats);
+    }
+
     if (typeof window.PatygoCatalog.loadCategories === "function") {
       window.PatygoCatalog.loadCategories()
         .then((categories) => {
-          if (Array.isArray(categories) && categories.length) render(product, categories);
+          if (Array.isArray(categories) && categories.length && product) {
+            render(product, categories);
+          }
         })
         .catch(() => {});
     }

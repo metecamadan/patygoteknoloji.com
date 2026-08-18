@@ -25,6 +25,8 @@ test("catalog product cards use cart flow without quote button", () => {
   assert.doesNotMatch(catalogJs, /Teklif Al/);
   assert.match(catalogJs, /Sepete Ekle/);
   assert.match(catalogJs, /Hemen Al/);
+  assert.match(catalogJs, /function prefetchProductDetail/);
+  assert.match(catalogJs, /onDetailPage\) \{\s*return \{ products: \[\]/s);
 });
 
 test("category listing uses four-column cards with qty stepper and infinite scroll", () => {

@@ -529,10 +529,6 @@ function requestedCatalogIds(productId, idsRaw) {
 }
 
 function lookupPublicProductsByIds(productId, idsRaw) {
-  const memo = storefrontCatalogMemo.active;
-  if (memo && Array.isArray(memo.products) && memo.products.length) {
-    return queryPublicCatalog(memo.products, { id: productId, ids: idsRaw });
-  }
   const ids = requestedCatalogIds(productId, idsRaw);
   const idSet = new Set(ids);
   const manuals = loadProducts().filter((item) => item && idSet.has(item.id));
@@ -545,6 +541,31 @@ function lookupPublicProductsByIds(productId, idsRaw) {
     }),
     { id: productId, ids: idsRaw }
   );
+}
+
+function resolveProductNamesByIds(ids) {
+  const want = new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean));
+  const names = {};
+  if (!want.size) return names;
+  loadProducts().forEach((product) => {
+    if (product && want.has(product.id)) {
+      names[product.id] = {
+        name: product.name || product.id,
+        brand: product.brand || "",
+      };
+    }
+  });
+  want.forEach((id) => {
+    if (names[id]) return;
+    const product = supplierManager.getProductById(id);
+    if (product) {
+      names[id] = {
+        name: product.name || id,
+        brand: product.brand || "",
+      };
+    }
+  });
+  return names;
 }
 
 let warmCatalogTimer = null;
@@ -1091,7 +1112,7 @@ async function handleApi(req, res, urlPath) {
           totalPages: queried.totalPages,
           updatedAt,
         },
-        { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" }
+          { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
       );
     }
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
@@ -1418,11 +1439,10 @@ async function handleApi(req, res, urlPath) {
     const mem = process.memoryUsage();
     const analytics = analyticsStore.summary(range);
     const commerce = orderStore.commerceSummary(range);
-    const catalogById = Object.fromEntries(
-      mergedProducts(true).map((product) => [product.id, product])
-    );
+    const viewedIds = (analytics.topViewedProducts || []).map((row) => row.productId);
+    const catalogNames = resolveProductNamesByIds(viewedIds);
     const topViewedProducts = (analytics.topViewedProducts || []).map((row) => {
-      const product = catalogById[row.productId];
+      const product = catalogNames[row.productId];
       return {
         productId: row.productId,
         views: row.views,

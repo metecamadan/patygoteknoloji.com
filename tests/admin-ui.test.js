@@ -160,6 +160,16 @@ test("admin overview exposes digital dashboard metrics", () => {
   assert.match(script, /topPurchasedProducts/);
 });
 
+test("admin login does not block on supplier catalog or dashboard merge", () => {
+  assert.match(script, /function bootAuthedWorkspace/);
+  assert.match(script, /bootAuthedWorkspace\(\)/);
+  assert.doesNotMatch(
+    script,
+    /await Promise\.all\(\[\s*refresh\(\),\s*loadSupplierData/
+  );
+  assert.match(script, /if \(xmlView\) \{\s*loadSupplierData/s);
+});
+
 test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {
   assert.match(html, /id="feedCatalogActiveCount"/);
   assert.match(html, /id="feedWarnings"/);

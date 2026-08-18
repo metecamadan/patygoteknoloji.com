@@ -607,6 +607,50 @@
     }, IDLE_MS);
   }
 
+  function currentAdminTab() {
+    try {
+      const saved = sessionStorage.getItem("patygo_admin_tab");
+      if (
+        ["overview", "calendar", "orders", "users", "products", "xml", "categories"].includes(
+          saved
+        )
+      ) {
+        return saved;
+      }
+    } catch (_) {}
+    return "overview";
+  }
+
+  function bootAuthedWorkspace() {
+    showPanel(true);
+    const tab = currentAdminTab();
+    const xmlView =
+      tab === "xml" ||
+      (tab === "products" &&
+        (function () {
+          try {
+            return sessionStorage.getItem("patygo_products_view") === "xml";
+          } catch (_) {
+            return false;
+          }
+        })());
+    refresh().catch(() => {});
+    if (tab === "overview") loadDigitalDashboard().catch(() => {});
+    if (tab === "orders") loadAdminOrders().catch(() => {});
+    if (tab === "calendar") loadCalendarMonth().catch(() => {});
+    if (tab === "categories") loadCategoryTree().catch(() => {});
+    if (tab === "users") loadAdminUsers().catch(() => {});
+    if (xmlView) {
+      loadSupplierData().catch((err) => {
+        note(
+          document.getElementById("supplierProductsNote"),
+          "err",
+          err.message || "Havuz yüklenemedi"
+        );
+      });
+    }
+  }
+
   function showPanel(on) {
     loginView.hidden = !!on;
     panelView.hidden = !on;
@@ -2671,16 +2715,7 @@
       });
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
-      showPanel(true);
-      await Promise.all([
-        refresh(),
-        loadSupplierData().catch((err) => {
-          note(document.getElementById("supplierProductsNote"), "err", err.message || "Havuz yüklenemedi");
-        }),
-        loadDigitalDashboard(),
-        loadCalendarMonth(),
-        loadCategoryTree(),
-      ]);
+      bootAuthedWorkspace();
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {
@@ -3615,7 +3650,6 @@
     const expand = block.querySelector(".admin-order-expand");
     if (!expand) return;
     expand.hidden = false;
-    expand.innerHTML = "<p class='admin-hint'>Yükleniyor…</p>";
     block.classList.add("is-open");
 
     const opts = options || {};
@@ -3626,6 +3660,7 @@
       bindOrderDetailActions(orderId);
       return;
     }
+    expand.innerHTML = "<p class='admin-hint'>Yükleniyor…</p>";
 
     try {
       const data = await api("/api/admin/orders/" + encodeURIComponent(orderId), { timeout: 20000 });
@@ -4638,17 +4673,6 @@
   }
 
   if (token) {
-    showPanel(true);
-    Promise.all([
-      refresh(),
-      loadSupplierData().catch((err) => {
-        note(document.getElementById("supplierProductsNote"), "err", err.message || "Havuz yüklenemedi");
-      }),
-      loadDigitalDashboard(),
-      loadCalendarMonth(),
-      loadCategoryTree(),
-    ]).catch(() => {
-      endSession("Oturum geçersiz. Tekrar giriş yapın.");
-    });
+    bootAuthedWorkspace();
   }
 })();
