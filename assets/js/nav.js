@@ -54,12 +54,102 @@
     return wrap;
   }
 
+  function isMobileNav() {
+    return window.matchMedia("(max-width: 860px)").matches;
+  }
+
+  function closeMegaGroups(scope) {
+    (scope || document).querySelectorAll(".nav-mega-group.open").forEach((group) => {
+      group.classList.remove("open");
+      const btn = group.querySelector(".nav-mega-group-toggle");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    });
+  }
+
   function closeAllMega(root) {
     root.querySelectorAll(".nav-mega").forEach((item) => {
       item.classList.remove("open");
       const btn = item.querySelector(".nav-mega-toggle");
       if (btn) btn.setAttribute("aria-expanded", "false");
+      closeMegaGroups(item);
     });
+  }
+
+  function bindMegaGroupAccordion(group, groupToggle) {
+    groupToggle.addEventListener("click", (ev) => {
+      if (!isMobileNav()) return;
+      ev.preventDefault();
+      const panel = group.closest(".nav-mega-panel");
+      const willOpen = !group.classList.contains("open");
+      if (panel) closeMegaGroups(panel);
+      group.classList.toggle("open", willOpen);
+      groupToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+  }
+
+  function buildMegaGroup(category, child) {
+    const leaves = Array.isArray(child.children) ? child.children : [];
+    const group = document.createElement("div");
+    group.className = "nav-mega-group";
+
+    if (leaves.length) {
+      const head = document.createElement("div");
+      head.className = "nav-mega-group-head";
+
+      const title = document.createElement("a");
+      title.className = "nav-mega-group-title";
+      title.href = categoryHref(category.slug, child.slug, "");
+      title.textContent = child.name;
+
+      const groupToggle = document.createElement("button");
+      groupToggle.type = "button";
+      groupToggle.className = "nav-mega-group-toggle";
+      groupToggle.setAttribute("aria-expanded", "false");
+      const label = document.createElement("span");
+      label.className = "nav-mega-group-toggle-label";
+      label.textContent = child.name;
+      groupToggle.appendChild(label);
+      groupToggle.insertAdjacentHTML(
+        "beforeend",
+        '<svg class="nav-mega-group-caret" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7l5 6 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      );
+
+      const list = document.createElement("ul");
+      list.className = "nav-mega-list";
+      const browseLi = document.createElement("li");
+      browseLi.className = "nav-mega-list-browse";
+      const browse = document.createElement("a");
+      browse.href = categoryHref(category.slug, child.slug, "");
+      browse.textContent = "Tüm " + child.name;
+      browseLi.appendChild(browse);
+      list.appendChild(browseLi);
+      leaves.forEach((leaf) => {
+        const leafLi = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = categoryHref(category.slug, child.slug, leaf.slug);
+        a.textContent = leaf.name;
+        leafLi.appendChild(a);
+        list.appendChild(leafLi);
+      });
+
+      head.appendChild(title);
+      head.appendChild(groupToggle);
+      group.appendChild(head);
+      group.appendChild(list);
+      bindMegaGroupAccordion(group, groupToggle);
+      return group;
+    }
+
+    const list = document.createElement("ul");
+    list.className = "nav-mega-list";
+    const childLi = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = categoryHref(category.slug, child.slug);
+    a.textContent = child.name;
+    childLi.appendChild(a);
+    list.appendChild(childLi);
+    group.appendChild(list);
+    return group;
   }
 
   function buildMegaItem(category) {
@@ -90,41 +180,7 @@
     const groups = document.createElement("div");
     groups.className = "nav-mega-groups";
     (category.children || []).forEach((child) => {
-      const leaves = Array.isArray(child.children) ? child.children : [];
-      if (leaves.length) {
-        const group = document.createElement("div");
-        group.className = "nav-mega-group";
-        const title = document.createElement("a");
-        title.className = "nav-mega-group-title";
-        title.href = categoryHref(category.slug, child.slug, "");
-        title.textContent = child.name;
-        const list = document.createElement("ul");
-        list.className = "nav-mega-list";
-        leaves.forEach((leaf) => {
-          const leafLi = document.createElement("li");
-          const a = document.createElement("a");
-          a.href = categoryHref(category.slug, child.slug, leaf.slug);
-          a.textContent = leaf.name;
-          leafLi.appendChild(a);
-          list.appendChild(leafLi);
-        });
-        group.appendChild(title);
-        group.appendChild(list);
-        groups.appendChild(group);
-        return;
-      }
-      const group = document.createElement("div");
-      group.className = "nav-mega-group";
-      const list = document.createElement("ul");
-      list.className = "nav-mega-list";
-      const childLi = document.createElement("li");
-      const a = document.createElement("a");
-      a.href = categoryHref(category.slug, child.slug);
-      a.textContent = child.name;
-      childLi.appendChild(a);
-      list.appendChild(childLi);
-      group.appendChild(list);
-      groups.appendChild(group);
+      groups.appendChild(buildMegaGroup(category, child));
     });
     panel.appendChild(heading);
     panel.appendChild(groups);
@@ -136,6 +192,7 @@
       if (root) closeAllMega(root);
       li.classList.toggle("open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      closeMegaGroups(li);
     });
 
     let hoverCloseTimer = null;

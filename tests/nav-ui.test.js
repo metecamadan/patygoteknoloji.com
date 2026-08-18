@@ -26,6 +26,8 @@ test("nav hides unpublished category nodes", () => {
 
 test("nav shows each main category in the top bar instead of a single Ürünler dump", () => {
   assert.match(navJs, /function buildMegaItem/);
+  assert.match(navJs, /function buildMegaGroup/);
+  assert.match(navJs, /bindMegaGroupAccordion/);
   assert.match(navJs, /published\.forEach\(\(cat\) => root\.appendChild\(buildMegaItem\(cat\)\)\)/);
   assert.match(navJs, /nav-mega-heading/);
   assert.match(navJs, /mouseenter/);
