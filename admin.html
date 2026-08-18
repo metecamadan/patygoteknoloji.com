@@ -230,16 +230,34 @@
                   <span class="admin-eyebrow">TİCARET</span>
                   <h2>Siparişler</h2>
                 </div>
-                <select id="orderStatusFilter" aria-label="Durum filtresi">
-                  <option value="">Tümü</option>
-                  <option value="payment_pending">Ödeme bekliyor</option>
-                  <option value="paid">Ödendi</option>
-                  <option value="payment_failed">Ödeme başarısız</option>
-                  <option value="preparing">Hazırlanıyor</option>
-                  <option value="shipped">Kargoda</option>
-                  <option value="cancelled">İptal</option>
-                  <option value="refunded">İade</option>
-                </select>
+                <div class="admin-card-head-actions admin-orders-filters">
+                  <div class="admin-period-presets admin-orders-period-presets" role="group" aria-label="Sipariş dönemi">
+                    <button type="button" class="btn btn-outline btn-sm" data-order-days="1">Bugün</button>
+                    <button type="button" class="btn btn-outline btn-sm" data-order-days="7">7 gün</button>
+                    <button type="button" class="btn btn-outline btn-sm" data-order-days="30">30 gün</button>
+                  </div>
+                  <div class="admin-period-custom admin-orders-period">
+                    <label class="admin-period">
+                      <span>Başlangıç</span>
+                      <input type="date" id="orderFrom" aria-label="Sipariş başlangıç tarihi" />
+                    </label>
+                    <label class="admin-period">
+                      <span>Bitiş</span>
+                      <input type="date" id="orderTo" aria-label="Sipariş bitiş tarihi" />
+                    </label>
+                    <button type="button" class="btn btn-primary btn-sm" id="orderPeriodApply">Uygula</button>
+                  </div>
+                  <select id="orderStatusFilter" aria-label="Durum filtresi">
+                    <option value="">Tümü</option>
+                    <option value="payment_pending">Ödeme bekliyor</option>
+                    <option value="paid">Ödendi</option>
+                    <option value="payment_failed">Ödeme başarısız</option>
+                    <option value="preparing">Hazırlanıyor</option>
+                    <option value="shipped">Kargoda</option>
+                    <option value="cancelled">İptal</option>
+                    <option value="refunded">İade</option>
+                  </select>
+                </div>
               </div>
               <p class="admin-hint" style="margin-top:0">Satıra tıklayınca detay ve kargo alanları açılır.</p>
               <div id="adminOrderList" class="admin-orders-list" role="list"></div>

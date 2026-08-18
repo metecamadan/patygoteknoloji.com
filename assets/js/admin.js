@@ -3260,6 +3260,10 @@
   const adminOrderList = document.getElementById("adminOrderList");
   const adminOrdersNote = document.getElementById("adminOrdersNote");
   const orderStatusFilter = document.getElementById("orderStatusFilter");
+  const orderFrom = document.getElementById("orderFrom");
+  const orderTo = document.getElementById("orderTo");
+  const orderPeriodApply = document.getElementById("orderPeriodApply");
+  const ORDER_PERIOD_KEY = "patygo_admin_orders_period";
   let selectedOrderId = "";
   let ordersCache = [];
 
@@ -3330,7 +3334,69 @@
     "Diğer",
   ];
 
-  function paymentStatusKey(paymentStatus) {
+  function defaultOrderPeriod(days) {
+    const to = new Date();
+    const from = new Date();
+    const span = Math.max(1, Number(days) || 30);
+    from.setUTCDate(from.getUTCDate() - (span - 1));
+    return { from: isoDate(from), to: isoDate(to) };
+  }
+
+  function readSavedOrderPeriod() {
+    try {
+      const raw = localStorage.getItem(ORDER_PERIOD_KEY);
+      if (!raw) return defaultOrderPeriod(30);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.from && parsed.to) return parsed;
+    } catch (_) {}
+    return defaultOrderPeriod(30);
+  }
+
+  function saveOrderPeriod(from, to) {
+    try {
+      localStorage.setItem(ORDER_PERIOD_KEY, JSON.stringify({ from, to }));
+    } catch (_) {}
+  }
+
+  function syncOrderPeriodInputs(from, to) {
+    if (orderFrom) orderFrom.value = from;
+    if (orderTo) orderTo.value = to;
+  }
+
+  function currentOrderPeriod() {
+    let from = orderFrom && orderFrom.value;
+    let to = orderTo && orderTo.value;
+    if (!from || !to) {
+      const saved = readSavedOrderPeriod();
+      from = saved.from;
+      to = saved.to;
+      syncOrderPeriodInputs(from, to);
+    }
+    if (from > to) {
+      const swap = from;
+      from = to;
+      to = swap;
+      syncOrderPeriodInputs(from, to);
+    }
+    saveOrderPeriod(from, to);
+    return { from, to };
+  }
+
+  function setOrderPeriodDays(days) {
+    const range = defaultOrderPeriod(days);
+    syncOrderPeriodInputs(range.from, range.to);
+    saveOrderPeriod(range.from, range.to);
+  }
+
+  function orderListQueryString() {
+    const period = currentOrderPeriod();
+    const params = new URLSearchParams();
+    params.set("from", period.from);
+    params.set("to", period.to);
+    const status = orderStatusFilter ? orderStatusFilter.value : "";
+    if (status) params.set("status", status);
+    return params.toString();
+  }
     if (paymentStatus === "paid") return "paid";
     if (paymentStatus === "failed") return "payment_failed";
     if (paymentStatus === "refunded") return "refunded";
@@ -3561,18 +3627,25 @@
     if (!adminOrderList || !token) return;
     const opts = options || {};
     if (opts.keepOpen) selectedOrderId = opts.keepOpen;
-    const status = orderStatusFilter ? orderStatusFilter.value : "";
-    const q = status ? "?status=" + encodeURIComponent(status) : "";
-    const data = await api("/api/admin/orders" + q);
+    const period = currentOrderPeriod();
+    const data = await api("/api/admin/orders?" + orderListQueryString());
     ordersCache = (data && data.orders) || [];
     if (Array.isArray(data.shippingCarriers) && data.shippingCarriers.length) {
       shippingCarriers = data.shippingCarriers;
+    }
+    if (adminOrdersNote) {
+      adminOrdersNote.textContent =
+        ordersCache.length +
+        " sipariş · " +
+        period.from +
+        " → " +
+        period.to;
     }
     adminOrderList.textContent = "";
     if (!ordersCache.length) {
       const empty = document.createElement("div");
       empty.className = "admin-table-empty";
-      empty.textContent = "Sipariş yok.";
+      empty.textContent = "Seçilen tarih aralığında sipariş yok.";
       adminOrderList.appendChild(empty);
       selectedOrderId = "";
       return;
@@ -3628,6 +3701,26 @@
       selectedOrderId = "";
       loadAdminOrders().catch(() => {});
     });
+  }
+
+  if (orderPeriodApply) {
+    orderPeriodApply.addEventListener("click", () => {
+      selectedOrderId = "";
+      loadAdminOrders().catch(() => {});
+    });
+  }
+
+  document.querySelectorAll("[data-order-days]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setOrderPeriodDays(button.getAttribute("data-order-days"));
+      selectedOrderId = "";
+      loadAdminOrders().catch(() => {});
+    });
+  });
+
+  if (orderFrom || orderTo) {
+    const savedOrdersPeriod = readSavedOrderPeriod();
+    syncOrderPeriodInputs(savedOrdersPeriod.from, savedOrdersPeriod.to);
   }
 
   function resetAdminUserForm() {

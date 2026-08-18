@@ -237,6 +237,40 @@
 }
 .admin-orders-card .admin-card-head {
   margin-bottom: 8px;
+  align-items: flex-start;
+}
+.admin-orders-card .admin-card-head h2 {
+  margin-bottom: 0;
+}
+.admin-orders-filters {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: min(100%, 720px);
+}
+.admin-orders-period-presets {
+  justify-content: flex-end;
+}
+.admin-orders-period {
+  justify-content: flex-end;
+}
+.admin-orders-filters select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--ink-2);
+}
+@media (max-width: 900px) {
+  .admin-orders-filters {
+    width: 100%;
+    max-width: none;
+  }
+  .admin-orders-period-presets,
+  .admin-orders-period {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 .admin-orders-list {
   display: grid;
@@ -1675,6 +1709,7 @@ html.admin-theme-dark .admin-product-toolbar select,
 html.admin-theme-dark .admin-search,
 html.admin-theme-dark .admin-feed-url-input,
 html.admin-theme-dark .admin-period input,
+html.admin-theme-dark .admin-orders-filters select,
 html.admin-theme-dark .admin-form input,
 html.admin-theme-dark .admin-form select,
 html.admin-theme-dark .admin-form textarea,

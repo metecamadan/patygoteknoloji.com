@@ -84,3 +84,58 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   });
   assert.equal(badShip.status, 400);
 });
+
+test("admin orders list filters by date range", async (t) => {
+  resetDbForTests();
+  const password = "orders-admin-test";
+  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
+  const store = createOrderStore(dataRoot);
+  store.save({
+    id: "PTY-RANGE-OLD",
+    total: 100,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "Eski", email: "eski@example.com" },
+    items: [{ productId: "p1", name: "Ürün", qty: 1, line: 100, lineVat: 0 }],
+    createdAt: "2026-08-01T10:00:00.000Z",
+  });
+  store.save({
+    id: "PTY-RANGE-NEW",
+    total: 200,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "Yeni", email: "yeni@example.com" },
+    items: [{ productId: "p2", name: "Ürün", qty: 1, line: 200, lineVat: 0 }],
+    createdAt: "2026-08-18T12:00:00.000Z",
+  });
+
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  assert.equal(login.status, 200);
+  const session = await login.json();
+  const headers = { Authorization: "Bearer " + session.token };
+
+  const todayOnly = await fetch(
+    baseUrl + "/api/admin/orders?from=2026-08-18&to=2026-08-18",
+    { headers }
+  );
+  assert.equal(todayOnly.status, 200);
+  const todayBody = await todayOnly.json();
+  assert.deepEqual(
+    todayBody.orders.map((order) => order.id),
+    ["PTY-RANGE-NEW"]
+  );
+
+  const august = await fetch(
+    baseUrl + "/api/admin/orders?from=2026-08-01&to=2026-08-31",
+    { headers }
+  );
+  assert.equal(august.status, 200);
+  const augustBody = await august.json();
+  assert.equal(augustBody.orders.length, 2);
+});

@@ -1250,9 +1250,16 @@ async function handleApi(req, res, urlPath) {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const status = requestUrl.searchParams.get("status") || "";
     const limit = requestUrl.searchParams.get("limit") || "50";
+    const from = requestUrl.searchParams.get("from") || "";
+    const to = requestUrl.searchParams.get("to") || "";
     return json(res, 200, {
       ok: true,
-      orders: orderStore.list({ status: status || undefined, limit }),
+      orders: orderStore.list({
+        status: status || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        limit,
+      }),
       shippingCarriers: SHIPPING_CARRIERS,
     });
   }
