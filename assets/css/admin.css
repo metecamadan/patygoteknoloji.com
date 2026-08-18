@@ -231,6 +231,11 @@
   background: #f3f4f6;
   color: #374151;
 }
+.order-status--empty {
+  background: #f3f4f6;
+  color: #9ca3af;
+  justify-content: center;
+}
 .admin-list-item span .order-status {
   margin: 0 4px;
   vertical-align: middle;
@@ -276,6 +281,31 @@
   display: grid;
   gap: 8px;
 }
+.admin-order-list-head,
+.admin-order-row {
+  display: grid;
+  grid-template-columns:
+    minmax(140px, 1.2fr)
+    minmax(120px, 1.4fr)
+    118px
+    118px
+    minmax(88px, auto)
+    28px;
+  align-items: center;
+  gap: 12px 16px;
+}
+.admin-order-list-head {
+  padding: 0 16px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.admin-order-head-total {
+  justify-self: end;
+  text-align: right;
+}
 .admin-order-block {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -287,10 +317,6 @@
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15);
 }
 .admin-order-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 1.2fr) minmax(120px, 1.4fr) auto auto 28px;
-  align-items: center;
-  gap: 12px 16px;
   width: 100%;
   padding: 14px 16px;
   border: 0;
@@ -316,7 +342,19 @@
   font-size: 0.88rem;
 }
 .admin-order-status-cell {
+  width: 118px;
+  min-width: 118px;
   justify-self: start;
+}
+.admin-order-status-cell .order-status {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  text-align: center;
 }
 .admin-order-total {
   font-weight: 700;
@@ -361,16 +399,26 @@
   gap: 12px;
 }
 @media (max-width: 900px) {
+  .admin-order-list-head {
+    display: none;
+  }
+  .admin-order-list-head,
   .admin-order-row {
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "id chevron"
       "customer customer"
-      "status total";
+      "payment fulfillment"
+      "total total";
   }
   .admin-order-id { grid-area: id; }
   .admin-order-customer { grid-area: customer; }
-  .admin-order-status-cell { grid-area: status; }
+  .admin-order-payment-cell { grid-area: payment; }
+  .admin-order-fulfillment-cell { grid-area: fulfillment; }
+  .admin-order-status-cell {
+    width: auto;
+    min-width: 0;
+  }
   .admin-order-total { grid-area: total; justify-self: end; }
   .admin-order-chevron { grid-area: chevron; }
   .admin-order-detail-grid,
@@ -1800,6 +1848,7 @@ html.admin-theme-dark .order-status--shipped { background: #134e4a; color: #5eea
 html.admin-theme-dark .order-status--cancelled { background: #374151; color: #d1d5db; }
 html.admin-theme-dark .order-status--refunded { background: #4c1d95; color: #ddd6fe; }
 html.admin-theme-dark .order-status--neutral { background: #374151; color: #e5e7eb; }
+html.admin-theme-dark .order-status--empty { background: #1f2937; color: #6b7280; }
 
 html.admin-theme-dark .admin-table {
   color: var(--ink);

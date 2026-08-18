@@ -3307,6 +3307,33 @@
     );
   }
 
+  function paymentStatusKey(paymentStatus) {
+    if (paymentStatus === "paid") return "paid";
+    if (paymentStatus === "failed") return "payment_failed";
+    if (paymentStatus === "refunded") return "refunded";
+    return "payment_pending";
+  }
+
+  function paymentStatusBadge(order) {
+    return orderStatusBadge(paymentStatusKey(order.paymentStatus));
+  }
+
+  function fulfillmentStatusKey(order) {
+    const status = String((order && order.status) || "");
+    if (status === "preparing" || status === "shipped" || status === "cancelled") {
+      return status;
+    }
+    return "";
+  }
+
+  function fulfillmentStatusBadge(order) {
+    const key = fulfillmentStatusKey(order);
+    if (!key) {
+      return "<span class='admin-status order-status order-status--empty'>—</span>";
+    }
+    return orderStatusBadge(key);
+  }
+
   function escapeAttr(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -3397,11 +3424,6 @@
     if (status) params.set("status", status);
     return params.toString();
   }
-    if (paymentStatus === "paid") return "paid";
-    if (paymentStatus === "failed") return "payment_failed";
-    if (paymentStatus === "refunded") return "refunded";
-    return "payment_pending";
-  }
 
   function buildOrderDetailHtml(order) {
     const c = order.customer || {};
@@ -3421,10 +3443,10 @@
       "<div class='admin-order-detail-grid'>" +
       "<dl class='admin-xml-meta'>" +
       "<div><dt>Durum</dt><dd>" +
-      orderStatusBadge(order.status) +
+      fulfillmentStatusBadge(order) +
       "</dd></div>" +
       "<div><dt>Ödeme</dt><dd>" +
-      orderStatusBadge(paymentStatusKey(order.paymentStatus)) +
+      paymentStatusBadge(order) +
       "</dd></div>" +
       "<div><dt>Müşteri</dt><dd>" +
       escapeHtml(c.name || "—") +
@@ -3669,8 +3691,11 @@
         "<span class='admin-order-customer'>" +
         escapeHtml(who) +
         "</span>" +
-        "<span class='admin-order-status-cell'>" +
-        orderStatusBadge(order.status) +
+        "<span class='admin-order-status-cell admin-order-payment-cell'>" +
+        paymentStatusBadge(order) +
+        "</span>" +
+        "<span class='admin-order-status-cell admin-order-fulfillment-cell'>" +
+        fulfillmentStatusBadge(order) +
         "</span>" +
         "<span class='admin-order-total'>" +
         moneyTr(order.total) +

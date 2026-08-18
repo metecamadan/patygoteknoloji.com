@@ -213,6 +213,9 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /id="adminTabOrders"/);
   assert.match(html, /id="adminOrderList"/);
   assert.match(html, /admin-orders-list/);
+  assert.match(html, /admin-order-list-head/);
+  assert.match(html, /admin-order-head-payment/);
+  assert.match(html, /admin-order-head-fulfillment/);
   assert.match(html, /id="orderFrom"/);
   assert.match(html, /id="orderTo"/);
   assert.match(html, /id="orderPeriodApply"/);
@@ -228,7 +231,9 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /stok dondurulur/);
   assert.match(script, /loadAdminUsers/);
   assert.match(script, /loadAdminOrders/);
-  assert.match(script, /orderListQueryString/);
+  assert.match(script, /paymentStatusBadge/);
+  assert.match(script, /fulfillmentStatusBadge/);
+  assert.match(script, /admin-order-payment-cell/);
   assert.match(script, /ordersCache\.find/);
   assert.match(script, /forceFetch/);
   assert.match(script, /admin-order-row/);
