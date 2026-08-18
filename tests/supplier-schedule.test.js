@@ -131,6 +131,9 @@ test("critical stock threshold excludes supplier products from Akakce feed", () 
         brand: "Patygo",
         price: 100,
         image: "https://cdn.example/a.jpg",
+        siteParent: "bilgisayar-tablet",
+        siteMid: "tasinabilir-bilgisayarlar",
+        siteChild: "notebooklar",
         mainCategory: "A",
         midCategory: "B",
         subCategory: "C",
@@ -142,6 +145,7 @@ test("critical stock threshold excludes supplier products from Akakce feed", () 
         unit: "ADET",
         stockQty: 3,
         criticalStockQty: 5,
+        lastSuccessfulFetchAt: new Date().toISOString(),
       },
     ],
     { siteBaseUrl: "https://patygoteknoloji.com" }

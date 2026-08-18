@@ -10,7 +10,10 @@ function feedReadyProduct(overrides) {
       supplierSku: "READY-1",
       name: "Hazır Ürün",
       brand: "PATYGO",
-      category: "bilgisayar",
+      category: "bilgisayar-tablet",
+      siteParent: "bilgisayar-tablet",
+      siteMid: "tasinabilir-bilgisayarlar",
+      siteChild: "notebooklar",
       description: "Kısa açıklama",
       price: 100,
       image: "https://cdn.example/ready.jpg",
@@ -26,6 +29,7 @@ function feedReadyProduct(overrides) {
       vatPercent: 20,
       currency: "TRY",
       unit: "ADET",
+      lastSuccessfulFetchAt: new Date().toISOString(),
     },
     overrides || {}
   );
@@ -204,7 +208,7 @@ test("private network addresses are rejected", () => {
   assert.equal(isPrivateIp("::1"), true);
 });
 
-test("Akakce feed uses Urunler schema and escapes text", () => {
+test("Akakce feed uses v1.3 products schema and escapes text", () => {
   const xml = buildAkakceXml(
     [
       feedReadyProduct({
@@ -220,16 +224,21 @@ test("Akakce feed uses Urunler schema and escapes text", () => {
     ],
     {
       siteBaseUrl: "https://patygoteknoloji.com",
-      generatedAt: "2026-07-20T00:00:00.000Z",
+      shipPrice: 7.9,
+      dayOfDelivery: 3,
     }
   );
-  assert.match(xml, /<Urunler>/);
-  assert.match(xml, /<Urun>/);
-  assert.match(xml, /<UrunUrl>https:\/\/patygoteknoloji\.com\/urun-detay\?id=test-1<\/UrunUrl>/);
-  assert.match(xml, /<Fiyat>100,0000<\/Fiyat>/);
-  assert.match(xml, /<KDV>20<\/KDV>/);
+  assert.match(xml, /<products xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance">/);
+  assert.match(xml, /<product>/);
+  assert.match(xml, /<sku>test-1<\/sku>/);
+  assert.match(xml, /<url>https:\/\/patygoteknoloji\.com\/urun-detay\?id=test-1<\/url>/);
+  assert.match(xml, /<price>120\.00<\/price>/);
+  assert.match(xml, /<shipPrice>7\.90<\/shipPrice>/);
+  assert.match(xml, /<dayOfDelivery>3<\/dayOfDelivery>/);
+  assert.match(xml, /<productCategory>.*Notebooklar<\/productCategory>/);
   assert.match(xml, /Ekran &amp; Klavye &lt;Set&gt;/);
-  assert.match(xml, /Kurumsal &quot;set&quot;/);
+  assert.match(xml, /<description><!\[CDATA\[Kurumsal "set"\]\]><\/description>/);
+  assert.doesNotMatch(xml, /Urunler|UrunKodu|AnaKategori|bilgisayarim/i);
   assert.doesNotMatch(xml, /Gizli/);
 });
 
