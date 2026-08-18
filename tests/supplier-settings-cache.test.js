@@ -5,10 +5,6 @@ const path = require("node:path");
 const { spawnTestServer } = require("./helpers/spawn-server");
 const { writeCachedRates } = require("../lib/fx");
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function adminHeaders(baseUrl, password) {
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",
@@ -60,7 +56,16 @@ test("supplier margin settings refresh storefront prices without XML fetch", asy
   );
   fs.writeFileSync(
     path.join(runtime, "supplier-settings.json"),
-    JSON.stringify({ globalMarginPercent: 15, lastFetchStatus: "ok", itemCount: 1 }, null, 2)
+    JSON.stringify(
+      {
+        globalMarginPercent: 15,
+        lastFetchStatus: "ok",
+        lastSuccessfulFetchAt: new Date().toISOString(),
+        itemCount: 1,
+      },
+      null,
+      2
+    )
   );
   fs.writeFileSync(
     path.join(runtime, "supplier-overrides.json"),
@@ -86,11 +91,13 @@ test("supplier margin settings refresh storefront prices without XML fetch", asy
 
   const headers = await adminHeaders(baseUrl, password);
 
-  const before = await fetch(baseUrl + "/api/products?page=1&limit=48");
+  // id lookup skips the boot-time listing snapshot (empty all.json) written
+  // before this test drops supplier-cache onto disk.
+  const before = await fetch(baseUrl + "/api/products?id=sup-cpu-1");
   const beforeBody = await before.json();
   assert.equal(before.status, 200);
   const cpuBefore = beforeBody.products.find((item) => item.id === "sup-cpu-1");
-  assert.ok(cpuBefore);
+  assert.ok(cpuBefore, "expected seeded supplier SKU on the storefront before margin change");
   assert.equal(cpuBefore.price, 3220);
 
   const saved = await fetch(baseUrl + "/api/admin/supplier/settings", {
@@ -102,12 +109,10 @@ test("supplier margin settings refresh storefront prices without XML fetch", asy
   assert.equal(saved.status, 200, savedBody.error || "settings");
   assert.equal(savedBody.settings.globalMarginPercent, 45);
 
-  await sleep(600);
-
-  const after = await fetch(baseUrl + "/api/products?page=1&limit=48");
+  const after = await fetch(baseUrl + "/api/products?id=sup-cpu-1");
   const afterBody = await after.json();
   assert.equal(after.status, 200);
   const cpuAfter = afterBody.products.find((item) => item.id === "sup-cpu-1");
-  assert.ok(cpuAfter);
+  assert.ok(cpuAfter, "expected seeded supplier SKU after margin change");
   assert.equal(cpuAfter.price, 4060);
 });
