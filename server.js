@@ -943,9 +943,16 @@ function passwordChangeBlocksAdmin(req, res, pathName) {
 
 function sessionMustChangePassword(session) {
   if (!session) return false;
+  if (session.userId) return false;
   if (session.mustChangePassword === false) return false;
   if (session.mustChangePassword === true) return true;
   return adminSecurityStore.shouldForcePasswordChange(getAdminPassword());
+}
+
+function syncSingleOwnerPassword(newPassword) {
+  const owners = adminUserStore.list().filter((item) => item.role === "owner" && item.active !== false);
+  if (owners.length !== 1) return;
+  adminUserStore.update(owners[0].id, { password: newPassword });
 }
 
 async function sendCalendarReminderMail(entry, kind) {
@@ -1363,7 +1370,9 @@ async function handleApi(req, res, urlPath) {
         }
       }
 
-      const mustChangePassword = adminSecurityStore.shouldForcePasswordChange(getAdminPassword());
+      const mustChangePassword = user
+        ? false
+        : adminSecurityStore.shouldForcePasswordChange(getAdminPassword());
       const token = crypto.randomBytes(24).toString("hex");
       sessions.set(token, {
         exp: Date.now() + ADMIN_IDLE_MS,
@@ -1439,6 +1448,10 @@ async function handleApi(req, res, urlPath) {
           return json(res, 401, { ok: false, error: "Mevcut şifre hatalı." });
         }
         adminUserStore.update(user.id, { password: newPassword });
+        if (user.role === "owner") {
+          updateEnvAdminPassword(ENV_FILE, newPassword);
+          setRuntimeAdminPassword(newPassword);
+        }
       } else {
         const supplied = Buffer.from(currentPassword);
         const expected = Buffer.from(getAdminPassword());
@@ -1449,6 +1462,7 @@ async function handleApi(req, res, urlPath) {
         }
         updateEnvAdminPassword(ENV_FILE, newPassword);
         setRuntimeAdminPassword(newPassword);
+        syncSingleOwnerPassword(newPassword);
       }
       adminSecurityStore.clearForcePasswordChange();
       if (session && sessionToken) {
