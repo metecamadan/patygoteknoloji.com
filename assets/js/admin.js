@@ -3495,7 +3495,7 @@
     }
   }
 
-  async function expandOrderRow(orderId) {
+  async function expandOrderRow(orderId, options) {
     selectedOrderId = orderId;
     const block = adminOrderList.querySelector('[data-order-id="' + CSS.escape(orderId) + '"]');
     if (!block) return;
@@ -3511,10 +3511,23 @@
     expand.hidden = false;
     expand.innerHTML = "<p class='admin-hint'>Yükleniyor…</p>";
     block.classList.add("is-open");
+
+    const opts = options || {};
+    const cached = ordersCache.find((order) => order.id === orderId);
+    if (cached && !opts.forceFetch) {
+      if (selectedOrderId !== orderId) return;
+      expand.innerHTML = buildOrderDetailHtml(cached);
+      bindOrderDetailActions(orderId);
+      return;
+    }
+
     try {
-      const data = await api("/api/admin/orders/" + encodeURIComponent(orderId));
+      const data = await api("/api/admin/orders/" + encodeURIComponent(orderId), { timeout: 20000 });
       const order = data.order;
       if (!order || selectedOrderId !== orderId) return;
+      const idx = ordersCache.findIndex((row) => row.id === orderId);
+      if (idx >= 0) ordersCache[idx] = order;
+      else ordersCache.push(order);
       expand.innerHTML = buildOrderDetailHtml(order);
       bindOrderDetailActions(orderId);
     } catch (err) {

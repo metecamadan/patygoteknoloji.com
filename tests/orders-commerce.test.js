@@ -64,7 +64,9 @@ test("order store commerceSummary computes paid revenue and AOV for period", () 
     assert.equal(summary.topPurchasedProducts[0].productId, "a");
     assert.equal(summary.topPurchasedProducts[0].qty, 3);
   } finally {
-    fs.rmSync(root, { recursive: true, force: true });
     resetDbForTests();
+    try {
+      fs.rmSync(root, { recursive: true, force: true });
+    } catch (_) {}
   }
 });

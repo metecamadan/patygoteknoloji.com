@@ -224,6 +224,8 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /stok dondurulur/);
   assert.match(script, /loadAdminUsers/);
   assert.match(script, /loadAdminOrders/);
+  assert.match(script, /ordersCache\.find/);
+  assert.match(script, /forceFetch/);
   assert.match(script, /admin-order-row/);
   assert.match(script, /adminOrderSaveShipping/);
   assert.match(script, /saveBtn\.disabled = true/);
