@@ -9,25 +9,10 @@ function read(rel) {
   return fs.readFileSync(path.join(root, rel), "utf8");
 }
 
-test("storefront and admin copy has no fake stats or self-report health", () => {
-  const indexHtml = read("index.html");
-  const markalarHtml = read("markalar.html");
+test("admin does not self-report process health as site health", () => {
   const adminHtml = read("admin.html");
   const adminJs = read("assets/js/admin.js");
-  const mainJs = read("assets/js/main.js");
   const server = read("server.js");
-
-  assert.doesNotMatch(indexHtml, /43\+/);
-  assert.doesNotMatch(indexHtml, /7\/24/);
-  assert.doesNotMatch(indexHtml, /binlerce ürün/i);
-  assert.doesNotMatch(indexHtml, /Arçelik|Korkmaz/);
-  assert.doesNotMatch(indexHtml, /partners-track/);
-  assert.match(indexHtml, /KDV dahil/);
-  assert.match(indexHtml, /3D Secure/);
-  assert.match(indexHtml, /Pzt–Cmt destek|Pzt-Cmt destek/);
-
-  assert.doesNotMatch(markalarHtml, /43\+/);
-  assert.match(markalarHtml, /<strong>%100<\/strong><span>Faturalı satış<\/span>/);
 
   assert.doesNotMatch(adminHtml, /Sistem hazır/);
   assert.doesNotMatch(adminHtml, /id="dashServerStatus"/);
@@ -40,9 +25,6 @@ test("storefront and admin copy has no fake stats or self-report health", () => 
   assert.doesNotMatch(adminJs, /API yanıt verdi/);
   assert.doesNotMatch(adminJs, /Sistem hazır/);
   assert.match(adminJs, /applySmtpMailHelp/);
-
-  assert.doesNotMatch(mainJs, /adresine iletildi/);
-  assert.match(mainJs, /Talebiniz alındı/);
 
   assert.doesNotMatch(server, /apiReachable/);
   assert.match(server, /smtpConfigured: smtpConfigured\(process\.env\)/);

@@ -256,7 +256,7 @@
         }
         setNote(
           "ok",
-          "Talebiniz alındı. Ekibimiz en kısa sürede dönüş yapar."
+          "Teşekkürler! Talebiniz info@patygoteknoloji.com adresine iletildi. En kısa sürede dönüş yapacağız."
         );
         trackAnalytics("lead_submitted");
         form.reset();

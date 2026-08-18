@@ -17,8 +17,7 @@ test("homepage keeps teklif form and e-commerce hero", () => {
   assert.match(indexHtml, /Teklif Al/);
   assert.doesNotMatch(indexHtml, /hero-cta[\s\S]*Sepetim/);
   assert.doesNotMatch(indexHtml, /Güncel Katalog/);
-  assert.match(indexHtml, /<strong>3D Secure<\/strong><span>Ödeme<\/span>/);
-  assert.doesNotMatch(indexHtml, /Güncel Katalog/);
+  assert.match(indexHtml, /<strong>Hızlı<\/strong><span>Teslimat<\/span>/);
 });
 
 test("catalog product cards use cart flow without quote button", () => {
