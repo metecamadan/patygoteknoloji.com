@@ -1034,25 +1034,6 @@ h1, h2, h3, h4 {
   font-size: 0.62rem;
   margin-bottom: 4px;
 }
-.product-card--listing .price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  font-size: 1.12rem;
-  margin-bottom: 12px;
-}
-.product-card--listing .price-amount {
-  display: block;
-  line-height: 1.15;
-}
-.product-card--listing .price small,
-.product-card--listing .price-vat {
-  display: block;
-  font-size: 0.68rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
 .product-card .actions.actions--listing {
   display: flex;
   flex-direction: column;
@@ -1193,6 +1174,26 @@ h1, h2, h3, h4 {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted-2);
+}
+.product-card.product-card--listing .price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 1.12rem;
+  margin-bottom: 12px;
+}
+.product-card.product-card--listing .price-amount {
+  display: block;
+  line-height: 1.15;
+}
+.product-card.product-card--listing .price small,
+.product-card.product-card--listing .price-vat {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .product-card .actions {
   display: grid;

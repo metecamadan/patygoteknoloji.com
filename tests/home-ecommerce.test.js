@@ -34,8 +34,13 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.match(catalogJs, /product-card--listing/);
   assert.match(catalogJs, /createQtyStepper/);
   assert.match(catalogJs, /product-qty-row/);
-  assert.match(css, /\.product-card--listing \.price\s*\{[^}]*flex-direction:\s*column/s);
-  assert.match(css, /\.product-card--listing \.price-vat/);
+  assert.match(css, /\.product-card\.product-card--listing \.price\s*\{[^}]*flex-direction:\s*column/s);
+  assert.match(css, /\.product-card\.product-card--listing \.price-vat/);
+  assert.ok(
+    css.lastIndexOf(".product-card.product-card--listing .price") >
+      css.indexOf(".product-card .price {"),
+    "listing VAT stack must override the generic price row"
+  );
   assert.match(catalogJs, /loadMoreListing/);
   assert.match(catalogJs, /IntersectionObserver/);
   assert.match(catalogJs, /if \(compactListing\)/);
