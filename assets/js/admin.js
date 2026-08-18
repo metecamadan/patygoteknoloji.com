@@ -3414,12 +3414,14 @@
   const adminOrderList = document.getElementById("adminOrderList");
   const adminOrdersNote = document.getElementById("adminOrdersNote");
   const orderStatusFilter = document.getElementById("orderStatusFilter");
+  const orderSearch = document.getElementById("orderSearch");
   const orderFrom = document.getElementById("orderFrom");
   const orderTo = document.getElementById("orderTo");
   const orderPeriodApply = document.getElementById("orderPeriodApply");
   const ORDER_PERIOD_KEY = "patygo_admin_orders_period";
   let selectedOrderId = "";
   let ordersCache = [];
+  let orderSearchTimer = 0;
 
   function moneyTr(n) {
     return "₺" + Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3584,6 +3586,10 @@
     saveOrderPeriod(range.from, range.to);
   }
 
+  function currentOrderSearch() {
+    return String(orderSearch && orderSearch.value ? orderSearch.value : "").trim();
+  }
+
   function orderListQueryString() {
     const period = currentOrderPeriod();
     const params = new URLSearchParams();
@@ -3591,6 +3597,8 @@
     params.set("to", period.to);
     const status = orderStatusFilter ? orderStatusFilter.value : "";
     if (status) params.set("status", status);
+    const q = currentOrderSearch();
+    if (q) params.set("q", q);
     return params.toString();
   }
 
@@ -3828,18 +3836,18 @@
       shippingCarriers = data.shippingCarriers;
     }
     if (adminOrdersNote) {
-      adminOrdersNote.textContent =
-        ordersCache.length +
-        " sipariş · " +
-        period.from +
-        " → " +
-        period.to;
+      const q = currentOrderSearch();
+      adminOrdersNote.textContent = q
+        ? ordersCache.length + " sonuç · tüm tarihlerde arandı"
+        : ordersCache.length + " sipariş · " + period.from + " → " + period.to;
     }
     adminOrderList.textContent = "";
     if (!ordersCache.length) {
       const empty = document.createElement("div");
       empty.className = "admin-table-empty";
-      empty.textContent = "Seçilen tarih aralığında sipariş yok.";
+      empty.textContent = currentOrderSearch()
+        ? "Bu aramaya uyan sipariş yok."
+        : "Seçilen tarih aralığında sipariş yok.";
       adminOrderList.appendChild(empty);
       selectedOrderId = "";
       return;
@@ -3896,6 +3904,28 @@
       if (stillThere) await expandOrderRow(selectedOrderId);
       else selectedOrderId = "";
     }
+  }
+
+  if (orderSearch) {
+    orderSearch.addEventListener("input", () => {
+      clearTimeout(orderSearchTimer);
+      orderSearchTimer = setTimeout(() => {
+        selectedOrderId = "";
+        loadAdminOrders().catch(() => {});
+      }, 250);
+    });
+    orderSearch.addEventListener("search", () => {
+      clearTimeout(orderSearchTimer);
+      selectedOrderId = "";
+      loadAdminOrders().catch(() => {});
+    });
+    orderSearch.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      clearTimeout(orderSearchTimer);
+      selectedOrderId = "";
+      loadAdminOrders().catch(() => {});
+    });
   }
 
   if (orderStatusFilter) {

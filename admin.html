@@ -252,6 +252,10 @@
                   <h2>Siparişler</h2>
                 </div>
                 <div class="admin-card-head-actions admin-orders-filters">
+                  <label class="admin-search admin-orders-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input id="orderSearch" type="search" placeholder="Sipariş no, e-posta veya telefon" autocomplete="off" />
+                  </label>
                   <div class="admin-period-presets admin-orders-period-presets" role="group" aria-label="Sipariş dönemi">
                     <button type="button" class="btn btn-outline btn-sm" data-order-days="1">Bugün</button>
                     <button type="button" class="btn btn-outline btn-sm" data-order-days="7">7 gün</button>
@@ -280,7 +284,7 @@
                   </select>
                 </div>
               </div>
-              <p class="admin-hint" style="margin-top:0">Satıra tıklayınca detay ve kargo alanları açılır.</p>
+              <p class="admin-hint" style="margin-top:0">Satıra tıklayınca detay ve kargo alanları açılır. Arama sipariş no, e-posta veya telefonda tüm tarihlerde bakılır.</p>
               <div class="admin-order-list-head" aria-hidden="true">
                 <span class="admin-order-head-id">Sipariş no</span>
                 <span class="admin-order-head-date">Tarih</span>
@@ -955,6 +959,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=sched-lock-1"></script>
+  <script src="/assets/js/admin.js?v=order-search-1"></script>
 </body>
 </html>

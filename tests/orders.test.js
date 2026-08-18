@@ -82,3 +82,50 @@ test("order store claims each status mail only once", () => {
     fs.rmSync(root, { recursive: true, force: true });
   } catch (_) {}
 });
+
+test("order store search matches id, email, and normalized phone", () => {
+  resetDbForTests();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-orders-search-"));
+  const store = createOrderStore(root);
+  store.save({
+    id: "PTY-FIND-ME",
+    total: 80,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "Zeynep", email: "zeynep@example.com", phone: "(0533) 444-55-66" },
+    items: [],
+    createdAt: "2025-12-01T09:00:00.000Z",
+  });
+  store.save({
+    id: "PTY-OTHER",
+    total: 90,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "Ali", email: "ali@example.com", phone: "0212 000 00 00" },
+    items: [],
+    createdAt: "2026-08-18T09:00:00.000Z",
+  });
+
+  assert.deepEqual(
+    store.list({ q: "FIND-ME", from: "2026-08-18", to: "2026-08-18" }).map((order) => order.id),
+    ["PTY-FIND-ME"]
+  );
+  assert.deepEqual(
+    store.list({ q: "zeynep@example.com" }).map((order) => order.id),
+    ["PTY-FIND-ME"]
+  );
+  assert.deepEqual(
+    store.list({ q: "0533 444 55 66" }).map((order) => order.id),
+    ["PTY-FIND-ME"]
+  );
+  assert.deepEqual(
+    store.list({ q: "%", from: "2026-08-18", to: "2026-08-18" }).map((order) => order.id),
+    ["PTY-OTHER"]
+  );
+  resetDbForTests();
+  try {
+    fs.rmSync(root, { recursive: true, force: true });
+  } catch (_) {}
+});

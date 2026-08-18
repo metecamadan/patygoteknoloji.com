@@ -1507,12 +1507,14 @@ async function handleApi(req, res, urlPath) {
     const limit = requestUrl.searchParams.get("limit") || "50";
     const from = requestUrl.searchParams.get("from") || "";
     const to = requestUrl.searchParams.get("to") || "";
+    const q = requestUrl.searchParams.get("q") || "";
     return json(res, 200, {
       ok: true,
       orders: orderStore.list({
         status: status || undefined,
         from: from || undefined,
         to: to || undefined,
+        q: q || undefined,
         limit,
       }),
       shippingCarriers: SHIPPING_CARRIERS,

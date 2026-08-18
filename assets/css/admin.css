@@ -286,7 +286,12 @@
 .admin-orders-filters {
   flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: min(100%, 720px);
+  max-width: min(100%, 960px);
+}
+.admin-orders-search {
+  flex: 1 1 220px;
+  min-width: 180px;
+  max-width: 320px;
 }
 .admin-orders-period-presets {
   justify-content: flex-end;
@@ -307,9 +312,11 @@
     width: 100%;
     max-width: none;
   }
+  .admin-orders-search,
   .admin-orders-period-presets,
   .admin-orders-period {
     width: 100%;
+    max-width: none;
     justify-content: flex-start;
   }
 }

@@ -231,6 +231,12 @@ test("admin users tab supports panel account management", () => {
   assert.match(html, /id="orderFrom"/);
   assert.match(html, /id="orderTo"/);
   assert.match(html, /id="orderPeriodApply"/);
+  assert.match(html, /id="orderSearch"/);
+  assert.match(html, /Sipariş no, e-posta veya telefon/);
+  assert.match(html, /tüm tarihlerde bakılır/);
+  assert.match(script, /params\.set\("q"/);
+  assert.match(script, /tüm tarihlerde arandı/);
+  assert.match(script, /Bu aramaya uyan sipariş yok/);
   assert.match(html, /data-order-days="1"/);
   assert.doesNotMatch(html, /id="adminOrderDetailTitle"/);
   assert.match(
