@@ -84,8 +84,8 @@ test("toPublicProduct strips supplier internals and cost", () => {
   });
   assert.deepEqual(publicProduct, {
     id: "sup-1",
-    brand: "TEDARİKÇİ",
-    name: "Ürün",
+    brand: "Tedarikçi",
+    name: "Tedarikçi Ürün",
     price: 200,
     vatPercent: 20,
     category: "bilgisayar",
@@ -249,6 +249,35 @@ test("supplier out of stock and unread stock in last 7 days stay off the public 
     result.map((item) => item.id),
     ["live"]
   );
+});
+
+test("toPublicProduct uses the same title format as the Akakce feed", () => {
+  const { toPublicProduct } = require("../lib/catalog");
+  const { formatAkakceProductName, formatAkakceBrand, buildAkakceXml } = require("../lib/akakce");
+  const product = {
+    id: "sup-1",
+    brand: "INTEL",
+    name: "INTEL CORE I3 10100 SOKET 1200 İŞLEMCİ BOX",
+    price: 200,
+    vatPercent: 20,
+    category: "bilgisayar-bilesenleri",
+    siteParent: "bilgisayar-bilesenleri",
+    siteMid: "islemciler",
+    siteChild: "intel-islemciler",
+    description: "Açıklama",
+    image: "https://cdn.example/a.jpg",
+    stockQty: 5,
+    active: true,
+    source: "supplier",
+    barcode: "8690000000001",
+    lastSuccessfulFetchAt: new Date().toISOString(),
+  };
+  const publicProduct = toPublicProduct(product);
+  assert.equal(publicProduct.brand, formatAkakceBrand(product.brand));
+  assert.equal(publicProduct.name, formatAkakceProductName(product));
+  assert.equal(publicProduct.name, "Intel Core i3 10100 Soket 1200 İşlemci Box");
+  const xml = buildAkakceXml([product], { siteBaseUrl: "https://patygoteknoloji.com" });
+  assert.match(xml, /<name>Intel Core i3 10100 Soket 1200 İşlemci Box<\/name>/);
 });
 
 test("toPublicProduct exposes site child as alt for storefront filters", () => {
