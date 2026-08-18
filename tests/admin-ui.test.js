@@ -100,6 +100,17 @@ test("admin panel exposes dark theme toggle in the top bar", () => {
   assert.match(script, /adminThemeToggle/);
 });
 
+test("admin ops health badge is hidden until XML or POS reports a real issue", () => {
+  assert.match(html, /id="adminOpsHealth"/);
+  assert.doesNotMatch(html, /Sistem hazır/);
+  assert.match(script, /function renderOpsHealth/);
+  assert.match(script, /data\.opsHealth/);
+  assert.doesNotMatch(script, /Sistem hazır/);
+  assert.match(css, /\.admin-health\.is-err/);
+  assert.match(css, /\.admin-health\.is-warn/);
+  assert.doesNotMatch(css, /background:\s*#22c55e/);
+});
+
 test("admin overview uses consistent full-width grid spacing", () => {
   assert.match(html, /admin-page--overview/);
   assert.doesNotMatch(html, /admin-overview-grid-2" style="margin-top/);

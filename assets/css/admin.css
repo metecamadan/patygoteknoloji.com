@@ -893,15 +893,37 @@ html.admin-theme-dark .admin-order-block.is-open {
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--muted) !important;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
   font-size: 0.75rem !important;
+  cursor: pointer;
+  max-width: min(100%, 220px);
+}
+.admin-health-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .admin-health i {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e;
+  flex-shrink: 0;
+  background: #94a3b8;
 }
+.admin-health.is-warn {
+  color: #92400e;
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+.admin-health.is-warn i { background: #d97706; }
+.admin-health.is-err {
+  color: #991b1b;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+.admin-health.is-err i { background: #dc2626; }
 .admin-avatar {
   display: grid;
   place-items: center;
@@ -1759,11 +1781,11 @@ body.admin-modal-open {
 @media (max-width: 560px) {
   .admin-health {
     display: inline-flex !important;
-    gap: 0;
-    max-width: 34px;
+    gap: 6px;
+    max-width: min(46vw, 180px);
     overflow: hidden;
-    padding: 8px;
-    color: transparent !important;
+    padding: 8px 10px;
+    min-height: 44px;
   }
   .admin-health i {
     width: 10px;
@@ -1916,9 +1938,19 @@ html.admin-theme-dark .admin-feed-box {
 }
 
 html.admin-theme-dark .admin-health {
-  background: #121a2a !important;
-  border-color: var(--line) !important;
-  color: var(--muted) !important;
+  background: #121a2a;
+  border-color: var(--line);
+  color: var(--muted);
+}
+html.admin-theme-dark .admin-health.is-warn {
+  background: #3b2a12;
+  border-color: #d97706;
+  color: #fcd34d;
+}
+html.admin-theme-dark .admin-health.is-err {
+  background: #3b1515;
+  border-color: #f87171;
+  color: #fecaca;
 }
 
 html.admin-theme-dark .admin-avatar {

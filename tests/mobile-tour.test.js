@@ -12,6 +12,7 @@ const detailJs = fs.readFileSync(path.join(root, "assets", "js", "urun-detay.js"
 const sepetJs = fs.readFileSync(path.join(root, "assets", "js", "sepet.js"), "utf8");
 const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
 const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
+const adminHtml = fs.readFileSync(path.join(root, "admin.html"), "utf8");
 const sepetHtml = fs.readFileSync(path.join(root, "sepet.html"), "utf8");
 const odemeHtml = fs.readFileSync(path.join(root, "odeme.html"), "utf8");
 
@@ -63,8 +64,14 @@ test("mobile cart lines stack controls on narrow screens", () => {
   assert.match(css, /\.cart-stepper[\s\S]*?44px/);
 });
 
-test("admin mobile keeps health dot and sticky modal actions", () => {
+test("admin mobile keeps ops health label and sticky modal actions", () => {
+  assert.match(adminHtml, /id="adminOpsHealth"/);
   assert.match(adminJs, /dark \? "Açık" : "Koyu"/);
+  assert.match(adminJs, /function renderOpsHealth/);
+  assert.doesNotMatch(
+    adminCss,
+    /@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.admin-health[\s\S]*?color:\s*transparent/s
+  );
   assert.match(
     adminCss,
     /@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.admin-modal-form > \.admin-form-actions/s

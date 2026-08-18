@@ -57,6 +57,15 @@
     });
   }
 
+  const adminOpsHealth = document.getElementById("adminOpsHealth");
+  if (adminOpsHealth) {
+    adminOpsHealth.addEventListener("click", () => {
+      const action = adminOpsHealth.getAttribute("data-action");
+      if (action === "xml") selectAdminTab("xml");
+      else if (action === "overview") selectAdminTab("overview");
+    });
+  }
+
   function countProductImages(product) {
     const list = Array.isArray(product && product.images)
       ? product.images.filter(Boolean)
@@ -677,6 +686,26 @@
     }
   }
 
+  function renderOpsHealth(health) {
+    if (!adminOpsHealth) return;
+    const label = adminOpsHealth.querySelector(".admin-health-label");
+    if (!health || !health.label) {
+      adminOpsHealth.hidden = true;
+      adminOpsHealth.className = "admin-health";
+      adminOpsHealth.removeAttribute("title");
+      adminOpsHealth.removeAttribute("data-action");
+      if (label) label.textContent = "";
+      return;
+    }
+    const tone = health.tone === "err" ? "err" : "warn";
+    adminOpsHealth.hidden = false;
+    adminOpsHealth.className = "admin-health is-" + tone;
+    adminOpsHealth.title = health.title || health.label;
+    adminOpsHealth.setAttribute("data-action", health.action || "");
+    adminOpsHealth.setAttribute("aria-label", health.label);
+    if (label) label.textContent = health.label;
+  }
+
   async function bootAuthedWorkspace() {
     try {
       const me = await api("/api/admin/me");
@@ -698,6 +727,7 @@
     api("/api/admin/supplier/status")
       .then((data) => {
         renderXmlYesterdayAlert(data.yesterdayXmlAlert);
+        renderOpsHealth(data.opsHealth);
         if (Array.isArray(data.slots)) supplierSlots = data.slots;
         if (data.feed && data.feed.publicUrl && !feedStatus) feedStatus = data.feed;
         updateDashboard();
@@ -2338,6 +2368,7 @@
     };
     supplierPoolPage = supplierPoolMeta.page;
     renderXmlYesterdayAlert(results[0].yesterdayXmlAlert);
+    renderOpsHealth(results[0].opsHealth);
     const scheduleHint = document.getElementById("supplierScheduleHint");
     if (scheduleHint && results[0].schedule && results[0].nextScheduled) {
       scheduleHint.textContent =
@@ -2808,6 +2839,12 @@
         });
       } catch (_) {}
       if (xmlYesterdayAlert) xmlYesterdayAlert.hidden = true;
+      api("/api/admin/supplier/status")
+        .then((data) => {
+          renderXmlYesterdayAlert(data.yesterdayXmlAlert);
+          renderOpsHealth(data.opsHealth);
+        })
+        .catch(() => {});
     });
   }
 

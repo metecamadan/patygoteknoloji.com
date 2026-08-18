@@ -48,6 +48,11 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.equal(typeof payload.feed.publicUrl, "string");
   assert.equal(payload.feed.publicUrl.endsWith("/api/feeds/akakce.xml"), true);
   assert.equal(payload.feed.activeCount, undefined);
+  assert.ok(payload.opsHealth === null || (payload.opsHealth && payload.opsHealth.label));
+  if (payload.opsHealth) {
+    assert.match(payload.opsHealth.tone, /^(err|warn)$/);
+    assert.doesNotMatch(payload.opsHealth.label, /hazır|online/i);
+  }
 
   const statusFeed = await fetch(baseUrl + "/api/admin/supplier/status?feed=1", {
     headers: { Authorization: "Bearer " + session.token },

@@ -72,6 +72,7 @@ const {
   MIN_ADMIN_PASSWORD_LENGTH,
 } = require("./lib/admin-security");
 const { createXmlFetchDigestStore } = require("./lib/xml-fetch-digest");
+const { resolveOpsHealth } = require("./lib/ops-health");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -1712,12 +1713,18 @@ async function handleApi(req, res, urlPath) {
     const includeFeed = requestUrl.searchParams.get("feed") === "1";
     const slots = supplierManager.listSlots();
     const primary = slots[0] || {};
+    const yesterdayXmlAlert = xmlFetchDigest.getYesterdayAlert(new Date());
     return json(res, 200, {
       slots,
       status: slots[0],
       schedule: primary.schedule || scheduleSummary(),
       nextScheduled: primary.nextScheduled || getNextScheduledAt(new Date()),
-      yesterdayXmlAlert: xmlFetchDigest.getYesterdayAlert(new Date()),
+      yesterdayXmlAlert,
+      opsHealth: resolveOpsHealth({
+        slots,
+        yesterdayAlert: yesterdayXmlAlert,
+        pos: publicPosStatus(akbankConfig),
+      }),
       feed: includeFeed ? akakceFeedFullSummary() : akakceFeedPublicMeta(),
     });
   }

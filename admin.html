@@ -97,7 +97,10 @@
               <span class="admin-theme-toggle-icon" aria-hidden="true">◐</span>
               <span class="admin-theme-toggle-label">Açık</span>
             </button>
-            <span class="admin-health"><i></i> Sistem hazır</span>
+            <button type="button" id="adminOpsHealth" class="admin-health" hidden aria-live="polite">
+              <i aria-hidden="true"></i>
+              <span class="admin-health-label"></span>
+            </button>
             <div class="admin-avatar" aria-hidden="true">PT</div>
           </div>
         </header>
@@ -107,7 +110,7 @@
             <div class="admin-page-head admin-overview-head">
               <div>
                 <h2>Dijital özet</h2>
-                <p>Trafik, talepler, siparişler ve sunucu durumu.</p>
+                <p>Trafik, talepler ve siparişler.</p>
               </div>
               <div class="admin-period-box">
                 <div class="admin-period-presets" role="group" aria-label="Hızlı dönem">
@@ -959,6 +962,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=order-search-1"></script>
+  <script src="/assets/js/admin.js?v=ops-health-1"></script>
 </body>
 </html>
