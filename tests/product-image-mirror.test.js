@@ -101,6 +101,7 @@ test("mirrorAkakceCatalogImages downloads supplier images to local media", async
     dataRoot: tmp,
     siteBaseUrl: "https://patygoteknoloji.com",
     fetchImpl,
+    resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
   });
   const index = loadMirrorIndex(tmp);
   assert.ok(index[source]);

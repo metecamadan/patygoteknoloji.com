@@ -1,5 +1,6 @@
 (function () {
   const PENDING_ORDER_KEY = "patygo_pending_order";
+  const PENDING_ORDER_TOKEN_KEY = "patygo_pending_order_token";
   const params = new URLSearchParams(window.location.search);
   const directId = params.get("id") || "";
   const paymentResult = params.get("payment") || "";
@@ -126,6 +127,7 @@
     if (paid && window.PatygoCart) window.PatygoCart.clear();
     try {
       if (paid) sessionStorage.removeItem(PENDING_ORDER_KEY);
+      sessionStorage.removeItem(PENDING_ORDER_TOKEN_KEY);
     } catch (_) {}
     try {
       const clean = new URL(window.location.href);
@@ -179,7 +181,13 @@
 
   async function fetchOrder(orderId) {
     if (!orderId) return null;
-    const res = await fetch("/api/payment/order?orderId=" + encodeURIComponent(orderId));
+    let token = "";
+    try {
+      token = sessionStorage.getItem(PENDING_ORDER_TOKEN_KEY) || "";
+    } catch (_) {}
+    const qs = new URLSearchParams({ orderId });
+    if (token) qs.set("token", token);
+    const res = await fetch("/api/payment/order?" + qs.toString());
     if (!res.ok) return null;
     const data = await res.json();
     return data.order || null;
@@ -460,6 +468,9 @@
           if (els.orderIdPreview) els.orderIdPreview.textContent = data.orderId;
           try {
             sessionStorage.setItem(PENDING_ORDER_KEY, data.orderId);
+            if (data.orderAccessToken) {
+              sessionStorage.setItem(PENDING_ORDER_TOKEN_KEY, data.orderAccessToken);
+            }
           } catch (_) {}
           postToBank(data.action, data.fields);
         } catch (err) {

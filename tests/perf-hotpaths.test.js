@@ -22,6 +22,13 @@ test("product id lookup never scans the merged storefront memo", () => {
   );
 });
 
+test("checkout resolves only cart product ids", () => {
+  assert.match(server, /lookupCheckoutProductsByIds/);
+  const fn = server.match(/function buildCheckoutOrder\(body\) \{([\s\S]*?)\n\}/);
+  assert.ok(fn, "buildCheckoutOrder bulunmalı");
+  assert.doesNotMatch(fn[1], /mergedProducts\(false\)/);
+});
+
 test("order list loads items in batches instead of per-row queries", () => {
   assert.match(orders, /function loadItemsForOrderIds/);
   assert.match(orders, /WHERE order_id IN/);

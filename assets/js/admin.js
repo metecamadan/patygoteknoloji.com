@@ -2727,6 +2727,13 @@
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
+    const token = sessionStorage.getItem("patygo_admin_token") || "";
+    if (token) {
+      fetch("/api/admin/logout", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      }).catch(() => {});
+    }
     endSession("");
   });
 

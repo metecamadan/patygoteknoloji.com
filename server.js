@@ -64,6 +64,8 @@ const {
   deliverContactMail,
   deliverSimpleMail,
 } = require("./lib/contact");
+const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
+const { imageExtensionFromBytes } = require("./lib/image-bytes");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -102,6 +104,10 @@ const ADMIN_PASSWORD =
 if (!ADMIN_PASSWORD) {
   throw new Error("Canlı ortamda ADMIN_PASSWORD tanımlanmalıdır.");
 }
+if (IS_PRODUCTION && ADMIN_PASSWORD.length < 12) {
+  console.warn("UYARI: ADMIN_PASSWORD kısa; en az 12 karakter güçlü bir parola kullanın.");
+}
+const BIND_HOST = process.env.BIND_HOST || (IS_PRODUCTION ? "127.0.0.1" : "0.0.0.0");
 const PRODUCTS_FILE = path.join(DATA_ROOT, "assets", "data", "products.json");
 const PRODUCTS_IMG_DIR = path.join(ROOT, "assets", "img", "products");
 const SITE_BASE_URL = resolveSiteBaseUrl(process.env.SITE_BASE_URL, PORT, IS_PRODUCTION);
@@ -151,6 +157,8 @@ const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 const contactAttempts = new Map(); // IP -> { count, resetAt }
+const adminLoginAttempts = new Map(); // IP -> { count, resetAt }
+const analyticsAttempts = new Map(); // IP -> { count, resetAt }
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -198,9 +206,9 @@ function securityHeaders(extra) {
       "Content-Security-Policy":
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
         "script-src 'self'; style-src 'self' 'unsafe-inline' https:; " +
-        "img-src 'self' data: https: http:; font-src 'self' data: https:; " +
-        "connect-src 'self'; form-action 'self'; " +
-        "https://virtualpospaymentgatewaypre.akbank.com https://virtualpospaymentgateway.akbank.com",
+        "img-src 'self' data: https:; font-src 'self' data: https:; " +
+        "connect-src 'self'; " +
+        "form-action 'self' https://virtualpospaymentgatewaypre.akbank.com https://virtualpospaymentgateway.akbank.com",
     },
     extra || {}
   );
@@ -279,11 +287,31 @@ function makeOrderId() {
   return "PTY-" + stamp + "-" + rand;
 }
 
+function makeOrderAccessToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function orderAccessOk(order, token) {
+  if (!order || !order.accessToken || !token) return false;
+  const a = Buffer.from(String(order.accessToken));
+  const b = Buffer.from(String(token));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 function buildCheckoutOrder(body) {
-  const catalog = mergedProducts(false);
-  const byId = Object.fromEntries(catalog.map((product) => [product.id, product]));
   const rawItems = Array.isArray(body && body.items) ? body.items : [];
   if (!rawItems.length) throw new Error("Sepet boş.");
+  const productIds = rawItems.slice(0, 40).map((row) => String(row.productId || "").trim());
+  const byId = lookupCheckoutProductsByIds(productIds, {
+    loadManual: loadProducts,
+    getSupplierById: (id) => supplierManager.getProductById(id),
+    mergeOptions: {
+      includeInactiveManual: false,
+      normalizeProduct,
+      categoryDefaults: CATEGORY_FEED_DEFAULTS,
+    },
+  });
 
   const items = [];
   let subtotal = 0;
@@ -330,6 +358,7 @@ function buildCheckoutOrder(body) {
 
   return {
     id: makeOrderId(),
+    accessToken: makeOrderAccessToken(),
     items,
     subtotal,
     vat,
@@ -708,7 +737,12 @@ function scheduleAkakceImageMirror() {
   if (akakceMirrorTimer) clearTimeout(akakceMirrorTimer);
   akakceMirrorTimer = setTimeout(() => {
     akakceMirrorTimer = null;
-    mirrorAkakceCatalogImages(mergedProducts(false), {
+    const memo = storefrontCatalogMemo.active;
+    const products =
+      memo && Array.isArray(memo.products) && memo.products.length
+        ? memo.products
+        : mergedProducts(false);
+    mirrorAkakceCatalogImages(products, {
       dataRoot: DATA_ROOT,
       siteBaseUrl: SITE_BASE_URL,
       logError: (message, source, detail) =>
@@ -720,7 +754,7 @@ function scheduleAkakceImageMirror() {
       .catch((err) => {
         console.warn("Akakçe görsel aynası atlandı:", err.message || err);
       });
-  }, 6000);
+  }, 30000);
   if (typeof akakceMirrorTimer.unref === "function") akakceMirrorTimer.unref();
 }
 
@@ -826,6 +860,22 @@ function sessionUser(req) {
   return adminUserStore.publicUser(adminUserStore.get(session.userId));
 }
 
+function sessionRole(req) {
+  const session = getSession(req);
+  if (!session) return null;
+  if (!session.userId) return "owner";
+  const user = adminUserStore.get(session.userId);
+  return user && user.role ? user.role : "admin";
+}
+
+function requireOwner(req, res) {
+  if (sessionRole(req) !== "owner") {
+    json(res, 403, { ok: false, error: "Bu işlem için owner yetkisi gerekli." });
+    return false;
+  }
+  return true;
+}
+
 async function sendCalendarReminderMail(entry, kind) {
   const to = String((entry && entry.notifyEmail) || "").trim();
   if (!to) throw new Error("Hatırlatıcı e-posta adresi yok.");
@@ -908,7 +958,6 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, {
         ok: true,
         delivered: true,
-        to: delivery.to,
       });
     } catch (err) {
       return json(res, 502, {
@@ -972,6 +1021,7 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, {
         ok: true,
         orderId: order.id,
+        orderAccessToken: order.accessToken,
         amount: order.total,
         action: form.action,
         method: form.method,
@@ -1039,8 +1089,12 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/payment/order") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const orderId = String(requestUrl.searchParams.get("orderId") || "").slice(0, 64);
+    const accessToken = String(requestUrl.searchParams.get("token") || "").slice(0, 64);
     const order = orderId ? orderStore.get(orderId) : null;
     if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı." });
+    if (!orderAccessOk(order, accessToken)) {
+      return json(res, 403, { ok: false, error: "Sipariş görüntüleme izni yok." });
+    }
     const bank = order.bankResponse || null;
     return json(res, 200, {
       ok: true,
@@ -1066,6 +1120,10 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "POST" && urlPath === "/api/analytics/event") {
     try {
+      const ip = clientIp(req);
+      if (rateLimited(analyticsAttempts, ip, 120, 15 * 60 * 1000)) {
+        return json(res, 429, { ok: false, error: "Çok fazla istek." });
+      }
       const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
       analyticsStore.record({
         type: String(body.type || "").slice(0, 40),
@@ -1209,6 +1267,10 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "POST" && urlPath === "/api/admin/login") {
     try {
+      const ip = clientIp(req);
+      if (rateLimited(adminLoginAttempts, ip, 12, 15 * 60 * 1000)) {
+        return json(res, 429, { ok: false, error: "Çok fazla giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin." });
+      }
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
       const password = String(body.password || "");
       const email = String(body.email || "").trim();
@@ -1234,10 +1296,18 @@ async function handleApi(req, res, urlPath) {
         exp: Date.now() + ADMIN_IDLE_MS,
         userId: user ? user.id : null,
       });
+      adminLoginAttempts.delete(ip);
       return json(res, 200, { ok: true, token, user });
     } catch (_) {
       return json(res, 400, { ok: false, error: "Geçersiz istek" });
     }
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/logout") {
+    const h = req.headers.authorization || "";
+    const token = h.startsWith("Bearer ") ? h.slice(7) : "";
+    if (token) sessions.delete(token);
+    return json(res, 200, { ok: true });
   }
 
   if (urlPath.startsWith("/api/admin/") && !authOk(req)) {
@@ -1249,10 +1319,12 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/users") {
+    if (!requireOwner(req, res)) return;
     return json(res, 200, { ok: true, users: adminUserStore.list() });
   }
 
   if (req.method === "POST" && urlPath === "/api/admin/users") {
+    if (adminUserStore.count() > 0 && !requireOwner(req, res)) return;
     try {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
       const role = adminUserStore.count() === 0 ? "owner" : "admin";
@@ -1267,6 +1339,7 @@ async function handleApi(req, res, urlPath) {
   if (adminUserMatch) {
     const userId = adminUserMatch[1];
     if (req.method === "PUT") {
+      if (!requireOwner(req, res)) return;
       try {
         const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
         const user = adminUserStore.update(userId, body);
@@ -1277,6 +1350,7 @@ async function handleApi(req, res, urlPath) {
       }
     }
     if (req.method === "DELETE") {
+      if (!requireOwner(req, res)) return;
       try {
         const removed = adminUserStore.remove(userId);
         if (!removed) return json(res, 404, { ok: false, error: "Kullanıcı bulunamadı" });
@@ -1355,6 +1429,7 @@ async function handleApi(req, res, urlPath) {
           if (!shippingSave) {
             patch.status = status;
             if (status === "paid") {
+              if (!requireOwner(req, res)) return;
               patch.paymentStatus = "paid";
               patch.paymentTaken = true;
             }
@@ -1505,6 +1580,7 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/config") {
+    if (!requireOwner(req, res)) return;
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
       const config = await supplierManager.saveConfig(body.slotId || "supplier-1", {
@@ -1686,11 +1762,16 @@ async function handleApi(req, res, urlPath) {
       const dataUrl = String(body.dataUrl || "");
       const m = /^data:(image\/(png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
       if (!m) return json(res, 400, { ok: false, error: "Geçersiz görsel" });
-      const ext = m[2] === "jpeg" ? "jpg" : m[2];
       const buf = Buffer.from(m[3], "base64");
       if (buf.length > 4 * 1024 * 1024) {
         return json(res, 400, { ok: false, error: "Görsel en fazla 4 MB olabilir" });
       }
+      const detected = imageExtensionFromBytes(buf);
+      const declared = m[2] === "jpeg" ? "jpg" : m[2];
+      if (!detected || detected !== declared) {
+        return json(res, 400, { ok: false, error: "Görsel içeriği bildirilen türle uyuşmuyor." });
+      }
+      const ext = detected;
       const name =
         slugify(body.name || "urun") +
         "-" +
@@ -2039,10 +2120,10 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, urlPath);
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, BIND_HOST, () => {
   console.log("\n  Patygo Teknoloji — yerel sunucu");
   console.log("  ----------------------------------------");
-  console.log(`  Site  : http://127.0.0.1:${PORT}`);
+  console.log(`  Site  : http://${BIND_HOST === "0.0.0.0" ? "127.0.0.1" : BIND_HOST}:${PORT}`);
   console.log(`  Site  : http://localhost:${PORT}`);
   console.log(`  Admin : http://127.0.0.1:${PORT}/admin`);
   console.log(`  Şifre : ADMIN_PASSWORD (varsayılan: patygo-admin)`);

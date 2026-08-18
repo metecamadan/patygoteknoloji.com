@@ -1,4 +1,5 @@
 const test = require("node:test");
+const PUBLIC_DNS = async () => [{ address: "93.184.216.34", family: 4 }];
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -103,6 +104,7 @@ test("supplier fetch follows same-host redirects", async () => {
     fetchImpl,
     allowedHosts: ["supplier.example"],
     maxBytes: 2048,
+    resolveHost: PUBLIC_DNS,
   });
   assert.equal(calls, 2);
   assert.match(xml, /SKU-1/);

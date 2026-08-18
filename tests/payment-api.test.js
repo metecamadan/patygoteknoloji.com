@@ -67,6 +67,7 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   const startBody = await start.json();
   assert.equal(startBody.ok, true);
   assert.match(startBody.orderId, /^PTY-/);
+  assert.match(startBody.orderAccessToken, /^[a-f0-9]{48}$/);
   assert.equal(startBody.action, "https://virtualpospaymentgatewaypre.akbank.com/payhosting");
   assert.equal(startBody.fields.paymentModel, "3D_PAY_HOSTING");
   assert.ok(startBody.fields.hash);
@@ -104,7 +105,13 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /setImmediate\(\(\) => \{\s*sendOrderStatusMail/);
 
-  const order = await fetch(baseUrl + "/api/payment/order?orderId=" + startBody.orderId);
+  const order = await fetch(
+    baseUrl +
+      "/api/payment/order?orderId=" +
+      encodeURIComponent(startBody.orderId) +
+      "&token=" +
+      encodeURIComponent(startBody.orderAccessToken)
+  );
   assert.equal(order.status, 200);
   const orderBody = await order.json();
   assert.equal(orderBody.ok, true);
@@ -179,9 +186,21 @@ test("unsigned callback and amount mismatch cannot mark order paid or failed", a
     { redirect: "manual" }
   );
   assert.equal(unsignedGet.status, 303);
-  const pending = await (await fetch(baseUrl + "/api/payment/order?orderId=" + unsigned.orderId)).json();
+  const pending = await (
+    await fetch(
+      baseUrl +
+        "/api/payment/order?orderId=" +
+        encodeURIComponent(unsigned.orderId) +
+        "&token=" +
+        encodeURIComponent(unsigned.orderAccessToken)
+    )
+  ).json();
   assert.equal(pending.order.paymentStatus, "pending");
   assert.equal(pending.order.paymentTaken, false);
+  const denied = await fetch(
+    baseUrl + "/api/payment/order?orderId=" + encodeURIComponent(unsigned.orderId)
+  );
+  assert.equal(denied.status, 403);
 
   const mismatch = await startOrder();
   const badPayload = {
@@ -203,7 +222,15 @@ test("unsigned callback and amount mismatch cannot mark order paid or failed", a
   });
   assert.equal(badCb.status, 303);
   assert.match(badCb.headers.get("location") || "", /payment=failed/);
-  const afterMismatch = await (await fetch(baseUrl + "/api/payment/order?orderId=" + mismatch.orderId)).json();
+  const afterMismatch = await (
+    await fetch(
+      baseUrl +
+        "/api/payment/order?orderId=" +
+        encodeURIComponent(mismatch.orderId) +
+        "&token=" +
+        encodeURIComponent(mismatch.orderAccessToken)
+    )
+  ).json();
   assert.equal(afterMismatch.order.paymentTaken, false);
   assert.notEqual(afterMismatch.order.paymentStatus, "paid");
 });
