@@ -7,6 +7,8 @@ alwaysApply: true
 
 Site yalnızca gerçek tedarikçi ürünleriyle durur. Demo, ops paneli ve test XML yok.
 
+**Kapsam:** bu dosya katalog, XML, stok, panel sağlık göstergesi ve yayın kapısıdır. Pazarlama metni (hero slogan, 43+, 7/24, marka şeridi) ayrıdır; “sahte yok” diye copy silinmez. Yazılımsal trik kullanıcıyla birlikte kararlaştırılır.
+
 ## Vitrin
 
 - Kaynak: `www.bilgisayarim.com.tr` (slot 1). Slot 2–3 boş kalır; yalnızca gerçek tedarikçi bağlanır.
