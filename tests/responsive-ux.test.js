@@ -26,7 +26,7 @@ test("responsive UX: scroll padding, detail gallery cap, detail price, card acti
   assert.match(css, /\.detail-info \.price\s*\{[^}]*font-weight:\s*800/s);
   assert.match(
     css,
-    /@media \(max-width:\s*900px\)\s*\{[\s\S]*?\.detail-gallery,[\s\S]*?max-width:\s*min\(100%,\s*420px\)/
+    /@media \(max-width:\s*900px\)\s*\{[\s\S]*?\.detail-gallery,[\s\S]*?max-width:\s*100%/
   );
   assert.match(
     css,

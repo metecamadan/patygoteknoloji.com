@@ -96,19 +96,15 @@
     crumb.appendChild(crumbHome);
     trail.forEach((part) => {
       const sep = document.createElement("span");
+      sep.className = "breadcrumb-sep";
       sep.textContent = "/";
+      sep.setAttribute("aria-hidden", "true");
       crumb.appendChild(sep);
       const link = document.createElement("a");
       link.href = part.href;
       link.textContent = part.text;
       crumb.appendChild(link);
     });
-    const nameSep = document.createElement("span");
-    nameSep.textContent = "/";
-    crumb.appendChild(nameSep);
-    const nameCrumb = document.createElement("span");
-    nameCrumb.textContent = product.name;
-    crumb.appendChild(nameCrumb);
 
     const tag = document.createElement("span");
     tag.className = "brand-tag";
@@ -116,6 +112,7 @@
 
     const h1 = document.createElement("h1");
     h1.textContent = product.name;
+    h1.setAttribute("aria-current", "page");
 
     const leaf = trail.length ? trail[trail.length - 1] : null;
     const cat = document.createElement("p");

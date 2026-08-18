@@ -1643,9 +1643,9 @@ h1, h2, h3, h4 {
   margin: 0 0 20px;
 }
 .breadcrumb a:hover { color: var(--brand); }
-.breadcrumb span:last-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.breadcrumb-sep {
+  flex-shrink: 0;
+  color: var(--muted-2);
 }
 .detail-cat a {
   color: inherit;
@@ -2690,14 +2690,21 @@ h1, h2, h3, h4 {
   gap: clamp(20px, 4vw, 40px);
   align-items: start;
 }
-.detail-gallery { min-width: 0; max-width: 420px; }
+.detail-gallery {
+  min-width: 0;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .detail-media {
   position: relative;
   width: 100%;
   max-width: 420px;
   aspect-ratio: 1;
   border-radius: 18px;
-  background: linear-gradient(145deg, #eff6ff, #e2e8f0);
+  background: #f8fafc;
+  border: 1px solid var(--line-soft);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -2721,21 +2728,30 @@ h1, h2, h3, h4 {
   transform: none !important;
 }
 .detail-thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 72px));
-  gap: 10px;
-  margin-top: 12px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
   max-width: 420px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
 }
+.detail-thumbs::-webkit-scrollbar { display: none; }
 .detail-thumb {
   position: relative;
-  aspect-ratio: 1;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
   cursor: pointer;
   overflow: hidden;
+  scroll-snap-align: start;
 }
 .detail-thumb.active {
   border-color: var(--brand);
@@ -2796,7 +2812,10 @@ h1, h2, h3, h4 {
 }
 .detail-info .actions .btn-buy {
   flex: 1 1 180px;
-  min-height: 48px;
+  min-height: 44px;
+  max-height: 48px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 .detail-trust {
   display: grid;
@@ -2852,8 +2871,12 @@ h1, h2, h3, h4 {
   .detail-gallery,
   .detail-media,
   .detail-thumbs {
-    max-width: min(100%, 420px);
-    margin-inline: auto;
+    max-width: 100%;
+    margin-inline: 0;
+  }
+  .detail-media {
+    aspect-ratio: 4 / 3;
+    max-height: min(56vw, 320px);
   }
   .detail-info .actions .btn {
     flex: 1 1 140px;
@@ -2936,15 +2959,48 @@ h1, h2, h3, h4 {
     padding: 8px 6px;
   }
   .detail-info .detail-qty-row {
-    flex: 1 1 100%;
-    max-width: none;
+    flex: 0 0 132px;
+    max-width: 132px;
   }
   .detail-info .actions {
-    flex-direction: column;
+    flex-direction: row;
     align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 10px;
   }
   .detail-info .actions .btn-buy {
-    width: 100%;
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .product-detail .breadcrumb {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    margin-bottom: 10px;
+    font-size: 0.78rem;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .product-detail .breadcrumb::-webkit-scrollbar { display: none; }
+  .product-detail .breadcrumb a {
+    flex-shrink: 0;
+  }
+  .detail-info h1 {
+    font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+    line-height: 1.35;
+    margin: 4px 0 8px;
+  }
+  .detail-info .price small {
+    font-size: 0.85rem;
+  }
+  .product-detail-page .fab {
+    gap: 14px;
+    bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+  .product-detail-page main {
+    padding-bottom: 88px;
   }
   .home .hero-cta {
     flex-direction: column;
