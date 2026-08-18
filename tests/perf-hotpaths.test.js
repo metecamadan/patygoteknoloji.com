@@ -8,6 +8,17 @@ const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
 const orders = fs.readFileSync(path.join(root, "lib", "orders.js"), "utf8");
 const supplier = fs.readFileSync(path.join(root, "lib", "supplier.js"), "utf8");
 
+test("supplier status skips catalog merge unless feed=1", () => {
+  const statusFn = server.match(
+    /if \(req\.method === "GET" && urlPath === "\/api\/admin\/supplier\/status"\) \{([\s\S]*?)\n  \}/
+  );
+  assert.ok(statusFn, "supplier status route bulunmalı");
+  assert.match(statusFn[1], /includeFeed/);
+  assert.match(statusFn[1], /akakceFeedPublicMeta/);
+  assert.match(statusFn[1], /akakceFeedFullSummary/);
+  assert.doesNotMatch(statusFn[1], /buildAkakceFeedSummary\(mergedProducts\(false\)/);
+});
+
 test("dashboard does not hydrate the full supplier catalog for product names", () => {
   assert.match(server, /function resolveProductNamesByIds/);
   assert.match(server, /getProductById\(id\)/);

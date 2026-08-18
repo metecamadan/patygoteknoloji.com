@@ -110,14 +110,13 @@ test("admin overview uses consistent full-width grid spacing", () => {
   assert.match(css, /\.admin-overview-grid\s*>\s*\.admin-card/);
 });
 
-test("admin XML schedule is editable under critical stock", () => {
-  assert.match(html, /id="supplierCriticalStock1"[\s\S]*?id="supplierScheduleStart1"[\s\S]*?id="supplierScheduleInterval1"/);
-  assert.match(html, /data-slot-input="scheduleStart"/);
-  assert.match(html, /data-slot-input="scheduleInterval"/);
+test("admin XML schedule is locked to five Istanbul pull times", () => {
+  assert.match(html, /08:00, 11:00, 16:00, 21:00, 23:30/);
+  assert.match(html, /Saatler kilitlidir/);
+  assert.doesNotMatch(html, /data-slot-input="scheduleStart"/);
+  assert.doesNotMatch(html, /data-slot-input="scheduleInterval"/);
   assert.match(html, /Otomatik XML okuma/);
-  assert.match(script, /scheduleStart/);
-  assert.match(script, /scheduleIntervalMinutes/);
-  assert.match(css, /\.admin-schedule-row/);
+  assert.doesNotMatch(script, /scheduleIntervalMinutes/);
   assert.doesNotMatch(html, /07:00’da başlar, günde 10 kez/);
   assert.doesNotMatch(html, /Avansas/i);
   assert.doesNotMatch(html, /Agent Ops/i);
@@ -163,11 +162,13 @@ test("admin overview exposes digital dashboard metrics", () => {
 test("admin login does not block on supplier catalog or dashboard merge", () => {
   assert.match(script, /function bootAuthedWorkspace/);
   assert.match(script, /bootAuthedWorkspace\(\)/);
+  assert.match(script, /ensureManualProducts/);
   assert.doesNotMatch(
     script,
     /await Promise\.all\(\[\s*refresh\(\),\s*loadSupplierData/
   );
   assert.match(script, /if \(xmlView\) \{\s*loadSupplierData/s);
+  assert.doesNotMatch(script, /refresh\(\)\.catch\(\(\) => \{\}\);/);
 });
 
 test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {

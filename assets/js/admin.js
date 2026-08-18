@@ -696,7 +696,13 @@
     }
     showPanel(true);
     api("/api/admin/supplier/status")
-      .then((data) => renderXmlYesterdayAlert(data.yesterdayXmlAlert))
+      .then((data) => {
+        renderXmlYesterdayAlert(data.yesterdayXmlAlert);
+        if (Array.isArray(data.slots)) supplierSlots = data.slots;
+        if (data.feed && data.feed.publicUrl && !feedStatus) feedStatus = data.feed;
+        updateDashboard();
+        renderSupplierStatus();
+      })
       .catch(() => {});
     const tab = currentAdminTab();
     const xmlView =
@@ -709,7 +715,7 @@
             return false;
           }
         })());
-    refresh().catch(() => {});
+    if (tab === "products" && !xmlView) ensureManualProducts().catch(() => {});
     if (tab === "overview") loadDigitalDashboard().catch(() => {});
     if (tab === "orders") loadAdminOrders().catch(() => {});
     if (tab === "calendar") loadCalendarMonth().catch(() => {});
@@ -782,6 +788,14 @@
     const newProductBtn = document.getElementById("newProductBtn");
     if (newProductBtn && name !== "products") newProductBtn.hidden = true;
     if (name === "xml" && token) loadSupplierData().catch(() => {});
+    if (name === "products" && token) {
+      let view = "manual";
+      try {
+        const saved = sessionStorage.getItem("patygo_products_view");
+        if (saved === "manual" || saved === "xml") view = saved;
+      } catch (_) {}
+      if (view === "manual") ensureManualProducts().catch(() => {});
+    }
     if (name === "overview" && token) loadDigitalDashboard().catch(() => {});
     if (name === "calendar" && token) {
       loadCalendarMonth().catch(() => {});
@@ -845,6 +859,7 @@
     document.getElementById("adminPageSubtitle").textContent = meta[1];
     const newProductBtn = document.getElementById("newProductBtn");
     if (newProductBtn) newProductBtn.hidden = view !== "manual";
+    if (view === "manual" && token) ensureManualProducts().catch(() => {});
     if (view === "xml") {
       renderSupplierProducts();
       if (token) {
@@ -1226,6 +1241,13 @@
     setText("dashOrdersFailed", String(commerce.ordersFailed || 0));
     setText("dashOrdersPending", String(commerce.ordersPending || 0));
     setText("dashConversionRate", "%" + (analytics.conversionRate || 0));
+    if (payload.catalog) {
+      catalogCounts = {
+        manualCount: Number(payload.catalog.manualCount) || 0,
+        manualActiveCount: Number(payload.catalog.manualActiveCount) || 0,
+      };
+      updateDashboard();
+    }
 
     const noteEl = document.getElementById("dashLeadsNote");
     if (noteEl) {
@@ -1506,7 +1528,9 @@
   }
 
   function updateDashboard() {
-    const activeManual = products.filter((item) => item.active !== false).length;
+    const activeManual = productsLoaded
+      ? products.filter((item) => item.active !== false).length
+      : Number(catalogCounts.manualActiveCount) || 0;
     const activeSupplier = Number(supplierPoolMeta.activeCount) || 0;
     const catalogCount =
       Number(supplierPoolMeta.catalogCount) ||
@@ -1518,7 +1542,9 @@
       .filter(Boolean)
       .sort()
       .at(-1);
-    document.getElementById("dashboardProductCount").textContent = String(products.length);
+    document.getElementById("dashboardProductCount").textContent = String(
+      productsLoaded ? products.length : Number(catalogCounts.manualCount) || 0
+    );
     document.getElementById("dashboardActiveCount").textContent = String(
       activeManual + activeSupplier
     );
@@ -1612,16 +1638,10 @@
       if (input("criticalStock")) {
         input("criticalStock").value = String(slot.criticalStockQty || 0);
       }
-      if (input("scheduleStart")) {
-        input("scheduleStart").value = minuteToTimeValue(slot.scheduleStartMinute);
-      }
-      if (input("scheduleInterval")) {
-        input("scheduleInterval").value = String(slot.scheduleIntervalMinutes || 180);
-      }
       if (field("scheduleHelp")) {
         field("scheduleHelp").textContent = formatSchedulePreview(
-          input("scheduleStart") && input("scheduleStart").value,
-          input("scheduleInterval") && input("scheduleInterval").value,
+          "",
+          "",
           slot.schedule && slot.schedule.times
         );
       }
@@ -2298,7 +2318,7 @@
   async function loadSupplierData() {
     if (!siteCategories.length) await loadSiteCategories();
     const results = await Promise.all([
-      api("/api/admin/supplier/status"),
+      api("/api/admin/supplier/status?feed=1"),
       api("/api/admin/supplier/products?" + supplierQueryString()),
     ]);
     supplierSlots = Array.isArray(results[0].slots)
@@ -2342,10 +2362,22 @@
     await loadSupplierData();
   }
 
+  let productsLoaded = false;
+  let catalogCounts = { manualCount: 0, manualActiveCount: 0 };
+
   async function refresh() {
     const data = await api("/api/admin/products");
     products = Array.isArray(data.products) ? data.products : [];
+    productsLoaded = true;
     renderList();
+  }
+
+  async function ensureManualProducts() {
+    if (productsLoaded) {
+      renderList();
+      return;
+    }
+    await refresh();
   }
 
   function notifySite() {
@@ -2367,6 +2399,7 @@
       body: JSON.stringify({ products: list }),
     });
     products = data.products || list;
+    productsLoaded = true;
     renderList();
     notifySite();
     const target = isProductModalOpen() ? formNote : catalogNote;
@@ -2506,24 +2539,6 @@
   });
 
   document.querySelectorAll(".supplier-settings-form").forEach((form) => {
-    const startEl = form.querySelector('[data-slot-input="scheduleStart"]');
-    const intervalEl = form.querySelector('[data-slot-input="scheduleInterval"]');
-    const helpEl = form.querySelector('[data-slot-field="scheduleHelp"]');
-    function previewSchedule() {
-      if (!helpEl) return;
-      helpEl.textContent = formatSchedulePreview(
-        startEl && startEl.value,
-        intervalEl && intervalEl.value
-      );
-    }
-    if (startEl) {
-      startEl.addEventListener("input", previewSchedule);
-      startEl.addEventListener("change", previewSchedule);
-    }
-    if (intervalEl) {
-      intervalEl.addEventListener("input", previewSchedule);
-      intervalEl.addEventListener("change", previewSchedule);
-    }
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const slotId = form.dataset.slotId;
@@ -2532,8 +2547,6 @@
       const margin = Number(form.querySelector('[data-slot-input="margin"]').value);
       const criticalStockEl = form.querySelector('[data-slot-input="criticalStock"]');
       const criticalStockQty = criticalStockEl ? Number(criticalStockEl.value) : undefined;
-      const scheduleStartEl = form.querySelector('[data-slot-input="scheduleStart"]');
-      const scheduleIntervalEl = form.querySelector('[data-slot-input="scheduleInterval"]');
       const button = ev.submitter || form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
@@ -2543,8 +2556,6 @@
             slotId,
             globalMarginPercent: margin,
             criticalStockQty,
-            scheduleStart: scheduleStartEl ? scheduleStartEl.value : undefined,
-            scheduleIntervalMinutes: scheduleIntervalEl ? Number(scheduleIntervalEl.value) : undefined,
           }),
         });
         await loadSupplierData();

@@ -45,12 +45,21 @@ test("admin supplier APIs require authentication and return feed status", async 
     payload.slots.map((slot) => slot.id),
     ["supplier-1", "supplier-2", "supplier-3"]
   );
-  assert.equal(typeof payload.feed.activeCount, "number");
-  assert.ok(Array.isArray(payload.feed.issues));
-  assert.equal(typeof payload.feed.catalogActiveCount, "number");
-  assert.equal(typeof payload.feed.reasonCounts, "object");
-  assert.equal(payload.feed.publicUrl, baseUrl + "/api/feeds/akakce.xml");
-  assert.ok(payload.feed.catalogActiveCount >= payload.feed.activeCount);
+  assert.equal(typeof payload.feed.publicUrl, "string");
+  assert.equal(payload.feed.publicUrl.endsWith("/api/feeds/akakce.xml"), true);
+  assert.equal(payload.feed.activeCount, undefined);
+
+  const statusFeed = await fetch(baseUrl + "/api/admin/supplier/status?feed=1", {
+    headers: { Authorization: "Bearer " + session.token },
+  });
+  assert.equal(statusFeed.status, 200);
+  const feedPayload = await statusFeed.json();
+  assert.equal(typeof feedPayload.feed.activeCount, "number");
+  assert.ok(Array.isArray(feedPayload.feed.issues));
+  assert.equal(typeof feedPayload.feed.catalogActiveCount, "number");
+  assert.equal(typeof feedPayload.feed.reasonCounts, "object");
+  assert.equal(feedPayload.feed.publicUrl, baseUrl + "/api/feeds/akakce.xml");
+  assert.ok(feedPayload.feed.catalogActiveCount >= feedPayload.feed.activeCount);
 
   const analytics = await fetch(baseUrl + "/api/admin/analytics?days=30", {
     headers: { Authorization: "Bearer " + session.token },
@@ -69,6 +78,8 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.ok(dash.analytics.pageViews >= 1);
   assert.equal(typeof dash.commerce.revenue, "number");
   assert.equal(typeof dash.commerce.aov, "number");
+  assert.equal(typeof dash.catalog.manualCount, "number");
+  assert.equal(typeof dash.catalog.manualActiveCount, "number");
   assert.equal(dash.process.apiReachable, true);
   assert.equal(typeof dash.process.uptimeSec, "number");
   assert.ok(dash.leadsNote);

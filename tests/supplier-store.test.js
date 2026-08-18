@@ -334,6 +334,7 @@ test("supplier settings persist XML schedule start and interval", () => {
     assert.equal(initial.scheduleIntervalMinutes, 180);
     assert.deepEqual(initial.scheduleTimes, ["08:00", "11:00", "16:00", "21:00", "23:30"]);
     const saved = store.setSettings({
+      scheduleMode: "interval",
       scheduleStart: "09:00",
       scheduleIntervalMinutes: 120,
     });

@@ -853,6 +853,29 @@ function enrichSupplierProducts(products) {
   });
 }
 
+function akakceFeedPublicMeta() {
+  return {
+    path: "/api/feeds/akakce.xml",
+    publicUrl: SITE_BASE_URL.replace(/\/+$/, "") + "/api/feeds/akakce.xml",
+    format: "Akakce v1.3",
+  };
+}
+
+function akakceFeedFullSummary() {
+  return buildAkakceFeedSummary(mergedProducts(false), {
+    siteBaseUrl: SITE_BASE_URL,
+    mirrorIndex: loadMirrorIndex(DATA_ROOT),
+  });
+}
+
+function manualCatalogCounts() {
+  const list = loadProducts();
+  return {
+    manualCount: list.length,
+    manualActiveCount: list.filter((item) => item && item.active !== false).length,
+  };
+}
+
 function getSession(req) {
   const h = req.headers.authorization || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : "";
@@ -1678,10 +1701,13 @@ async function handleApi(req, res, urlPath) {
       },
       leadsNote:
         "Talep sayısı, formun FormSubmit ile başarıyla gönderildiği anları sayar. Posta kutusu teslimatı FormSubmit/e-posta sağlayıcısına bağlıdır.",
+      catalog: manualCatalogCounts(),
     });
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/supplier/status") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const includeFeed = requestUrl.searchParams.get("feed") === "1";
     const slots = supplierManager.listSlots();
     const primary = slots[0] || {};
     return json(res, 200, {
@@ -1690,10 +1716,7 @@ async function handleApi(req, res, urlPath) {
       schedule: primary.schedule || scheduleSummary(),
       nextScheduled: primary.nextScheduled || getNextScheduledAt(new Date()),
       yesterdayXmlAlert: xmlFetchDigest.getYesterdayAlert(new Date()),
-      feed: buildAkakceFeedSummary(mergedProducts(false), {
-        siteBaseUrl: SITE_BASE_URL,
-        mirrorIndex: loadMirrorIndex(DATA_ROOT),
-      }),
+      feed: includeFeed ? akakceFeedFullSummary() : akakceFeedPublicMeta(),
     });
   }
 
@@ -1797,9 +1820,6 @@ async function handleApi(req, res, urlPath) {
       const settings = supplierManager.setSettings(body.slotId || "supplier-1", {
         globalMarginPercent: body.globalMarginPercent,
         criticalStockQty: body.criticalStockQty,
-        scheduleStart: body.scheduleStart,
-        scheduleStartMinute: body.scheduleStartMinute,
-        scheduleIntervalMinutes: body.scheduleIntervalMinutes,
       });
       invalidateStorefrontCatalog();
       warmStorefrontCatalog();
