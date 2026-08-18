@@ -1550,6 +1550,8 @@ async function handleApi(req, res, urlPath) {
         scheduleStartMinute: body.scheduleStartMinute,
         scheduleIntervalMinutes: body.scheduleIntervalMinutes,
       });
+      invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
       return json(res, 200, {
         ok: true,
         settings,
