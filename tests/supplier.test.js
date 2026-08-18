@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { parseSupplierXml, isPrivateIp, decodeXmlBytes } = require("../lib/supplier");
-const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml } = require("../lib/akakce");
+const { analyzeAkakceProducts, buildAkakceFeedSummary, buildAkakceXml, formatAkakceProductName } = require("../lib/akakce");
 
 function feedReadyProduct(overrides) {
   return Object.assign(
@@ -236,10 +236,48 @@ test("Akakce feed uses v1.3 products schema and escapes text", () => {
   assert.match(xml, /<shipPrice>7\.90<\/shipPrice>/);
   assert.match(xml, /<dayOfDelivery>3<\/dayOfDelivery>/);
   assert.match(xml, /<productCategory>.*Notebooklar<\/productCategory>/);
-  assert.match(xml, /Ekran &amp; Klavye &lt;Set&gt;/);
+  assert.match(xml, /<name>Patygo Ekran &amp; Klavye &lt;Set&gt;<\/name>/);
+  assert.match(xml, /<productBrand>Patygo<\/productBrand>/);
   assert.match(xml, /<description><!\[CDATA\[Kurumsal "set"\]\]><\/description>/);
   assert.doesNotMatch(xml, /Urunler|UrunKodu|AnaKategori|bilgisayarim/i);
   assert.doesNotMatch(xml, /Gizli/);
+});
+
+test("Akakce product names follow brand + cleaned title format", () => {
+  assert.equal(
+    formatAkakceProductName({
+      brand: "INTEL",
+      name: "INTEL CORE I3 10100 SOKET 1200 İŞLEMCİ BOX",
+    }),
+    "Intel Core i3 10100 Soket 1200 İşlemci Box"
+  );
+  assert.equal(
+    formatAkakceProductName({
+      brand: "Intel",
+      name: "Intel Core i9 13900KF Kutulu Box İşlemci - - BX8071513900KF",
+    }),
+    "Intel Core i9 13900KF Kutulu Box İşlemci - BX8071513900KF"
+  );
+  assert.equal(
+    formatAkakceProductName({
+      brand: "EPSON",
+      name: "LabelWorks LW-K400 Termal Transfer Etiket Yazıcı en ucuz",
+    }),
+    "Epson LabelWorks LW-K400 Termal Transfer Etiket Yazıcı"
+  );
+  const xml = buildAkakceXml(
+    [
+      feedReadyProduct({
+        id: "name-1",
+        brand: "ASUS",
+        name: "ZE550KL ZENFONE 2 LASER SİYAH",
+      }),
+    ],
+    { siteBaseUrl: "https://patygoteknoloji.com" }
+  );
+  assert.match(xml, /<name>Asus ZE550KL Zenfone 2 Laser Siyah<\/name>/);
+  assert.match(xml, /<productBrand>Asus<\/productBrand>/);
+  assert.doesNotMatch(xml, /en ucuz|bilgisayarim/i);
 });
 
 test("Akakce feed excludes out-of-stock and incomplete products with diagnostics", () => {
