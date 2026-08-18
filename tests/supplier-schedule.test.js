@@ -9,12 +9,12 @@ const {
 } = require("../lib/supplier-schedule");
 const { analyzeAkakceProducts } = require("../lib/akakce");
 
-test("supplier schedule defaults to 08:00 every 180 minutes", () => {
-  assert.deepEqual(SCHEDULE_MINUTES, [8 * 60, 11 * 60, 14 * 60, 17 * 60, 20 * 60]);
+test("supplier schedule defaults to fixed Istanbul pull times", () => {
+  assert.deepEqual(SCHEDULE_MINUTES, [8 * 60, 11 * 60, 16 * 60, 21 * 60, 23 * 60 + 30]);
   const summary = scheduleSummary();
   assert.match(summary.summary, /08:00/);
-  assert.match(summary.summary, /20:00/);
-  assert.equal(summary.intervalMinutes, 180);
+  assert.match(summary.summary, /23:30/);
+  assert.equal(summary.mode, "fixed");
   assert.equal(summary.dailyPullCount, 5);
 });
 

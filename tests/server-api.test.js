@@ -198,6 +198,51 @@ test("legacy patygo-admin env password maps to 1234 for login", async (t) => {
   assert.equal(updated.status, 200);
 });
 
+test("production weak admin password requires change on next login", async (t) => {
+  const { baseUrl } = await spawnTestServer(t, {
+    NODE_ENV: "production",
+    ADMIN_PASSWORD: "1234",
+    SITE_BASE_URL: "https://patygoteknoloji.com",
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: "1234" }),
+  });
+  assert.equal(login.status, 200);
+  const body = await login.json();
+  assert.equal(body.mustChangePassword, true);
+  const me = await fetch(baseUrl + "/api/admin/me", {
+    headers: { Authorization: "Bearer " + body.token },
+  });
+  assert.equal(me.status, 200);
+  const profile = await me.json();
+  assert.equal(profile.mustChangePassword, true);
+  const blocked = await fetch(baseUrl + "/api/admin/products", {
+    headers: { Authorization: "Bearer " + body.token },
+  });
+  assert.equal(blocked.status, 403);
+  const changed = await fetch(baseUrl + "/api/admin/change-password", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + body.token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      currentPassword: "1234",
+      newPassword: "panel-strong-pass",
+      confirmPassword: "panel-strong-pass",
+    }),
+  });
+  assert.equal(changed.status, 200);
+  const after = await fetch(baseUrl + "/api/admin/me", {
+    headers: { Authorization: "Bearer " + body.token },
+  });
+  const afterBody = await after.json();
+  assert.equal(afterBody.mustChangePassword, false);
+});
+
 test("agent-ops routes are gone", async (t) => {
   const { baseUrl } = await spawnTestServer(t, {
     ADMIN_PASSWORD: "test-admin-password",

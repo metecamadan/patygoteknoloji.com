@@ -143,6 +143,14 @@
   }
   const loginView = document.getElementById("loginView");
   const panelView = document.getElementById("panelView");
+  const passwordChangeGate = document.getElementById("passwordChangeGate");
+  const passwordChangeForm = document.getElementById("passwordChangeForm");
+  const passwordChangeReason = document.getElementById("passwordChangeReason");
+  const passwordChangeNote = document.getElementById("passwordChangeNote");
+  const xmlYesterdayAlert = document.getElementById("xmlYesterdayAlert");
+  const xmlYesterdayAlertTitle = document.getElementById("xmlYesterdayAlertTitle");
+  const xmlYesterdayAlertBody = document.getElementById("xmlYesterdayAlertBody");
+  const xmlYesterdayAlertDismiss = document.getElementById("xmlYesterdayAlertDismiss");
   const loginForm = document.getElementById("loginForm");
   const loginNote = document.getElementById("loginNote");
   const productList = document.getElementById("productList");
@@ -562,6 +570,10 @@
         endSession("Oturum süresi doldu. Tekrar giriş yapın.");
         throw new Error("Oturum süresi doldu. Tekrar giriş yapın.");
       }
+      if (res.status === 403 && data.mustChangePassword && token && !path.includes("/api/admin/change-password")) {
+        showPasswordChangeGate(true, data.error || data.passwordChangeReason || "");
+        throw new Error(data.error || "Panel şifresi güncellenmeli.");
+      }
       if (!res.ok) throw new Error(data.error || "İstek başarısız (" + res.status + ")");
       touchActivity();
       return data;
@@ -621,8 +633,71 @@
     return "overview";
   }
 
-  function bootAuthedWorkspace() {
+  function showPasswordChangeGate(on, reason) {
+    if (!passwordChangeGate) return;
+    passwordChangeGate.hidden = !on;
+    if (passwordChangeReason && reason) {
+      passwordChangeReason.textContent = reason;
+    }
+    if (on && passwordChangeNote) passwordChangeNote.textContent = "";
+  }
+
+  function renderXmlYesterdayAlert(alert) {
+    if (!xmlYesterdayAlert) return;
+    if (!alert || !alert.headline) {
+      xmlYesterdayAlert.hidden = true;
+      return;
+    }
+    xmlYesterdayAlert.hidden = false;
+    if (xmlYesterdayAlertTitle) {
+      xmlYesterdayAlertTitle.textContent = alert.headline;
+    }
+    if (xmlYesterdayAlertBody) {
+      const lines = [];
+      lines.push(
+        (alert.date || "Dün") +
+          ": " +
+          alert.failureCount +
+          " başarısız / " +
+          alert.totalAttempts +
+          " deneme."
+      );
+      if (alert.quotaCount) {
+        lines.push("Kota: " + alert.quotaCount + " kez.");
+      }
+      if (Array.isArray(alert.failures) && alert.failures.length) {
+        alert.failures.slice(0, 3).forEach((row) => {
+          lines.push((row.dueKey || row.slotId || "XML") + " — " + (row.error || "Hata"));
+        });
+      }
+      xmlYesterdayAlertBody.textContent = lines.join(" ");
+    }
+    if (xmlYesterdayAlertDismiss) {
+      xmlYesterdayAlertDismiss.dataset.alertDate = alert.date || "";
+    }
+  }
+
+  async function bootAuthedWorkspace() {
+    try {
+      const me = await api("/api/admin/me");
+      if (me.mustChangePassword) {
+        showPasswordChangeGate(true, me.passwordChangeReason || "");
+        showPanel(true);
+        return;
+      }
+      showPasswordChangeGate(false);
+    } catch (err) {
+      if (err && /şifre|password/i.test(String(err.message || ""))) {
+        showPanel(true);
+        return;
+      }
+      endSession(err.message || "Oturum açılamadı.");
+      return;
+    }
     showPanel(true);
+    api("/api/admin/supplier/status")
+      .then((data) => renderXmlYesterdayAlert(data.yesterdayXmlAlert))
+      .catch(() => {});
     const tab = currentAdminTab();
     const xmlView =
       tab === "xml" ||
@@ -1077,18 +1152,9 @@
 
   function formatSchedulePreview(startValue, intervalValue, knownTimes) {
     if (Array.isArray(knownTimes) && knownTimes.length) {
-      return knownTimes.join(", ") + " — son okuma 20:00’ı geçmez.";
+      return knownTimes.join(", ") + " (günde " + knownTimes.length + " kez, İstanbul)";
     }
-    const match = String(startValue || "08:00").match(/^(\d{1,2}):(\d{2})$/);
-    const startMinute = match ? Number(match[1]) * 60 + Number(match[2]) : 8 * 60;
-    const interval = Math.max(30, Math.min(720, Math.floor(Number(intervalValue) || 180)));
-    const labels = [];
-    for (let t = startMinute; t <= 20 * 60; t += interval) {
-      labels.push(minuteToTimeValue(t));
-      if (labels.length >= 16) break;
-    }
-    if (!labels.length) labels.push(minuteToTimeValue(startMinute));
-    return labels.join(", ") + " — son okuma 20:00’ı geçmez.";
+    return "08:00, 11:00, 16:00, 21:00, 23:30 (günde 5 kez, İstanbul)";
   }
 
   function emptyPoolQuotaMessage() {
@@ -2251,6 +2317,7 @@
       limit: Number(results[1].limit) || POOL_PAGE_SIZE,
     };
     supplierPoolPage = supplierPoolMeta.page;
+    renderXmlYesterdayAlert(results[0].yesterdayXmlAlert);
     const scheduleHint = document.getElementById("supplierScheduleHint");
     if (scheduleHint && results[0].schedule && results[0].nextScheduled) {
       scheduleHint.textContent =
@@ -2699,6 +2766,40 @@
     .getElementById("supplierBulkDisable")
     .addEventListener("click", () => bulkSupplierStatus(false));
 
+  if (passwordChangeForm) {
+    passwordChangeForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const currentPassword = document.getElementById("currentPasswordChange").value;
+      const newPassword = document.getElementById("newPasswordChange").value;
+      const confirmPassword = document.getElementById("confirmPasswordChange").value;
+      note(passwordChangeNote, "", "Kaydediliyor…");
+      try {
+        await api("/api/admin/change-password", {
+          method: "POST",
+          body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+        });
+        showPasswordChangeGate(false);
+        note(passwordChangeNote, "ok", "Şifre güncellendi.");
+        await bootAuthedWorkspace();
+      } catch (err) {
+        note(passwordChangeNote, "err", err.message || "Şifre güncellenemedi.");
+      }
+    });
+  }
+
+  if (xmlYesterdayAlertDismiss) {
+    xmlYesterdayAlertDismiss.addEventListener("click", async () => {
+      const date = xmlYesterdayAlertDismiss.dataset.alertDate || "";
+      try {
+        await api("/api/admin/supplier/xml-alert/dismiss", {
+          method: "POST",
+          body: JSON.stringify({ date }),
+        });
+      } catch (_) {}
+      if (xmlYesterdayAlert) xmlYesterdayAlert.hidden = true;
+    });
+  }
+
   loginForm.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const btn = loginForm.querySelector('button[type="submit"]');
@@ -2715,7 +2816,7 @@
       });
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
-      bootAuthedWorkspace();
+      await bootAuthedWorkspace();
       emptyForm();
       note(loginNote, "", "");
     } catch (err) {

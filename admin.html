@@ -40,6 +40,27 @@
   </div>
 
   <div id="panelView" class="admin-panel" hidden>
+    <div id="passwordChangeGate" class="admin-password-gate" hidden>
+      <form id="passwordChangeForm" class="admin-login-card" method="post" action="#">
+        <h1>Panel şifresini güncelleyin</h1>
+        <p id="passwordChangeReason" class="admin-hint">Güvenlik için en az 12 karakterli yeni bir şifre belirleyin.</p>
+        <label for="currentPasswordChange">Mevcut şifre</label>
+        <input type="password" id="currentPasswordChange" required autocomplete="current-password" />
+        <label for="newPasswordChange">Yeni şifre</label>
+        <input type="password" id="newPasswordChange" minlength="12" maxlength="120" required autocomplete="new-password" />
+        <label for="confirmPasswordChange">Yeni şifre (tekrar)</label>
+        <input type="password" id="confirmPasswordChange" minlength="12" maxlength="120" required autocomplete="new-password" />
+        <button type="submit" class="btn btn-primary btn-block">Şifreyi kaydet</button>
+        <p class="admin-note" id="passwordChangeNote" role="status"></p>
+      </form>
+    </div>
+    <div id="xmlYesterdayAlert" class="admin-xml-alert" hidden role="alert">
+      <div>
+        <strong id="xmlYesterdayAlertTitle">Dün XML okumalarında sorun vardı</strong>
+        <p id="xmlYesterdayAlertBody"></p>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" id="xmlYesterdayAlertDismiss">Anladım</button>
+    </div>
     <div class="admin-shell">
       <aside class="admin-sidebar">
         <a href="/" class="admin-sidebar-brand" target="_blank" rel="noopener" title="Web sitesini yeni sekmede aç">
@@ -850,7 +871,7 @@
                       </div>
                       <button type="submit" class="btn btn-outline">Uygula</button>
                     </div>
-                    <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 14:00, 17:00, 20:00 — son okuma 20:00’ı geçmez.</p>
+                    <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00, 23:30 — günde 5 kez (İstanbul).</p>
                   </div>
                 </form>
                 <p class="admin-note" data-slot-field="note" role="status"></p>
@@ -889,7 +910,7 @@
                       </div>
                       <button type="submit" class="btn btn-outline">Uygula</button>
                     </div>
-                    <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 14:00, 17:00, 20:00 — son okuma 20:00’ı geçmez.</p>
+                    <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00, 23:30 — günde 5 kez (İstanbul).</p>
                   </div>
                 </form>
                 <p class="admin-note" data-slot-field="note" role="status"></p>
@@ -928,7 +949,7 @@
                       </div>
                       <button type="submit" class="btn btn-outline">Uygula</button>
                     </div>
-                    <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 14:00, 17:00, 20:00 — son okuma 20:00’ı geçmez.</p>
+                    <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00, 23:30 — günde 5 kez (İstanbul).</p>
                   </div>
                 </form>
                 <p class="admin-note" data-slot-field="note" role="status"></p>

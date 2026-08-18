@@ -66,6 +66,12 @@ const {
 } = require("./lib/contact");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
+const {
+  createAdminSecurityStore,
+  updateEnvAdminPassword,
+  MIN_ADMIN_PASSWORD_LENGTH,
+} = require("./lib/admin-security");
+const { createXmlFetchDigestStore } = require("./lib/xml-fetch-digest");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -101,11 +107,27 @@ const ADMIN_PASSWORD =
   process.env.ADMIN_PASSWORD === LEGACY_ADMIN_PASSWORD
     ? DEFAULT_ADMIN_PASSWORD
     : process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? "" : LEGACY_ADMIN_PASSWORD);
-if (!ADMIN_PASSWORD) {
+let runtimeAdminPassword = ADMIN_PASSWORD;
+function getAdminPassword() {
+  return runtimeAdminPassword;
+}
+function setRuntimeAdminPassword(next) {
+  runtimeAdminPassword = String(next || "");
+}
+if (!getAdminPassword()) {
   throw new Error("Canlı ortamda ADMIN_PASSWORD tanımlanmalıdır.");
 }
-if (IS_PRODUCTION && ADMIN_PASSWORD.length < 12) {
-  console.warn("UYARI: ADMIN_PASSWORD kısa; en az 12 karakter güçlü bir parola kullanın.");
+const adminSecurityStore = createAdminSecurityStore(DATA_ROOT);
+const xmlFetchDigest = createXmlFetchDigestStore(DATA_ROOT);
+if (IS_PRODUCTION && adminSecurityStore.shouldForcePasswordChange(getAdminPassword())) {
+  adminSecurityStore.activateForcePasswordChange(
+    "Panel şifresi bir sonraki oturumda güncellenmeli (en az " +
+      MIN_ADMIN_PASSWORD_LENGTH +
+      " karakter)."
+  );
+  console.warn(
+    "UYARI: Panel şifresi zayıf; bir sonraki admin oturumunda güçlü parola istenecek."
+  );
 }
 const BIND_HOST = process.env.BIND_HOST || (IS_PRODUCTION ? "127.0.0.1" : "0.0.0.0");
 const PRODUCTS_FILE = path.join(DATA_ROOT, "assets", "data", "products.json");
@@ -876,6 +898,31 @@ function requireOwner(req, res) {
   return true;
 }
 
+function passwordChangeBlocksAdmin(req, res, pathName) {
+  const session = getSession(req);
+  if (!session || !session.mustChangePassword) return false;
+  const allowed = new Set([
+    "/api/admin/me",
+    "/api/admin/logout",
+    "/api/admin/change-password",
+  ]);
+  if (allowed.has(pathName)) return false;
+  json(res, 403, {
+    ok: false,
+    error: "Devam etmeden önce panel şifrenizi güncelleyin.",
+    mustChangePassword: true,
+    minPasswordLength: MIN_ADMIN_PASSWORD_LENGTH,
+  });
+  return true;
+}
+
+function sessionMustChangePassword(session) {
+  if (!session) return false;
+  if (session.mustChangePassword === false) return false;
+  if (session.mustChangePassword === true) return true;
+  return adminSecurityStore.shouldForcePasswordChange(getAdminPassword());
+}
+
 async function sendCalendarReminderMail(entry, kind) {
   const to = String((entry && entry.notifyEmail) || "").trim();
   if (!to) throw new Error("Hatırlatıcı e-posta adresi yok.");
@@ -1283,7 +1330,7 @@ async function handleApi(req, res, urlPath) {
         }
       } else {
         const supplied = Buffer.from(password);
-        const expected = Buffer.from(ADMIN_PASSWORD);
+        const expected = Buffer.from(getAdminPassword());
         const matches =
           supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
         if (!matches) {
@@ -1291,13 +1338,25 @@ async function handleApi(req, res, urlPath) {
         }
       }
 
+      const mustChangePassword = adminSecurityStore.shouldForcePasswordChange(getAdminPassword());
       const token = crypto.randomBytes(24).toString("hex");
       sessions.set(token, {
         exp: Date.now() + ADMIN_IDLE_MS,
         userId: user ? user.id : null,
+        mustChangePassword,
       });
       adminLoginAttempts.delete(ip);
-      return json(res, 200, { ok: true, token, user });
+      return json(res, 200, {
+        ok: true,
+        token,
+        user,
+        mustChangePassword,
+        minPasswordLength: MIN_ADMIN_PASSWORD_LENGTH,
+        passwordChangeReason: mustChangePassword
+          ? adminSecurityStore.read().reason ||
+            "Panel şifresi güncellenmeli (en az " + MIN_ADMIN_PASSWORD_LENGTH + " karakter)."
+          : "",
+      });
     } catch (_) {
       return json(res, 400, { ok: false, error: "Geçersiz istek" });
     }
@@ -1314,8 +1373,66 @@ async function handleApi(req, res, urlPath) {
     return json(res, 401, { ok: false, error: "Oturum gerekli" });
   }
 
+  if (
+    urlPath.startsWith("/api/admin/") &&
+    authOk(req) &&
+    passwordChangeBlocksAdmin(req, res, urlPath)
+  ) {
+    return;
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/me") {
-    return json(res, 200, { ok: true, user: sessionUser(req) });
+    const session = getSession(req);
+    return json(res, 200, {
+      ok: true,
+      user: sessionUser(req),
+      mustChangePassword: sessionMustChangePassword(session),
+      minPasswordLength: MIN_ADMIN_PASSWORD_LENGTH,
+      passwordChangeReason: sessionMustChangePassword(session)
+        ? adminSecurityStore.read().reason || ""
+        : "",
+    });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/change-password") {
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const currentPassword = String(body.currentPassword || "");
+      const newPassword = adminSecurityStore.validateNewPassword(body.newPassword);
+      const confirmPassword = String(body.confirmPassword || "");
+      if (newPassword !== confirmPassword) {
+        return json(res, 422, { ok: false, error: "Yeni şifreler eşleşmiyor." });
+      }
+      const authHeader = req.headers.authorization || "";
+      const sessionToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+      const session = getSession(req);
+      const user = sessionUser(req);
+      if (user && user.email) {
+        const authed = adminUserStore.authenticate(user.email, currentPassword);
+        if (!authed) {
+          return json(res, 401, { ok: false, error: "Mevcut şifre hatalı." });
+        }
+        adminUserStore.update(user.id, { password: newPassword });
+      } else {
+        const supplied = Buffer.from(currentPassword);
+        const expected = Buffer.from(getAdminPassword());
+        const matches =
+          supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+        if (!matches) {
+          return json(res, 401, { ok: false, error: "Mevcut şifre hatalı." });
+        }
+        updateEnvAdminPassword(ENV_FILE, newPassword);
+        setRuntimeAdminPassword(newPassword);
+      }
+      adminSecurityStore.clearForcePasswordChange();
+      if (session && sessionToken) {
+        session.mustChangePassword = false;
+        sessions.set(sessionToken, session);
+      }
+      return json(res, 200, { ok: true });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Şifre güncellenemedi." });
+    }
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/users") {
@@ -1572,11 +1689,22 @@ async function handleApi(req, res, urlPath) {
       status: slots[0],
       schedule: primary.schedule || scheduleSummary(),
       nextScheduled: primary.nextScheduled || getNextScheduledAt(new Date()),
+      yesterdayXmlAlert: xmlFetchDigest.getYesterdayAlert(new Date()),
       feed: buildAkakceFeedSummary(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
         mirrorIndex: loadMirrorIndex(DATA_ROOT),
       }),
     });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/supplier/xml-alert/dismiss") {
+    try {
+      const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+      xmlFetchDigest.dismissAlert(body.date);
+      return json(res, 200, { ok: true });
+    } catch (err) {
+      return json(res, 400, { ok: false, error: (err && err.message) || "Uyarı kapatılamadı." });
+    }
   }
 
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/config") {
@@ -2160,6 +2288,7 @@ setTimeout(() => {
 
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,
+  digest: xmlFetchDigest,
   afterRefresh: (slotId) => {
     enqueueXmlCategorySync(slotId);
     scheduleAkakceImageMirror();
