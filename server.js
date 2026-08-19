@@ -1275,7 +1275,8 @@ async function handleApi(req, res, urlPath) {
     const sort = String(requestUrl.searchParams.get("sort") || "").toLowerCase();
     const page = Number(requestUrl.searchParams.get("page") || 1) || 1;
     const hasListingFilters = Boolean(
-      requestUrl.searchParams.get("marka") ||
+      requestUrl.searchParams.get("q") ||
+        requestUrl.searchParams.get("marka") ||
         requestUrl.searchParams.get("minFiyat") ||
         requestUrl.searchParams.get("maxFiyat") ||
         requestUrl.searchParams.get("id") ||
