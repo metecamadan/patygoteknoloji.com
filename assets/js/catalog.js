@@ -1583,31 +1583,4 @@
   window.addEventListener("popstate", () => {
     if (/\/urunler\/?$/i.test(location.pathname || "")) reloadCatalog();
   });
-
-  (function initNavSearch() {
-    var q = readSearchQuery();
-    document.querySelectorAll(".nav-search").forEach(function (form) {
-      var input = form.querySelector('input[name="q"]');
-      if (input && q) input.value = q;
-      var isMobile = window.matchMedia("(max-width: 860px)");
-      function applyMobile(mq) {
-        if (!mq.matches) { form.classList.remove("open"); return; }
-        var btn = form.querySelector('button[type="submit"]');
-        if (!btn) return;
-        btn.addEventListener("click", function (ev) {
-          if (!form.classList.contains("open")) {
-            ev.preventDefault();
-            form.classList.add("open");
-            if (input) input.focus();
-          }
-        });
-      }
-      applyMobile(isMobile);
-      if (input) {
-        input.addEventListener("blur", function () {
-          if (!input.value) form.classList.remove("open");
-        });
-      }
-    });
-  })();
 })();

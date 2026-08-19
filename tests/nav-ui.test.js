@@ -110,6 +110,9 @@ test("header includes a product search form on all public pages", () => {
   });
   assert.match(navCss, /\.nav-search/);
   assert.match(navCss, /\.nav-search:focus-within/);
+  const mainJs = fs.readFileSync(path.join(root, "assets", "js", "main.js"), "utf8");
+  assert.match(mainJs, /\.nav-search/);
+  assert.match(mainJs, /preventDefault\(\)/);
   const catalogJs = fs.readFileSync(path.join(root, "assets", "js", "catalog.js"), "utf8");
   assert.match(catalogJs, /readSearchQuery/);
 });

@@ -286,4 +286,39 @@
     quote.textContent = "Teklif Al";
     document.body.appendChild(quote);
   }
+
+  document.querySelectorAll(".nav-search").forEach((form) => {
+    const input = form.querySelector('input[name="q"]');
+    if (!input) return;
+    try {
+      const q = String(new URLSearchParams(location.search || "").get("q") || "").trim();
+      if (q) input.value = q;
+    } catch (_) {}
+    form.addEventListener("submit", (ev) => {
+      if (!String(input.value || "").trim()) {
+        ev.preventDefault();
+        input.focus();
+      }
+    });
+    const btn = form.querySelector('button[type="submit"]');
+    const mobileMq = window.matchMedia("(max-width: 860px)");
+    if (btn) {
+      btn.addEventListener("click", (ev) => {
+        const term = String(input.value || "").trim();
+        if (!term && mobileMq.matches && !form.classList.contains("open")) {
+          ev.preventDefault();
+          form.classList.add("open");
+          input.focus();
+          return;
+        }
+        if (!term) {
+          ev.preventDefault();
+          input.focus();
+        }
+      });
+    }
+    input.addEventListener("blur", () => {
+      if (mobileMq.matches && !input.value.trim()) form.classList.remove("open");
+    });
+  });
 })();
