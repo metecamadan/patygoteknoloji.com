@@ -57,10 +57,14 @@
   }
 
   window.PatygoAnalytics = { track: trackAnalytics };
-  const detailId = new URLSearchParams(location.search).get("id") || "";
+  const legacyId = new URLSearchParams(location.search).get("id") || "";
+  const detailRoute =
+    window.PatygoCatalog && window.PatygoCatalog.parseProductPath
+      ? window.PatygoCatalog.parseProductPath(location.pathname)
+      : null;
   trackAnalytics(
     "page_view",
-    /urun-detay/i.test(location.pathname) && detailId ? { productId: detailId } : undefined
+    legacyId || detailRoute ? { productId: legacyId || "" } : undefined
   );
 
   const header = document.querySelector(".site-header");

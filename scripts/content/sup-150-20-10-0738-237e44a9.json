@@ -7,6 +7,8 @@
     "https://psref.lenovo.com/syspool/Sys/PDF/Lenovo/Lenovo_V15_G4_IRU/Lenovo_V15_G4_IRU_Spec.html",
     "https://www.idefix.com/lenovo-v15-g4-iru-83a100kxtr-i7-1355u-8-gb-512-gb-ssd-iris-xe-graphics-156-full-hd-notebook-p-4411960"
   ],
+  "urlSlug": "lenovo-v15-83a100kxtr-i7-1355u-40gb",
+  "urlCategorySegment": "notebook",
   "description": "Lenovo V15 G4 IRU (83A100KXTR) kurumsal notebook. Teknik satırlar Lenovo PSREF ve üretici model verileriyle doğrulanmıştır; 40 GB RAM tedarikçi bellek yükseltmesidir.",
   "details": "__SPEC_TABLE__\nModel|83A100KXTR\nSeri|Lenovo V15 G4 IRU\nİşlemci|Intel Core i7-1355U (13. nesil, 10 çekirdek / 12 iş parçacığı)\nİşlemci hızı|P-çekirdek 1,7–5,0 GHz · E-çekirdek 1,2–3,7 GHz\nÖnbellek|12 MB Intel Smart Cache\nEkran kartı|Intel Iris Xe Graphics\nBellek|40 GB (yükseltmeli; fabrika 8 GB DDR4-3200 lehimli)\nDepolama|512 GB M.2 2242 PCIe NVMe SSD\nEkran|15,6\" FHD (1920×1080) TN, 250 nit, parlama önleyici\nRenk gamı|%45 NTSC\nKablosuz|Wi-Fi 6 (802.11ax 2×2), Bluetooth 5.2\nUSB|1× USB-C 3.2 Gen 1, 1× USB 3.2 Gen 1, 1× USB 2.0\nVideo çıkış|HDMI 1.4b, USB-C DisplayPort 1.2\nAğ|Ethernet RJ-45\nSes|Dolby Audio stereo (2× 1,5 W), 3,5 mm combo jak\nKlavye|Numerik tuş takımı\nBoyutlar|359,2 × 235,8 × 19,9 mm\nAğırlık|Yaklaşık 1,65 kg\nRenk|Siyah\nİşletim sistemi|FreeDOS"
 }

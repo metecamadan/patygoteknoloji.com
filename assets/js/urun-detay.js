@@ -1,7 +1,20 @@
 (function () {
   "use strict";
   const root = document.getElementById("detailRoot");
-  const id = new URLSearchParams(location.search).get("id") || "";
+
+  function resolveDetailRoute() {
+    const legacyId = new URLSearchParams(location.search).get("id") || "";
+    const productPath =
+      window.PatygoCatalog && window.PatygoCatalog.parseProductPath
+        ? window.PatygoCatalog.parseProductPath(location.pathname)
+        : null;
+    if (productPath) return { mode: "path", path: productPath.path };
+    if (legacyId) return { mode: "id", id: legacyId };
+    return { mode: "none" };
+  }
+
+  const detailRoute = resolveDetailRoute();
+  const id = detailRoute.mode === "id" ? detailRoute.id : "";
 
   function parseSpecChips(name) {
     if (window.PatygoDetailSpecs && window.PatygoDetailSpecs.parseProductSpecChips) {
@@ -183,6 +196,7 @@
     }
 
     document.title = product.name + " | Patygo Teknoloji";
+    upsertCanonical(product.urlPath || location.pathname);
     const metaDesc = document.querySelector('meta[name="description"]');
     const seoBlurb = String(product.description || product.details || product.name)
       .replace(/\s+/g, " ")
@@ -358,9 +372,24 @@
     elNode.textContent = JSON.stringify(data);
   }
 
+  function upsertCanonical(urlPath) {
+    if (!urlPath) return;
+    let link = document.querySelector('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "canonical";
+      document.head.appendChild(link);
+    }
+    link.href = "https://patygoteknoloji.com" + urlPath;
+  }
+
   function upsertProductJsonLd(product, trail) {
     const pageUrl =
-      "https://patygoteknoloji.com/urun-detay?id=" + encodeURIComponent(product.id);
+      "https://patygoteknoloji.com" +
+      (product.urlPath ||
+        (window.PatygoCatalog && window.PatygoCatalog.productHref
+          ? window.PatygoCatalog.productHref(product)
+          : "/urun-detay?id=" + encodeURIComponent(product.id)));
     const images = (
       Array.isArray(product.images) ? product.images : [product.image]
     ).filter(Boolean);
@@ -412,11 +441,14 @@
   }
 
   async function loadDetail() {
-    if (!id) {
+    if (detailRoute.mode === "none") {
       render(null, []);
       return;
     }
-    const cached = (window.PatygoCatalog.byId && window.PatygoCatalog.byId[id]) || null;
+    const cached =
+      detailRoute.mode === "id" && window.PatygoCatalog.byId
+        ? window.PatygoCatalog.byId[detailRoute.id]
+        : null;
     const cats =
       (window.PatygoCatalog._lastCategories && window.PatygoCatalog._lastCategories.length
         ? window.PatygoCatalog._lastCategories
@@ -429,7 +461,11 @@
 
     let product = cached;
     try {
-      const res = await fetch("/api/products?id=" + encodeURIComponent(id), {
+      const fetchUrl =
+        detailRoute.mode === "path"
+          ? "/api/products?path=" + encodeURIComponent(detailRoute.path)
+          : "/api/products?id=" + encodeURIComponent(detailRoute.id);
+      const res = await fetch(fetchUrl, {
         cache: "default",
         signal: AbortSignal.timeout(8000),
       });
@@ -440,6 +476,13 @@
         window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
         window.PatygoCatalog.byId[fresh.id] = fresh;
         product = fresh;
+        if (
+          fresh.urlPath &&
+          detailRoute.mode === "id" &&
+          location.pathname.indexOf(fresh.urlPath) !== 0
+        ) {
+          history.replaceState(null, "", fresh.urlPath);
+        }
         render(fresh, cats);
       } else if (!cached) {
         render(null, cats);

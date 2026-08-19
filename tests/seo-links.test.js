@@ -44,7 +44,7 @@ test("sitemap lists category pages and omits checkout surfaces", () => {
 
 test("product cards wrap media in a real product-detail href", () => {
   assert.match(catalogJs, /product-card-media/);
-  assert.match(catalogJs, /visualWrap\.href = window\.PatygoCatalog\.productHref\(product\.id\)/);
+  assert.match(catalogJs, /visualWrap\.href = window\.PatygoCatalog\.productHref\(product\)/);
   assert.match(catalogJs, /img\.alt = product\.name \|\| brand/);
   assert.match(catalogJs, /link\.href = href/);
   assert.match(catalogJs, /searchParams\.set\("sayfa"/);
@@ -55,7 +55,7 @@ test("product detail breadcrumbs follow ANA / ARA / ALT then the product", () =>
   assert.match(detailJs, /BreadcrumbList/);
   assert.match(detailJs, /"@type": "Product"/);
   assert.match(detailJs, /Ürün kataloğuna dön/);
-  assert.match(detailJs, /\/api\/products\?id=/);
+  assert.match(detailJs, /\/api\/products\?path=/);
   assert.match(catalogJs, /function resolveProductCategoryTrail|resolveProductCategoryTrail\(product/);
   assert.match(catalogJs, /prettyCategoryName/);
 });

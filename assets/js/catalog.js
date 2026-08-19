@@ -63,8 +63,31 @@
       }
       return cat || "";
     },
-    productHref(id) {
-      return "/urun-detay?id=" + encodeURIComponent(id || "");
+    productHref(productOrId) {
+      if (productOrId && typeof productOrId === "object") {
+        if (productOrId.urlPath) return productOrId.urlPath;
+        productOrId = productOrId.id;
+      }
+      const id = String(productOrId || "").trim();
+      if (!id) return "/urunler";
+      const cached =
+        (window.PatygoCatalog.byId && window.PatygoCatalog.byId[id]) || null;
+      if (cached && cached.urlPath) return cached.urlPath;
+      return "/urun-detay?id=" + encodeURIComponent(id);
+    },
+    parseProductPath(pathname) {
+      const parts = String(pathname || "")
+        .split("/")
+        .filter(Boolean);
+      if (parts.length !== 2) return null;
+      const reserved = new Set(["assets", "listing", "media", "api", "admin"]);
+      if (reserved.has(parts[0])) return null;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(parts[0])) return null;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(parts[1])) return null;
+      return { segment: parts[0], slug: parts[1], path: parts[0] + "/" + parts[1] };
+    },
+    isProductDetailPath(pathname) {
+      return Boolean(window.PatygoCatalog.parseProductPath(pathname));
     },
     categoryHref(parentSlug, midSlug, childSlug) {
       const params = new URLSearchParams();
@@ -670,7 +693,7 @@
 
     const title = document.createElement("h3");
     const titleLink = document.createElement("a");
-    titleLink.href = window.PatygoCatalog.productHref(product.id);
+    titleLink.href = window.PatygoCatalog.productHref(product);
     titleLink.addEventListener("pointerenter", () => prefetchProductDetail(product.id), {
       once: true,
     });
@@ -774,7 +797,7 @@
     body.appendChild(actions);
     const visualWrap = document.createElement("a");
     visualWrap.className = "product-card-media";
-    visualWrap.href = window.PatygoCatalog.productHref(product.id);
+    visualWrap.href = window.PatygoCatalog.productHref(product);
     visualWrap.addEventListener("pointerenter", () => prefetchProductDetail(product.id), {
       once: true,
     });
@@ -1394,7 +1417,10 @@
       });
     }
 
-    const onDetailPage = /\/urun-detay\/?$/i.test(path);
+    const onDetailPage =
+      /\/urun-detay\/?$/i.test(path) ||
+      (window.PatygoCatalog.isProductDetailPath &&
+        window.PatygoCatalog.isProductDetailPath(path));
     const onCartPage = /\/sepet\/?$/i.test(path) || /\/odeme\/?$/i.test(path);
 
     const categoriesPromise = loadCategories();

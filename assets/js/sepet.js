@@ -76,7 +76,9 @@
 
       const media = document.createElement("a");
       media.className = "cart-thumb";
-      media.href = "/urun-detay?id=" + encodeURIComponent(product.id);
+      media.href = window.PatygoCatalog
+        ? window.PatygoCatalog.productHref(product)
+        : "/urun-detay?id=" + encodeURIComponent(product.id);
       media.setAttribute("aria-label", product.name + " detayını görüntüle");
       const primaryImage =
         (Array.isArray(product.images) && product.images.find(Boolean)) ||
@@ -98,7 +100,9 @@
       brand.textContent = product.brand;
       const name = document.createElement("h3");
       const nameLink = document.createElement("a");
-      nameLink.href = "/urun-detay?id=" + encodeURIComponent(product.id);
+      nameLink.href = window.PatygoCatalog
+        ? window.PatygoCatalog.productHref(product)
+        : "/urun-detay?id=" + encodeURIComponent(product.id);
       nameLink.textContent = product.name;
       name.appendChild(nameLink);
       const unit = document.createElement("p");

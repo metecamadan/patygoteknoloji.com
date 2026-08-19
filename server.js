@@ -74,6 +74,11 @@ const {
 } = require("./lib/admin-security");
 const { createXmlFetchDigestStore } = require("./lib/xml-fetch-digest");
 const { resolveOpsHealth } = require("./lib/ops-health");
+const {
+  attachProductUrlFields,
+  parseProductRoutePath,
+  resolveProductIdFromRoute,
+} = require("./lib/product-url");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -169,7 +174,14 @@ const supplierManager = createMultiSupplierManager(DATA_ROOT, {
     },
   ],
 });
-const analyticsStore = createAnalyticsStore(DATA_ROOT);
+const analyticsStore = createAnalyticsStore(DATA_ROOT, {
+  resolveProductIdFromPath(pathname) {
+    const route = parseProductRoutePath(pathname);
+    if (!route) return "";
+    const routeIndex = storefrontIndex(false).routeIndex;
+    return resolveProductIdFromRoute(routeIndex, route.segment, route.slug);
+  },
+});
 const orderStore = createOrderStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
@@ -606,7 +618,7 @@ function lookupPublicProductsByIds(productId, idsRaw) {
   const idSet = new Set(ids);
   const manuals = loadProducts().filter((item) => item && idSet.has(item.id));
   const suppliers = ids.map((id) => supplierManager.getProductById(id)).filter(Boolean);
-  return queryPublicCatalog(
+  const result = queryPublicCatalog(
     mergeCatalogProducts(manuals, suppliers, {
       includeInactiveManual: false,
       normalizeProduct,
@@ -614,6 +626,26 @@ function lookupPublicProductsByIds(productId, idsRaw) {
     }),
     { id: productId, ids: idsRaw }
   );
+  const routeIndex = storefrontIndex(false).routeIndex;
+  if (routeIndex && Array.isArray(result.products)) {
+    result.products = result.products.map((item) => attachProductUrlFields(item, routeIndex));
+  }
+  return result;
+}
+
+function lookupPublicProductsByPath(pathValue) {
+  const parts = String(pathValue || "")
+    .split("/")
+    .filter(Boolean);
+  if (parts.length !== 2) {
+    return { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
+  }
+  const routeIndex = storefrontIndex(false).routeIndex;
+  const productId = resolveProductIdFromRoute(routeIndex, parts[0], parts[1]);
+  if (!productId) {
+    return { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
+  }
+  return lookupPublicProductsByIds(productId, "");
 }
 
 function resolveProductNamesByIds(ids) {
@@ -1256,6 +1288,23 @@ async function handleApi(req, res, urlPath) {
     }
     const productId = String(requestUrl.searchParams.get("id") || "").trim();
     const idsRaw = String(requestUrl.searchParams.get("ids") || "").trim();
+    const pathParam = String(requestUrl.searchParams.get("path") || "").trim();
+    if (pathParam) {
+      const queried = lookupPublicProductsByPath(pathParam);
+      return json(
+        res,
+        200,
+        {
+          products: queried.products,
+          total: queried.total,
+          page: queried.page,
+          limit: queried.limit,
+          totalPages: queried.totalPages,
+          updatedAt,
+        },
+        { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
+      );
+    }
     if (productId || idsRaw) {
       const queried = lookupPublicProductsByIds(productId, idsRaw);
       return json(
@@ -2289,6 +2338,36 @@ const server = http.createServer(async (req, res) => {
       return serveNotFound(res, req.method);
     }
     return sendMirroredCatalogImage(res, filePath, req.method);
+  }
+
+  // SEO: /urun-detay?id= → /{kategori}/{slug}
+  if (urlPath === "/urun-detay" || urlPath === "/urun-detay/") {
+    const legacyId = String(requestUrl.searchParams.get("id") || "").trim();
+    if (legacyId) {
+      const routeIndex = storefrontIndex(false).routeIndex;
+      const canonical = routeIndex && routeIndex.byId[legacyId];
+      if (canonical) {
+        return permanentRedirect(res, canonical);
+      }
+    }
+  }
+
+  const productRoute = parseProductRoutePath(urlPath);
+  if (productRoute) {
+    const routeIndex = storefrontIndex(false).routeIndex;
+    const productId = resolveProductIdFromRoute(
+      routeIndex,
+      productRoute.segment,
+      productRoute.slug
+    );
+    if (!productId) {
+      return serveNotFound(res, req.method);
+    }
+    const htmlPath = safeJoin(ROOT, "/urun-detay.html");
+    if (htmlPath && fs.existsSync(htmlPath)) {
+      return sendFile(res, htmlPath, req.method);
+    }
+    return serveNotFound(res, req.method);
   }
 
   serveStatic(req, res, urlPath);

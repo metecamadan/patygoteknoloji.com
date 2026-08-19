@@ -231,7 +231,7 @@ test("Akakce feed uses v1.3 products schema and escapes text", () => {
   assert.match(xml, /<products xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance">/);
   assert.match(xml, /<product>/);
   assert.match(xml, /<sku>test-1<\/sku>/);
-  assert.match(xml, /<url>https:\/\/patygoteknoloji\.com\/urun-detay\?id=test-1<\/url>/);
+  assert.match(xml, /<url>https:\/\/patygoteknoloji\.com\/notebook\/patygo-ekran-klavye-set<\/url>/);
   assert.match(xml, /<price>120\.00<\/price>/);
   assert.match(xml, /<shipPrice>7\.90<\/shipPrice>/);
   assert.match(xml, /<dayOfDelivery>3<\/dayOfDelivery>/);

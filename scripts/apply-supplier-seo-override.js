@@ -24,6 +24,8 @@ if (!contentPath || !fs.existsSync(contentPath)) {
 const content = JSON.parse(fs.readFileSync(contentPath, "utf8"));
 const description = String(content.description || "").trim();
 const details = String(content.details || "").trim();
+const urlSlug = String(content.urlSlug || "").trim();
+const urlCategorySegment = String(content.urlCategorySegment || "").trim();
 if (!description || !details) {
   console.error("content.json must include description and details");
   process.exit(1);
@@ -66,6 +68,8 @@ manager.updateProducts([
     supplierSlot,
     description,
     details,
+    urlSlug: urlSlug || undefined,
+    urlCategorySegment: urlCategorySegment || undefined,
   },
 ]);
 
