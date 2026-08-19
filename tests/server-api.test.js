@@ -279,6 +279,33 @@ test("agent-ops routes are gone", async (t) => {
   assert.equal(ingest.status, 404);
 });
 
+test("product search q parameter filters by text", async (t) => {
+  const password = "test-admin-password";
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  }, {
+    products: [
+      { id: "nb-1", brand: "HP", name: "HP ProBook 450 G10 Notebook", price: 5000, vatPercent: 20, category: "bilgisayar-tablet", active: true, stockQty: 5 },
+      { id: "ram-1", brand: "Kingston", name: "Kingston Fury 16GB DDR5 RAM", price: 800, vatPercent: 20, category: "bilgisayar-bilesenleri", active: true, stockQty: 10 },
+    ],
+  });
+  const match = await fetch(baseUrl + "/api/products?q=notebook");
+  assert.equal(match.status, 200);
+  const matchData = await match.json();
+  assert.equal(matchData.total, 1);
+  assert.match(matchData.products[0].name, /Notebook/i);
+
+  const none = await fetch(baseUrl + "/api/products?q=printer");
+  const noneData = await none.json();
+  assert.equal(noneData.total, 0);
+
+  const multi = await fetch(baseUrl + "/api/products?q=kingston+ddr5");
+  const multiData = await multi.json();
+  assert.equal(multiData.total, 1);
+  assert.match(multiData.products[0].name, /Kingston/i);
+});
+
 test("POST /admin serves login HTML instead of 405", async (t) => {
   const { baseUrl } = await spawnTestServer(t, {
     ADMIN_PASSWORD: "test-admin-password",

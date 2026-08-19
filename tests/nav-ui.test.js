@@ -97,6 +97,23 @@ test("mobile category tab opens sheet below header", () => {
   );
 });
 
+test("header includes a product search form on all public pages", () => {
+  const pages = [
+    "index.html", "urunler.html", "urun-detay.html", "sepet.html",
+    "markalar.html", "iletisim.html", "kvkk.html",
+  ];
+  pages.forEach((file) => {
+    const html = fs.readFileSync(path.join(root, file), "utf8");
+    assert.match(html, /class="nav-search"/, file + " missing .nav-search form");
+    assert.match(html, /name="q"/, file + " missing q input");
+    assert.match(html, /action="\/urunler"/, file + " search action should point to /urunler");
+  });
+  assert.match(navCss, /\.nav-search/);
+  assert.match(navCss, /\.nav-search:focus-within/);
+  const catalogJs = fs.readFileSync(path.join(root, "assets", "js", "catalog.js"), "utf8");
+  assert.match(catalogJs, /readSearchQuery/);
+});
+
 test("nav reads filtered category tree from listing snapshot first", () => {
   assert.match(navJs, /\/listing\/categories\.json/);
   assert.match(navJs, /NAV_SOURCE_FALLBACK/);

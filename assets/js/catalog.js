@@ -196,6 +196,10 @@
     };
   }
 
+  function readSearchQuery() {
+    return String(new URLSearchParams(location.search || "").get("q") || "").trim();
+  }
+
   function readFacetQuery() {
     const params = new URLSearchParams(location.search || "");
     const brands = String(params.get("marka") || "")
@@ -938,11 +942,13 @@
   async function fetchListingPage(page) {
     const query = readCategoryQuery();
     const facets = readFacetQuery();
+    const q = readSearchQuery();
     const wantsCategory = query.parent || query.mid || query.child;
     return fetchProductPage({
       kategori: wantsCategory ? query.parent : "",
       ara: wantsCategory ? query.mid : "",
       alt: wantsCategory ? query.child : "",
+      q: q,
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
@@ -1257,7 +1263,7 @@
 
   function facetQueryActive() {
     const facets = readFacetQuery();
-    return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat);
+    return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat || readSearchQuery());
   }
 
   async function fetchListingPayload(query, wantsCategory, facets) {
@@ -1265,6 +1271,7 @@
       kategori: wantsCategory ? query.parent : "",
       ara: wantsCategory ? query.mid : "",
       alt: wantsCategory ? query.child : "",
+      q: readSearchQuery(),
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
@@ -1342,6 +1349,7 @@
       kategori: wantsCategory ? query.parent : "",
       ara: wantsCategory ? query.mid : "",
       alt: wantsCategory ? query.child : "",
+      q: readSearchQuery(),
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
@@ -1575,4 +1583,31 @@
   window.addEventListener("popstate", () => {
     if (/\/urunler\/?$/i.test(location.pathname || "")) reloadCatalog();
   });
+
+  (function initNavSearch() {
+    var q = readSearchQuery();
+    document.querySelectorAll(".nav-search").forEach(function (form) {
+      var input = form.querySelector('input[name="q"]');
+      if (input && q) input.value = q;
+      var isMobile = window.matchMedia("(max-width: 860px)");
+      function applyMobile(mq) {
+        if (!mq.matches) { form.classList.remove("open"); return; }
+        var btn = form.querySelector('button[type="submit"]');
+        if (!btn) return;
+        btn.addEventListener("click", function (ev) {
+          if (!form.classList.contains("open")) {
+            ev.preventDefault();
+            form.classList.add("open");
+            if (input) input.focus();
+          }
+        });
+      }
+      applyMobile(isMobile);
+      if (input) {
+        input.addEventListener("blur", function () {
+          if (!input.value) form.classList.remove("open");
+        });
+      }
+    });
+  })();
 })();

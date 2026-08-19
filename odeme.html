@@ -20,6 +20,10 @@
         <a class="brand" href="/" aria-label="Patygo Teknoloji ana sayfa"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji logosu" /></a>
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
+          <form class="nav-search" action="/urunler" method="get" role="search">
+            <input type="search" name="q" placeholder="Ürün ara…" autocomplete="off" aria-label="Ürün ara" />
+            <button type="submit" aria-label="Ara"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+          </form>
           <a href="/urunler" class="btn btn-ghost checkout-continue-link">Alışverişe devam</a>
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
         </div>

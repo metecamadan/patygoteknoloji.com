@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { queryPublicCatalog } = require("../lib/catalog");
+const { queryPublicCatalog, applyTextSearch } = require("../lib/catalog");
 
 const root = path.resolve(__dirname, "..");
 
@@ -76,4 +76,43 @@ test("storefront catalog renders brand and price facets", () => {
   assert.match(script, /btn btn-primary catalog-price-apply/);
   assert.match(script, /btn btn-outline btn-block catalog-facets-toggle/);
   assert.match(script, /prettyBrandName/);
+});
+
+test("applyTextSearch filters products by name and brand with Turkish locale", () => {
+  const items = [
+    product("nb-1", "HP", 5000, { name: "HP ProBook 450 G10 Notebook" }),
+    product("nb-2", "Lenovo", 6000, { name: "Lenovo IdeaPad Slim 3 Notebook" }),
+    product("ram-1", "Kingston", 800, { name: "Kingston Fury 16GB DDR5 RAM" }),
+    product("toner-1", "Canon", 200, { name: "Canon CRG-055H Siyah Toner" }),
+  ];
+  const notebooks = applyTextSearch(items, "notebook");
+  assert.equal(notebooks.length, 2);
+  assert.deepEqual(notebooks.map((p) => p.id).sort(), ["nb-1", "nb-2"]);
+
+  const hp = applyTextSearch(items, "hp notebook");
+  assert.equal(hp.length, 1);
+  assert.equal(hp[0].id, "nb-1");
+
+  const kingston = applyTextSearch(items, "kingston ddr5");
+  assert.equal(kingston.length, 1);
+  assert.equal(kingston[0].id, "ram-1");
+
+  const empty = applyTextSearch(items, "yokboylebir");
+  assert.equal(empty.length, 0);
+
+  const all = applyTextSearch(items, "");
+  assert.equal(all.length, 4);
+});
+
+test("queryPublicCatalog q parameter filters products by text", () => {
+  const items = [
+    product("nb-1", "HP", 5000, { name: "HP ProBook 450 G10 Notebook" }),
+    product("nb-2", "Lenovo", 6000, { name: "Lenovo IdeaPad Slim 3 Notebook" }),
+    product("ram-1", "Kingston", 800, { name: "Kingston Fury 16GB DDR5 RAM" }),
+  ];
+  const result = queryPublicCatalog(items, { q: "notebook", limit: 48 });
+  assert.equal(result.total, 2);
+  assert.ok(result.products.every((p) => /notebook/i.test(p.name)));
+  const none = queryPublicCatalog(items, { q: "printer", limit: 48 });
+  assert.equal(none.total, 0);
 });

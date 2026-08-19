@@ -1304,6 +1304,7 @@ async function handleApi(req, res, urlPath) {
     const queried = queryPublicCatalogIndexed(storefrontIndex(false), {
       id: requestUrl.searchParams.get("id") || "",
       ids: requestUrl.searchParams.get("ids") || "",
+      q: requestUrl.searchParams.get("q") || "",
       featured: requestUrl.searchParams.get("featured") || "",
       kategori: requestUrl.searchParams.get("kategori") || "",
       ara: requestUrl.searchParams.get("ara") || "",
