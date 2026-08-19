@@ -567,6 +567,8 @@ function normalizeProduct(p, fallbackId) {
     siteParent: siteParent || undefined,
     siteMid: siteMid || undefined,
     siteChild: siteChild || undefined,
+    urlSlug: String(p.urlSlug || "").trim().slice(0, 120) || undefined,
+    urlCategorySegment: String(p.urlCategorySegment || "").trim().slice(0, 40) || undefined,
   };
 }
 

@@ -47,6 +47,14 @@ test("route index resolves slug paths and handles collisions", () => {
   assert.equal(resolveProductIdFromRoute(index, "notebook", index.byId.a.split("/").pop()), "a");
 });
 
+test("normalizeProduct keeps SEO urlSlug overrides for route index", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(serverJs, /urlSlug: String\(p\.urlSlug/);
+  assert.match(serverJs, /urlCategorySegment: String\(p\.urlCategorySegment/);
+});
+
 test("parseProductRoutePath accepts two-segment product URLs", () => {
   assert.deepEqual(parseProductRoutePath("/notebook/lenovo-v15-83a100kxtr-i7-1355u-40gb"), {
     segment: "notebook",
