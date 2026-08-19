@@ -89,6 +89,19 @@ test("enrichProductCopy keeps usable XML text and manual overrides", () => {
   assert.match(generated.details, /^__SPEC_TABLE__/);
 });
 
+test("enrichProductCopy replaces title-duplicate XML details with spec table", () => {
+  const title =
+    "Intel Core i3-10100 Soket 1200 3.6GHz 6MB Önbellek 4 Çekirdek UHD630 İşlemci";
+  const enriched = enrichProductCopy({
+    brand: "INTEL",
+    name: title,
+    description: title,
+    details: title,
+  });
+  assert.match(enriched.details, /^__SPEC_TABLE__/);
+  assert.match(enriched.description, /katalog bilgisinden/i);
+});
+
 test("formatSpecTable renders pipe rows", () => {
   const text = formatSpecTable([
     { label: "Bellek", value: "16 GB RAM" },
