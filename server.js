@@ -10,7 +10,7 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
-const { atomicWriteJson } = require("./lib/supplier");
+const { createAdminSessionStore } = require("./lib/admin-sessions");
 const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
@@ -148,6 +148,7 @@ const SITE_BASE_URL = resolveSiteBaseUrl(process.env.SITE_BASE_URL, PORT, IS_PRO
 const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);
 const ADMIN_IDLE_MS =
   Number.isFinite(rawIdleMs) && rawIdleMs > 0 ? rawIdleMs : 30 * 60 * 1000;
+const adminSessionStore = createAdminSessionStore(DATA_ROOT, { idleMs: ADMIN_IDLE_MS });
 const supplierAllowedHosts = String(
   process.env.SUPPLIER_ALLOWED_HOSTS ||
     "www.bilgisayarim.com.tr"
@@ -231,7 +232,6 @@ const BLOCKED_FILES = new Set([
 ]);
 
 const CATEGORIES = new Set(["bilgisayar", "yazici", "kucuk-ev", "beyaz-esya"]);
-const sessions = new Map(); // token -> expiresAt
 
 fs.mkdirSync(path.dirname(PRODUCTS_FILE), { recursive: true });
 fs.mkdirSync(PRODUCTS_IMG_DIR, { recursive: true });
@@ -941,27 +941,27 @@ function manualCatalogCounts() {
   };
 }
 
-function getSession(req) {
+function resolveAdminSession(req) {
+  if (Object.prototype.hasOwnProperty.call(req, "_adminSessionResolved")) {
+    return req._adminSession;
+  }
+  req._adminSessionResolved = true;
   const h = req.headers.authorization || "";
   const token = h.startsWith("Bearer ") ? h.slice(7) : "";
-  if (!token) return null;
-  const raw = sessions.get(token);
-  if (!raw) return null;
-  const exp = typeof raw === "number" ? raw : raw.exp;
-  if (!exp || Date.now() > exp) {
-    sessions.delete(token);
+  if (!token) {
+    req._adminSession = null;
     return null;
   }
-  const next =
-    typeof raw === "number"
-      ? { exp: Date.now() + ADMIN_IDLE_MS, userId: null }
-      : Object.assign({}, raw, { exp: Date.now() + ADMIN_IDLE_MS });
-  sessions.set(token, next);
-  return next;
+  req._adminSession = adminSessionStore.get(token);
+  return req._adminSession;
+}
+
+function getSession(req) {
+  return resolveAdminSession(req);
 }
 
 function authOk(req) {
-  return Boolean(getSession(req));
+  return Boolean(resolveAdminSession(req));
 }
 
 function sessionUser(req) {
@@ -1462,8 +1462,7 @@ async function handleApi(req, res, urlPath) {
         ? false
         : adminSecurityStore.shouldForcePasswordChange(getAdminPassword());
       const token = crypto.randomBytes(24).toString("hex");
-      sessions.set(token, {
-        exp: Date.now() + ADMIN_IDLE_MS,
+      adminSessionStore.create(token, {
         userId: user ? user.id : null,
         mustChangePassword,
       });
@@ -1487,7 +1486,7 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "POST" && urlPath === "/api/admin/logout") {
     const h = req.headers.authorization || "";
     const token = h.startsWith("Bearer ") ? h.slice(7) : "";
-    if (token) sessions.delete(token);
+    if (token) adminSessionStore.remove(token);
     return json(res, 200, { ok: true });
   }
 
@@ -1554,8 +1553,7 @@ async function handleApi(req, res, urlPath) {
       }
       adminSecurityStore.clearForcePasswordChange();
       if (session && sessionToken) {
-        session.mustChangePassword = false;
-        sessions.set(sessionToken, session);
+        adminSessionStore.replace(sessionToken, Object.assign({}, session, { mustChangePassword: false }));
       }
       return json(res, 200, { ok: true });
     } catch (err) {

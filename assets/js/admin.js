@@ -554,6 +554,11 @@
     return "₺" + Math.round(Number(n) || 0).toLocaleString("tr-TR");
   }
 
+  function isAuthSessionError(err) {
+    const msg = String((err && err.message) || "");
+    return /Oturum|oturum|401|giriş yapın|Yetkisiz/i.test(msg);
+  }
+
   async function api(path, options) {
     if (location.protocol === "file:") {
       throw new Error("Paneli file:// ile açmayın. https://patygoteknoloji.com/admin veya yerel sunucu /admin kullanın.");
@@ -567,10 +572,17 @@
     const isSupplierRefresh = path.includes("/supplier/refresh");
     const isSupplierPublish = path.includes("/supplier/publish");
     const isSupplierProducts = path.includes("/supplier/products");
+    const isOrderPatch = /\/api\/admin\/orders\/[^/?]+$/.test(path) && String(opts.method || "GET").toUpperCase() === "PATCH";
     const timer = setTimeout(
       () => ctrl.abort(),
       Number(opts.timeout) ||
-        (isSupplierRefresh || isSupplierPublish ? 100000 : isSupplierProducts ? 30000 : 12000)
+        (isSupplierRefresh || isSupplierPublish
+          ? 100000
+          : isSupplierProducts
+            ? 30000
+            : isOrderPatch
+              ? 30000
+              : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -632,7 +644,7 @@
     try {
       const saved = sessionStorage.getItem("patygo_admin_tab");
       if (
-        ["overview", "calendar", "orders", "users", "products", "xml", "categories"].includes(
+        ["overview", "calendar", "orders", "users", "shipping", "products", "xml", "categories"].includes(
           saved
         )
       ) {
@@ -721,7 +733,16 @@
         showPanel(true);
         return;
       }
-      endSession(err.message || "Oturum açılamadı.");
+      if (isAuthSessionError(err)) {
+        endSession(err.message || "Oturum açılamadı.");
+        return;
+      }
+      showPanel(true);
+      note(
+        loginNote,
+        "err",
+        err.message || "Panel doğrulanamadı. Bağlantınızı kontrol edip tekrar deneyin."
+      );
       return;
     }
     showPanel(true);
@@ -749,6 +770,7 @@
     if (tab === "products" && !xmlView) ensureManualProducts().catch(() => {});
     if (tab === "overview") loadDigitalDashboard().catch(() => {});
     if (tab === "orders") loadAdminOrders().catch(() => {});
+    if (tab === "shipping") loadAdminShippingSettings().catch(() => {});
     if (tab === "calendar") loadCalendarMonth().catch(() => {});
     if (tab === "categories") loadCategoryTree().catch(() => {});
     if (tab === "users") loadAdminUsers().catch(() => {});
@@ -3731,10 +3753,35 @@
     );
   }
 
+  function applyOrderPatchToUi(order) {
+    if (!order || !order.id || !adminOrderList) return;
+    const idx = ordersCache.findIndex((row) => row.id === order.id);
+    if (idx >= 0) ordersCache[idx] = Object.assign({}, ordersCache[idx], order);
+    else ordersCache.push(order);
+    const block = adminOrderList.querySelector('[data-order-id="' + CSS.escape(order.id) + '"]');
+    if (!block) return;
+    const row = block.querySelector(".admin-order-row");
+    if (row) {
+      const payCell = row.querySelector(".admin-order-payment-cell");
+      const fulCell = row.querySelector(".admin-order-fulfillment-cell");
+      if (payCell) payCell.innerHTML = paymentStatusBadge(order);
+      if (fulCell) fulCell.innerHTML = fulfillmentStatusBadge(order);
+      row.setAttribute("aria-expanded", "true");
+    }
+    if (selectedOrderId !== order.id) return;
+    const expand = block.querySelector(".admin-order-expand");
+    if (!expand) return;
+    expand.hidden = false;
+    block.classList.add("is-open");
+    expand.innerHTML = buildOrderDetailHtml(order);
+    bindOrderDetailActions(order.id);
+  }
+
   function bindOrderDetailActions(orderId) {
     const saveBtn = document.getElementById("adminOrderSaveStatus");
     if (saveBtn) {
       saveBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
         event.stopPropagation();
         if (saveBtn.disabled) return;
         saveBtn.disabled = true;
@@ -3749,7 +3796,7 @@
             "ok",
             result.mailSent ? "Durum güncellendi. Müşteriye mail gönderildi." : "Durum güncellendi."
           );
-          await loadAdminOrders({ keepOpen: orderId });
+          applyOrderPatchToUi(result.order);
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Güncellenemedi");
         } finally {
@@ -3760,6 +3807,7 @@
     const saveShippingBtn = document.getElementById("adminOrderSaveShipping");
     if (saveShippingBtn) {
       saveShippingBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
         event.stopPropagation();
         if (saveShippingBtn.disabled) return;
         const shippingCarrier = document.getElementById("adminOrderCarrier").value;
@@ -3781,7 +3829,7 @@
               ? "Kargo kaydedildi. Müşteriye kargoya verildi maili gönderildi."
               : "Kargo kaydedildi."
           );
-          await loadAdminOrders({ keepOpen: orderId });
+          applyOrderPatchToUi(result.order);
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Kargo kaydedilemedi");
         } finally {
@@ -4143,9 +4191,12 @@
   if (adminShippingForm) {
     adminShippingForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
+      const submitBtn = adminShippingForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
       try {
         await api("/api/admin/shipping/settings", {
           method: "PUT",
+          timeout: 20000,
           body: JSON.stringify({
             freeShippingThreshold: shippingFreeThreshold ? shippingFreeThreshold.value : 0,
             shippingFee: shippingFeeAmount ? shippingFeeAmount.value : 0,
@@ -4155,6 +4206,8 @@
         note(adminShippingNote, "ok", "Kargo ayarları kaydedildi.");
       } catch (err) {
         note(adminShippingNote, "err", err.message || "Kaydedilemedi");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
       }
     });
   }

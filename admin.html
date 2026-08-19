@@ -436,7 +436,7 @@
                   <p class="admin-card-lead">Sepet ve ödeme adımında gösterilir; tahsil edilen tutara eklenir.</p>
                 </div>
               </div>
-              <form id="adminShippingForm" class="admin-form">
+              <form id="adminShippingForm" class="admin-form" method="post" action="#" novalidate>
                 <div class="field">
                   <label for="shippingFreeThreshold">Ücretsiz kargo eşiği (KDV dahil sepet tutarı, TL)</label>
                   <input id="shippingFreeThreshold" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ör. 5000" />
@@ -453,6 +453,11 @@
                 </div>
                 <p class="admin-note" id="adminShippingNote" role="status"></p>
               </form>
+              <script>
+                document.getElementById("adminShippingForm")?.addEventListener("submit", function (ev) {
+                  ev.preventDefault();
+                });
+              </script>
             </section>
           </div>
         </section>
@@ -995,6 +1000,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=admin-405-1"></script>
+  <script src="/assets/js/admin.js?v=admin-ship-fix-1"></script>
 </body>
 </html>

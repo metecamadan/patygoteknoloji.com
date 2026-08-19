@@ -77,6 +77,9 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   assert.equal(shipBody2.order.status, "shipped");
   assert.equal(shipBody2.mailSent, false);
 
+  const meAfter = await fetch(baseUrl + "/api/admin/me", { headers });
+  assert.equal(meAfter.status, 200);
+
   const badShip = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
     method: "PATCH",
     headers,

@@ -236,10 +236,13 @@ test("admin shipping tab exposes threshold and fee settings", () => {
   assert.match(html, /id="shippingTab"/);
   assert.match(html, /id="adminTabShipping"/);
   assert.match(html, /id="adminShippingForm"/);
+  assert.match(html, /id="adminShippingForm"[^>]*action="#"/);
   assert.match(html, /id="shippingFreeThreshold"/);
   assert.match(html, /id="shippingFeeAmount"/);
   assert.match(script, /loadAdminShippingSettings/);
   assert.match(script, /\/api\/admin\/shipping\/settings/);
+  assert.match(script, /applyOrderPatchToUi/);
+  assert.match(script, /isAuthSessionError/);
 });
 
 test("admin users tab supports panel account management", () => {
