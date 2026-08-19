@@ -291,6 +291,7 @@ test("queryPublicCatalog pages and filters by site category", () => {
     price: 10 + i,
     category: i < 5 ? "bilgisayar-tablet" : "oem-cevre-birimleri",
     siteChild: i < 5 ? "notebook" : "islemciler",
+    image: "https://cdn.example/p-" + i + ".jpg",
     active: true,
   }));
   const page1 = queryPublicCatalog(products, { page: 1, limit: 48 });

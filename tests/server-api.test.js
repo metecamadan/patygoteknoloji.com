@@ -286,8 +286,8 @@ test("product search q parameter filters by text", async (t) => {
     SUPPLIER_ALLOWED_HOSTS: "supplier.example",
   }, {
     products: [
-      { id: "nb-1", brand: "HP", name: "HP ProBook 450 G10 Notebook", price: 5000, vatPercent: 20, category: "bilgisayar-tablet", active: true, stockQty: 5 },
-      { id: "ram-1", brand: "Kingston", name: "Kingston Fury 16GB DDR5 RAM", price: 800, vatPercent: 20, category: "bilgisayar-bilesenleri", active: true, stockQty: 10 },
+      { id: "nb-1", brand: "HP", name: "HP ProBook 450 G10 Notebook", price: 5000, vatPercent: 20, category: "bilgisayar-tablet", active: true, stockQty: 5, image: "https://cdn.example/nb-1.jpg" },
+      { id: "ram-1", brand: "Kingston", name: "Kingston Fury 16GB DDR5 RAM", price: 800, vatPercent: 20, category: "bilgisayar-bilesenleri", active: true, stockQty: 10, image: "https://cdn.example/ram-1.jpg" },
     ],
   });
   const match = await fetch(baseUrl + "/api/products?q=notebook");

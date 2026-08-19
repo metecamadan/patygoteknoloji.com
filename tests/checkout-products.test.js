@@ -5,8 +5,8 @@ const { lookupCheckoutProductsByIds } = require("../lib/checkout-products");
 test("lookupCheckoutProductsByIds maps only requested ids", () => {
   const byId = lookupCheckoutProductsByIds(["a", "b", "a"], {
     loadManual: () => [
-      { id: "a", brand: "A", name: "Manual A", price: 10, active: true, vatPercent: 20 },
-      { id: "b", brand: "B", name: "Manual B", price: 20, active: true, vatPercent: 20 },
+      { id: "a", brand: "A", name: "Manual A", price: 10, active: true, vatPercent: 20, image: "https://cdn.example/a.jpg" },
+      { id: "b", brand: "B", name: "Manual B", price: 20, active: true, vatPercent: 20, image: "https://cdn.example/b.jpg" },
     ],
     getSupplierById: () => null,
     mergeOptions: {

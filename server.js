@@ -593,6 +593,13 @@ function invalidateStorefrontCatalog() {
   akakceXmlMemo = null;
 }
 
+function catalogImageContext() {
+  return {
+    mirrorIndex: loadMirrorIndex(DATA_ROOT),
+    siteBaseUrl: SITE_BASE_URL,
+  };
+}
+
 function mergedProducts(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
   const hit = storefrontCatalogMemo[key];
@@ -601,6 +608,7 @@ function mergedProducts(includeInactiveManual) {
     includeInactiveManual,
     normalizeProduct,
     categoryDefaults: CATEGORY_FEED_DEFAULTS,
+    ...catalogImageContext(),
   });
   storefrontCatalogMemo[key] = { products, index: null };
   return products;
@@ -612,7 +620,7 @@ function storefrontIndex(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
   const products = mergedProducts(includeInactiveManual);
   const memo = storefrontCatalogMemo[key];
-  if (!memo.index) memo.index = buildStorefrontIndex(products);
+  if (!memo.index) memo.index = buildStorefrontIndex(products, catalogImageContext());
   return memo.index;
 }
 
@@ -635,8 +643,10 @@ function lookupPublicProductsByIds(productId, idsRaw) {
       includeInactiveManual: false,
       normalizeProduct,
       categoryDefaults: CATEGORY_FEED_DEFAULTS,
+      ...catalogImageContext(),
     }),
-    { id: productId, ids: idsRaw }
+    { id: productId, ids: idsRaw },
+    catalogImageContext()
   );
   const routeIndex = storefrontIndex(false).routeIndex;
   if (routeIndex && Array.isArray(result.products)) {
@@ -1294,7 +1304,7 @@ async function handleApi(req, res, urlPath) {
       const featured = homeFeaturedCatalog(mergedProducts(false), {
         popularity: popularProductScores(),
         limit: requestUrl.searchParams.get("limit") || 12,
-      }, { routeIndex: storefrontIndex(false).routeIndex });
+      }, { routeIndex: storefrontIndex(false).routeIndex, ...catalogImageContext() });
     return json(
       res,
       200,

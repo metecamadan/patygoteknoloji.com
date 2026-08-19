@@ -14,6 +14,7 @@ const sample = [
     category: "bilgisayar-tablet",
     siteMid: "notebooklar",
     siteChild: "nb-a",
+    image: "https://cdn.example/p1.jpg",
     active: true,
   },
   {
@@ -25,6 +26,7 @@ const sample = [
     category: "bilgisayar-tablet",
     siteMid: "notebooklar",
     siteChild: "nb-b",
+    image: "https://cdn.example/p2.jpg",
     active: true,
   },
   {
@@ -36,6 +38,7 @@ const sample = [
     category: "kartus-toner",
     siteMid: "toner",
     siteChild: "toner-a",
+    image: "https://cdn.example/p3.jpg",
     active: true,
   },
 ];
