@@ -22,14 +22,6 @@
     return node;
   }
 
-  function buildSpecChipRow(name) {
-    const chips = parseSpecChips(name);
-    if (!chips.length) return null;
-    const row = el("div", "detail-spec-chips");
-    chips.forEach((label) => row.appendChild(el("span", "detail-spec-chip", label)));
-    return row;
-  }
-
   function chipLabel(chip) {
     if (/ekran/i.test(chip)) return "Ekran";
     if (/\bRAM\b/i.test(chip)) return "Bellek";
@@ -116,20 +108,13 @@
 
     const description = String(product.description || "").trim();
     const details = String(product.details || "").trim();
-    if (description || details) {
-      if (description) {
-        const intro = el("p", "detail-desc", description);
-        descPanel.appendChild(intro);
-      }
-      if (details) {
-        const body = el("div", "detail-body", details);
-        descPanel.appendChild(body);
-      }
-    } else {
-      const empty = el("p", "detail-empty");
-      empty.innerHTML =
-        'Bu ürün için henüz ayrıntılı açıklama metni gelmedi. Sorularınız için <a href="/iletisim">iletişim</a> formunu veya WhatsApp hattını kullanabilirsiniz.';
-      descPanel.appendChild(empty);
+    if (description) {
+      const intro = el("p", "detail-desc", description);
+      descPanel.appendChild(intro);
+    }
+    if (details) {
+      const body = el("div", "detail-body", details);
+      descPanel.appendChild(body);
     }
 
     const payPanel = el("div", "detail-tabpanel");
@@ -271,8 +256,6 @@
     h1.textContent = product.name;
     h1.setAttribute("aria-current", "page");
 
-    const chipRow = buildSpecChipRow(product.name);
-
     const leaf = trail.length ? trail[trail.length - 1] : null;
     const cat = document.createElement("p");
     cat.className = "detail-cat";
@@ -324,10 +307,9 @@
     trust.innerHTML =
       "<li>Stokta · KDV dahil fiyat</li><li>3D Secure güvenli ödeme</li><li>Faturalı satış</li>";
 
+    if (leaf) info.appendChild(cat);
     info.appendChild(tag);
     info.appendChild(h1);
-    if (chipRow) info.appendChild(chipRow);
-    info.appendChild(cat);
     info.appendChild(price);
     info.appendChild(actions);
     info.appendChild(trust);
