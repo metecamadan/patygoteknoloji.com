@@ -43,14 +43,6 @@
     return table;
   }
 
-  function supplierNotice() {
-    const note = el("div", "detail-notice");
-    note.setAttribute("role", "note");
-    note.textContent =
-      "Ürün kartındaki ad ve tedarikçi açıklaması esas alınır. Platformda görünen teknik satırlar bilgilendirme amaçlıdır.";
-    return note;
-  }
-
   function wireDetailTabs(section) {
     const tabs = section.querySelectorAll('[role="tab"]');
     const panels = section.querySelectorAll('[role="tabpanel"]');
@@ -97,14 +89,6 @@
     const descPanel = el("div", "detail-tabpanel is-active");
     descPanel.setAttribute("role", "tabpanel");
     descPanel.setAttribute("data-tab", "desc");
-    descPanel.appendChild(supplierNotice());
-
-    const specTable = buildSpecTable(product.name);
-    if (specTable) {
-      const specHeading = el("h3", "detail-tab-heading", "Başlıktan çıkarılan özellikler");
-      descPanel.appendChild(specHeading);
-      descPanel.appendChild(specTable);
-    }
 
     const description = String(product.description || "").trim();
     const details = String(product.details || "").trim();
@@ -115,6 +99,9 @@
     if (details) {
       const body = el("div", "detail-body", details);
       descPanel.appendChild(body);
+    } else if (!description) {
+      const specTable = buildSpecTable(product.name);
+      if (specTable) descPanel.appendChild(specTable);
     }
 
     const payPanel = el("div", "detail-tabpanel");
