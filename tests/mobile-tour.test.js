@@ -48,7 +48,7 @@ test("product detail mobile adds qty stepper and trust copy", () => {
 test("cart checkout funnel and consistent payment CTA", () => {
   assert.match(sepetHtml, /checkout-funnel/);
   assert.match(odemeHtml, /checkout-funnel/);
-  assert.match(odemeHtml, /checkout-continue-link/);
+  assert.doesNotMatch(odemeHtml, /checkout-continue-link/);
   assert.match(odemeHtml, /id="sameAddress"/);
   assert.match(checkoutJs, /sameAddress/);
   assert.match(sepetJs, /Ödemeye geç/);

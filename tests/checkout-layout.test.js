@@ -24,6 +24,7 @@ test("checkout funnel hides catalog nav and extra exits", () => {
   assert.doesNotMatch(html, /Sipariş notu/);
   assert.doesNotMatch(html, /id="not"/);
   assert.doesNotMatch(html, /Ürün kataloğuna dön/);
+  assert.doesNotMatch(html, /checkout-continue-link/);
   assert.doesNotMatch(html, /nav-toggle/);
   assert.match(css, /\.checkout-page \.nav-links/);
   assert.match(css, /\.checkout-page \.checkout-hero p\s*\{[^}]*white-space:\s*nowrap/s);
