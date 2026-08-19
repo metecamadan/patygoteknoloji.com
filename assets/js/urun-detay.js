@@ -2,12 +2,25 @@
   "use strict";
   const root = document.getElementById("detailRoot");
 
+  function parseProductPath(pathname) {
+    const parts = String(pathname || "")
+      .split("/")
+      .filter(Boolean);
+    if (parts.length !== 2) return null;
+    const reserved = new Set(["assets", "listing", "media", "api", "admin", "urunler", "sepet", "odeme"]);
+    if (reserved.has(parts[0])) return null;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(parts[0])) return null;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(parts[1])) return null;
+    return { segment: parts[0], slug: parts[1], path: parts[0] + "/" + parts[1] };
+  }
+
   function resolveDetailRoute() {
     const legacyId = new URLSearchParams(location.search).get("id") || "";
     const productPath =
-      window.PatygoCatalog && window.PatygoCatalog.parseProductPath
+      parseProductPath(location.pathname) ||
+      (window.PatygoCatalog && window.PatygoCatalog.parseProductPath
         ? window.PatygoCatalog.parseProductPath(location.pathname)
-        : null;
+        : null);
     if (productPath) return { mode: "path", path: productPath.path };
     if (legacyId) return { mode: "id", id: legacyId };
     return { mode: "none" };
@@ -446,11 +459,15 @@
       return;
     }
     const cached =
-      detailRoute.mode === "id" && window.PatygoCatalog.byId
+      detailRoute.mode === "id" &&
+      window.PatygoCatalog &&
+      window.PatygoCatalog.byId
         ? window.PatygoCatalog.byId[detailRoute.id]
         : null;
     const cats =
-      (window.PatygoCatalog._lastCategories && window.PatygoCatalog._lastCategories.length
+      (window.PatygoCatalog &&
+      window.PatygoCatalog._lastCategories &&
+      window.PatygoCatalog._lastCategories.length
         ? window.PatygoCatalog._lastCategories
         : null) ||
       (window.PatygoNav && Array.isArray(window.PatygoNav.categories)
@@ -465,16 +482,19 @@
         detailRoute.mode === "path"
           ? "/api/products?path=" + encodeURIComponent(detailRoute.path)
           : "/api/products?id=" + encodeURIComponent(detailRoute.id);
-      const res = await fetch(fetchUrl, {
-        cache: "default",
-        signal: AbortSignal.timeout(8000),
-      });
+      const fetchOpts = { cache: "default" };
+      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+        fetchOpts.signal = AbortSignal.timeout(15000);
+      }
+      const res = await fetch(fetchUrl, fetchOpts);
       const data = await res.json();
       const fresh =
         Array.isArray(data.products) && data.products.length ? data.products[0] : null;
       if (fresh) {
-        window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
-        window.PatygoCatalog.byId[fresh.id] = fresh;
+        if (window.PatygoCatalog) {
+          window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+          window.PatygoCatalog.byId[fresh.id] = fresh;
+        }
         product = fresh;
         if (
           fresh.urlPath &&
