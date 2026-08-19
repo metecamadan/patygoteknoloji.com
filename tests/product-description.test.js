@@ -66,6 +66,7 @@ test("enrichProductCopy keeps usable XML text and manual overrides", () => {
     details: "Canon CRG-070 orijinal siyah toner kartuşu.",
   });
   assert.equal(xmlLike.description, "Canon CRG-070 orijinal siyah toner kartuşu.");
+  assert.match(xmlLike.details, /^__SPEC_TABLE__/);
 
   const manual = enrichProductCopy(
     {
