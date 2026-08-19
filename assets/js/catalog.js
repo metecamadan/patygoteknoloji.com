@@ -66,13 +66,21 @@
     productHref(productOrId) {
       if (productOrId && typeof productOrId === "object") {
         if (productOrId.urlPath) return productOrId.urlPath;
+        if (productOrId.categorySegment && productOrId.slug) {
+          return "/" + productOrId.categorySegment + "/" + productOrId.slug;
+        }
         productOrId = productOrId.id;
       }
       const id = String(productOrId || "").trim();
       if (!id) return "/urunler";
       const cached =
         (window.PatygoCatalog.byId && window.PatygoCatalog.byId[id]) || null;
-      if (cached && cached.urlPath) return cached.urlPath;
+      if (cached) {
+        if (cached.urlPath) return cached.urlPath;
+        if (cached.categorySegment && cached.slug) {
+          return "/" + cached.categorySegment + "/" + cached.slug;
+        }
+      }
       return "/urun-detay?id=" + encodeURIComponent(id);
     },
     parseProductPath(pathname) {

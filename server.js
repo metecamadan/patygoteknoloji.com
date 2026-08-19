@@ -24,6 +24,7 @@ const {
   homeFeaturedCatalog,
   listingSnapshotFileName,
   listingSnapshotJobs,
+  enrichCatalogSnapshotProducts,
 } = require("./lib/catalog");
 const {
   createCategoryStore,
@@ -1270,7 +1271,7 @@ async function handleApi(req, res, urlPath) {
       const featured = homeFeaturedCatalog(mergedProducts(false), {
         popularity: popularProductScores(),
         limit: requestUrl.searchParams.get("limit") || 12,
-      });
+      }, { routeIndex: storefrontIndex(false).routeIndex });
     return json(
       res,
       200,
@@ -2137,7 +2138,8 @@ function readCatalogBootstrapSnapshot(requestUrl) {
     const raw = fs.readFileSync(file, "utf8");
     const data = JSON.parse(raw);
     if (!data || !Array.isArray(data.products)) return null;
-    return data;
+    const routeIndex = storefrontIndex(false).routeIndex;
+    return enrichCatalogSnapshotProducts(data, routeIndex);
   } catch (_) {
     return null;
   }
@@ -2429,10 +2431,8 @@ setImmediate(() => {
   try {
     ensureListingTreeSnapshotFiles();
   } catch (_) {}
-  if (!bootstrapSnapshotsReady()) {
-    warmStorefrontCatalog();
-    scheduleAkakceImageMirror();
-  }
+  warmStorefrontCatalog();
+  scheduleAkakceImageMirror();
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   enqueueXmlCategorySync();

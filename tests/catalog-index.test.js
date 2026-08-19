@@ -67,6 +67,45 @@ test("buildStorefrontIndex stores compact list with limited images", () => {
   assert.ok(index.compactAll.every((item) => Array.isArray(item.images) && item.images.length <= 2));
 });
 
+test("buildStorefrontIndex and catalog queries attach slug urlPath for every product", () => {
+  const index = buildStorefrontIndex(sample);
+  index.compactAll.forEach((item) => {
+    assert.match(item.urlPath, /^\/[a-z0-9-]+\/[a-z0-9-]+$/);
+    assert.equal(item.urlPath, index.routeIndex.byId[item.id]);
+  });
+  const listed = queryPublicCatalog(sample, { limit: 48 });
+  listed.products.forEach((item) => {
+    assert.match(item.urlPath, /^\/[a-z0-9-]+\/[a-z0-9-]+$/);
+  });
+  const indexed = queryPublicCatalogIndexed(index, { kategori: "bilgisayar-tablet", limit: 48 });
+  indexed.products.forEach((item) => {
+    assert.match(item.urlPath, /^\/[a-z0-9-]+\/[a-z0-9-]+$/);
+  });
+});
+
+test("enrichCatalogSnapshotProducts backfills urlPath on stale bootstrap snapshots", () => {
+  const { enrichCatalogSnapshotProducts } = require("../lib/catalog");
+  const index = buildStorefrontIndex(sample);
+  const stale = {
+    products: sample.map((item) => ({
+      id: item.id,
+      brand: item.brand,
+      name: item.name,
+      price: item.price,
+      category: item.category,
+    })),
+    total: sample.length,
+    page: 1,
+    limit: 48,
+    totalPages: 1,
+  };
+  assert.equal(stale.products.every((item) => !item.urlPath), true);
+  const enriched = enrichCatalogSnapshotProducts(stale, index.routeIndex);
+  enriched.products.forEach((item) => {
+    assert.match(item.urlPath, /^\/[a-z0-9-]+\/[a-z0-9-]+$/);
+  });
+});
+
 test("listing snapshots cover parent mid and child keys", () => {
   const { listingSnapshotFileName, listingSnapshotJobs, buildStorefrontIndex } = require("../lib/catalog");
   assert.equal(listingSnapshotFileName({}), "all.json");

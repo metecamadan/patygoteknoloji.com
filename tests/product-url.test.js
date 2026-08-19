@@ -63,3 +63,11 @@ test("parseProductRoutePath accepts two-segment product URLs", () => {
   assert.equal(parseProductRoutePath("/urunler"), null);
   assert.equal(parseProductRoutePath("/notebook"), null);
 });
+
+test("catalog.js productHref prefers slug urlPath over legacy id query", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const catalogJs = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "catalog.js"), "utf8");
+  assert.match(catalogJs, /if \(productOrId\.urlPath\) return productOrId\.urlPath/);
+  assert.match(catalogJs, /categorySegment && productOrId\.slug/);
+});
