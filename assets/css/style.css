@@ -3007,6 +3007,105 @@ h1, h2, h3, h4 {
 .product-description .detail-desc { font-weight: 600; }
 .product-description .detail-body { margin-bottom: 0; }
 
+.detail-spec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.detail-spec-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: #f8fafc;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.detail-tabs {
+  margin-top: clamp(28px, 5vw, 48px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+}
+.detail-tablist {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line-soft);
+  scrollbar-width: none;
+}
+.detail-tablist::-webkit-scrollbar { display: none; }
+.detail-tab {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 14px 18px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.detail-tab.is-active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+  background: rgba(37, 99, 235, 0.04);
+}
+.detail-tabpanels { padding: clamp(18px, 3vw, 28px); }
+.detail-tabpanel[hidden] { display: none; }
+.detail-tab-heading {
+  margin: 18px 0 10px;
+  font-size: 1rem;
+}
+.detail-notice {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.detail-spec-table {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  padding: 0;
+}
+.detail-spec-table dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.detail-spec-table dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.detail-empty {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.detail-empty a { color: var(--brand); font-weight: 600; }
+.detail-tab-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+.detail-tab-list a { color: var(--brand); font-weight: 600; }
+
 .detail-info .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .detail-info .detail-qty-row {
   flex: 1 1 160px;

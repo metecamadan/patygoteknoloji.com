@@ -3,9 +3,166 @@
   const root = document.getElementById("detailRoot");
   const id = new URLSearchParams(location.search).get("id") || "";
 
+  function parseSpecChips(name) {
+    if (window.PatygoDetailSpecs && window.PatygoDetailSpecs.parseProductSpecChips) {
+      return window.PatygoDetailSpecs.parseProductSpecChips(name);
+    }
+    return [];
+  }
+
   function protectMedia(img) {
     img.setAttribute("draggable", "false");
     img.addEventListener("dragstart", (ev) => ev.preventDefault());
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null && text !== "") node.textContent = text;
+    return node;
+  }
+
+  function buildSpecChipRow(name) {
+    const chips = parseSpecChips(name);
+    if (!chips.length) return null;
+    const row = el("div", "detail-spec-chips");
+    chips.forEach((label) => row.appendChild(el("span", "detail-spec-chip", label)));
+    return row;
+  }
+
+  function chipLabel(chip) {
+    if (/ekran/i.test(chip)) return "Ekran";
+    if (/\bRAM\b/i.test(chip)) return "Bellek";
+    if (/ssd|depolama|tb/i.test(chip)) return "Depolama";
+    if (/intel|amd|ryzen|core/i.test(chip)) return "İşlemci";
+    if (/windows|freedos/i.test(chip)) return "İşletim sistemi";
+    if (/ddr/i.test(chip)) return "Bellek tipi";
+    return "Özellik";
+  }
+
+  function buildSpecTable(name) {
+    const chips = parseSpecChips(name);
+    if (!chips.length) return null;
+    const table = el("dl", "detail-spec-table");
+    chips.forEach((label) => {
+      table.appendChild(el("dt", "", chipLabel(label)));
+      table.appendChild(el("dd", "", label));
+    });
+    return table;
+  }
+
+  function supplierNotice() {
+    const note = el("div", "detail-notice");
+    note.setAttribute("role", "note");
+    note.textContent =
+      "Ürün kartındaki ad ve tedarikçi açıklaması esas alınır. Platformda görünen teknik satırlar bilgilendirme amaçlıdır.";
+    return note;
+  }
+
+  function wireDetailTabs(section) {
+    const tabs = section.querySelectorAll('[role="tab"]');
+    const panels = section.querySelectorAll('[role="tabpanel"]');
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const target = tab.getAttribute("data-tab");
+        tabs.forEach((item) => {
+          const active = item === tab;
+          item.classList.toggle("is-active", active);
+          item.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        panels.forEach((panel) => {
+          const active = panel.getAttribute("data-tab") === target;
+          panel.hidden = !active;
+          panel.classList.toggle("is-active", active);
+        });
+      });
+    });
+  }
+
+  function buildDetailTabs(product) {
+    const section = el("section", "detail-tabs reveal in");
+    const tablist = el("div", "detail-tablist");
+    tablist.setAttribute("role", "tablist");
+    tablist.setAttribute("aria-label", "Ürün bilgileri");
+
+    const defs = [
+      { id: "desc", label: "Ürün Açıklaması" },
+      { id: "payment", label: "Ödeme ve Teslimat" },
+      { id: "returns", label: "İade ve Cayma" },
+    ];
+    defs.forEach((def, index) => {
+      const tab = el("button", "detail-tab" + (index === 0 ? " is-active" : ""));
+      tab.type = "button";
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("data-tab", def.id);
+      tab.setAttribute("aria-selected", index === 0 ? "true" : "false");
+      tab.textContent = def.label;
+      tablist.appendChild(tab);
+    });
+
+    const panels = el("div", "detail-tabpanels");
+
+    const descPanel = el("div", "detail-tabpanel is-active");
+    descPanel.setAttribute("role", "tabpanel");
+    descPanel.setAttribute("data-tab", "desc");
+    descPanel.appendChild(supplierNotice());
+
+    const specTable = buildSpecTable(product.name);
+    if (specTable) {
+      const specHeading = el("h3", "detail-tab-heading", "Başlıktan çıkarılan özellikler");
+      descPanel.appendChild(specHeading);
+      descPanel.appendChild(specTable);
+    }
+
+    const description = String(product.description || "").trim();
+    const details = String(product.details || "").trim();
+    if (description || details) {
+      if (description) {
+        const intro = el("p", "detail-desc", description);
+        descPanel.appendChild(intro);
+      }
+      if (details) {
+        const body = el("div", "detail-body", details);
+        descPanel.appendChild(body);
+      }
+    } else {
+      const empty = el("p", "detail-empty");
+      empty.innerHTML =
+        'Bu ürün için henüz ayrıntılı açıklama metni gelmedi. Sorularınız için <a href="/iletisim">iletişim</a> formunu veya WhatsApp hattını kullanabilirsiniz.';
+      descPanel.appendChild(empty);
+    }
+
+    const payPanel = el("div", "detail-tabpanel");
+    payPanel.hidden = true;
+    payPanel.setAttribute("role", "tabpanel");
+    payPanel.setAttribute("data-tab", "payment");
+    const payList = el("ul", "detail-tab-list");
+    payList.innerHTML =
+      "<li>Fiyatlar KDV dahil gösterilir.</li>" +
+      "<li>Ödeme Akbank 3D Secure ile kartınızdan alınır.</li>" +
+      "<li>Sipariş sonrası faturalı satış yapılır.</li>" +
+      "<li>Teslimat süresi sipariş onayından sonra size bildirilir.</li>";
+    payPanel.appendChild(payList);
+
+    const retPanel = el("div", "detail-tabpanel");
+    retPanel.hidden = true;
+    retPanel.setAttribute("role", "tabpanel");
+    retPanel.setAttribute("data-tab", "returns");
+    const retList = el("ul", "detail-tab-list");
+    retList.innerHTML =
+      "<li>14 gün içinde cayma hakkınız vardır (mesafeli satış kuralları).</li>" +
+      "<li>Kullanılmamış, ambalajı açılmamış ürünlerde iade koşulları geçerlidir.</li>" +
+      '<li><a href="/iade-ve-cayma">İade ve cayma koşulları</a></li>' +
+      '<li><a href="/mesafeli-satis-sozlesmesi">Mesafeli satış sözleşmesi</a></li>';
+    retPanel.appendChild(retList);
+
+    panels.appendChild(descPanel);
+    panels.appendChild(payPanel);
+    panels.appendChild(retPanel);
+    section.appendChild(tablist);
+    section.appendChild(panels);
+    wireDetailTabs(section);
+    return section;
   }
 
   function render(product, categories) {
@@ -114,6 +271,8 @@
     h1.textContent = product.name;
     h1.setAttribute("aria-current", "page");
 
+    const chipRow = buildSpecChipRow(product.name);
+
     const leaf = trail.length ? trail[trail.length - 1] : null;
     const cat = document.createElement("p");
     cat.className = "detail-cat";
@@ -167,6 +326,7 @@
 
     info.appendChild(tag);
     info.appendChild(h1);
+    if (chipRow) info.appendChild(chipRow);
     info.appendChild(cat);
     info.appendChild(price);
     info.appendChild(actions);
@@ -176,40 +336,20 @@
     grid.appendChild(info);
     root.appendChild(crumb);
     root.appendChild(grid);
-
-    if (product.description || product.details) {
-      const description = document.createElement("section");
-      description.className = "product-description reveal in";
-      const heading = document.createElement("h2");
-      heading.textContent = "Ürün Açıklaması";
-      description.appendChild(heading);
-      if (product.description) {
-        const intro = document.createElement("p");
-        intro.className = "detail-desc";
-        intro.textContent = product.description;
-        description.appendChild(intro);
-      }
-      if (product.details) {
-        const body = document.createElement("div");
-        body.className = "detail-body";
-        body.textContent = product.details;
-        description.appendChild(body);
-      }
-      root.appendChild(description);
-    }
+    root.appendChild(buildDetailTabs(product));
 
     upsertProductJsonLd(product, trail);
   }
 
   function upsertJsonLd(scriptId, data) {
-    let el = document.getElementById(scriptId);
-    if (!el) {
-      el = document.createElement("script");
-      el.type = "application/ld+json";
-      el.id = scriptId;
-      document.head.appendChild(el);
+    let elNode = document.getElementById(scriptId);
+    if (!elNode) {
+      elNode = document.createElement("script");
+      elNode.type = "application/ld+json";
+      elNode.id = scriptId;
+      document.head.appendChild(elNode);
     }
-    el.textContent = JSON.stringify(data);
+    elNode.textContent = JSON.stringify(data);
   }
 
   function upsertProductJsonLd(product, trail) {
