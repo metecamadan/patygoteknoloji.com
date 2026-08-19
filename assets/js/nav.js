@@ -463,7 +463,23 @@
         document.dispatchEvent(new CustomEvent("patygo:nav-ready"));
       })
       .catch(() => {
-        root.textContent = "";
+        window.setTimeout(() => {
+          fetch(NAV_SOURCE, { cache: "no-store" })
+            .then((res) => {
+              if (!res.ok) throw new Error("Kategori menüsü yüklenemedi");
+              return res.json();
+            })
+            .then((data) => {
+              const categories = Array.isArray(data && data.categories) ? data.categories : [];
+              renderNav(root, categories);
+              window.PatygoNav = {
+                categories: publishedCategories(categories),
+                categoryHref,
+              };
+              document.dispatchEvent(new CustomEvent("patygo:nav-ready"));
+            })
+            .catch(() => {});
+        }, 1500);
       });
   }
 

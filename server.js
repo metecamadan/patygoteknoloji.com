@@ -14,7 +14,7 @@ const { createAdminSessionStore } = require("./lib/admin-sessions");
 const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
-const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths } = require("./lib/product-image-mirror");
+const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
 const {
   mergeCatalogProducts,
   queryPublicCatalog,
@@ -594,11 +594,25 @@ function invalidateStorefrontCatalog() {
 }
 
 function catalogImageContext() {
+  const mirrorIndex = loadMirrorIndex(DATA_ROOT);
   return {
-    mirrorIndex: loadMirrorIndex(DATA_ROOT),
+    mirrorIndex,
     siteBaseUrl: SITE_BASE_URL,
     dataRoot: DATA_ROOT,
+    placeholderMirrorFiles: getCachedPlaceholderMirrorFileSet(DATA_ROOT, mirrorIndex),
   };
+}
+
+function readHomeFeaturedSnapshot() {
+  const file = path.join(CATALOG_BOOTSTRAP_DIR, "home-featured.json");
+  if (!fs.existsSync(file)) return null;
+  try {
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!data || !Array.isArray(data.products) || !data.products.length) return null;
+    return data;
+  } catch (_) {
+    return null;
+  }
 }
 
 function mergedProducts(includeInactiveManual) {
@@ -752,6 +766,22 @@ function ensureListingTreeSnapshotFiles() {
 function writeCatalogBootstrapSnapshots() {
   const index = storefrontIndex(false);
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+  try {
+    const featured = homeFeaturedCatalog(mergedProducts(false), {
+      popularity: popularProductScores(),
+      limit: 12,
+    }, { routeIndex: index.routeIndex, ...catalogImageContext() });
+    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "home-featured.json"), {
+      products: featured.products,
+      byParent: featured.byParent,
+      perCategory: featured.perCategory,
+      parents: featured.parents,
+      total: featured.products.length,
+      page: 1,
+      limit: featured.perCategory,
+      totalPages: 1,
+    });
+  } catch (_) {}
   const jobs = listingSnapshotJobs(index, categoryStore.publicList());
   const writeJob = (job) => {
     const payload = queryPublicCatalogIndexed(
@@ -1302,6 +1332,12 @@ async function handleApi(req, res, urlPath) {
       ? fs.statSync(PRODUCTS_FILE).mtime.toISOString()
       : null;
     if (requestUrl.searchParams.get("homeFeatured") === "1") {
+      const snap = readHomeFeaturedSnapshot();
+      if (snap) {
+        return json(res, 200, Object.assign({ updatedAt }, snap), {
+          "Cache-Control": "public, max-age=120, stale-while-revalidate=600",
+        });
+      }
       const featured = homeFeaturedCatalog(mergedProducts(false), {
         popularity: popularProductScores(),
         limit: requestUrl.searchParams.get("limit") || 12,

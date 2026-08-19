@@ -1332,7 +1332,30 @@
     return payload;
   }
 
+  async function fetchHomeFeaturedSnapshot() {
+    try {
+      const data = await fetchJsonCached("/listing/home-featured.json");
+      if (data && Array.isArray(data.products) && data.products.length) {
+        const byParent = data.byParent && typeof data.byParent === "object" ? data.byParent : {};
+        return {
+          byParent,
+          mixed: data.products.slice(0, FEATURED_PER_CATEGORY),
+        };
+      }
+    } catch (_) {}
+    try {
+      const data = await fetchJsonCached("/listing/all.json");
+      const products = (data && data.products) || [];
+      if (products.length) {
+        return { byParent: {}, mixed: products.slice(0, FEATURED_PER_CATEGORY) };
+      }
+    } catch (_) {}
+    return null;
+  }
+
   async function fetchHomeFeatured() {
+    const snap = await fetchHomeFeaturedSnapshot();
+    if (snap) return snap;
     const home = await fetchProductPage({ homeFeatured: "1", limit: FEATURED_PER_CATEGORY });
     const byParent = {};
     FEATURED_PARENTS.forEach((slug) => {
@@ -1423,6 +1446,11 @@
         const hasCards = grid.querySelector(".product-card:not(.product-card--skeleton)");
         if (!hasCards) showCatalogLoading(grid);
       });
+    } else if (document.querySelector('.product-grid[data-catalog="featured"]')) {
+      document.querySelectorAll('.product-grid[data-catalog="featured"]').forEach((grid) => {
+        const hasCards = grid.querySelector(".product-card:not(.product-card--skeleton)");
+        if (!hasCards) showCatalogLoading(grid);
+      });
     }
 
     const onDetailPage =
@@ -1500,6 +1528,15 @@
 
     if (onProductsPage && payloadResult.failed && !payload.products.length) {
       document.querySelectorAll(".product-grid[data-catalog]").forEach(showCatalogFailed);
+      return [];
+    }
+    if (
+      !onProductsPage &&
+      document.querySelector('.product-grid[data-catalog="featured"]') &&
+      payloadResult.failed &&
+      !payload.products.length
+    ) {
+      document.querySelectorAll('.product-grid[data-catalog="featured"]').forEach(showCatalogFailed);
       return [];
     }
 
