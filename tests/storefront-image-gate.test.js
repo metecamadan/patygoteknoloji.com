@@ -1,6 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const { mergeCatalogProducts, productHasStorefrontImage, toPublicProduct } = require("../lib/catalog");
+const { mirrorPaths, KNOWN_PLACEHOLDER_SHA256 } = require("../lib/product-image-mirror");
 const { TEST_SITE_CATEGORIES } = require("./helpers/site-categories");
 
 const IMG = "https://cdn.example/product.jpg";
@@ -75,6 +79,27 @@ test("toPublicProduct serves mirrored catalog media URLs", () => {
   );
   assert.equal(pub.image, SITE + "/media/catalog/abc.jpg");
   assert.deepEqual(pub.images, [SITE + "/media/catalog/abc.jpg"]);
+});
+
+test("supplier placeholder camera glyph is treated as no photo", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-ph-"));
+  const { mediaDir } = mirrorPaths(root);
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const placeholderPath = path.join(__dirname, "fixtures", "supplier-no-photo.jpg");
+  const fileName = "placeholder.jpg";
+  fs.copyFileSync(placeholderPath, path.join(mediaDir, fileName));
+  const mirrorIndex = {
+    [IMG]: { publicPath: "/media/catalog/" + fileName, file: fileName },
+  };
+  const blocked = mergeCatalogProducts([], [supplierBase()], {
+    categories: TEST_SITE_CATEGORIES,
+    mirrorIndex,
+    siteBaseUrl: SITE,
+    dataRoot: root,
+  });
+  assert.equal(blocked.length, 0);
+  assert.ok(KNOWN_PLACEHOLDER_SHA256.size >= 1);
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test("productHasStorefrontImage accepts manual products with HTTPS image", () => {

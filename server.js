@@ -597,6 +597,7 @@ function catalogImageContext() {
   return {
     mirrorIndex: loadMirrorIndex(DATA_ROOT),
     siteBaseUrl: SITE_BASE_URL,
+    dataRoot: DATA_ROOT,
   };
 }
 
