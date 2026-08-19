@@ -232,6 +232,16 @@ test("admin login form does not POST onto static /admin HTML", () => {
 });
 
 
+test("admin shipping tab exposes threshold and fee settings", () => {
+  assert.match(html, /id="shippingTab"/);
+  assert.match(html, /id="adminTabShipping"/);
+  assert.match(html, /id="adminShippingForm"/);
+  assert.match(html, /id="shippingFreeThreshold"/);
+  assert.match(html, /id="shippingFeeAmount"/);
+  assert.match(script, /loadAdminShippingSettings/);
+  assert.match(script, /\/api\/admin\/shipping\/settings/);
+});
+
 test("admin users tab supports panel account management", () => {
   assert.match(html, /id="usersTab"/);
   assert.match(html, /id="adminTabUsers"/);

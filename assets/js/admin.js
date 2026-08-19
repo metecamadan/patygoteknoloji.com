@@ -783,6 +783,7 @@
       calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
       orders: ["Siparişler", "Ödeme durumu, müşteri ve kalemleri yönetin."],
       users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
+      shipping: ["Kargo", "Ücretsiz kargo eşiği ve kargo bedelini yönetin."],
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
@@ -833,6 +834,7 @@
       ensureCalendarNotificationPermission().catch(() => {});
     }
     if (name === "users" && token) loadAdminUsers().catch(() => {});
+    if (name === "shipping" && token) loadAdminShippingSettings().catch(() => {});
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
     try {
@@ -4090,6 +4092,71 @@
     });
     const resetBtn = document.getElementById("adminUserResetBtn");
     if (resetBtn) resetBtn.addEventListener("click", resetAdminUserForm);
+  }
+
+  const adminShippingForm = document.getElementById("adminShippingForm");
+  const shippingFreeThreshold = document.getElementById("shippingFreeThreshold");
+  const shippingFeeAmount = document.getElementById("shippingFeeAmount");
+  const shippingPreview = document.getElementById("shippingPreview");
+  const adminShippingNote = document.getElementById("adminShippingNote");
+
+  function renderShippingPreview() {
+    if (!shippingPreview) return;
+    const threshold = Math.max(0, Number(shippingFreeThreshold && shippingFreeThreshold.value) || 0);
+    const fee = Math.max(0, Number(shippingFeeAmount && shippingFeeAmount.value) || 0);
+    if (fee <= 0) {
+      shippingPreview.textContent = "Kargo bedeli tanımlanmadığında sepette kargo satırı gösterilmez.";
+      return;
+    }
+    if (threshold > 0) {
+      shippingPreview.textContent =
+        formatMoney(threshold) +
+        " ve üzeri siparişlerde kargo ücretsiz. " +
+        formatMoney(threshold) +
+        " altı siparişlerde kargo bedeli " +
+        formatMoney(fee) +
+        " (KDV dahil).";
+      return;
+    }
+    shippingPreview.textContent =
+      "Tüm siparişlere kargo bedeli " + formatMoney(fee) + " (KDV dahil) eklenir.";
+  }
+
+  async function loadAdminShippingSettings() {
+    if (!adminShippingForm || !token) return;
+    const data = await api("/api/admin/shipping/settings");
+    const settings = (data && data.settings) || {};
+    if (shippingFreeThreshold) {
+      shippingFreeThreshold.value =
+        settings.freeShippingThreshold > 0 ? String(settings.freeShippingThreshold) : "";
+    }
+    if (shippingFeeAmount) {
+      shippingFeeAmount.value = settings.shippingFee > 0 ? String(settings.shippingFee) : "";
+    }
+    renderShippingPreview();
+    note(adminShippingNote, "", "");
+  }
+
+  if (shippingFreeThreshold) shippingFreeThreshold.addEventListener("input", renderShippingPreview);
+  if (shippingFeeAmount) shippingFeeAmount.addEventListener("input", renderShippingPreview);
+
+  if (adminShippingForm) {
+    adminShippingForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      try {
+        await api("/api/admin/shipping/settings", {
+          method: "PUT",
+          body: JSON.stringify({
+            freeShippingThreshold: shippingFreeThreshold ? shippingFreeThreshold.value : 0,
+            shippingFee: shippingFeeAmount ? shippingFeeAmount.value : 0,
+          }),
+        });
+        await loadAdminShippingSettings();
+        note(adminShippingNote, "ok", "Kargo ayarları kaydedildi.");
+      } catch (err) {
+        note(adminShippingNote, "err", err.message || "Kaydedilemedi");
+      }
+    });
   }
 
   let categoryTree = [];

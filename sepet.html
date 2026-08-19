@@ -51,6 +51,7 @@
           <h2>Sipariş özeti</h2>
           <div class="checkout-sum"><span>Ara toplam (KDV hariç)</span><span id="cartSub">₺0</span></div>
           <div class="checkout-sum"><span>KDV</span><span id="cartVat">₺0</span></div>
+          <div class="checkout-sum" id="cartShippingRow" hidden><span id="cartShippingLabel">Kargo</span><span id="cartShipping">₺0</span></div>
           <div class="checkout-sum total"><span>Genel toplam (KDV dahil)</span><strong id="cartTotal">₺0</strong></div>
           <a href="/odeme" class="btn btn-primary btn-block btn-lg cart-checkout" id="cartCheckout">Ödemeye geç</a>
           <a href="/urunler" class="btn btn-ghost btn-block cart-continue" id="cartContinue">Ürün kataloğuna devam et</a>
@@ -117,6 +118,7 @@
     <button class="top" id="backTop" aria-label="Yukarı çık" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
 
+  <script defer src="/assets/js/shipping.js"></script>
   <script defer src="/assets/js/cart.js"></script>
   <script defer src="/assets/js/catalog.js?v=product-slug-2"></script>
   <script defer src="/assets/js/nav.js?v=nav-sheet-3"></script>

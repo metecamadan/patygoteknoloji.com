@@ -33,6 +33,9 @@
     qtyLabel: document.getElementById("qtyLabel"),
     subtotal: document.getElementById("subtotal"),
     vatAmount: document.getElementById("vatAmount"),
+    shippingRow: document.getElementById("shippingRow"),
+    shippingLabel: document.getElementById("shippingLabel"),
+    shippingAmount: document.getElementById("shippingAmount"),
     grandTotal: document.getElementById("grandTotal"),
     orderIdPreview: document.getElementById("orderIdPreview"),
     adet: document.getElementById("adet"),
@@ -64,6 +67,26 @@
         maximumFractionDigits: 2,
       })
     );
+  }
+
+  function updateShippingRow(totals) {
+    const settings = window.PatygoShipping && window.PatygoShipping.settings;
+    const hasLines = totals && Array.isArray(totals.lines) && totals.lines.length;
+    const enabled = settings && settings.enabled && settings.shippingFee > 0 && hasLines;
+    if (!els.shippingRow || !els.shippingAmount) return;
+    if (!enabled) {
+      els.shippingRow.hidden = true;
+      return;
+    }
+    els.shippingRow.hidden = false;
+    const shipping = totals.shipping || 0;
+    if (shipping <= 0) {
+      if (els.shippingLabel) els.shippingLabel.textContent = "Kargo";
+      els.shippingAmount.textContent = "Ücretsiz";
+    } else {
+      if (els.shippingLabel) els.shippingLabel.textContent = "Kargo (KDV dahil)";
+      els.shippingAmount.textContent = formatTRY(shipping);
+    }
   }
 
   function makeOrderId() {
@@ -246,14 +269,21 @@
         const sub = Math.round(product.price * qty * 100) / 100;
         const vat =
           Math.round(sub * (vatOf(product) / 100) * 100) / 100;
-        const total = Math.round((sub + vat) * 100) / 100;
-        lines = [{ product, qty, line: sub, lineVat: vat, lineIncl: total }];
+        const merchandiseTotal = Math.round((sub + vat) * 100) / 100;
+        const shipping =
+          window.PatygoShipping && typeof window.PatygoShipping.feeForMerchandise === "function"
+            ? window.PatygoShipping.feeForMerchandise(merchandiseTotal)
+            : 0;
+        const total = Math.round((merchandiseTotal + shipping) * 100) / 100;
+        lines = [{ product, qty, line: sub, lineVat: vat, lineIncl: merchandiseTotal }];
         if (els.qtyLabel) els.qtyLabel.textContent = String(qty);
         if (els.unitPrice) els.unitPrice.textContent = formatTRY(priceIncl(product));
         if (els.subtotal) els.subtotal.textContent = formatTRY(sub);
         if (els.vatAmount) els.vatAmount.textContent = formatTRY(vat);
         if (els.grandTotal) els.grandTotal.textContent = formatTRY(total);
-        return { qty, sub, vat, total, lines };
+        const summary = { qty, sub, vat, merchandiseTotal, shipping, total, lines };
+        updateShippingRow(summary);
+        return summary;
       }
       const t = window.PatygoCart.totals(window.PatygoCatalog.byId || catalogById || {});
       lines = t.lines;
@@ -264,10 +294,13 @@
       if (els.subtotal) els.subtotal.textContent = formatTRY(t.sub);
       if (els.vatAmount) els.vatAmount.textContent = formatTRY(t.vat);
       if (els.grandTotal) els.grandTotal.textContent = formatTRY(t.total);
+      updateShippingRow(t);
       return {
         qty: t.lines.reduce((n, l) => n + l.qty, 0),
         sub: t.sub,
         vat: t.vat,
+        merchandiseTotal: t.merchandiseTotal,
+        shipping: t.shipping,
         total: t.total,
         lines: t.lines,
       };
@@ -498,6 +531,11 @@
 
     // POS durumunu katalogdan bağımsız yükle
     loadPosStatus();
+    if (window.PatygoShipping) {
+      try {
+        await window.PatygoShipping.load();
+      } catch (_) {}
+    }
 
     // Sepet anlık görüntüsüyle hemen dene; katalog gelince yeniden dene
     tryBoot();

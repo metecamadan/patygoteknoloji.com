@@ -131,6 +131,7 @@
             <div class="checkout-sum"><span>Adet</span><span id="qtyLabel">1</span></div>
             <div class="checkout-sum"><span>Ara toplam (KDV hariç)</span><span id="subtotal">₺0</span></div>
             <div class="checkout-sum"><span>KDV</span><span id="vatAmount">₺0</span></div>
+            <div class="checkout-sum" id="shippingRow" hidden><span id="shippingLabel">Kargo</span><span id="shippingAmount">₺0</span></div>
             <div class="checkout-sum total"><span>Genel toplam (KDV dahil)</span><strong id="grandTotal">₺0</strong></div>
             <div class="pos-box" id="posBox">
               Ödeme Akbank SecurePay (3D Pay Hosting) ile alınır. Kart bilgileriniz yalnızca bankanın güvenli sayfasında girilir.
@@ -208,6 +209,7 @@
     </div>
   </footer>
 
+  <script defer src="/assets/js/shipping.js"></script>
   <script defer src="/assets/js/cart.js"></script>
   <script defer src="/assets/js/catalog.js?v=product-slug-2"></script>
   <script defer src="/assets/js/nav.js?v=nav-sheet-3"></script>

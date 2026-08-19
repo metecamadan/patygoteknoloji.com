@@ -80,6 +80,10 @@ const {
   parseProductRoutePath,
   resolveProductIdFromRoute,
 } = require("./lib/product-url");
+const {
+  createShippingSettingsStore,
+  computeShippingFee,
+} = require("./lib/shipping-settings");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -184,6 +188,7 @@ const analyticsStore = createAnalyticsStore(DATA_ROOT, {
   },
 });
 const orderStore = createOrderStore(DATA_ROOT);
+const shippingSettingsStore = createShippingSettingsStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
 setCategoryListLoader(() => categoryStore.list());
@@ -379,7 +384,9 @@ function buildCheckoutOrder(body) {
 
   subtotal = Math.round(subtotal * 100) / 100;
   vat = Math.round(vat * 100) / 100;
-  const total = Math.round((subtotal + vat) * 100) / 100;
+  const merchandiseTotal = Math.round((subtotal + vat) * 100) / 100;
+  const shippingFee = computeShippingFee(merchandiseTotal, shippingSettingsStore.getSettings());
+  const total = Math.round((merchandiseTotal + shippingFee) * 100) / 100;
   const customer = (body && body.customer) || {};
   const name = String(customer.name || "").trim().slice(0, 120);
   const email = String(customer.email || "").trim().slice(0, 120);
@@ -399,6 +406,8 @@ function buildCheckoutOrder(body) {
     items,
     subtotal,
     vat,
+    merchandiseTotal,
+    shippingFee,
     total,
     currency: "TRY",
     customer: {
@@ -771,22 +780,29 @@ function akakceMirrorIndexStamp() {
   }
 }
 
+function akakceShippingOptions() {
+  return { shippingSettings: shippingSettingsStore.getSettings() };
+}
+
 function storefrontAkakceXml() {
   const products = mergedProducts(false);
   const mirrorIndex = loadMirrorIndex(DATA_ROOT);
   const mirrorStamp = akakceMirrorIndexStamp();
+  const shippingStamp = JSON.stringify(shippingSettingsStore.getSettings());
   if (
     akakceXmlMemo &&
     akakceXmlMemo.products === products &&
-    akakceXmlMemo.mirrorStamp === mirrorStamp
+    akakceXmlMemo.mirrorStamp === mirrorStamp &&
+    akakceXmlMemo.shippingStamp === shippingStamp
   ) {
     return akakceXmlMemo.xml;
   }
   const xml = buildAkakceXml(products, {
     siteBaseUrl: SITE_BASE_URL,
     mirrorIndex,
+    ...akakceShippingOptions(),
   });
-  akakceXmlMemo = { products, mirrorStamp, xml };
+  akakceXmlMemo = { products, mirrorStamp, shippingStamp, xml };
   return xml;
 }
 
@@ -902,6 +918,7 @@ function akakceFeedFullSummary() {
   return buildAkakceFeedSummary(mergedProducts(false), {
     siteBaseUrl: SITE_BASE_URL,
     mirrorIndex: loadMirrorIndex(DATA_ROOT),
+    ...akakceShippingOptions(),
   });
 }
 
@@ -1019,6 +1036,10 @@ async function sendCalendarReminderMail(entry, kind) {
 async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/payment/status") {
     return json(res, 200, publicPosStatus(akbankConfig));
+  }
+
+  if (req.method === "GET" && urlPath === "/api/shipping") {
+    return json(res, 200, shippingSettingsStore.getPublic());
   }
 
   if (req.method === "POST" && urlPath === "/api/contact") {
@@ -1215,6 +1236,8 @@ async function handleApi(req, res, urlPath) {
       order: {
         id: order.id,
         total: order.total,
+        shippingFee: order.shippingFee || 0,
+        merchandiseTotal: order.merchandiseTotal || order.subtotal + order.vat,
         currency: order.currency,
         paymentStatus: order.paymentStatus,
         paymentTaken: Boolean(order.paymentTaken),
@@ -1569,6 +1592,24 @@ async function handleApi(req, res, urlPath) {
       } catch (err) {
         return json(res, 400, { ok: false, error: (err && err.message) || "Silinemedi" });
       }
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/shipping/settings") {
+    return json(res, 200, { ok: true, settings: shippingSettingsStore.getSettings() });
+  }
+
+  if (req.method === "PUT" && urlPath === "/api/admin/shipping/settings") {
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const settings = shippingSettingsStore.setSettings({
+        freeShippingThreshold: body.freeShippingThreshold,
+        shippingFee: body.shippingFee,
+      });
+      akakceXmlMemo = null;
+      return json(res, 200, { ok: true, settings });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Kargo ayarları kaydedilemedi." });
     }
   }
 

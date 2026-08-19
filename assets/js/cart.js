@@ -193,7 +193,19 @@
       });
       sub = Math.round(sub * 100) / 100;
       vat = Math.round(vat * 100) / 100;
-      return { lines, sub, vat, total: Math.round((sub + vat) * 100) / 100 };
+      const merchandiseTotal = Math.round((sub + vat) * 100) / 100;
+      const shipping =
+        window.PatygoShipping && typeof window.PatygoShipping.feeForMerchandise === "function"
+          ? window.PatygoShipping.feeForMerchandise(merchandiseTotal)
+          : 0;
+      return {
+        lines,
+        sub,
+        vat,
+        merchandiseTotal,
+        shipping,
+        total: Math.round((merchandiseTotal + shipping) * 100) / 100,
+      };
     },
   };
 

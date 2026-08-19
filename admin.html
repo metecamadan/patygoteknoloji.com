@@ -84,6 +84,7 @@
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
           <button type="button" class="admin-nav-item" id="usersTab" aria-controls="adminTabUsers" data-admin-tab="users"><span class="admin-nav-icon">◉</span>Kullanıcılar</button>
+          <button type="button" class="admin-nav-item" id="shippingTab" aria-controls="adminTabShipping" data-admin-tab="shipping"><span class="admin-nav-icon">⛟</span>Kargo</button>
         </nav>
         <div class="admin-sidebar-foot">
           <a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a>
@@ -422,6 +423,37 @@
                 </form>
               </section>
             </div>
+          </div>
+        </section>
+
+        <section id="adminTabShipping" class="admin-tab-panel" aria-labelledby="shippingTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">TESLİMAT</span>
+                  <h2>Kargo bedeli</h2>
+                  <p class="admin-card-lead">Sepet ve ödeme adımında gösterilir; tahsil edilen tutara eklenir.</p>
+                </div>
+              </div>
+              <form id="adminShippingForm" class="admin-form">
+                <div class="field">
+                  <label for="shippingFreeThreshold">Ücretsiz kargo eşiği (KDV dahil sepet tutarı, TL)</label>
+                  <input id="shippingFreeThreshold" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ör. 5000" />
+                  <p class="admin-field-help">Bu tutar ve üzeri siparişlerde kargo ücretsizdir.</p>
+                </div>
+                <div class="field">
+                  <label for="shippingFeeAmount">Kargo bedeli (KDV dahil, TL)</label>
+                  <input id="shippingFeeAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ör. 149" />
+                  <p class="admin-field-help">Eşik altındaki siparişlere eklenir ve ödeme tutarına dahil edilir.</p>
+                </div>
+                <p class="admin-field-help" id="shippingPreview" aria-live="polite"></p>
+                <div class="admin-form-actions">
+                  <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+                <p class="admin-note" id="adminShippingNote" role="status"></p>
+              </form>
+            </section>
           </div>
         </section>
 

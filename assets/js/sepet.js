@@ -10,12 +10,35 @@
     return window.PatygoCatalog.formatPrice(n);
   }
 
+  function renderShippingSummary(totals) {
+    const row = document.getElementById("cartShippingRow");
+    const label = document.getElementById("cartShippingLabel");
+    const amount = document.getElementById("cartShipping");
+    const settings = window.PatygoShipping && window.PatygoShipping.settings;
+    if (!row || !amount) return;
+    const enabled =
+      settings && settings.enabled && settings.shippingFee > 0 && totals.lines.length;
+    if (!enabled) {
+      row.hidden = true;
+      return;
+    }
+    row.hidden = false;
+    if ((totals.shipping || 0) <= 0) {
+      if (label) label.textContent = "Kargo";
+      amount.textContent = "Ücretsiz";
+    } else {
+      if (label) label.textContent = "Kargo (KDV dahil)";
+      amount.textContent = money(totals.shipping);
+    }
+  }
+
   function render() {
     const byId = window.PatygoCatalog.byId || {};
     const totals = window.PatygoCart.totals(byId);
     document.getElementById("cartSub").textContent = money(totals.sub);
     document.getElementById("cartVat").textContent = money(totals.vat);
     document.getElementById("cartTotal").textContent = money(totals.total);
+    renderShippingSummary(totals);
 
     linesEl.textContent = "";
     if (!totals.lines.length) {
@@ -176,12 +199,16 @@
   }
 
   function boot() {
+    const run = () => render();
+    const ready = window.PatygoShipping
+      ? window.PatygoShipping.load().then(run).catch(run)
+      : Promise.resolve().then(run);
     if (window.PatygoCatalog && window.PatygoCatalog.ready) {
-      window.PatygoCatalog.ready.then(render);
+      window.PatygoCatalog.ready.then(() => ready);
     } else {
-      window.addEventListener("patygo:catalog", render, { once: true });
+      window.addEventListener("patygo:catalog", () => ready, { once: true });
     }
-    window.addEventListener("patygo:cart", render);
+    window.addEventListener("patygo:cart", () => ready);
   }
 
   boot();
