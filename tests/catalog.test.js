@@ -71,7 +71,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
     price: 200,
     category: "bilgisayar",
     description: "Açıklama",
-    details: "Detay metni vitrinde özellik tablosu yerine korunur: " + "x".repeat(80),
+    details: "__SPEC_TABLE__\nKaynak|Manuel vitrin metni\nNot|" + "x".repeat(80),
     image: "https://cdn.example/a.jpg",
     images: ["https://cdn.example/a.jpg", "https://cdn.example/b.jpg"],
     featured: false,
@@ -92,7 +92,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
     mid: "",
     alt: "",
     description: "Açıklama",
-    details: "Detay metni vitrinde özellik tablosu yerine korunur: " + "x".repeat(80),
+    details: "__SPEC_TABLE__\nKaynak|Manuel vitrin metni\nNot|" + "x".repeat(80),
     image: "https://cdn.example/a.jpg",
     images: ["https://cdn.example/a.jpg", "https://cdn.example/b.jpg"],
     featured: false,
@@ -105,7 +105,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
 
 test("list catalog omits details while id lookup keeps full copy", () => {
   const { queryPublicCatalog, toPublicProduct } = require("../lib/catalog");
-  const longDetails = "D".repeat(400);
+  const longDetails = "__SPEC_TABLE__\nDetay|" + "D".repeat(400);
   const products = [
     {
       id: "p1",
