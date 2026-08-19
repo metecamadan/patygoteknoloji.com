@@ -117,7 +117,7 @@ test("supplier XML decodes entities, prefers GorselBuyuk and upgrades http image
   assert.equal(products[0].category, "bilgisayar");
 });
 
-test("supplier XML expands thumbnail URLs and keeps a gallery", () => {
+test("supplier XML expands thumbnail URLs to full-size gallery only", () => {
   const xml = `<?xml version="1.0"?>
     <Urunler>
       <Urun>
@@ -130,11 +130,23 @@ test("supplier XML expands thumbnail URLs and keeps a gallery", () => {
     </Urunler>`;
   const products = parseSupplierXml(xml, new URL("https://www.bilgisayarim.com.tr/feed.xml"));
   assert.equal(products[0].image, "https://resim.example/91095.jpg");
-  assert.deepEqual(products[0].images, [
-    "https://resim.example/91095.jpg",
-    "https://resim.example/91095_th.jpg",
-  ]);
+  assert.deepEqual(products[0].images, ["https://resim.example/91095.jpg"]);
   assert.equal(products[0].description, "Kutu fanlı masaüstü işlemci.");
+});
+
+test("supplier XML drops _th when full GorselBuyuk is also present", () => {
+  const xml = `<?xml version="1.0"?>
+    <Urunler>
+      <Urun>
+        <UrunKodu>IMG-BOTH</UrunKodu>
+        <UrunAciklama>WD disk</UrunAciklama>
+        <Fiyat>10</Fiyat>
+        <GorselBuyuk>https://resim.example/115392.jpg</GorselBuyuk>
+        <GorselKucuk>https://resim.example/115392_th.jpg</GorselKucuk>
+      </Urun>
+    </Urunler>`;
+  const products = parseSupplierXml(xml, new URL("https://www.bilgisayarim.com.tr/feed.xml"));
+  assert.deepEqual(products[0].images, ["https://resim.example/115392.jpg"]);
 });
 
 test("supplier XML accepts Adi and BayiFiyat field names", () => {
