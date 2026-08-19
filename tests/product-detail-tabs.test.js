@@ -32,10 +32,12 @@ test("product detail tabs and spec chips are rendered in JS", () => {
   const html = fs.readFileSync(path.join(root, "urun-detay.html"), "utf8");
   assert.match(script, /detail-tabs/);
   assert.match(script, /buildDetailTabs/);
+  assert.match(script, /detail-spec-grid/);
+  assert.match(script, /detail-spec-title/);
   assert.match(script, /buildSpecTableFromRows/);
-  assert.match(script, /parseDetailSpecTable/);
   assert.doesNotMatch(script, /detail-empty/);
   assert.match(script, /İade ve Cayma/);
-  assert.match(css, /\.detail-tablist/);
+  assert.match(css, /\.detail-spec-grid/);
+  assert.match(css, /\.detail-spec-value\.is-highlight/);
   assert.match(html, /detail-specs\.js/);
 });

@@ -39,25 +39,42 @@
     return [];
   }
 
+  function shouldHighlightSpecLabel(label) {
+    return /^(İşlemci|Ekran kartı|Bellek|Depolama|Ekran|İşletim sistemi|İşlemci hızı)$/i.test(
+      String(label || "").trim()
+    );
+  }
+
+  function buildSpecRow(row) {
+    const item = el("div", "detail-spec-row");
+    item.appendChild(el("span", "detail-spec-label", row.label));
+    const valueClass =
+      "detail-spec-value" + (shouldHighlightSpecLabel(row.label) ? " is-highlight" : "");
+    item.appendChild(el("span", valueClass, row.value));
+    return item;
+  }
+
   function buildSpecTableFromRows(rows) {
     if (!rows || !rows.length) return null;
-    const table = el("dl", "detail-spec-table");
-    rows.forEach((row) => {
-      table.appendChild(el("dt", "", row.label));
-      table.appendChild(el("dd", "", row.value));
+    const block = el("div", "detail-spec-block");
+    block.appendChild(el("h3", "detail-spec-title", "Ürün özellikleri"));
+    const grid = el("div", "detail-spec-grid");
+    const mid = Math.ceil(rows.length / 2);
+    [rows.slice(0, mid), rows.slice(mid)].forEach((colRows) => {
+      if (!colRows.length) return;
+      const col = el("div", "detail-spec-col");
+      colRows.forEach((row) => col.appendChild(buildSpecRow(row)));
+      grid.appendChild(col);
     });
-    return table;
+    block.appendChild(grid);
+    return block;
   }
 
   function buildSpecTable(name) {
     const chips = parseSpecChips(name);
     if (!chips.length) return null;
-    const table = el("dl", "detail-spec-table");
-    chips.forEach((label) => {
-      table.appendChild(el("dt", "", chipLabel(label)));
-      table.appendChild(el("dd", "", label));
-    });
-    return table;
+    const rows = chips.map((label) => ({ label: chipLabel(label), value: label }));
+    return buildSpecTableFromRows(rows);
   }
 
   function wireDetailTabs(section) {
