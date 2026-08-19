@@ -14,7 +14,7 @@ const { atomicWriteJson } = require("./lib/supplier");
 const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
-const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, buildPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
+const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths } = require("./lib/product-image-mirror");
 const {
   mergeCatalogProducts,
   queryPublicCatalog,
@@ -587,25 +587,17 @@ let akakceXmlMemo = null;
 const CATALOG_BOOTSTRAP_LIMIT = 20;
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 
-let placeholderMirrorFiles = null;
-
 function invalidateStorefrontCatalog() {
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
   akakceXmlMemo = null;
-  placeholderMirrorFiles = null;
 }
 
 function catalogImageContext() {
-  const mirrorIndex = loadMirrorIndex(DATA_ROOT);
-  if (!placeholderMirrorFiles) {
-    placeholderMirrorFiles = buildPlaceholderMirrorFileSet(DATA_ROOT, mirrorIndex);
-  }
   return {
-    mirrorIndex,
+    mirrorIndex: loadMirrorIndex(DATA_ROOT),
     siteBaseUrl: SITE_BASE_URL,
     dataRoot: DATA_ROOT,
-    placeholderMirrorFiles,
   };
 }
 
