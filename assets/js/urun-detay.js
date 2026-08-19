@@ -32,6 +32,23 @@
     return "Özellik";
   }
 
+  function parseDetailSpecTable(text) {
+    if (window.PatygoDetailSpecs && window.PatygoDetailSpecs.parseProductDetailSpecTable) {
+      return window.PatygoDetailSpecs.parseProductDetailSpecTable(text);
+    }
+    return [];
+  }
+
+  function buildSpecTableFromRows(rows) {
+    if (!rows || !rows.length) return null;
+    const table = el("dl", "detail-spec-table");
+    rows.forEach((row) => {
+      table.appendChild(el("dt", "", row.label));
+      table.appendChild(el("dd", "", row.value));
+    });
+    return table;
+  }
+
   function buildSpecTable(name) {
     const chips = parseSpecChips(name);
     if (!chips.length) return null;
@@ -96,7 +113,10 @@
       const intro = el("p", "detail-desc", description);
       descPanel.appendChild(intro);
     }
-    if (details) {
+    const specRows = parseDetailSpecTable(details);
+    if (specRows.length) {
+      descPanel.appendChild(buildSpecTableFromRows(specRows));
+    } else if (details) {
       const body = el("div", "detail-body", details);
       descPanel.appendChild(body);
     } else if (!description) {

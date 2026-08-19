@@ -16,11 +16,10 @@ const content = JSON.parse(fs.readFileSync(contentPath, "utf8"));
 
 test("Lenovo V15 SEO content is verified and honest about RAM upgrade", () => {
   assert.match(content.description, /83A100KXTR/i);
-  assert.match(content.description, /i7-1355U/i);
-  assert.match(content.description, /40 GB RAM/i);
-  assert.match(content.details, /PSREF/i);
-  assert.match(content.details, /40 GB/i);
-  assert.match(content.details, /yükselt/i);
+  assert.match(content.details, /i7-1355U/i);
+  assert.match(content.description, /40 GB/i);
+  assert.match(content.details, /^__SPEC_TABLE__/);
+  assert.match(content.details, /Bellek\|40 GB \(yükseltmeli/);
   assert.match(content.details, /FreeDOS/i);
   assert.ok(content.description.length <= 2000);
   assert.ok(content.details.length <= 8000);

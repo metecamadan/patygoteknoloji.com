@@ -52,5 +52,23 @@
     return chips.slice(0, 8);
   }
 
-  root.PatygoDetailSpecs = { parseProductSpecChips };
+  function parseProductDetailSpecTable(text) {
+    const lines = String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length) return [];
+    if (lines[0] === "__SPEC_TABLE__") lines.shift();
+    const rows = [];
+    lines.forEach((line) => {
+      const pipe = line.indexOf("|");
+      if (pipe <= 0) return;
+      const label = line.slice(0, pipe).trim();
+      const value = line.slice(pipe + 1).trim();
+      if (label && value) rows.push({ label, value });
+    });
+    return rows;
+  }
+
+  root.PatygoDetailSpecs = { parseProductSpecChips, parseProductDetailSpecTable };
 })(typeof window !== "undefined" ? window : globalThis);
