@@ -11,6 +11,7 @@ const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8
 
 test("checkout page uses compact hero and section spacing", () => {
   assert.match(html, /class="checkout-page"/);
+  assert.doesNotMatch(html, /breadcrumb/);
   assert.match(html, /checkout-hero/);
   assert.match(html, /checkout-section/);
   assert.doesNotMatch(html, /section class="section" style="padding-top:0"/);
