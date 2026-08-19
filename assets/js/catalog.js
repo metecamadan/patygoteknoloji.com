@@ -1491,12 +1491,13 @@
           }
           const hasAny =
             home &&
-            FEATURED_PARENTS.some((slug) => ((home.byParent && home.byParent[slug]) || []).length);
+            ((Array.isArray(home.mixed) && home.mixed.length) ||
+              FEATURED_PARENTS.some((slug) => ((home.byParent && home.byParent[slug]) || []).length));
           if (!hasAny) {
             try {
               home = await fetchHomeFeaturedFallback();
             } catch (_) {
-              home = { byParent: {}, mixed: [] };
+              home = home || { byParent: {}, mixed: [] };
             }
           }
           if (!home) home = { byParent: {}, mixed: [] };

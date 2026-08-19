@@ -124,5 +124,6 @@ test("nav reads filtered category tree from listing snapshot first", () => {
     path.join(root, "deploy", "nginx-patygoteknoloji.com.conf"),
     "utf8"
   );
-  assert.match(nginx, /location = \/listing\/categories\.json/);
+  assert.doesNotMatch(nginx, /location = \/listing\/categories\.json/);
+  assert.match(nginx, /location \^~ \/listing\//);
 });
