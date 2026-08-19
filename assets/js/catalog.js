@@ -1095,10 +1095,14 @@
     const tabs = tablist.querySelectorAll("[data-filter]");
     const show = (filter) => {
       tabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === filter));
-      const list =
+      let list =
         filter === "all"
           ? mixFeatured(byParent, FEATURED_PER_CATEGORY)
           : ((byParent && byParent[filter]) || []).slice(0, FEATURED_PER_CATEGORY);
+      if (filter === "all" && !list.length) {
+        const fallback = Array.isArray(window.PatygoCatalog.list) ? window.PatygoCatalog.list : [];
+        list = fallback.slice(0, FEATURED_PER_CATEGORY);
+      }
       renderGrid(grid, list, {});
     };
     tabs.forEach((btn) => {
