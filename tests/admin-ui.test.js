@@ -239,7 +239,11 @@ test("admin shipping tab exposes threshold and fee settings", () => {
   assert.match(html, /id="adminShippingForm"[^>]*action="#"/);
   assert.match(html, /id="shippingFreeThreshold"/);
   assert.match(html, /id="shippingFeeAmount"/);
+  assert.match(html, /id="shippingSettingsView"/);
+  assert.match(html, /id="shippingEditBtn"/);
   assert.match(script, /loadAdminShippingSettings/);
+  assert.match(script, /renderShippingSummary/);
+  assert.match(script, /shipPrice/);
   assert.match(script, /\/api\/admin\/shipping\/settings/);
   assert.match(script, /applyOrderPatchToUi/);
   assert.match(script, /isAuthSessionError/);

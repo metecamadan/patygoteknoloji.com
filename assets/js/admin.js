@@ -4143,10 +4143,89 @@
   }
 
   const adminShippingForm = document.getElementById("adminShippingForm");
+  const shippingSettingsView = document.getElementById("shippingSettingsView");
+  const shippingSettingsSummary = document.getElementById("shippingSettingsSummary");
+  const shippingAkakceHint = document.getElementById("shippingAkakceHint");
+  const shippingEditBtn = document.getElementById("shippingEditBtn");
+  const shippingCancelBtn = document.getElementById("shippingCancelBtn");
   const shippingFreeThreshold = document.getElementById("shippingFreeThreshold");
   const shippingFeeAmount = document.getElementById("shippingFeeAmount");
   const shippingPreview = document.getElementById("shippingPreview");
   const adminShippingNote = document.getElementById("adminShippingNote");
+  let shippingSettingsSaved = null;
+
+  function shippingHasSavedSettings(settings) {
+    const cfg = settings || {};
+    return Number(cfg.shippingFee) > 0;
+  }
+
+  function setShippingEditor(open) {
+    if (adminShippingForm) adminShippingForm.hidden = !open;
+    if (shippingSettingsView) shippingSettingsView.hidden = open;
+    if (shippingCancelBtn) shippingCancelBtn.hidden = !open;
+  }
+
+  function renderShippingSummary(settings) {
+    if (!shippingSettingsSummary) return;
+    shippingSettingsSaved = settings || null;
+    const fee = Math.max(0, Number(settings && settings.shippingFee) || 0);
+    const threshold = Math.max(0, Number(settings && settings.freeShippingThreshold) || 0);
+    shippingSettingsSummary.innerHTML =
+      "<div><dt>Kargo bedeli (KDV dahil)</dt><dd>" +
+      (fee > 0 ? formatMoney(fee) : "Tanımlı değil") +
+      "</dd></div>" +
+      "<div><dt>Ücretsiz kargo eşiği</dt><dd>" +
+      (threshold > 0 ? formatMoney(threshold) + " ve üzeri" : "Yok (her siparişe kargo uygulanır)") +
+      "</dd></div>" +
+      (settings && settings.updatedAt
+        ? "<div><dt>Son güncelleme</dt><dd>" + escapeHtml(formatDate(settings.updatedAt)) + "</dd></div>"
+        : "");
+    if (shippingAkakceHint) {
+      if (fee <= 0) {
+        shippingAkakceHint.textContent =
+          "Akakçe XML feed’de shipPrice şu an 0,00 TL görünür. Kargo bedeli kaydedilince ürün fiyatına göre güncellenir.";
+      } else if (threshold > 0) {
+        shippingAkakceHint.textContent =
+          "Akakçe XML: ürün KDV dahil fiyatı " +
+          formatMoney(threshold) +
+          " altındaysa shipPrice " +
+          formatMoney(fee) +
+          ", eşik ve üzerinde 0,00 TL yazılır.";
+      } else {
+        shippingAkakceHint.textContent =
+          "Akakçe XML feed’de tüm ürünler için shipPrice " + formatMoney(fee) + " olarak yansır.";
+      }
+    }
+  }
+
+  function readShippingFormValues() {
+    return {
+      freeShippingThreshold: Math.max(0, Number(shippingFreeThreshold && shippingFreeThreshold.value) || 0),
+      shippingFee: Math.max(0, Number(shippingFeeAmount && shippingFeeAmount.value) || 0),
+    };
+  }
+
+  function validateShippingFormValues(values) {
+    if (values.freeShippingThreshold > 0 && values.shippingFee <= 0) {
+      return "Ücretsiz kargo eşiği tanımlıysa kargo bedeli de girilmelidir.";
+    }
+    if (values.shippingFee <= 0) {
+      return "Akakçe ve sepet için kargo bedeli girilmelidir.";
+    }
+    return "";
+  }
+
+  function fillShippingForm(settings) {
+    const cfg = settings || {};
+    if (shippingFreeThreshold) {
+      shippingFreeThreshold.value =
+        Number(cfg.freeShippingThreshold) > 0 ? String(cfg.freeShippingThreshold) : "";
+    }
+    if (shippingFeeAmount) {
+      shippingFeeAmount.value = Number(cfg.shippingFee) > 0 ? String(cfg.shippingFee) : "";
+    }
+    renderShippingPreview();
+  }
 
   function renderShippingPreview() {
     if (!shippingPreview) return;
@@ -4174,15 +4253,29 @@
     if (!adminShippingForm || !token) return;
     const data = await api("/api/admin/shipping/settings");
     const settings = (data && data.settings) || {};
-    if (shippingFreeThreshold) {
-      shippingFreeThreshold.value =
-        settings.freeShippingThreshold > 0 ? String(settings.freeShippingThreshold) : "";
-    }
-    if (shippingFeeAmount) {
-      shippingFeeAmount.value = settings.shippingFee > 0 ? String(settings.shippingFee) : "";
-    }
-    renderShippingPreview();
+    fillShippingForm(settings);
+    renderShippingSummary(settings);
+    setShippingEditor(!shippingHasSavedSettings(settings));
     note(adminShippingNote, "", "");
+  }
+
+  if (shippingEditBtn) {
+    shippingEditBtn.addEventListener("click", () => {
+      fillShippingForm(shippingSettingsSaved || {});
+      setShippingEditor(true);
+      note(adminShippingNote, "", "");
+      if (shippingFeeAmount) shippingFeeAmount.focus();
+    });
+  }
+
+  if (shippingCancelBtn) {
+    shippingCancelBtn.addEventListener("click", () => {
+      fillShippingForm(shippingSettingsSaved || {});
+      if (shippingHasSavedSettings(shippingSettingsSaved)) {
+        setShippingEditor(false);
+      }
+      note(adminShippingNote, "", "");
+    });
   }
 
   if (shippingFreeThreshold) shippingFreeThreshold.addEventListener("input", renderShippingPreview);
@@ -4192,18 +4285,27 @@
     adminShippingForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const submitBtn = adminShippingForm.querySelector('button[type="submit"]');
+      const values = readShippingFormValues();
+      const validationError = validateShippingFormValues(values);
+      if (validationError) {
+        note(adminShippingNote, "err", validationError);
+        return;
+      }
       if (submitBtn) submitBtn.disabled = true;
       try {
-        await api("/api/admin/shipping/settings", {
+        const saved = await api("/api/admin/shipping/settings", {
           method: "PUT",
           timeout: 20000,
           body: JSON.stringify({
-            freeShippingThreshold: shippingFreeThreshold ? shippingFreeThreshold.value : 0,
-            shippingFee: shippingFeeAmount ? shippingFeeAmount.value : 0,
+            freeShippingThreshold: values.freeShippingThreshold,
+            shippingFee: values.shippingFee,
           }),
         });
-        await loadAdminShippingSettings();
-        note(adminShippingNote, "ok", "Kargo ayarları kaydedildi.");
+        const settings = (saved && saved.settings) || values;
+        fillShippingForm(settings);
+        renderShippingSummary(settings);
+        setShippingEditor(false);
+        note(adminShippingNote, "ok", "Kargo ayarları kaydedildi. Akakçe XML bir sonraki istekte güncellenir.");
       } catch (err) {
         note(adminShippingNote, "err", err.message || "Kaydedilemedi");
       } finally {
