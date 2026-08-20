@@ -64,11 +64,17 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(nginx, /gzip on;/);
   assert.match(nginx, /gzip_proxied any;/);
   assert.match(nginx, /expires 1h;/);
-  assert.doesNotMatch(nginx, /location ~ \^\/urunler/);
+  const urunlerBlock = nginx.match(/location = \/urunler \{[\s\S]*?\n  \}/);
+  assert.ok(urunlerBlock, "urunler nginx block missing");
+  assert.doesNotMatch(urunlerBlock[0], /proxy_pass/);
+  assert.match(urunlerBlock[0], /try_files \/urunler\.html/);
   assert.match(nginx, /location \^~ \/media\/catalog\//);
   assert.match(nginx, /location \^~ \/listing\//);
   assert.doesNotMatch(nginx, /location = \/listing\/categories\.json/);
   assert.match(nginx, /alias \/var\/www\/patygoteknoloji\.com\/\.runtime\/catalog-bootstrap\//);
   const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  assert.match(serverJs, /scheduleStartupCatalogWarm/);
+  assert.match(serverJs, /STARTUP_WARM_DEFER_MS/);
+  assert.match(serverJs, /bootstrapSnapshotsReady/);
   assert.match(serverJs, /\/api\/catalog-bootstrap/);
 });

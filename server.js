@@ -597,6 +597,7 @@ const storefrontCatalogMemo = { active: null, all: null };
 let akakceXmlMemo = null;
 const CATALOG_BOOTSTRAP_LIMIT = 20;
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
+const STARTUP_WARM_DEFER_MS = 45000;
 
 function clearCatalogBootstrapSnapshots() {
   try {
@@ -769,6 +770,19 @@ function scheduleWarmStorefrontCatalog() {
 
 function warmStorefrontCatalog() {
   scheduleWarmStorefrontCatalog();
+}
+
+function scheduleStartupCatalogWarm() {
+  if (bootstrapSnapshotsReady()) {
+    const timer = setTimeout(() => {
+      try {
+        warmStorefrontCatalog();
+      } catch (_) {}
+    }, STARTUP_WARM_DEFER_MS);
+    if (typeof timer.unref === "function") timer.unref();
+    return;
+  }
+  warmStorefrontCatalog();
 }
 
 function emptyListingSnapshotPayload() {
@@ -2586,7 +2600,7 @@ setImmediate(() => {
   try {
     ensureListingTreeSnapshotFiles();
   } catch (_) {}
-  warmStorefrontCatalog();
+  scheduleStartupCatalogWarm();
   scheduleAkakceImageMirror();
 });
 const xmlCategorySyncTimer = setTimeout(() => {

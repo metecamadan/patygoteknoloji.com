@@ -133,6 +133,8 @@ jobs:
             } || true
             PUB_JSON="$(curl -fsS --max-time 20 "${PUBLIC_URL}/api/payment/status")"
             echo "$PUB_JSON" | grep -q '"paymentModel"'
+            curl -fsS --max-time 20 "${PUBLIC_URL}/listing/all.json" >/dev/null
+            curl -fsS --max-time 20 "${PUBLIC_URL}/urunler" | grep -q 'data-catalog-infinite'
             echo "$PUB_JSON" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && {
               echo "public payment/status unexpectedly contains an IPv4"
               exit 1
