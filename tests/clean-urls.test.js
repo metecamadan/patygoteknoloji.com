@@ -14,6 +14,15 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   const bootstrapApi = await fetch(baseUrl + "/api/catalog-bootstrap");
   assert.ok(bootstrapApi.status === 200 || bootstrapApi.status === 404);
 
+  const bootstrapAlias = await fetch(baseUrl + "/api/catalog/bootstrap?path=/urunler");
+  assert.equal(bootstrapAlias.status, bootstrapApi.status);
+  if (bootstrapApi.status === 200) {
+    const primary = await bootstrapApi.clone().json();
+    const alias = await bootstrapAlias.json();
+    assert.equal(alias.total, primary.total);
+    assert.equal(alias.products.length, primary.products.length);
+  }
+
   const aliased = await fetch(baseUrl + "/urunler.html", { redirect: "manual" });
   assert.equal(aliased.status, 301);
   assert.equal(aliased.headers.get("location"), "/urunler");

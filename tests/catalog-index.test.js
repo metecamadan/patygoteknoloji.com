@@ -142,6 +142,8 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /injectCatalogBootstrapHtml/);
   assert.match(serverJs, /defer src="\/assets\/js\/cart\.js"/);
   assert.match(serverJs, /\/api\/catalog-bootstrap/);
+  assert.match(serverJs, /\/api\/catalog\/bootstrap/);
+  assert.match(serverJs, /normalizeCatalogBootstrapRequestUrl/);
   assert.match(serverJs, /readCatalogBootstrapSnapshot/);
   assert.match(serverJs, /writeCatalogBootstrapSnapshots/);
   assert.match(serverJs, /scheduleWarmStorefrontCatalog/);

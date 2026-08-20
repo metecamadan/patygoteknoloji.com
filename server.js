@@ -60,6 +60,7 @@ const {
   NOTIFY_STATUSES,
   sendOrderStatusMail,
 } = require("./lib/order-mail");
+const { submitSalesInvoice } = require("./lib/bizimhesap");
 const {
   createContactStore,
   normalizeContactPayload,
@@ -1273,6 +1274,9 @@ async function handleApi(req, res, urlPath) {
             sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
               console.error("order paid mail failed:", err.message);
             });
+            submitSalesInvoice(updated, { store: orderStore }).catch((err) => {
+              console.error("bizimhesap invoice failed:", err.message);
+            });
           });
         }
       }
@@ -1342,8 +1346,13 @@ async function handleApi(req, res, urlPath) {
     }
   }
 
-  if (req.method === "GET" && urlPath === "/api/catalog-bootstrap") {
-    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+  if (
+    req.method === "GET" &&
+    (urlPath === "/api/catalog-bootstrap" || urlPath === "/api/catalog/bootstrap")
+  ) {
+    const requestUrl = normalizeCatalogBootstrapRequestUrl(
+      new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`)
+    );
     const bootstrap = catalogBootstrapPayload(requestUrl);
     if (!bootstrap) {
       return json(res, 404, { ok: false, error: "Katalog önbelleği hazır değil." });
@@ -2277,6 +2286,21 @@ function writeBootstrapSnapshotFile(name, payload) {
     totalPages: payload.totalPages,
     facets: payload.facets || null,
   });
+}
+
+function normalizeCatalogBootstrapRequestUrl(requestUrl) {
+  const params = requestUrl.searchParams;
+  const pathParam = String(params.get("path") || "").trim();
+  if (!pathParam || params.get("kategori") || params.get("ara") || params.get("alt")) {
+    return requestUrl;
+  }
+  const segments = pathParam.replace(/^\/+/, "").split("/").filter(Boolean);
+  if (segments[0] === "urunler") segments.shift();
+  if (segments[0]) params.set("kategori", segments[0]);
+  if (segments[1]) params.set("ara", segments[1]);
+  if (segments[2]) params.set("alt", segments[2]);
+  params.delete("path");
+  return requestUrl;
 }
 
 function catalogBootstrapPayload(requestUrl) {
