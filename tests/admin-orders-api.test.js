@@ -50,7 +50,27 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   const statusBody = await statusPatch.json();
   assert.equal(statusBody.order.status, "preparing");
 
-  const shipPatch = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
+  const cancelPatch = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  assert.equal(cancelPatch.status, 200);
+  const cancelBody = await cancelPatch.json();
+  assert.equal(cancelBody.order.status, "cancelled");
+
+  store.save({
+    id: "PTY-ADMIN-2",
+    total: 300,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "İkinci Müşteri", email: "ikinci@example.com" },
+    items: [{ productId: "p2", name: "Klavye", qty: 2, line: 250, lineVat: 50 }],
+    createdAt: new Date().toISOString(),
+  });
+
+  const shipPatch = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-2", {
     method: "PATCH",
     headers,
     body: JSON.stringify({
@@ -64,7 +84,7 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   assert.equal(shipBody.order.shippingCarrier, "MNG Kargo");
   assert.equal(shipBody.order.trackingCode, "MNG987654");
 
-  const shipPatch2 = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
+  const shipPatch2 = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-2", {
     method: "PATCH",
     headers,
     body: JSON.stringify({
@@ -80,7 +100,7 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   const meAfter = await fetch(baseUrl + "/api/admin/me", { headers });
   assert.equal(meAfter.status, 200);
 
-  const badShip = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
+  const badShip = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-2", {
     method: "PATCH",
     headers,
     body: JSON.stringify({ shippingCarrier: "MNG Kargo" }),

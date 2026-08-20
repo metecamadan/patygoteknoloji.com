@@ -12,10 +12,11 @@ Bu proje web (şu an) ve ileride mobil için çoklu agent ile yürütülür. Her
 | 4 | **QA & Test** | `npm test`, regression, coverage, link kontrolü |
 | 5 | **Dijital Pazarlama & SEO** | teknik SEO kontrolleri, içerik/meta denetimi, uyarı ve öneri üretimi |
 | 6 | **Release & DevOps** | commit/push, GitHub Actions, deploy doğrulama, secret kontrolü |
+| 7 | **Product Designer** | vitrin/panel UX, görsel tutarlılık, huni copy, erişilebilirlik denetimi, `docs/design-audit.md` |
 
-**Mobil fazında 7. agent eklenir:** Mobile (React Native / Expo veya native).
+**Mobil fazında 8. agent eklenir:** Mobile (React Native / Expo veya native).
 
-Toplam: **6 agent** (mobil ile **7**).
+Toplam: **7 agent** (mobil ile **8**).
 
 ---
 
@@ -57,7 +58,14 @@ Toplam: **6 agent** (mobil ile **7**).
 - Canlı smoke: `https://patygoteknoloji.com` (IP değil).
 - **Öğrenmesi gerekenler:** `.github/workflows/ci-deploy.yml`, deploy secret'ları, `scripts/setup-github-deploy-key.sh`.
 
-### 7) Mobile (gelecek)
+### 7) Product Designer
+- Vitrin ve admin panel UX denetimi; spacing, tipografi, CTA hiyerarşisi, dönüşüm hunisi (sepet → ödeme).
+- Erişilebilirlik: focus, skip link, kontrast, dokunma hedefi (44px).
+- Önerileri `docs/design-audit.md` içinde önceliklendirir (Y/O/D); uygulama Web Frontend’e devredilir.
+- Büyük UI değişikliği öncesi/sonrası görsel tutarlılık kontrolü; SEO metin değil (Dijital Pazarlama ile koordinasyon).
+- **Öğrenmesi gerekenler:** `assets/css/style.css` token’ları, `AGENTS.md`, `.cursor/rules/designer-agent.mdc`, canlı vitrin smoke.
+
+### 8) Mobile (gelecek)
 - API-first; mevcut backend sözleşmelerini bozmaz.
 - **Öğrenmesi gerekenler:** public API'ler, auth modeli, mobil UX, store gereksinimleri.
 
@@ -68,6 +76,7 @@ Toplam: **6 agent** (mobil ile **7**).
 ```
 Kullanıcı isteği
     → Orchestrator: alt görevler oluştur
+    → Product Designer: UX etkisi varsa audit / onay listesi
     → İlgili agent: kod değişikliği
     → Dijital Pazarlama & SEO: SEO checklist + risk uyarıları
     → QA: npm test (+ gerekirse test:links)
@@ -97,6 +106,7 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 | `*.html`, `assets/css`, `assets/js`, sitemap/robots | Dijital Pazarlama & SEO |
 | `tests/` | QA (diğerleri test yazar, QA doğrular) |
 | `.github/`, deploy scriptleri | Release & DevOps |
+| `docs/design-audit.md`, UX öncelik listesi | Product Designer |
 | `AGENTS.md`, görev planı | Orchestrator |
 
 ## Kurallar
@@ -109,3 +119,4 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 - `.cursor/rules/supplier-xml-ip.mdc` — tedarikçi XML yalnızca kayıtlı IP
 - `.cursor/rules/smtp-homework.mdc` — SMTP ödevi (ertelendi)
 - `.cursor/rules/agent-task-breakdown.mdc` — agent içi görev parçalama
+- `.cursor/rules/designer-agent.mdc` — Product Designer UX denetimi

@@ -3724,7 +3724,7 @@
       "</select></div>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
       "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
-      "<p class='admin-field-help'>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur. Aynı durum için müşteriye yalnızca bir mail gider.</p>" +
+      "<p class='admin-field-help'>Hazırlanıyor ve iptal durumlarında müşteriye bilgilendirme maili gider. Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur; aynı durum için yalnızca bir mail gider (SMTP yapılandırılmış olmalı).</p>" +
       "<div class='admin-order-shipping-fields'>" +
       "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
       "<select id='adminOrderCarrier'>" +

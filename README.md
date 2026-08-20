@@ -63,41 +63,47 @@ Panel: `http://localhost:5173/admin` (temiz URL; `.html` uzantılı eski adresle
 
 ## Yayına Alma (Deploy)
 
-Node.js çalıştırabilen bir sunucu gerekir. `.runtime/` klasörü kalıcı diskte tutulmalı; dışarıdan erişime açılmamalıdır. Alan adı: `patygoteknoloji.com`.
+Node.js çalıştırabilen **herhangi bir** VPS yeterlidir (Google Cloud zorunlu değil). `.runtime/` kalıcı diskte tutulmalı; dışarıdan erişime açılmamalıdır. Genel adres her zaman alan adı: `https://patygoteknoloji.com` (IP ile site doğrulanmaz).
+
+### Yeni sunucu (bir kerelik)
+
+```bash
+# İsteğe bağlı: APP_DIR=/var/www/patygo SITE_DOMAIN=patygoteknoloji.com
+bash scripts/server-bootstrap.sh
+```
+
+(`scripts/gcp-bootstrap.sh` aynı kuruluma yönlendirir; ad tarihseldir.)
+
+`.env` içinde zorunlu:
+
+- `SITE_BASE_URL=https://patygoteknoloji.com` — canlıda IP / localhost yasak (ödeme callback + Akakçe)
+- `ADMIN_PASSWORD=...`
+- `AKBANK_*` anahtarları
+
+DNS: `@` ve `www` A kayıtlarını **yeni** sunucunun dış IP’sine alın. SSL: certbot. Tedarikçi XML whitelist’ine **yeni çıkış IP’sini** ekleyin.
 
 ### Otomatik CI / Deploy
 
-`main` branch’e her push’ta GitHub Actions:
+`main` push → `npm test` → SSH ile `git pull` + `pm2 restart`.
 
-1. `npm test` çalıştırır (fail → deploy yok)
-2. Test geçerse sunucuda `git pull` + `pm2 restart patygo`
-
-**Bir kerelik kurulum (sunucuda SSH ile):**
+**Bir kerelik deploy anahtarı (sunucuda):**
 
 ```bash
-cd /var/www/patygo
-git pull
+cd /var/www/patygo   # veya APP_DIR
 bash scripts/setup-github-deploy-key.sh
 ```
 
-Script’in yazdırdığı private key’i GitHub’da repo → **Settings → Secrets and variables → Actions** altına ekleyin:
-
 | Secret | Değer |
 |--------|--------|
-| `DEPLOY_HOST` | Alan adı veya sunucu IP (`patygoteknoloji.com` tercih) |
-| `DEPLOY_USER` | SSH kullanıcı adı |
-| `DEPLOY_SSH_KEY` | Script’in ürettiği private key (tümü) |
-| `ADMIN_PASSWORD` | Admin panel şifresi (deploy sırasında sunucu `.env` ile senkronize edilir) |
+| `DEPLOY_HOST` | **Alan adı** (`patygoteknoloji.com`) — ham IP reddedilir |
+| `DEPLOY_USER` | SSH kullanıcı |
+| `DEPLOY_SSH_KEY` | OpenSSH private key |
+| `DEPLOY_APP_DIR` | (opsiyonel) varsayılan `/var/www/patygo` |
+| `DEPLOY_PM2_NAME` | (opsiyonel) varsayılan `patygo` |
+| `DEPLOY_APP_PORT` | (opsiyonel) varsayılan `5173` |
+| `DEPLOY_PUBLIC_URL` | (opsiyonel) varsayılan `https://patygoteknoloji.com` |
 
-Deploy Actions kırmızıysa önce bu üç secret’ın dolu olduğunu kontrol edin. SSH host olarak IP yerine alan adı kullanılabilir.
-
-**Workflow dosyası push edilemiyorsa** (`workflow scope` hatası):
-
-```bash
-bash scripts/setup-github-workflow-auth.sh
-```
-
-GitHub cihaz kodunu onaylayın; ardından `.github/workflows/*` değişiklikleri push edilebilir.
+Deploy sonrası smoke hem `127.0.0.1` (süreç) hem alan adı (kamu) üzerinden `/api/payment/status` kontrol eder; yanıttaki IPv4 kaçakları fail eder.
 
 ## Yapılacaklar / Notlar
 

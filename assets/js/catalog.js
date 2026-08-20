@@ -260,16 +260,25 @@
     reloadCatalog();
   }
 
-  function renderCatalogMeta(total, applied) {
+  function countDisplayedListingProducts() {
+    const grid = document.querySelector('.product-grid[data-catalog="all"]');
+    if (!grid) return 0;
+    return grid.querySelectorAll(".product-card:not(.product-card--skeleton)").length;
+  }
+
+  function renderCatalogMeta(displayed, total, applied) {
     const meta = document.querySelector("[data-catalog-meta]");
     if (!meta) return;
-    const count = Number(total) || 0;
+    const shown = Math.max(0, Number(displayed) || 0);
+    const all = Math.max(shown, Number(total) || shown);
     const active =
       (applied && applied.brands && applied.brands.length) ||
       (applied && applied.minFiyat) ||
       (applied && applied.maxFiyat);
-    meta.hidden = false;
-    meta.textContent = count + " ürün";
+    meta.hidden = shown <= 0 && all <= 0;
+    let text = shown + " ürün";
+    if (all > shown) text = shown + " / " + all + " ürün";
+    meta.textContent = text;
     if (active) meta.textContent += " (filtrelenmiş)";
   }
 
@@ -889,8 +898,15 @@
     }
   }
 
+  function listingPayloadUsable(data) {
+    if (!data || !Array.isArray(data.products)) return false;
+    const total = Number(data.total) || 0;
+    if (total > 0 && data.products.length === 0) return false;
+    return true;
+  }
+
   function writeListingCache(key, data) {
-    if (!key || !data || !Array.isArray(data.products)) return;
+    if (!key || !listingPayloadUsable(data)) return;
     try {
       const store = JSON.parse(sessionStorage.getItem(LISTING_CACHE_STORE) || "{}");
       store[key] = { at: Date.now(), data: data };
@@ -1024,6 +1040,11 @@
       listingScroll.page = nextPage;
       listingScroll.totalPages = payload.totalPages || listingScroll.totalPages;
       listingScroll.total = payload.total || listingScroll.total;
+      renderCatalogMeta(
+        countDisplayedListingProducts(),
+        listingScroll.total,
+        readFacetQuery()
+      );
     } catch (_) {}
     listingScroll.loading = false;
     if (listingScroll.page >= listingScroll.totalPages) {
@@ -1267,8 +1288,21 @@
     if (opts.listingInfinite) setupListingInfinite(opts.listingInfinite);
     else resetListingScroll();
     if (document.querySelector("[data-catalog-facets]")) {
-      renderFacets(opts.facets, readFacetQuery());
-      renderCatalogMeta((opts.pager && opts.pager.total) || products.length, readFacetQuery());
+      const facetState = readFacetQuery();
+      renderFacets(opts.facets, facetState);
+      if (opts.listingInfinite) {
+        renderCatalogMeta(
+          countDisplayedListingProducts() || products.length,
+          opts.listingInfinite.total || products.length,
+          facetState
+        );
+      } else {
+        renderCatalogMeta(
+          products.length,
+          (opts.pager && opts.pager.total) || products.length,
+          facetState
+        );
+      }
     }
     if (opts.featuredTabs) bindFeaturedTabs(opts.featuredTabs, products);
     else if (!opts.categoryResolved) bindTabs(document);
@@ -1313,7 +1347,7 @@
     try {
       const data = JSON.parse(el.textContent || "");
       el.remove();
-      if (!data || !Array.isArray(data.products)) return null;
+      if (!data || !listingPayloadUsable(data)) return null;
       return data;
     } catch (_) {
       return null;
@@ -1333,7 +1367,7 @@
     });
     try {
       const data = await fetchJsonCached("/listing/" + file);
-      if (data && Array.isArray(data.products)) return data;
+      if (listingPayloadUsable(data)) return data;
     } catch (_) {}
     try {
       const apiQs = new URLSearchParams();
@@ -1341,7 +1375,7 @@
         if (qs.get(key)) apiQs.set(key, qs.get(key));
       });
       const data = await fetchJsonCached("/api/catalog-bootstrap?" + apiQs.toString());
-      if (data && Array.isArray(data.products)) return data;
+      if (listingPayloadUsable(data)) return data;
     } catch (_) {}
     return null;
   }

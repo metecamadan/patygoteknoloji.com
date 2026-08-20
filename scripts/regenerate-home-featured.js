@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 
-const { createMultiSupplierManager } = require("../lib/multi-supplier");
+const { createConfiguredSupplierManager } = require("../lib/supplier-manager-factory");
 const { mergeCatalogProducts, homeFeaturedCatalog, buildStorefrontIndex } = require("../lib/catalog");
 const { loadMirrorIndex } = require("../lib/product-image-mirror");
 const { atomicWriteJson } = require("../lib/supplier");
@@ -30,7 +30,7 @@ function normalizeProduct(product) {
 }
 
 function main() {
-  const supplierManager = createMultiSupplierManager(DATA_ROOT);
+  const supplierManager = createConfiguredSupplierManager(DATA_ROOT);
   const mirrorIndex = loadMirrorIndex(DATA_ROOT);
   const ctx = {
     mirrorIndex,

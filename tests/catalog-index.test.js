@@ -138,6 +138,9 @@ test("listing snapshots cover parent mid and child keys", () => {
 test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /sendCatalogHtml/);
+  assert.match(serverJs, /CATALOG_BOOTSTRAP_SCRIPT_ANCHOR/);
+  assert.match(serverJs, /injectCatalogBootstrapHtml/);
+  assert.match(serverJs, /defer src="\/assets\/js\/cart\.js"/);
   assert.match(serverJs, /\/api\/catalog-bootstrap/);
   assert.match(serverJs, /readCatalogBootstrapSnapshot/);
   assert.match(serverJs, /writeCatalogBootstrapSnapshots/);

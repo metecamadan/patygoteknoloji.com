@@ -29,6 +29,44 @@ test("detectProductKind maps notebooks and CPUs", () => {
     detectProductKind({ name: "Kingston 16GB DDR5 5600MHz CL40 DIMM Bellek" }),
     "ram"
   );
+  assert.equal(
+    detectProductKind({
+      name: 'Power Boost PowerBoost 24" PB-M24VH 5ms 1920x1080 FHD 75Hz TN Panel VGA+HDMI Slim Frame PC Monitör',
+      siteChild: "monitorler",
+    }),
+    "monitor"
+  );
+});
+
+test("buildSpecRows extracts monitor fields including response time and ports", () => {
+  const rows = buildSpecRows({
+    brand: "Power Boost",
+    name: 'Power Boost PowerBoost 24" PB-M24VH 5ms 1920x1080 FHD 75Hz TN Panel VGA+HDMI Slim Frame PC Monitör',
+    manufacturerCode: "M24VH",
+    barcode: "8682016344273",
+  });
+  assert.ok(rows.some((row) => row.label === "Çözünürlük" && /1920x1080 FHD/.test(row.value)));
+  assert.ok(rows.some((row) => row.label === "Tazeleme" && /75 Hz/.test(row.value)));
+  assert.ok(rows.some((row) => row.label === "Panel" && row.value === "TN"));
+  assert.ok(rows.some((row) => row.label === "Yanıt süresi" && /5 ms/.test(row.value)));
+  assert.ok(rows.some((row) => row.label === "Bağlantılar" && /VGA \+ HDMI/.test(row.value)));
+});
+
+test("thin spec tables are regenerated with richer monitor rows", () => {
+  const product = {
+    brand: "Power Boost",
+    name: 'Power Boost PowerBoost 24" PB-M24VH 5ms 1920x1080 FHD 75Hz TN Panel VGA+HDMI Slim Frame PC Monitör',
+    manufacturerCode: "M24VH",
+    barcode: "8682016344273",
+    description:
+      "Power Boost bellek modülü (PB-M24VH). Teknik satırlar ürün adı ve katalog bilgisinden derlenmiştir.",
+    details:
+      "__SPEC_TABLE__\nEkran|24\" Ekran\nBarkod|8682016344273\nÜretici kodu|M24VH\nMarka|Power Boost",
+  };
+  const enriched = enrichProductCopy(product);
+  assert.match(enriched.description, /monitör/i);
+  assert.match(enriched.details, /Yanıt süresi\|5 ms/);
+  assert.match(enriched.details, /Bağlantılar\|VGA \+ HDMI/);
 });
 
 test("buildSpecRows extracts notebook and CPU fields from product titles", () => {
@@ -36,6 +74,7 @@ test("buildSpecRows extracts notebook and CPU fields from product titles", () =>
   assert.ok(notebookRows.some((row) => row.label === "Bellek" && /40 GB/i.test(row.value)));
   assert.ok(notebookRows.some((row) => row.label === "İşlemci" && /i7-1355U/i.test(row.value)));
   assert.ok(notebookRows.some((row) => row.label === "İşletim sistemi" && /FreeDOS/i.test(row.value)));
+  assert.ok(notebookRows.some((row) => row.label === "Depolama" && /512/i.test(row.value)));
 
   const cpuRows = buildSpecRows({
     brand: "INTEL",
@@ -44,6 +83,107 @@ test("buildSpecRows extracts notebook and CPU fields from product titles", () =>
   });
   assert.ok(cpuRows.some((row) => row.label === "Soket" && /1200/i.test(row.value)));
   assert.ok(cpuRows.some((row) => row.label === "Üretici kodu" && /BX8070110100/.test(row.value)));
+});
+
+test("buildSpecRows covers RAM, storage, GPU and motherboard titles", () => {
+  const ramRows = buildSpecRows({
+    brand: "Kingston",
+    name: "Kingston 16GB DDR5 5600MHz CL40 DIMM Bellek",
+  });
+  assert.ok(ramRows.some((row) => row.label === "Kapasite" && /16 GB/.test(row.value)));
+  assert.ok(ramRows.some((row) => row.label === "Bellek tipi" && /DDR5/.test(row.value)));
+  assert.ok(ramRows.some((row) => row.label === "Hız" && /5600 MHz/.test(row.value)));
+  assert.ok(ramRows.some((row) => row.label === "Gecikme" && /CL40/.test(row.value)));
+
+  const ssdRows = buildSpecRows({
+    brand: "Samsung",
+    name: "Samsung 990 PRO 1TB NVMe M.2 PCIe Gen 4 SSD",
+  });
+  assert.ok(ssdRows.some((row) => row.label === "Kapasite" && /1 TB/.test(row.value)));
+  assert.ok(ssdRows.some((row) => row.label === "Arayüz" && /NVMe|PCIe/i.test(row.value)));
+
+  const gpuRows = buildSpecRows({
+    brand: "MSI",
+    name: "MSI GeForce RTX 4060 Ti 8GB GDDR6 Ekran Kartı",
+  });
+  assert.ok(gpuRows.some((row) => row.label === "GPU" && /RTX 4060/i.test(row.value)));
+  assert.ok(gpuRows.some((row) => row.label === "Bellek" && /8 GB/.test(row.value)));
+
+  const moboRows = buildSpecRows({
+    brand: "ASUS",
+    name: "ASUS PRIME B760M-A WIFI DDR5 LGA1700 mATX Anakart",
+    siteChild: "anakartlar",
+  });
+  assert.ok(moboRows.some((row) => row.label === "Soket" && /LGA1700/i.test(row.value)));
+  assert.ok(moboRows.some((row) => row.label === "Chipset" && /B760/i.test(row.value)));
+  assert.ok(moboRows.some((row) => row.label === "Kablosuz" && /Wi-Fi/i.test(row.value)));
+});
+
+test("buildSpecRows covers PSU, network, UPS and peripheral titles", () => {
+  const psuRows = buildSpecRows({
+    brand: "Corsair",
+    name: "Corsair RM750x 750W 80+ Gold Modüler ATX Güç Kaynağı",
+  });
+  assert.ok(psuRows.some((row) => row.label === "Güç" && /750 W/.test(row.value)));
+  assert.ok(psuRows.some((row) => row.label === "Verimlilik" && /Gold/i.test(row.value)));
+
+  const netRows = buildSpecRows({
+    brand: "TP-Link",
+    name: "TP-Link TL-SG108 8 Port Gigabit Switch",
+    siteChild: "switchler",
+  });
+  assert.ok(netRows.some((row) => row.label === "Port" && /8/.test(row.value)));
+  assert.ok(netRows.some((row) => row.label === "Hız" && /Gigabit/i.test(row.value)));
+
+  const upsRows = buildSpecRows({
+    brand: "APC",
+    name: "APC Back-UPS 900VA 540W Line-Interactive UPS",
+  });
+  assert.ok(upsRows.some((row) => row.label === "VA" && /900 VA/.test(row.value)));
+  assert.ok(upsRows.some((row) => row.label === "Çıkış gücü" && /540 W/.test(row.value)));
+
+  const mouseRows = buildSpecRows({
+    brand: "Logitech",
+    name: "Logitech G502 Hero 25600 DPI Kablosuz Gaming Mouse",
+  });
+  assert.ok(mouseRows.some((row) => row.label === "Tip" && /Mouse/i.test(row.value)));
+  assert.ok(mouseRows.some((row) => row.label === "DPI" && /25600/.test(row.value)));
+});
+
+test("buildSpecRows pads sparse titles to minimum content rows", () => {
+  const rows = buildSpecRows({
+    brand: "Patygo",
+    name: "Patygo USB-C Kablo 1 Metre",
+  });
+  const meta = new Set(["barkod", "marka", "üretici kodu", "model"]);
+  const contentCount = rows.filter(
+    (row) => !meta.has(row.label.toLocaleLowerCase("tr-TR"))
+  ).length;
+  assert.ok(contentCount >= 4, "expected at least 4 content rows");
+  assert.ok(rows.some((row) => row.label === "Ürün tipi"));
+});
+
+test("sparse products get expanded spec table on enrich", () => {
+  const enriched = enrichProductCopy({
+    brand: "CANON",
+    name: "Canon CRG-070 Siyah Toner",
+    description: "Canon CRG-070 orijinal siyah toner kartuşu.",
+    details: "__SPEC_TABLE__\nMarka|Canon\nBarkod|123",
+  });
+  assert.match(enriched.details, /^__SPEC_TABLE__/);
+  const lines = enriched.details.split("\n").filter((line) => line.includes("|") && !line.startsWith("__"));
+  assert.ok(lines.length >= 4, "toner table should have at least 4 rows");
+  assert.match(enriched.details, /Renk\|Siyah/);
+});
+
+test("verify-all-product-specs content row counter treats meta labels separately", () => {
+  const { parseProductDetailSpecTable } = require("../lib/product-detail-specs");
+  const rows = parseProductDetailSpecTable(
+    "__SPEC_TABLE__\nÜrün tipi|Monitör\nÇözünürlük|1920x1080\nMarka|HP\nBarkod|1"
+  );
+  const meta = new Set(["barkod", "marka", "üretici kodu", "model"]);
+  const content = rows.filter((row) => !meta.has(row.label.toLocaleLowerCase("tr-TR"))).length;
+  assert.equal(content, 2);
 });
 
 test("generated copy uses spec table prefix and honest sourcing note", () => {

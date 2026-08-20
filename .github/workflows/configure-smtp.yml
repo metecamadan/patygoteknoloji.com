@@ -1,0 +1,77 @@
+# Manuel: GitHub → Settings → Secrets → SMTP_APP_PASSWORD (Google uygulama şifresi)
+# Çalıştır: Actions → Configure live SMTP → Run workflow
+
+name: Configure live SMTP
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: configure-smtp
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    name: Set SMTP on VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+        run: |
+          missing=0
+          [ -n "$DEPLOY_HOST" ] || { echo "Missing DEPLOY_HOST"; missing=1; }
+          [ -n "$DEPLOY_USER" ] || { echo "Missing DEPLOY_USER"; missing=1; }
+          [ -n "$DEPLOY_SSH_KEY" ] || { echo "Missing DEPLOY_SSH_KEY"; missing=1; }
+          [ -n "$SMTP_APP_PASSWORD" ] || { echo "Missing SMTP_APP_PASSWORD"; missing=1; }
+          [ "$missing" -eq 0 ] || exit 1
+
+      - name: Apply SMTP and smoke test
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          DEPLOY_PM2_NAME: ${{ secrets.DEPLOY_PM2_NAME }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 5m
+          envs: SMTP_APP_PASSWORD,DEPLOY_APP_DIR,DEPLOY_PM2_NAME
+          script: |
+            set -euo pipefail
+            APP_DIR="${DEPLOY_APP_DIR:-/var/www/patygoteknoloji.com}"
+            PM2_NAME="${DEPLOY_PM2_NAME:-patygo}"
+            cd "$APP_DIR"
+            python3 - <<'PY'
+            import os
+            from pathlib import Path
+            secret = os.environ.get("SMTP_APP_PASSWORD", "").strip()
+            if not secret:
+                raise SystemExit("SMTP_APP_PASSWORD empty")
+            p = Path(".env")
+            lines = p.read_text(encoding="utf-8").splitlines() if p.exists() else []
+            out = []
+            done = False
+            for line in lines:
+                if line.startswith("SMTP_PASS="):
+                    out.append("SMTP_PASS=" + secret)
+                    done = True
+                else:
+                    out.append(line)
+            if not done:
+                out.append("SMTP_PASS=" + secret)
+            p.write_text("\n".join(out) + "\n", encoding="utf-8")
+            print("smtp_pass_set")
+            PY
+            pm2 restart "$PM2_NAME" --update-env
+            sleep 6
+            node scripts/send-test-contact-mail.js
+            node scripts/send-test-order-mail.js paid
+            node -e "require('dotenv').config({quiet:true}); const {smtpConfigured}=require('./lib/contact'); if(!smtpConfigured(process.env)) process.exit(1); console.log('smtpConfigured ok');"

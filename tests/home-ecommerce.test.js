@@ -118,6 +118,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /function bindFeaturedTabs/);
   assert.match(catalogJs, /featuredListForFilter/);
   assert.match(catalogJs, /homeFeaturedSnapshotUsable/);
+  assert.match(catalogJs, /countDisplayedListingProducts/);
+  assert.match(catalogJs, /renderCatalogMeta\([\s\S]*listingInfinite/);
   assert.match(catalogJs, /sort:\s*"popular"/);
   assert.match(catalogJs, /cartOnly:\s*mode === "featured"/);
   assert.match(indexHtml, /home-featured-lead/);

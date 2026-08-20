@@ -22,8 +22,9 @@ Otomatik kısa açıklama sonuna şu cümle eklenir: *"Teknik satırlar ürün a
 
 `detectProductKind()` site kategorisi (`siteChild`, `siteMid`) ve ürün adına göre şablon seçer:
 
-- notebook, cpu, ram, storage, monitor, printer, toner, gpu, motherboard, …
-- Her şablon ad içinden regex ile alan çıkarır (işlemci, soket, GB, Hz, renk, vb.)
+- notebook, cpu, ram, storage, monitor, printer, toner, gpu, motherboard, psu, case, cooler, network, ups, peripheral, generic
+- Her şablon ad içinden regex ile alan çıkarır (işlemci, soket, GB, Hz, watt, dpi, vb.)
+- İnce otomatik tablolar API okuma anında (`enrichProductCopy`) yeniden üretilir; `Kaynak|`, `Detay|`, `PSREF` satırlı manuel override’lar korunur.
 
 ## Entegrasyon noktaları
 
@@ -39,8 +40,9 @@ node scripts/apply-supplier-seo-override.js scripts/content/<urun-id>.json
 
 JSON şeması: `supplierSku`, `description`, `details` (ve isteğe bağlı `urlSlug`).
 
-## İleride (isteğe bağlı)
+## İleride (doğrulanmış kaynak)
 
-- Kategori başına PSREF / üretici API ile doğrulanmış batch override
-- Panelde “açıklama üret” önizlemesi
-- Otomatik üretilmiş satırları admin’de “doğrulandı” bayrağı ile kalıcı override’a çevirme
+1. **`node scripts/verify-all-product-specs.js`** — tüm aktif vitrin ürünlerinde genişletilmiş `__SPEC_TABLE__` (≥4 içerik satırı) doğrular; VPS `.env` ile çalışır.
+2. **`node scripts/audit-product-specs.js`** — başlıktan daha fazla satır çıkarılabilecek ürünleri listeler (VPS/.env gerekir).
+2. **Manuel override** — üretici sayfası / PSREF ile doğrulanmış satırlar: `scripts/content/<id>.json` + `apply-supplier-seo-override.js`.
+3. Otomatik üretim **uydurma spec yazmaz**; marka sitesi taraması yalnızca doğrulanmış override veya onaylı batch ile eklenir.

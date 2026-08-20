@@ -597,10 +597,26 @@ let akakceXmlMemo = null;
 const CATALOG_BOOTSTRAP_LIMIT = 20;
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 
+function clearCatalogBootstrapSnapshots() {
+  try {
+    if (!fs.existsSync(CATALOG_BOOTSTRAP_DIR)) return;
+    const keep = new Set(["categories.json", "all.json", "home-featured.json"]);
+    for (const name of fs.readdirSync(CATALOG_BOOTSTRAP_DIR)) {
+      if (!name.endsWith(".json")) continue;
+      if (keep.has(name)) continue;
+      fs.unlinkSync(path.join(CATALOG_BOOTSTRAP_DIR, name));
+    }
+  } catch (_) {}
+}
+
 function invalidateStorefrontCatalog() {
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
   akakceXmlMemo = null;
+  if (warmCatalogTimer) {
+    clearTimeout(warmCatalogTimer);
+    warmCatalogTimer = null;
+  }
 }
 
 function catalogImageContext() {
@@ -767,15 +783,6 @@ function emptyListingSnapshotPayload() {
 
 function ensureListingTreeSnapshotFiles() {
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
-  const jobs = listingSnapshotJobs({ compactAll: [], byParent: {} }, categoryStore.list());
-  jobs.forEach((job) => {
-    if (!job.file || !job.file.includes("__")) return;
-    const file = path.join(CATALOG_BOOTSTRAP_DIR, job.file);
-    try {
-      if (fs.existsSync(file) && fs.statSync(file).size > 20) return;
-      atomicWriteJson(file, emptyListingSnapshotPayload());
-    } catch (_) {}
-  });
 }
 
 function writeCatalogBootstrapSnapshots() {
@@ -803,8 +810,12 @@ function writeCatalogBootstrapSnapshots() {
       index,
       Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
     );
+    const products = enrichCatalogSnapshotProducts(
+      { products: payload.products },
+      index.routeIndex
+    ).products;
     atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, job.file), {
-      products: payload.products,
+      products,
       total: payload.total,
       page: payload.page,
       limit: payload.limit,
@@ -812,13 +823,14 @@ function writeCatalogBootstrapSnapshots() {
       facets: payload.facets || null,
     });
   };
+  writeJob(jobs[0]);
+  let offset = 1;
   try {
     atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "categories.json"), {
       version: 5,
       categories: categoryStore.publicList(),
     });
   } catch (_) {}
-  let offset = 0;
   const runChunk = () => {
     const end = Math.min(offset + 12, jobs.length);
     for (; offset < end; offset += 1) writeJob(jobs[offset]);
@@ -2017,6 +2029,7 @@ async function handleApi(req, res, urlPath) {
       }
       supplierManager.updateProducts(updates);
       invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
       const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
         siteBaseUrl: SITE_BASE_URL,
         mirrorIndex: loadMirrorIndex(DATA_ROOT),
@@ -2241,6 +2254,12 @@ function readCatalogBootstrapSnapshot(requestUrl) {
     const raw = fs.readFileSync(file, "utf8");
     const data = JSON.parse(raw);
     if (!data || !Array.isArray(data.products)) return null;
+    if (
+      data.products.length &&
+      data.products.every((item) => item && item.urlPath)
+    ) {
+      return data;
+    }
     const routeIndex = storefrontIndex(false).routeIndex;
     return enrichCatalogSnapshotProducts(data, routeIndex);
   } catch (_) {
@@ -2290,6 +2309,22 @@ function catalogBootstrapPayload(requestUrl) {
   };
 }
 
+const CATALOG_BOOTSTRAP_SCRIPT_ANCHOR =
+  /<script defer src="\/assets\/js\/cart\.js"><\/script>/;
+
+function injectCatalogBootstrapHtml(html, bootstrap) {
+  if (!bootstrap || !CATALOG_BOOTSTRAP_SCRIPT_ANCHOR.test(html)) return html;
+  const json = JSON.stringify(bootstrap).replace(/</g, "\\u003c");
+  const tag =
+    '<script type="application/json" id="patygo-catalog-bootstrap">' +
+    json +
+    "</script>\n  ";
+  return html.replace(
+    CATALOG_BOOTSTRAP_SCRIPT_ANCHOR,
+    tag + '<script defer src="/assets/js/cart.js"></script>'
+  );
+}
+
 function sendCatalogHtml(res, req, filePath, method) {
   const rel = path.relative(ROOT, filePath).split(path.sep).join("/");
   if (isBlocked(rel) || rel.split("/").some((p) => p.startsWith("."))) {
@@ -2300,14 +2335,7 @@ function sendCatalogHtml(res, req, filePath, method) {
     let html = data.toString("utf8");
     const requestUrl = new URL(req.url || "/urunler", `http://${req.headers.host || "localhost"}`);
     const bootstrap = catalogBootstrapPayload(requestUrl);
-    if (bootstrap) {
-      const json = JSON.stringify(bootstrap).replace(/</g, "\\u003c");
-      const tag =
-        '<script type="application/json" id="patygo-catalog-bootstrap">' +
-        json +
-        "</script>\n  ";
-      html = html.replace('<script src="/assets/js/cart.js">', tag + '<script src="/assets/js/cart.js">');
-    }
+    html = injectCatalogBootstrapHtml(html, bootstrap);
     const headers = {
       "Content-Type": MIME[".html"],
       "Cache-Control": "public, max-age=0, must-revalidate",

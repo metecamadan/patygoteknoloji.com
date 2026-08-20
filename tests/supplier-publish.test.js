@@ -40,9 +40,19 @@ test("publishing XML slot 1 assigns site categories and lists products on the st
       2
     )
   );
+  const fetchedAt = new Date().toISOString();
   fs.writeFileSync(
     path.join(runtime, "supplier-settings.json"),
-    JSON.stringify({ globalMarginPercent: 15, lastFetchStatus: "ok", itemCount: 1 }, null, 2)
+    JSON.stringify(
+      {
+        globalMarginPercent: 15,
+        lastFetchStatus: "ok",
+        lastSuccessfulFetchAt: fetchedAt,
+        itemCount: 1,
+      },
+      null,
+      2
+    )
   );
   writeCachedRates(dataRoot, {
     USD: 40,
