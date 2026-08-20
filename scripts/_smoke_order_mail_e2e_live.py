@@ -17,6 +17,7 @@ echo "=== mail e2e to $TEST_ORDER_MAIL_TO ==="
 for tpl in paid preparing cancelled; do
   echo "-- $tpl --"
   node scripts/send-test-order-mail.js "$tpl"
+  sleep 8
 done
 echo '=== admin status mail hook markers ==='
 grep -n 'sendOrderStatusMail' server.js | head -5
