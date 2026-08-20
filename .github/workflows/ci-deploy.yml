@@ -113,19 +113,25 @@ jobs:
             pm2 restart "$PM2_NAME" --update-env
             LOOP_JSON=""
             i=0
-            while [ "$i" -lt 12 ]; do
-              if LOOP_JSON="$(curl -fsS --max-time 5 "http://127.0.0.1:${APP_PORT}/api/payment/status" 2>/dev/null)"; then
+            while [ "$i" -lt 30 ]; do
+              if LOOP_JSON="$(curl -fsS --max-time 8 "http://127.0.0.1:${APP_PORT}/api/payment/status" 2>/dev/null)"; then
+                echo "health attempt $i: ok"
                 echo "$LOOP_JSON" | grep -q '"provider":"akbank"' && break
+              else
+                echo "health attempt $i: waiting"
               fi
               i=$((i + 1))
-              sleep 2
+              sleep 3
             done
-            echo "$LOOP_JSON" | grep -q '"provider":"akbank"'
+            echo "$LOOP_JSON" | grep -q '"provider":"akbank"' || {
+              echo "payment/status not ready after pm2 restart"
+              exit 1
+            }
             echo "$LOOP_JSON" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && {
               echo "payment/status unexpectedly contains an IPv4"
               exit 1
             } || true
-            PUB_JSON="$(curl -fsS "${PUBLIC_URL}/api/payment/status")"
+            PUB_JSON="$(curl -fsS --max-time 20 "${PUBLIC_URL}/api/payment/status")"
             echo "$PUB_JSON" | grep -q '"paymentModel"'
             echo "$PUB_JSON" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && {
               echo "public payment/status unexpectedly contains an IPv4"
