@@ -19,6 +19,8 @@ test("checkout requires KVKK consent and addresses", () => {
   assert.match(html, /id="onayKvkk"/);
   assert.match(html, /id="faturaAdres"/);
   assert.match(html, /id="teslimatAdres"/);
+  assert.match(html, /customer-identity\.js/);
+  assert.match(js, /PatygoCustomerIdentity/);
   assert.match(js, /kvkkAccepted/);
   assert.match(js, /billingAddress/);
 });

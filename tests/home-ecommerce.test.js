@@ -44,6 +44,7 @@ test("category listing uses four-column cards with qty stepper and infinite scro
     "listing VAT stack must override the generic price row"
   );
   assert.match(catalogJs, /loadMoreListing/);
+  assert.match(catalogJs, /listingScroll\.totalPages <= 1/);
   assert.match(catalogJs, /IntersectionObserver/);
   assert.match(catalogJs, /if \(compactListing\)/);
   assert.match(urunler, /data-catalog-infinite/);
@@ -115,6 +116,9 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
+  assert.match(catalogJs, /featuredListForFilter/);
+  assert.match(catalogJs, /homeFeaturedSnapshotUsable/);
+  assert.match(catalogJs, /sort:\s*"popular"/);
   assert.match(catalogJs, /cartOnly:\s*mode === "featured"/);
   assert.match(indexHtml, /home-featured-lead/);
   assert.match(catalogJs, /function applyCategoryHeading/);
@@ -123,7 +127,6 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.doesNotMatch(catalogJs, /kategorisindeki ürünler/);
   assert.match(catalogJs, /prettyCategoryName/);
   assert.doesNotMatch(catalogJs, /featured:\s*"1"/);
-  assert.doesNotMatch(catalogJs, /sort:\s*"popular"/);
 });
 
 test("storefront catalog loads paginated products by category", () => {

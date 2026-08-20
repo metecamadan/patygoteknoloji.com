@@ -172,11 +172,32 @@
     payPanel.setAttribute("role", "tabpanel");
     payPanel.setAttribute("data-tab", "payment");
     const payList = el("ul", "detail-tab-list");
-    payList.innerHTML =
-      "<li>Fiyatlar KDV dahil gösterilir.</li>" +
-      "<li>Ödeme Akbank 3D Secure ile kartınızdan alınır.</li>" +
-      "<li>Sipariş sonrası faturalı satış yapılır.</li>" +
-      "<li>Teslimat süresi sipariş onayından sonra size bildirilir.</li>";
+    const payItems = [
+      "Fiyatlar KDV dahil gösterilir.",
+      "Ödeme Akbank 3D Secure ile kartınızdan alınır.",
+      "Sipariş sonrası faturalı satış yapılır.",
+      "Teslimat süresi sipariş onayından sonra size bildirilir.",
+    ];
+    const gross = window.PatygoCatalog.priceInclVat(product);
+    const shipInfo =
+      window.PatygoShipping && typeof window.PatygoShipping.productShippingInfo === "function"
+        ? window.PatygoShipping.productShippingInfo(gross)
+        : null;
+    if (shipInfo) {
+      if (shipInfo.free) {
+        payItems.splice(1, 0, "Bu ürün için ücretsiz kargo uygulanır.");
+      } else {
+        payItems.splice(
+          1,
+          0,
+          "Kargo bedeli (KDV dahil): " +
+            window.PatygoShipping.formatMoney(shipInfo.fee) +
+            ".",
+          shipInfo.thresholdHint ? shipInfo.thresholdHint + "." : null
+        );
+      }
+    }
+    payList.innerHTML = payItems.filter(Boolean).map((line) => "<li>" + line + "</li>").join("");
     payPanel.appendChild(payList);
 
     const retPanel = el("div", "detail-tabpanel");
@@ -323,6 +344,14 @@
       window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
       " <small>KDV dahil</small>";
 
+    const shippingLine =
+      window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"
+        ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product))
+        : null;
+    if (shippingLine) {
+      shippingLine.classList.add("detail-shipping");
+    }
+
     const actions = document.createElement("div");
     actions.className = "actions";
     let addQty = 1;
@@ -362,6 +391,7 @@
     info.appendChild(tag);
     info.appendChild(h1);
     info.appendChild(price);
+    if (shippingLine) info.appendChild(shippingLine);
     info.appendChild(actions);
     info.appendChild(trust);
 
@@ -454,6 +484,9 @@
   }
 
   async function loadDetail() {
+    if (window.PatygoShipping && typeof window.PatygoShipping.load === "function") {
+      await window.PatygoShipping.load().catch(() => {});
+    }
     if (detailRoute.mode === "none") {
       render(null, []);
       return;

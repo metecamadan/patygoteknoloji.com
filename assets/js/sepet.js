@@ -18,17 +18,34 @@
     if (!row || !amount) return;
     const enabled =
       settings && settings.enabled && settings.shippingFee > 0 && totals.lines.length;
+    let hintEl = document.getElementById("cartShippingHint");
+    if (!hintEl && row.parentNode) {
+      hintEl = document.createElement("p");
+      hintEl.id = "cartShippingHint";
+      hintEl.className = "shipping-hint";
+      row.parentNode.insertBefore(hintEl, row.nextSibling);
+    }
     if (!enabled) {
       row.hidden = true;
+      if (hintEl) hintEl.hidden = true;
       return;
     }
     row.hidden = false;
+    const cartInfo =
+      window.PatygoShipping && typeof window.PatygoShipping.cartShippingInfo === "function"
+        ? window.PatygoShipping.cartShippingInfo(totals.merchandiseTotal)
+        : null;
     if ((totals.shipping || 0) <= 0) {
       if (label) label.textContent = "Kargo";
       amount.textContent = "Ücretsiz";
     } else {
       if (label) label.textContent = "Kargo (KDV dahil)";
       amount.textContent = money(totals.shipping);
+    }
+    if (hintEl) {
+      const hintText = cartInfo && cartInfo.hint ? cartInfo.hint : "";
+      hintEl.textContent = hintText;
+      hintEl.hidden = !hintText;
     }
   }
 

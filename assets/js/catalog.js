@@ -734,6 +734,11 @@
     small.textContent = "KDV dahil";
     price.appendChild(small);
 
+    const shippingEl =
+      window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"
+        ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product))
+        : null;
+
     const actions = document.createElement("div");
     actions.className = "actions" + (compactListing ? " actions--listing" : "");
 
@@ -802,6 +807,7 @@
       actions.appendChild(buy);
     }
     body.appendChild(price);
+    if (shippingEl) body.appendChild(shippingEl);
     body.appendChild(actions);
     const visualWrap = document.createElement("a");
     visualWrap.className = "product-card-media";
@@ -917,9 +923,11 @@
     const wrap = document.querySelector("[data-catalog-infinite]");
     if (status) {
       status.textContent = text || "";
-      status.hidden = !visible;
+      status.hidden = !visible || !text;
     }
-    if (wrap) wrap.hidden = !visible && !(text && listingScroll.totalPages > 1);
+    if (wrap) {
+      wrap.hidden = listingScroll.totalPages <= 1;
+    }
   }
 
   function createQtyStepper(initial) {
@@ -1041,7 +1049,7 @@
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) loadMoreListing();
       },
-      { rootMargin: "280px 0px" }
+      { root: null, rootMargin: "320px 0px", threshold: 0 }
     );
     listingScroll.observer.observe(sentinel);
   }
@@ -1083,7 +1091,46 @@
     return mixed;
   }
 
-  function bindFeaturedTabs(byParent) {
+  function homeFeaturedSnapshotUsable(data) {
+    if (!data || !Array.isArray(data.products) || !data.products.length) return false;
+    const byParent = data.byParent && typeof data.byParent === "object" ? data.byParent : {};
+    return FEATURED_PARENTS.some((slug) => Array.isArray(byParent[slug]) && byParent[slug].length);
+  }
+
+  function featuredSourcePool(byParent, mixed) {
+    const pool = [];
+    const seen = new Set();
+    function push(item) {
+      if (!item || !item.id || seen.has(item.id)) return;
+      seen.add(item.id);
+      pool.push(item);
+    }
+    mixFeatured(byParent, FEATURED_PER_CATEGORY * FEATURED_PARENTS.length).forEach(push);
+    (Array.isArray(mixed) ? mixed : []).forEach(push);
+    (Array.isArray(window.PatygoCatalog.list) ? window.PatygoCatalog.list : []).forEach(push);
+    return pool;
+  }
+
+  function featuredListForFilter(filter, byParent, mixed) {
+    if (filter === "all") {
+      let list = mixFeatured(byParent, FEATURED_PER_CATEGORY);
+      if (!list.length && Array.isArray(mixed) && mixed.length) {
+        list = mixed.slice(0, FEATURED_PER_CATEGORY);
+      }
+      if (!list.length) {
+        list = (window.PatygoCatalog.list || []).slice(0, FEATURED_PER_CATEGORY);
+      }
+      return list;
+    }
+    const direct = ((byParent && byParent[filter]) || []).slice(0, FEATURED_PER_CATEGORY);
+    if (direct.length) return direct;
+    return productsForSiteCategory(featuredSourcePool(byParent, mixed), { parent: filter }).slice(
+      0,
+      FEATURED_PER_CATEGORY
+    );
+  }
+
+  function bindFeaturedTabs(byParent, mixed) {
     const section = document.getElementById("urunler") || document;
     const tablist = section.querySelector(".product-tabs");
     const grid = document.querySelector('.product-grid[data-catalog="featured"]');
@@ -1093,15 +1140,18 @@
       btn.parentNode.replaceChild(next, btn);
     });
     const tabs = tablist.querySelectorAll("[data-filter]");
-    const show = (filter) => {
+    const show = async (filter) => {
       tabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === filter));
-      let list =
-        filter === "all"
-          ? mixFeatured(byParent, FEATURED_PER_CATEGORY)
-          : ((byParent && byParent[filter]) || []).slice(0, FEATURED_PER_CATEGORY);
-      if (filter === "all" && !list.length) {
-        const fallback = Array.isArray(window.PatygoCatalog.list) ? window.PatygoCatalog.list : [];
-        list = fallback.slice(0, FEATURED_PER_CATEGORY);
+      let list = featuredListForFilter(filter, byParent, mixed);
+      if (!list.length && filter !== "all") {
+        try {
+          const page = await fetchProductPage({
+            kategori: filter,
+            limit: FEATURED_PER_CATEGORY,
+            sort: "popular",
+          });
+          list = (page.products || []).slice(0, FEATURED_PER_CATEGORY);
+        } catch (_) {}
       }
       renderGrid(grid, list, {});
     };
@@ -1220,7 +1270,7 @@
       renderFacets(opts.facets, readFacetQuery());
       renderCatalogMeta((opts.pager && opts.pager.total) || products.length, readFacetQuery());
     }
-    if (opts.featuredTabs) bindFeaturedTabs(opts.featuredTabs);
+    if (opts.featuredTabs) bindFeaturedTabs(opts.featuredTabs, products);
     else if (!opts.categoryResolved) bindTabs(document);
     window.dispatchEvent(new CustomEvent("patygo:catalog", { detail: { products } }));
     return products;
@@ -1339,19 +1389,12 @@
   async function fetchHomeFeaturedSnapshot() {
     try {
       const data = await fetchJsonCached("/listing/home-featured.json");
-      if (data && Array.isArray(data.products) && data.products.length) {
+      if (homeFeaturedSnapshotUsable(data)) {
         const byParent = data.byParent && typeof data.byParent === "object" ? data.byParent : {};
         return {
           byParent,
           mixed: data.products.slice(0, FEATURED_PER_CATEGORY),
         };
-      }
-    } catch (_) {}
-    try {
-      const data = await fetchJsonCached("/listing/all.json");
-      const products = (data && data.products) || [];
-      if (products.length) {
-        return { byParent: {}, mixed: products.slice(0, FEATURED_PER_CATEGORY) };
       }
     } catch (_) {}
     return null;
@@ -1425,6 +1468,9 @@
   }
 
   async function reloadCatalog() {
+    if (window.PatygoShipping && typeof window.PatygoShipping.load === "function") {
+      await window.PatygoShipping.load().catch(() => {});
+    }
     const token = ++listingReloadToken;
     const path = location.pathname || "";
     const query = readCategoryQuery();

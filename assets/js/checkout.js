@@ -74,18 +74,35 @@
     const hasLines = totals && Array.isArray(totals.lines) && totals.lines.length;
     const enabled = settings && settings.enabled && settings.shippingFee > 0 && hasLines;
     if (!els.shippingRow || !els.shippingAmount) return;
+    let hintEl = document.getElementById("checkoutShippingHint");
+    if (!hintEl && els.shippingRow.parentNode) {
+      hintEl = document.createElement("p");
+      hintEl.id = "checkoutShippingHint";
+      hintEl.className = "shipping-hint";
+      els.shippingRow.parentNode.insertBefore(hintEl, els.shippingRow.nextSibling);
+    }
     if (!enabled) {
       els.shippingRow.hidden = true;
+      if (hintEl) hintEl.hidden = true;
       return;
     }
     els.shippingRow.hidden = false;
     const shipping = totals.shipping || 0;
+    const cartInfo =
+      window.PatygoShipping && typeof window.PatygoShipping.cartShippingInfo === "function"
+        ? window.PatygoShipping.cartShippingInfo(totals.merchandiseTotal)
+        : null;
     if (shipping <= 0) {
       if (els.shippingLabel) els.shippingLabel.textContent = "Kargo";
       els.shippingAmount.textContent = "Ücretsiz";
     } else {
       if (els.shippingLabel) els.shippingLabel.textContent = "Kargo (KDV dahil)";
       els.shippingAmount.textContent = formatTRY(shipping);
+    }
+    if (hintEl) {
+      const hintText = cartInfo && cartInfo.hint ? cartInfo.hint : "";
+      hintEl.textContent = hintText;
+      hintEl.hidden = !hintText;
     }
   }
 
@@ -411,10 +428,32 @@
         const ad = els.form.ad.value.trim();
         const email = els.form.email.value.trim();
         const tel = els.form.tel.value.trim();
-        if (!ad || !email || !tel) {
+        const identity = window.PatygoCustomerIdentity;
+        if (identity) {
+          const nameCheck = identity.validateCustomerName(ad);
+          if (!nameCheck.ok) {
+            els.note.classList.remove("ok");
+            els.note.classList.add("err");
+            els.note.textContent = nameCheck.error;
+            return;
+          }
+          const phoneCheck = identity.validateCustomerPhone(tel);
+          if (!phoneCheck.ok) {
+            els.note.classList.remove("ok");
+            els.note.classList.add("err");
+            els.note.textContent = phoneCheck.error;
+            return;
+          }
+        } else if (!ad || !email || !tel) {
           els.note.classList.remove("ok");
           els.note.classList.add("err");
           els.note.textContent = "Lütfen zorunlu alanları doldurun.";
+          return;
+        }
+        if (!email) {
+          els.note.classList.remove("ok");
+          els.note.classList.add("err");
+          els.note.textContent = "Lütfen e-posta adresinizi girin.";
           return;
         }
         if (!isValidEmail(email)) {

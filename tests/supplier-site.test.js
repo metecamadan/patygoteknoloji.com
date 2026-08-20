@@ -386,6 +386,58 @@ test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
   assert.equal(featured.products[4].id, "yapi-gerecleri-1");
 });
 
+test("isHomeFeaturedSnapshotValid rejects incomplete featured snapshots", () => {
+  const { isHomeFeaturedSnapshotValid } = require("../lib/catalog");
+  assert.equal(
+    isHomeFeaturedSnapshotValid({
+      products: [{ id: "a", category: "bilgisayar-tablet" }],
+      byParent: {},
+    }),
+    false
+  );
+  assert.equal(
+    isHomeFeaturedSnapshotValid({
+      products: [{ id: "a", category: "bilgisayar-tablet" }],
+      byParent: { "bilgisayar-tablet": [{ id: "a" }] },
+    }),
+    true
+  );
+});
+
+test("homeFeaturedCatalog prefers market-popular notebooks in bilgisayar-tablet", () => {
+  const { homeFeaturedCatalog } = require("../lib/catalog");
+  const products = [
+    {
+      id: "cpu",
+      name: "Intel Core i3 10100",
+      brand: "Intel",
+      price: 4000,
+      category: "bilgisayar-bilesenleri",
+      active: true,
+    },
+    {
+      id: "nb",
+      name: "Lenovo IdeaPad Notebook 15",
+      brand: "Lenovo",
+      price: 18000,
+      category: "bilgisayar-tablet",
+      siteChild: "notebooklar",
+      active: true,
+    },
+    {
+      id: "phone",
+      name: "Samsung Galaxy A55",
+      brand: "Samsung",
+      price: 16000,
+      category: "bilgisayar-tablet",
+      siteChild: "telefon",
+      active: true,
+    },
+  ];
+  const featured = homeFeaturedCatalog(products, { limit: 1 });
+  assert.equal(featured.byParent["bilgisayar-tablet"][0].id, "nb");
+});
+
 test("homeFeaturedCatalog mixes ALT types inside an ANA instead of filling with notebooks", () => {
   const { homeFeaturedCatalog } = require("../lib/catalog");
   const products = [];

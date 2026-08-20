@@ -10,6 +10,7 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
+const { atomicWriteJson } = require("./lib/supplier");
 const { createAdminSessionStore } = require("./lib/admin-sessions");
 const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
@@ -22,6 +23,7 @@ const {
   buildStorefrontIndex,
   buildStorefrontLeafKeys,
   homeFeaturedCatalog,
+  isHomeFeaturedSnapshotValid,
   listingSnapshotFileName,
   listingSnapshotJobs,
   enrichCatalogSnapshotProducts,
@@ -66,6 +68,10 @@ const {
   deliverSimpleMail,
   smtpConfigured,
 } = require("./lib/contact");
+const {
+  validateCustomerName,
+  validateCustomerPhone,
+} = require("./lib/customer-identity");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
 const {
@@ -388,10 +394,14 @@ function buildCheckoutOrder(body) {
   const shippingFee = computeShippingFee(merchandiseTotal, shippingSettingsStore.getSettings());
   const total = Math.round((merchandiseTotal + shippingFee) * 100) / 100;
   const customer = (body && body.customer) || {};
-  const name = String(customer.name || "").trim().slice(0, 120);
+  const nameCheck = validateCustomerName(customer.name);
+  if (!nameCheck.ok) throw new Error(nameCheck.error);
+  const phoneCheck = validateCustomerPhone(customer.phone);
+  if (!phoneCheck.ok) throw new Error(phoneCheck.error);
+  const name = nameCheck.value;
   const email = String(customer.email || "").trim().slice(0, 120);
-  const phone = String(customer.phone || "").trim().slice(0, 40);
-  if (!name || !email || !phone) throw new Error("Alıcı bilgileri eksik.");
+  const phone = phoneCheck.value;
+  if (!email) throw new Error("Alıcı bilgileri eksik.");
   if (!isValidEmail(email)) throw new Error("Geçerli bir e-posta girin.");
   if (!body.contractsAccepted) throw new Error("Sözleşme onayları gerekli.");
   if (!body.kvkkAccepted) throw new Error("KVKK aydınlatma onayı gerekli.");
@@ -608,7 +618,12 @@ function readHomeFeaturedSnapshot() {
   if (!fs.existsSync(file)) return null;
   try {
     const data = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (!data || !Array.isArray(data.products) || !data.products.length) return null;
+    if (!isHomeFeaturedSnapshotValid(data)) {
+      try {
+        fs.unlinkSync(file);
+      } catch (_) {}
+      return null;
+    }
     return data;
   } catch (_) {
     return null;
@@ -1342,10 +1357,7 @@ async function handleApi(req, res, urlPath) {
         popularity: popularProductScores(),
         limit: requestUrl.searchParams.get("limit") || 12,
       }, { routeIndex: storefrontIndex(false).routeIndex, ...catalogImageContext() });
-    return json(
-      res,
-      200,
-      {
+      const payload = {
         products: featured.products,
         byParent: featured.byParent,
         perCategory: featured.perCategory,
@@ -1355,9 +1367,14 @@ async function handleApi(req, res, urlPath) {
         limit: featured.perCategory,
         totalPages: 1,
         updatedAt,
-      },
-      { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
-    );
+      };
+      try {
+        fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+        atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "home-featured.json"), payload);
+      } catch (_) {}
+      return json(res, 200, payload, {
+        "Cache-Control": "public, max-age=120, stale-while-revalidate=600",
+      });
     }
     const productId = String(requestUrl.searchParams.get("id") || "").trim();
     const idsRaw = String(requestUrl.searchParams.get("ids") || "").trim();

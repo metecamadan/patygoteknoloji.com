@@ -121,6 +121,75 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   assert.ok(!orderBody.order.customer, "genel sipariş bakışında müşteri PII olmamalı");
 });
 
+test("payment start rejects invalid customer identity", async (t) => {
+  const { baseUrl } = await spawnTestServer(
+    t,
+    {
+      ADMIN_PASSWORD: "test-admin-password",
+      AKBANK_MERCHANT_SAFE_ID: "merchant-safe",
+      AKBANK_TERMINAL_SAFE_ID: "terminal-safe",
+      AKBANK_SECRET_KEY: "test-akbank-secret",
+      AKBANK_TEST_MODE: "true",
+      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+    },
+    {
+      products: [
+        {
+          id: "pay-id-item",
+          brand: "TEST",
+          name: "Kimlik Test Ürünü",
+          price: 50,
+          vatPercent: 20,
+          category: "oem-cevre-birimleri",
+          featured: false,
+          active: true,
+          image: "/assets/img/products/macbook-air-m3.svg",
+          images: ["/assets/img/products/macbook-air-m3.svg"],
+          stockQty: 10,
+          currency: "TRY",
+          unit: "ADET",
+        },
+      ],
+    }
+  );
+
+  const productsRes = await fetch(baseUrl + "/api/products");
+  const productsBody = await productsRes.json();
+  const product = (productsBody.products || []).find((row) => row.active !== false);
+
+  async function tryStart(customer) {
+    return fetch(baseUrl + "/api/payment/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ productId: product.id, qty: 1 }],
+        customer: {
+          name: "Mehmet Yılmaz",
+          email: "test@example.com",
+          phone: "05555555555",
+          billingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+          shippingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+          ...customer,
+        },
+        contractsAccepted: true,
+        kvkkAccepted: true,
+      }),
+    });
+  }
+
+  for (const name of ["asdasdasd", "axax<zx", "Ali"]) {
+    const res = await tryStart({ name });
+    assert.notEqual(res.status, 200, `"${name}" reddedilmeli`);
+    const body = await res.json();
+    assert.equal(body.ok, false);
+  }
+
+  const badPhone = await tryStart({ phone: "0555" });
+  assert.notEqual(badPhone.status, 200);
+  const badPhoneBody = await badPhone.json();
+  assert.equal(badPhoneBody.ok, false);
+});
+
 test("unsigned callback and amount mismatch cannot mark order paid or failed", async (t) => {
   const secret = "test-akbank-secret";
   const { baseUrl } = await spawnTestServer(
