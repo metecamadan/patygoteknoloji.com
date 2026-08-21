@@ -227,6 +227,12 @@
     };
   }
 
+  function readListingPageNumber() {
+    const raw = Number(new URLSearchParams(location.search || "").get("sayfa"));
+    if (!Number.isFinite(raw) || raw < 1) return 1;
+    return Math.min(Math.floor(raw), 9999);
+  }
+
   function readSearchQuery() {
     return String(new URLSearchParams(location.search || "").get("q") || "").trim();
   }
@@ -1316,8 +1322,29 @@
       return;
     }
     pager.hidden = false;
+
+    const pageItems = [];
+    if (totalPages <= 9) {
+      for (let i = 1; i <= totalPages; i += 1) pageItems.push(i);
+    } else {
+      pageItems.push(1);
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      if (start > 2) pageItems.push("ellipsis-start");
+      for (let i = start; i <= end; i += 1) pageItems.push(i);
+      if (end < totalPages - 1) pageItems.push("ellipsis-end");
+      pageItems.push(totalPages);
+    }
+
     const addLink = (label, target, options) => {
       const opts = options || {};
+      if (opts.ellipsis) {
+        const span = document.createElement("span");
+        span.textContent = "…";
+        span.setAttribute("aria-hidden", "true");
+        pager.appendChild(span);
+        return;
+      }
       const url = new URL(location.href);
       if (target <= 1) url.searchParams.delete("sayfa");
       else url.searchParams.set("sayfa", String(target));
@@ -1339,12 +1366,23 @@
       link.addEventListener("click", (ev) => {
         ev.preventDefault();
         history.pushState({}, "", href);
+        const liste = document.getElementById("liste");
+        if (liste && typeof liste.scrollIntoView === "function") {
+          liste.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
         reloadCatalog();
       });
       pager.appendChild(link);
     };
+
     addLink("‹", page - 1, { disabled: page <= 1 });
-    addLink(String(page), page, { current: true, disabled: true });
+    pageItems.forEach((item) => {
+      if (typeof item === "string") {
+        addLink("…", page, { ellipsis: true });
+        return;
+      }
+      addLink(String(item), item, { current: item === page, disabled: item === page });
+    });
     addLink("›", page + 1, { disabled: page >= totalPages });
   }
 
@@ -1356,13 +1394,15 @@
     document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
       renderGrid(grid, products, opts);
     });
-    renderCatalogPager(opts.listingInfinite ? null : opts.pager || null);
+    renderCatalogPager(opts.pager || null);
     if (opts.listingInfinite) setupListingInfinite(opts.listingInfinite);
     else resetListingScroll();
     if (document.querySelector("[data-catalog-facets]")) {
       const facetState = readFacetQuery();
       renderFacets(opts.facets, facetState);
-      if (opts.listingInfinite) {
+      if (opts.pager) {
+        renderCatalogMeta(products.length, opts.pager.total || products.length, facetState);
+      } else if (opts.listingInfinite) {
         renderCatalogMeta(
           countDisplayedListingProducts() || products.length,
           opts.listingInfinite.total || products.length,
@@ -1371,7 +1411,7 @@
       } else {
         renderCatalogMeta(
           products.length,
-          (opts.pager && opts.pager.total) || products.length,
+          products.length,
           facetState
         );
       }
@@ -1457,18 +1497,21 @@
     return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat || readSearchQuery());
   }
 
-  async function fetchListingPayload(query, wantsCategory, facets) {
-    return fetchProductPage({
-      kategori: wantsCategory ? query.parent : "",
-      ara: wantsCategory ? query.mid : "",
-      alt: wantsCategory ? query.child : "",
-      q: readSearchQuery(),
-      marka: facets.brands.join(","),
-      minFiyat: facets.minFiyat,
-      maxFiyat: facets.maxFiyat,
-      page: 1,
-      limit: LISTING_PAGE_SIZE,
-    });
+  async function fetchListingPayload(query, wantsCategory, facets, page) {
+    return fetchProductPage(
+      {
+        kategori: wantsCategory ? query.parent : "",
+        ara: wantsCategory ? query.mid : "",
+        alt: wantsCategory ? query.child : "",
+        q: readSearchQuery(),
+        marka: facets.brands.join(","),
+        minFiyat: facets.minFiyat,
+        maxFiyat: facets.maxFiyat,
+        page: Math.max(1, Number(page) || 1),
+        limit: LISTING_PAGE_SIZE,
+      },
+      LISTING_LOAD_MORE_MS
+    );
   }
 
   async function fetchProductPage(params, timeoutMs) {
@@ -1551,7 +1594,7 @@
     return [];
   }
 
-  function listingParamsFromPage(query, wantsCategory, facets) {
+  function listingParamsFromPage(query, wantsCategory, facets, page) {
     return {
       kategori: wantsCategory ? query.parent : "",
       ara: wantsCategory ? query.mid : "",
@@ -1560,7 +1603,7 @@
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
-      page: 1,
+      page: Math.max(1, Number(page) || 1),
       limit: LISTING_PAGE_SIZE,
     };
   }
@@ -1591,7 +1634,8 @@
     const onProductsPage = /\/urunler\/?$/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const facets = readFacetQuery();
-    const listingParams = listingParamsFromPage(query, wantsCategory, facets);
+    const listingPage = onProductsPage ? readListingPageNumber() : 1;
+    const listingParams = listingParamsFromPage(query, wantsCategory, facets, listingPage);
     const cacheKey = listingCacheKey(listingParams);
     const cachedListing = onProductsPage ? readListingCache(cacheKey) : null;
     const hasEmbeddedBootstrap = Boolean(document.getElementById("patygo-catalog-bootstrap"));
@@ -1600,13 +1644,8 @@
 
     if (onProductsPage) {
       resetListingScroll();
-      const cleanUrl = new URL(location.href);
-      if (cleanUrl.searchParams.has("sayfa")) {
-        cleanUrl.searchParams.delete("sayfa");
-        history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
-      }
     }
-    if (onProductsPage && !cachedListing && !hasEmbeddedBootstrap) {
+    if (onProductsPage && !cachedListing && !(hasEmbeddedBootstrap && listingPage === 1)) {
       document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
         const hasCards = grid.querySelector(".product-card:not(.product-card--skeleton)");
         if (!hasCards) showCatalogLoading(grid);
@@ -1627,7 +1666,7 @@
     const categoriesPromise = loadCategories();
     const payloadPromise = (async () => {
       if (cachedListing) return cachedListing;
-      if (onProductsPage && !facetQueryActive()) {
+      if (onProductsPage && listingPage === 1 && !facetQueryActive()) {
         const boot = await loadCatalogBootstrap();
         if (boot) {
           usedFastPath.value = true;
@@ -1676,7 +1715,7 @@
             featuredTabs: home.byParent,
           };
         }
-        return await fetchListingPayload(query, wantsCategory, facets);
+        return await fetchListingPayload(query, wantsCategory, facets, listingPage);
       } catch (_) {
         return { products: [], total: 0, page: 1, totalPages: 0, failed: true };
       }
@@ -1714,8 +1753,8 @@
     const products = paintListing(payload, {
       categoryQuery: null,
       categoryResolved: headingFallback,
-      pager: null,
-      listingInfinite: onProductsPage ? payload : null,
+      pager: onProductsPage ? payload : null,
+      listingInfinite: null,
       facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });
@@ -1740,16 +1779,16 @@
       })
       .catch(() => {});
 
-    if (usedFastPath.value && onProductsPage && !listingBootstrapLoaded) {
-      fetchListingPayload(query, wantsCategory, facets)
+    if (usedFastPath.value && onProductsPage && listingPage === 1 && !listingBootstrapLoaded) {
+      fetchListingPayload(query, wantsCategory, facets, 1)
         .then((fresh) => {
           if (token !== listingReloadToken) return;
           if (!listingPayloadUsable(fresh)) return;
           paintListing(fresh, {
             categoryQuery: null,
             categoryResolved: headingFallback,
-            pager: null,
-            listingInfinite: fresh,
+            pager: fresh,
+            listingInfinite: null,
             facets: fresh.facets || null,
             featuredTabs: null,
           });
