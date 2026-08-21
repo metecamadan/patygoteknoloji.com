@@ -50,8 +50,8 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /pm2 restart/);
   assert.match(workflow, /\/api\/payment\/status/);
   assert.match(workflow, /while \[ "\$i" -lt 30 \]/);
-  assert.match(workflow, /data-catalog-pager/);
-  assert.doesNotMatch(workflow, /data-catalog-infinite/);
+  assert.match(workflow, /data-catalog-infinite/);
+  assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
 });
 

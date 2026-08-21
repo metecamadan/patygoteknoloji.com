@@ -1394,26 +1394,22 @@
     document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
       renderGrid(grid, products, opts);
     });
-    renderCatalogPager(opts.pager || null);
+    renderCatalogPager(opts.listingInfinite ? null : opts.pager || null);
     if (opts.listingInfinite) setupListingInfinite(opts.listingInfinite);
     else resetListingScroll();
     if (document.querySelector("[data-catalog-facets]")) {
       const facetState = readFacetQuery();
       renderFacets(opts.facets, facetState);
-      if (opts.pager) {
-        renderCatalogMeta(products.length, opts.pager.total || products.length, facetState);
-      } else if (opts.listingInfinite) {
+      if (opts.listingInfinite) {
         renderCatalogMeta(
           countDisplayedListingProducts() || products.length,
           opts.listingInfinite.total || products.length,
           facetState
         );
+      } else if (opts.pager) {
+        renderCatalogMeta(products.length, opts.pager.total || products.length, facetState);
       } else {
-        renderCatalogMeta(
-          products.length,
-          products.length,
-          facetState
-        );
+        renderCatalogMeta(products.length, products.length, facetState);
       }
     }
     if (opts.featuredTabs) bindFeaturedTabs(opts.featuredTabs, products);
@@ -1634,8 +1630,7 @@
     const onProductsPage = /\/urunler\/?$/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const facets = readFacetQuery();
-    const listingPage = onProductsPage ? readListingPageNumber() : 1;
-    const listingParams = listingParamsFromPage(query, wantsCategory, facets, listingPage);
+    const listingParams = listingParamsFromPage(query, wantsCategory, facets, 1);
     const cacheKey = listingCacheKey(listingParams);
     const cachedListing = onProductsPage ? readListingCache(cacheKey) : null;
     const hasEmbeddedBootstrap = Boolean(document.getElementById("patygo-catalog-bootstrap"));
@@ -1644,8 +1639,13 @@
 
     if (onProductsPage) {
       resetListingScroll();
+      const cleanUrl = new URL(location.href);
+      if (cleanUrl.searchParams.has("sayfa")) {
+        cleanUrl.searchParams.delete("sayfa");
+        history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
+      }
     }
-    if (onProductsPage && !cachedListing && !(hasEmbeddedBootstrap && listingPage === 1)) {
+    if (onProductsPage && !cachedListing && !hasEmbeddedBootstrap) {
       document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
         const hasCards = grid.querySelector(".product-card:not(.product-card--skeleton)");
         if (!hasCards) showCatalogLoading(grid);
@@ -1666,7 +1666,7 @@
     const categoriesPromise = loadCategories();
     const payloadPromise = (async () => {
       if (cachedListing) return cachedListing;
-      if (onProductsPage && listingPage === 1 && !facetQueryActive()) {
+      if (onProductsPage && !facetQueryActive()) {
         const boot = await loadCatalogBootstrap();
         if (boot) {
           usedFastPath.value = true;
@@ -1715,7 +1715,7 @@
             featuredTabs: home.byParent,
           };
         }
-        return await fetchListingPayload(query, wantsCategory, facets, listingPage);
+        return await fetchListingPayload(query, wantsCategory, facets, 1);
       } catch (_) {
         return { products: [], total: 0, page: 1, totalPages: 0, failed: true };
       }
@@ -1753,8 +1753,8 @@
     const products = paintListing(payload, {
       categoryQuery: null,
       categoryResolved: headingFallback,
-      pager: onProductsPage ? payload : null,
-      listingInfinite: null,
+      pager: null,
+      listingInfinite: onProductsPage ? payload : null,
       facets: onProductsPage ? payload.facets : null,
       featuredTabs,
     });
@@ -1779,7 +1779,7 @@
       })
       .catch(() => {});
 
-    if (usedFastPath.value && onProductsPage && listingPage === 1 && !listingBootstrapLoaded) {
+    if (usedFastPath.value && onProductsPage && !listingBootstrapLoaded) {
       fetchListingPayload(query, wantsCategory, facets, 1)
         .then((fresh) => {
           if (token !== listingReloadToken) return;
@@ -1787,8 +1787,8 @@
           paintListing(fresh, {
             categoryQuery: null,
             categoryResolved: headingFallback,
-            pager: fresh,
-            listingInfinite: null,
+            pager: null,
+            listingInfinite: fresh,
             facets: fresh.facets || null,
             featuredTabs: null,
           });

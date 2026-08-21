@@ -29,7 +29,7 @@ test("catalog product cards use cart flow without quote button", () => {
   assert.match(catalogJs, /onDetailPage\) \{\s*return \{ products: \[\]/s);
 });
 
-test("category listing uses four-column cards with qty stepper and page pager", () => {
+test("category listing uses four-column cards with qty stepper and infinite scroll", () => {
   const urunler = fs.readFileSync(path.join(root, "urunler.html"), "utf8");
   const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
   assert.match(catalogJs, /LISTING_PAGE_SIZE = 20/);
@@ -43,14 +43,16 @@ test("category listing uses four-column cards with qty stepper and page pager", 
       css.indexOf(".product-card .price {"),
     "listing VAT stack must override the generic price row"
   );
-  assert.match(catalogJs, /function renderCatalogPager/);
-  assert.match(catalogJs, /function readListingPageNumber/);
-  assert.match(catalogJs, /searchParams\.set\("sayfa"/);
+  assert.match(catalogJs, /loadMoreListing/);
+  assert.match(catalogJs, /listingScroll\.totalPages <= 1/);
+  assert.match(catalogJs, /IntersectionObserver/);
   assert.match(catalogJs, /if \(compactListing\)/);
   assert.match(catalogJs, /LISTING_LOAD_MORE_MS/);
-  assert.match(urunler, /data-catalog-pager/);
-  assert.doesNotMatch(urunler, /data-catalog-infinite/);
-  assert.match(urunler, /listing-pager-v6/);
+  assert.match(catalogJs, /failUntil/);
+  assert.match(urunler, /data-catalog-infinite/);
+  assert.match(urunler, /data-catalog-load-sentinel/);
+  assert.doesNotMatch(urunler, /data-catalog-pager/);
+  assert.match(urunler, /listing-infinite-v7/);
   assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(css, /repeat\(5, minmax\(0, 1fr\)\)/);
 });
@@ -117,8 +119,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /Promise\.race/);
   assert.match(catalogJs, /function listingSnapshotFileName\s*\(\s*query\s*\)/);
   assert.match(catalogJs, /listingSnapshotFileName/);
-  assert.match(indexHtml, /listing-pager-v6/);
-  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /listing-pager-v6/);
+  assert.match(indexHtml, /listing-infinite-v7/);
+  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /listing-infinite-v7/);
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
@@ -140,10 +142,10 @@ test("homepage featured tabs are crawlable category links", () => {
 test("storefront catalog loads paginated products by category", () => {
   assert.match(catalogJs, /fetchProductPage/);
   assert.match(catalogJs, /LISTING_PAGE_SIZE/);
-  assert.match(catalogJs, /readListingPageNumber/);
-  assert.match(catalogJs, /renderCatalogPager/);
+  assert.match(catalogJs, /loadMoreListing/);
+  assert.match(catalogJs, /fetchListingPage/);
   const urunler = fs.readFileSync(path.join(root, "urunler.html"), "utf8");
-  assert.match(urunler, /data-catalog-pager/);
+  assert.match(urunler, /data-catalog-infinite/);
 });
 
 test("public storefront copy does not mention XML catalog sourcing", () => {
