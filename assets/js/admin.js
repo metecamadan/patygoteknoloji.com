@@ -2377,7 +2377,8 @@
   async function loadSupplierData() {
     if (!siteCategories.length) await loadSiteCategories();
     const results = await Promise.all([
-      api("/api/admin/supplier/status?feed=1"),
+      // feed=1 runs full Akakçe analysis on the whole catalog and blocks the event loop.
+      api("/api/admin/supplier/status"),
       api("/api/admin/supplier/products?" + supplierQueryString()),
     ]);
     supplierSlots = Array.isArray(results[0].slots)
@@ -2385,7 +2386,7 @@
       : Array.isArray(results[1].slots)
         ? results[1].slots
         : [];
-    feedStatus = results[0].feed || null;
+    feedStatus = results[0].feed || feedStatus || null;
     supplierProducts = Array.isArray(results[1].products) ? results[1].products : [];
     supplierPoolMeta = {
       total: Number(results[1].total) || 0,
@@ -2412,6 +2413,17 @@
     renderSupplierStatus();
     renderSupplierProducts();
     renderList();
+    // Feed diagnostics load in the background so panel actions stay responsive.
+    api("/api/admin/supplier/status?feed=1", { timeout: 90000 })
+      .then((feedData) => {
+        if (feedData && feedData.feed) {
+          feedStatus = feedData.feed;
+          if (Array.isArray(feedData.slots)) supplierSlots = feedData.slots;
+          renderSupplierStatus();
+          updateDashboard();
+        }
+      })
+      .catch(() => {});
   }
 
   async function updateSupplierProducts(updates) {

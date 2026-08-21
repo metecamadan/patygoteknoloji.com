@@ -191,7 +191,20 @@ test("admin login distinguishes timeout from wrong password and retries once", (
   assert.match(script, /Bu şifre hatası değil/);
   assert.match(script, /Bağlantı yenileniyor, tekrar deneniyor/);
   assert.match(script, /timeout:\s*60000/);
-  assert.match(html, /admin\.js\?v=admin-login-timeout-3/);
+  assert.match(html, /admin\.js\?v=admin-api-nonblock-1/);
+});
+
+test("admin supplier load keeps panel responsive without blocking on feed=1", () => {
+  assert.match(script, /api\("\/api\/admin\/supplier\/status"\)/);
+  assert.match(script, /api\("\/api\/admin\/supplier\/status\?feed=1"/);
+  assert.match(script, /timeout:\s*90000/);
+  const loadFn = script.match(/async function loadSupplierData\(\) \{[\s\S]*?\n  \}/);
+  assert.ok(loadFn, "loadSupplierData bulunmalı");
+  const waitBlock = loadFn[0].match(/Promise\.all\(\[[\s\S]*?\]\)/);
+  assert.ok(waitBlock, "Promise.all block bulunmalı");
+  assert.match(waitBlock[0], /api\("\/api\/admin\/supplier\/status"\)/);
+  assert.doesNotMatch(waitBlock[0], /status\?feed=1/);
+  assert.match(loadFn[0], /\.then\(\(feedData\) =>/);
 });
 
 test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {

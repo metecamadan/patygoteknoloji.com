@@ -19,6 +19,34 @@ test("supplier status skips catalog merge unless feed=1", () => {
   assert.doesNotMatch(statusFn[1], /buildAkakceFeedSummary\(mergedProducts\(false\)/);
 });
 
+test("supplier refresh does not await category sync on the HTTP response path", () => {
+  const refreshFn = server.match(
+    /if \(req\.method === "POST" && urlPath === "\/api\/admin\/supplier\/refresh"\) \{([\s\S]*?)\n  \}/
+  );
+  assert.ok(refreshFn, "supplier refresh route bulunmalı");
+  assert.match(refreshFn[1], /enqueueXmlCategorySync\(/);
+  assert.doesNotMatch(refreshFn[1], /await enqueueXmlCategorySync/);
+  assert.match(refreshFn[1], /categorySyncQueued:\s*true/);
+});
+
+test("supplier publish does not block on Akakçe feed analysis", () => {
+  const publishFn = server.match(
+    /if \(req\.method === "POST" && urlPath === "\/api\/admin\/supplier\/publish"\) \{([\s\S]*?)\n  \}/
+  );
+  assert.ok(publishFn, "supplier publish route bulunmalı");
+  assert.doesNotMatch(publishFn[1], /analyzeAkakceProducts\(mergedProducts/);
+  assert.match(publishFn[1], /scheduleAkakceFeedSummaryWarm/);
+});
+
+test("publishSupplierSlot uses yielding async category sync", () => {
+  const site = fs.readFileSync(path.join(root, "lib", "supplier-site.js"), "utf8");
+  assert.match(site, /await syncXmlSiteCategoriesAsync/);
+  assert.doesNotMatch(
+    site,
+    /publishSupplierSlot[\s\S]*const result = syncXmlSiteCategories\(/
+  );
+});
+
 test("dashboard does not hydrate the full supplier catalog for product names", () => {
   assert.match(server, /function resolveProductNamesByIds/);
   assert.match(server, /getProductById\(id\)/);

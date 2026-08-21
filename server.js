@@ -595,6 +595,7 @@ function normalizeProduct(p, fallbackId) {
 
 const storefrontCatalogMemo = { active: null, all: null };
 let akakceXmlMemo = null;
+let akakceFeedSummaryMemo = { products: null, summary: null };
 const CATALOG_BOOTSTRAP_LIMIT = 20;
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 const STARTUP_WARM_DEFER_MS = 45000;
@@ -612,6 +613,7 @@ function clearCatalogBootstrapSnapshots() {
 }
 
 function invalidateStorefrontCatalog() {
+  akakceFeedSummaryMemo = { products: null, summary: null };
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
   akakceXmlMemo = null;
@@ -997,10 +999,24 @@ function akakceFeedPublicMeta() {
 }
 
 function akakceFeedFullSummary() {
-  return buildAkakceFeedSummary(mergedProducts(false), {
+  const products = mergedProducts(false);
+  if (akakceFeedSummaryMemo.summary && akakceFeedSummaryMemo.products === products) {
+    return akakceFeedSummaryMemo.summary;
+  }
+  const summary = buildAkakceFeedSummary(products, {
     siteBaseUrl: SITE_BASE_URL,
     mirrorIndex: loadMirrorIndex(DATA_ROOT),
     ...akakceShippingOptions(),
+  });
+  akakceFeedSummaryMemo = { products, summary };
+  return summary;
+}
+
+function scheduleAkakceFeedSummaryWarm() {
+  setImmediate(() => {
+    try {
+      akakceFeedFullSummary();
+    } catch (_) {}
   });
 }
 
@@ -2046,19 +2062,17 @@ async function handleApi(req, res, urlPath) {
         root: DATA_ROOT,
       });
       invalidateStorefrontCatalog();
+      akakceFeedSummaryMemo = { products: null, summary: null };
       warmStorefrontCatalog();
       scheduleAkakceImageMirror();
+      scheduleAkakceFeedSummaryWarm();
       const slots = supplierManager.listSlots();
-      const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
-        siteBaseUrl: SITE_BASE_URL,
-        mirrorIndex: loadMirrorIndex(DATA_ROOT),
-      });
       return json(res, 200, {
         ok: true,
         result,
         slots,
-        feedCount: feedAnalysis.eligible.length,
-        feedExcludedCount: feedAnalysis.excluded.length,
+        feedCount: null,
+        feedExcludedCount: null,
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Kaynak yayınlanamadı" });
@@ -2069,7 +2083,8 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
       const result = await supplierManager.refresh(body.slotId || "supplier-1");
-      await enqueueXmlCategorySync(result.slotId);
+      // Category sync + catalog warm must not hold the HTTP response (blocks all panel APIs).
+      enqueueXmlCategorySync(result.slotId);
       scheduleAkakceImageMirror();
       const slots = supplierManager.listSlots();
       return json(res, 200, {
@@ -2077,6 +2092,7 @@ async function handleApi(req, res, urlPath) {
         result,
         slots,
         status: slots.find((slot) => slot.id === result.slotId) || slots[0],
+        categorySyncQueued: true,
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: err.message || "XML alınamadı" });
