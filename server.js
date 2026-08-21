@@ -1843,6 +1843,7 @@ async function handleApi(req, res, urlPath) {
           console.error("order status mail failed:", err.message);
         }
         const mailReason = mailResult && !mailResult.sent ? mailResult.reason || null : null;
+        const mailTo = mailResult && mailResult.to ? mailResult.to : null;
         try {
           const session = getSession(req);
           auditStore.record({
@@ -1868,6 +1869,7 @@ async function handleApi(req, res, urlPath) {
           order,
           mailSent,
           mailReason,
+          mailTo,
           statusMails: orderStore.listStatusMails(orderId),
         });
       } catch (err) {
