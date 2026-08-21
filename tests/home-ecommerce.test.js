@@ -112,7 +112,11 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /prefetchListingHref/);
   assert.match(catalogJs, /\/api\/catalog-bootstrap/);
   assert.match(catalogJs, /\/listing\//);
+  assert.match(catalogJs, /Promise\.race/);
+  assert.match(catalogJs, /function listingSnapshotFileName\s*\(\s*query\s*\)/);
   assert.match(catalogJs, /listingSnapshotFileName/);
+  assert.match(indexHtml, /listing-cache-v4/);
+  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /listing-cache-v4/);
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);

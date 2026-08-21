@@ -866,6 +866,7 @@
     return controller.signal;
   }
 
+  function listingSnapshotFileName(query) {
     const safe = (value) =>
       String(value || "")
         .toLowerCase()
@@ -1516,9 +1517,17 @@
   }
 
   async function reloadCatalog() {
-    if (window.PatygoShipping && typeof window.PatygoShipping.load === "function") {
-      await window.PatygoShipping.load().catch(() => {});
-    }
+    // Shipping must never block first product paint (timeout/race only).
+    const shippingPromise =
+      window.PatygoShipping && typeof window.PatygoShipping.load === "function"
+        ? window.PatygoShipping.load().catch(() => {})
+        : Promise.resolve();
+    await Promise.race([
+      shippingPromise,
+      new Promise(function (resolve) {
+        setTimeout(resolve, 400);
+      }),
+    ]);
     const token = ++listingReloadToken;
     const path = location.pathname || "";
     const query = readCategoryQuery();

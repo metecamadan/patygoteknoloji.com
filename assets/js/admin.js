@@ -574,6 +574,7 @@
     const isSupplierProducts = path.includes("/supplier/products");
     const isOrderPatch = /\/api\/admin\/orders\/[^/?]+$/.test(path) && String(opts.method || "GET").toUpperCase() === "PATCH";
     const isAdminLogin = path.includes("/api/admin/login");
+    const isAdminMe = path.includes("/api/admin/me");
     const timer = setTimeout(
       () => ctrl.abort(),
       Number(opts.timeout) ||
@@ -584,8 +585,10 @@
             : isOrderPatch
               ? 30000
               : isAdminLogin
-                ? 30000
-                : 12000)
+                ? 60000
+                : isAdminMe
+                  ? 30000
+                  : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -608,14 +611,18 @@
             ? "XML çekimi zaman aşımına uğradı. Tedarikçi IP whitelist / firewall ayarını kontrol edin."
             : isSupplierPublish
               ? "Yayın işlemi zaman aşımına uğradı. Lütfen tekrar deneyin."
-              : "İstek zaman aşımına uğradı. Lütfen tekrar deneyin."
+              : isAdminLogin
+                ? "Sunucu girişe yanıt vermedi. Bu şifre hatası değil — birkaç saniye sonra tekrar deneyin."
+                : "İstek zaman aşımına uğradı. Lütfen tekrar deneyin."
         );
       }
       if (err && err.message && /Failed to fetch|NetworkError|Load failed|fetch/i.test(err.message)) {
         throw new Error(
           isSupplierRefresh
             ? "XML bağlantısı kesildi. Sunucu tedarikçiye bağlanamıyor olabilir (IP whitelist)."
-            : "API isteği başarısız oldu (" + path + "). Sayfayı yenileyip tekrar deneyin."
+            : isAdminLogin
+              ? "Panele ulaşılamadı. Bu şifre hatası değil — bağlantıyı kontrol edip tekrar deneyin."
+              : "API isteği başarısız oldu (" + path + "). Sayfayı yenileyip tekrar deneyin."
         );
       }
       throw err;
@@ -2880,11 +2887,27 @@
       const email = emailEl ? String(emailEl.value || "").trim() : "";
       const payload = { password: document.getElementById("password").value };
       if (email) payload.email = email;
-      const data = await api("/api/admin/login", {
-        method: "POST",
-        body: JSON.stringify(payload),
-        timeout: 45000,
-      });
+      let data;
+      try {
+        data = await api("/api/admin/login", {
+          method: "POST",
+          body: JSON.stringify(payload),
+          timeout: 60000,
+        });
+      } catch (firstErr) {
+        const msg = String((firstErr && firstErr.message) || "");
+        const retryable =
+          /yanıt vermedi|ulaşılamadı|zaman aşımı|Failed to fetch|NetworkError|API isteği/i.test(msg) &&
+          !/E-posta veya şifre|Şifre hatalı|şifre hatalı/i.test(msg);
+        if (!retryable) throw firstErr;
+        note(loginNote, "", "Bağlantı yenileniyor, tekrar deneniyor…");
+        await new Promise((r) => setTimeout(r, 900));
+        data = await api("/api/admin/login", {
+          method: "POST",
+          body: JSON.stringify(payload),
+          timeout: 60000,
+        });
+      }
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       showPanel(true);

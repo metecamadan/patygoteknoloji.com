@@ -187,6 +187,13 @@ test("admin login does not block on supplier catalog or dashboard merge", () => 
   assert.doesNotMatch(script, /refresh\(\)\.catch\(\(\) => \{\}\);/);
 });
 
+test("admin login distinguishes timeout from wrong password and retries once", () => {
+  assert.match(script, /Bu şifre hatası değil/);
+  assert.match(script, /Bağlantı yenileniyor, tekrar deneniyor/);
+  assert.match(script, /timeout:\s*60000/);
+  assert.match(html, /admin\.js\?v=admin-login-timeout-3/);
+});
+
 test("admin Akakçe feed shows exclusion diagnostics and public URL", () => {
   assert.match(html, /id="feedCatalogActiveCount"/);
   assert.match(html, /id="feedWarnings"/);
