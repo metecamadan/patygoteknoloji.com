@@ -71,6 +71,10 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.ok(urunlerBlock, "urunler nginx block missing");
   assert.doesNotMatch(urunlerBlock[0], /proxy_pass/);
   assert.match(urunlerBlock[0], /try_files \/urunler\.html/);
+  const urunlerPathBlock = nginx.match(/location \^~ \/urunler\/ \{[\s\S]*?\n  \}/);
+  assert.ok(urunlerPathBlock, "urunler path nginx block missing");
+  assert.doesNotMatch(urunlerPathBlock[0], /proxy_pass/);
+  assert.match(urunlerPathBlock[0], /try_files \/urunler\.html/);
   assert.match(nginx, /location \^~ \/media\/catalog\//);
   assert.match(nginx, /location \^~ \/listing\//);
   assert.doesNotMatch(nginx, /location = \/listing\/categories\.json/);
