@@ -598,7 +598,7 @@ const storefrontCatalogMemo = { active: null, all: null };
 let akakceXmlMemo = null;
 let akakceFeedSummaryMemo = { products: null, summary: null };
 const CATALOG_BOOTSTRAP_LIMIT = 20;
-const CATALOG_BOOTSTRAP_EXTRA_PAGES = 9; // pages 2..10 served from /listing without Node
+const CATALOG_BOOTSTRAP_EXTRA_PAGES = 4; // pages 2..5 for parent listings only
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 const STARTUP_WARM_DEFER_MS = 45000;
 
@@ -856,7 +856,11 @@ function writeCatalogBootstrapSnapshots() {
     };
     writePage(1, first);
     const totalPages = Math.max(1, Number(first.totalPages) || 1);
-    const lastPage = Math.min(totalPages, 1 + CATALOG_BOOTSTRAP_EXTRA_PAGES);
+    // Extra pages only for top-level category + all (keeps warm from blocking the event loop).
+    const writeExtraPages = !job.params.ara && !job.params.alt;
+    const lastPage = writeExtraPages
+      ? Math.min(totalPages, 1 + CATALOG_BOOTSTRAP_EXTRA_PAGES)
+      : 1;
     for (let pageNum = 2; pageNum <= lastPage; pageNum += 1) {
       const payload = queryPublicCatalogIndexed(
         index,
