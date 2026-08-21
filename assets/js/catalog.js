@@ -848,14 +848,24 @@
 
   const FEATURED_PER_CATEGORY = 12;
   const LISTING_PAGE_SIZE = 20;
-  const LISTING_CACHE_STORE = "patygo_listing_v1";
+  const LISTING_CACHE_STORE = "patygo_listing_v2";
   const LISTING_CACHE_TTL_MS = 10 * 60 * 1000;
   const LISTING_CACHE_MAX = 30;
   const LISTING_FETCH_MS = 8000;
   const listingScroll = { page: 1, totalPages: 0, total: 0, loading: false, observer: null };
   let listingReloadToken = 0;
 
-  function listingSnapshotFileName(query) {
+  function listingFetchSignal() {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      return AbortSignal.timeout(LISTING_FETCH_MS);
+    }
+    const controller = new AbortController();
+    setTimeout(function () {
+      controller.abort();
+    }, LISTING_FETCH_MS);
+    return controller.signal;
+  }
+
     const safe = (value) =>
       String(value || "")
         .toLowerCase()
@@ -871,7 +881,11 @@
   }
 
   async function fetchJsonCached(url) {
-    const res = await fetch(url, { cache: "default", signal: AbortSignal.timeout(LISTING_FETCH_MS) });
+    const cacheMode = String(url || "").indexOf("/listing/") === 0 ? "no-store" : "default";
+    const res = await fetch(url, {
+      cache: cacheMode,
+      signal: listingFetchSignal(),
+    });
     if (!res.ok) throw new Error("http " + res.status);
     return res.json();
   }
@@ -891,7 +905,7 @@
       const store = JSON.parse(sessionStorage.getItem(LISTING_CACHE_STORE) || "{}");
       const entry = store[key];
       if (!entry || Date.now() - Number(entry.at || 0) > LISTING_CACHE_TTL_MS) return null;
-      if (!entry.data || !Array.isArray(entry.data.products)) return null;
+      if (!listingPayloadUsable(entry.data)) return null;
       return entry.data;
     } catch (_) {
       return null;
@@ -1516,6 +1530,7 @@
     const cachedListing = onProductsPage ? readListingCache(cacheKey) : null;
     const hasEmbeddedBootstrap = Boolean(document.getElementById("patygo-catalog-bootstrap"));
     const usedFastPath = { value: Boolean(cachedListing) };
+    let listingBootstrapLoaded = false;
 
     if (onProductsPage) {
       resetListingScroll();
@@ -1550,6 +1565,7 @@
         const boot = await loadCatalogBootstrap();
         if (boot) {
           usedFastPath.value = true;
+          listingBootstrapLoaded = true;
           writeListingCache(cacheKey, boot);
           return boot;
         }
@@ -1658,11 +1674,11 @@
       })
       .catch(() => {});
 
-    if (usedFastPath.value && onProductsPage) {
+    if (usedFastPath.value && onProductsPage && !listingBootstrapLoaded) {
       fetchListingPayload(query, wantsCategory, facets)
         .then((fresh) => {
           if (token !== listingReloadToken) return;
-          if (!fresh || !Array.isArray(fresh.products)) return;
+          if (!listingPayloadUsable(fresh)) return;
           paintListing(fresh, {
             categoryQuery: null,
             categoryResolved: headingFallback,

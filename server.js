@@ -60,7 +60,7 @@ const {
   NOTIFY_STATUSES,
   sendOrderStatusMail,
 } = require("./lib/order-mail");
-const { submitSalesInvoice } = require("./lib/bizimhesap");
+const { submitSalesInvoice, bizimhesapConfigured, pingBizimHesap } = require("./lib/bizimhesap");
 const {
   createContactStore,
   normalizeContactPayload,
@@ -775,6 +775,7 @@ function warmStorefrontCatalog() {
 function scheduleStartupCatalogWarm() {
   const timer = setTimeout(() => {
     try {
+      if (bootstrapSnapshotsReady()) return;
       warmStorefrontCatalog();
     } catch (_) {}
   }, STARTUP_WARM_DEFER_MS);
@@ -891,23 +892,25 @@ function scheduleAkakceImageMirror() {
   if (akakceMirrorTimer) clearTimeout(akakceMirrorTimer);
   akakceMirrorTimer = setTimeout(() => {
     akakceMirrorTimer = null;
-    const memo = storefrontCatalogMemo.active;
-    const products =
-      memo && Array.isArray(memo.products) && memo.products.length
-        ? memo.products
-        : mergedProducts(false);
-    mirrorAkakceCatalogImages(products, {
-      dataRoot: DATA_ROOT,
-      siteBaseUrl: SITE_BASE_URL,
-      logError: (message, source, detail) =>
-        console.warn("Akakçe görsel aynası", source, detail || message),
-    })
-      .then(() => {
-        invalidateStorefrontCatalog();
+    setImmediate(() => {
+      const memo = storefrontCatalogMemo.active;
+      const products =
+        memo && Array.isArray(memo.products) && memo.products.length
+          ? memo.products
+          : mergedProducts(false);
+      mirrorAkakceCatalogImages(products, {
+        dataRoot: DATA_ROOT,
+        siteBaseUrl: SITE_BASE_URL,
+        logError: (message, source, detail) =>
+          console.warn("Akakçe görsel aynası", source, detail || message),
       })
-      .catch((err) => {
-        console.warn("Akakçe görsel aynası atlandı:", err.message || err);
-      });
+        .then(() => {
+          invalidateStorefrontCatalog();
+        })
+        .catch((err) => {
+          console.warn("Akakçe görsel aynası atlandı:", err.message || err);
+        });
+    });
   }, 30000);
   if (typeof akakceMirrorTimer.unref === "function") akakceMirrorTimer.unref();
 }
@@ -1733,6 +1736,51 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  const adminOrderBizimhesapMatch = /^\/api\/admin\/orders\/([^/]+)\/bizimhesap-invoice$/.exec(urlPath);
+  if (adminOrderBizimhesapMatch && req.method === "POST") {
+    const orderId = decodeURIComponent(adminOrderBizimhesapMatch[1]);
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const order = orderStore.get(orderId);
+      if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+      if (!bizimhesapConfigured(process.env)) {
+        return json(res, 503, {
+          ok: false,
+          error: "BizimHesap yapılandırılmamış. .env içinde BIZIMHESAP_FIRM_ID, BIZIMHESAP_API_KEY ve BIZIMHESAP_API_TOKEN gerekli.",
+        });
+      }
+      const result = await submitSalesInvoice(order, {
+        store: orderStore,
+        force: body.force === true,
+      });
+      return json(res, 200, {
+        ok: true,
+        result,
+        integration: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
+      });
+    } catch (err) {
+      return json(res, 502, { ok: false, error: (err && err.message) || "BizimHesap faturası gönderilemedi" });
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/bizimhesap/status") {
+    const configured = bizimhesapConfigured(process.env);
+    if (!configured) {
+      return json(res, 200, {
+        ok: true,
+        configured: false,
+        message: "BIZIMHESAP_FIRM_ID, BIZIMHESAP_API_KEY ve BIZIMHESAP_API_TOKEN tanımlanmalı.",
+      });
+    }
+    const ping = await pingBizimHesap();
+    return json(res, 200, {
+      ok: true,
+      configured: true,
+      pingOk: ping.ok === true,
+      pingMessage: ping.message || null,
+    });
+  }
+
   const adminOrderMatch = /^\/api\/admin\/orders\/([^/]+)$/.exec(urlPath);
   if (adminOrderMatch) {
     const orderId = decodeURIComponent(adminOrderMatch[1]);
@@ -1743,6 +1791,8 @@ async function handleApi(req, res, urlPath) {
         ok: true,
         order,
         statusMails: orderStore.listStatusMails(orderId),
+        bizimhesap: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
+        bizimhesapConfigured: bizimhesapConfigured(process.env),
       });
     }
     if (req.method === "PATCH") {
@@ -2635,7 +2685,7 @@ setImmediate(() => {
   scheduleAkakceImageMirror();
 });
 const xmlCategorySyncTimer = setTimeout(() => {
-  enqueueXmlCategorySync();
+  if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();
 }, 15000);
 if (typeof xmlCategorySyncTimer.unref === "function") xmlCategorySyncTimer.unref();
 

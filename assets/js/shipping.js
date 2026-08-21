@@ -3,6 +3,8 @@
 
   let cached = null;
   let loading = null;
+  let loadingStartedAt = 0;
+  const LOADING_MAX_MS = 6000;
 
   function normalize(settings) {
     const s = settings && typeof settings === "object" ? settings : {};
@@ -90,10 +92,26 @@
     return el;
   }
 
+  function shippingFetchSignal() {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      return AbortSignal.timeout(5000);
+    }
+    const controller = new AbortController();
+    setTimeout(function () {
+      controller.abort();
+    }, 5000);
+    return controller.signal;
+  }
+
   function load() {
     if (cached) return Promise.resolve(cached);
-    if (loading) return loading;
-    loading = fetch("/api/shipping", { cache: "default" })
+    if (loading && Date.now() - loadingStartedAt < LOADING_MAX_MS) return loading;
+    loading = null;
+    loadingStartedAt = Date.now();
+    loading = fetch("/api/shipping", {
+      cache: "default",
+      signal: shippingFetchSignal(),
+    })
       .then((res) => (res.ok ? res.json() : {}))
       .then((body) => {
         cached = normalize(body);

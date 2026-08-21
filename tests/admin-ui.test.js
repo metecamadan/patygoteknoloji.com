@@ -297,6 +297,10 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /adminOrderResendShippingMail/);
   assert.match(script, /Müşteri e-posta geçmişi/);
   assert.match(script, /admin-order-mail-badge--sent/);
+  assert.match(script, /renderBizimHesapBlock/);
+  assert.match(script, /adminOrderBizimhesapSend/);
+  assert.match(script, /BizimHesap faturası/);
+  assert.match(script, /\/api\/admin\/orders\/.*\/bizimhesap-invoice/);
   assert.match(script, /notifyEmail/);
   assert.match(script, /\/api\/admin\/users/);
   assert.match(script, /supplier\/products\?/);
