@@ -3,6 +3,46 @@
   min-height: 100vh;
   color: var(--ink);
 }
+
+/* Vitrin .btn-primary:hover translateY panelde buton kayması yapıyor — sabitle. */
+.admin-body .btn,
+.admin-body .btn:hover,
+.admin-body .btn:focus,
+.admin-body .btn:focus-visible,
+.admin-body .btn:active {
+  transform: none;
+}
+.admin-body .btn {
+  box-sizing: border-box;
+  line-height: 1.25;
+  min-height: 40px;
+  vertical-align: middle;
+}
+.admin-body .btn-sm {
+  min-height: 32px;
+}
+.admin-body .btn-xs {
+  min-height: 28px;
+}
+.admin-body .btn-primary {
+  box-shadow: none;
+}
+.admin-body .btn-primary:hover,
+.admin-body .btn-primary:focus-visible {
+  box-shadow: none;
+  background: var(--brand-deep);
+}
+.admin-body .btn-outline:hover,
+.admin-body .btn-ghost:hover {
+  /* border zaten 1.5px; renk değişsin, ölçü değişmesin */
+  transform: none;
+}
+.admin-card-head-actions .btn,
+.admin-top-actions .btn,
+.admin-xml-card .btn {
+  flex: 0 0 auto;
+}
+
 .admin-theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -2033,7 +2073,7 @@ html.admin-theme-dark .btn-ghost:hover {
 
 html.admin-theme-dark .btn-primary {
   color: #0b1220;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  box-shadow: none;
 }
 
 html.admin-theme-dark .admin-note.err { color: #fca5a5; }

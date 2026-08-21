@@ -91,6 +91,12 @@ test("admin categories tab manages the site category tree", () => {
   assert.match(script, /Yayına al/);
 });
 
+test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
+  assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
+  assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
+  assert.match(html, /admin\.css\?v=btn-stable-1/);
+});
+
 test("admin panel exposes dark theme toggle in the top bar", () => {
   assert.match(html, /id="adminThemeToggle"/);
   assert.match(html, /admin-theme-toggle/);

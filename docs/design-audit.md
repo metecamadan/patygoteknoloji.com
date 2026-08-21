@@ -62,6 +62,14 @@
 
 ---
 
+## Admin panel — 2026-08-21 (buton kayması)
+
+| # | P | Problem | Öneri / Durum | Dosya |
+|---|---|---------|---------------|-------|
+| A23 | Y | Panel butonları hover’da yukarı kayıyor (`style.css` `.btn-primary:hover { transform: translateY(-1px) }` + gölge) | **Düzeltildi:** `.admin-body .btn` transform/box-shadow sabit; min-height | `admin.css` |
+
+---
+
 ## Admin panel
 
 ### Layout / IA
