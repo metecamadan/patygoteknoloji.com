@@ -104,5 +104,6 @@ test("image mirror skips empty queues and does not always invalidate", () => {
   assert.match(server, /Number\(result\.mirrored\) > 0/);
   assert.match(server, /skipIfRecent:\s*true/);
   assert.match(server, /preloadCachesAsync/);
+  assert.match(server, /preloadRawCachesAsync/);
   assert.match(server, /eventLoopLagMs/);
 });

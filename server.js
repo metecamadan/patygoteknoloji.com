@@ -2753,12 +2753,22 @@ setImmediate(() => {
   try {
     ensureListingTreeSnapshotFiles();
   } catch (_) {}
-  // Load supplier cache/hydrate off the request path so admin status stays instant.
-  if (supplierManager && typeof supplierManager.preloadCachesAsync === "function") {
-    supplierManager.preloadCachesAsync().catch((err) => {
-      console.warn("Tedarikçi önbellek ön yükleme atlandı:", err && err.message ? err.message : err);
+  // Worker-parse supplier JSON without hydrating 16k rows on the request thread.
+  if (supplierManager && typeof supplierManager.preloadRawCachesAsync === "function") {
+    supplierManager.preloadRawCachesAsync().catch((err) => {
+      console.warn("Tedarikçi cache ön yükleme atlandı:", err && err.message ? err.message : err);
     });
   }
+  // Full hydrate later, only when the loop is quiet.
+  const hydrateTimer = setTimeout(() => {
+    if (isEventLoopBusy(200)) return;
+    if (supplierManager && typeof supplierManager.preloadCachesAsync === "function") {
+      supplierManager.preloadCachesAsync().catch((err) => {
+        console.warn("Tedarikçi hydrate ön yükleme atlandı:", err && err.message ? err.message : err);
+      });
+    }
+  }, 90000);
+  if (typeof hydrateTimer.unref === "function") hydrateTimer.unref();
   scheduleStartupCatalogWarm();
   // Do not hammer image mirror on every process restart when the index is already fresh.
   scheduleAkakceImageMirror({ delayMs: 180000, skipIfRecent: true });
