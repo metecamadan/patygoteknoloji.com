@@ -21,8 +21,8 @@ const ANA = [
 
 test("footer and homepage expose crawlable ANA category hrefs", () => {
   for (const slug of ANA) {
-    const href = 'href="/urunler?kategori=' + slug + '"';
-    assert.match(indexHtml, new RegExp(href.replace(/[?]/g, "\\?")), slug);
+    const href = 'href="/urunler/' + slug + '"';
+    assert.match(indexHtml, new RegExp(href), slug);
   }
   assert.match(indexHtml, /<h4>Kategoriler<\/h4>/);
   assert.doesNotMatch(indexHtml, /href=["']javascript:/i);
@@ -33,7 +33,7 @@ test("footer and homepage expose crawlable ANA category hrefs", () => {
 test("sitemap lists category pages and omits checkout surfaces", () => {
   assert.match(sitemap, /<lastmod>/);
   for (const slug of ANA) {
-    assert.match(sitemap, new RegExp("urunler\\?kategori=" + slug));
+    assert.match(sitemap, new RegExp("urunler/" + slug));
   }
   assert.doesNotMatch(sitemap, /\/sepet/);
   assert.doesNotMatch(sitemap, /\/odeme/);

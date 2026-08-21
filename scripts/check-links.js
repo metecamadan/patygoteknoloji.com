@@ -68,6 +68,8 @@ function collectUncrawlableHrefs() {
 function staticExists(pathname) {
   const clean = pathname.replace(/^\//, "").replace(/\/$/, "");
   if (!clean) return true;
+  // Node-served category listing paths: /urunler/{ana}[/{ara}[/{alt}]]
+  if (/^urunler(?:\/[a-z0-9-]+){1,3}$/i.test(clean)) return true;
   if (pageSlugs.has(clean)) return true;
   if (fs.existsSync(path.join(root, clean + ".html"))) return true;
   if (fs.existsSync(path.join(root, clean))) return true;
@@ -139,12 +141,12 @@ async function main() {
     paths.add("/robots.txt");
     paths.add("/assets/data/categories.json");
     paths.add("/urunler");
-    paths.add("/urunler?kategori=bilgisayar-tablet");
-    paths.add("/urunler?kategori=bilgisayar-bilesenleri");
-    paths.add("/urunler?kategori=kartus-toner");
-    paths.add("/urunler?kategori=baski-cozumleri");
-    paths.add("/urunler?kategori=yapi-gerecleri");
-    paths.add("/urunler?kategori=ofis-urunleri");
+    paths.add("/urunler/bilgisayar-tablet");
+    paths.add("/urunler/bilgisayar-bilesenleri");
+    paths.add("/urunler/kartus-toner");
+    paths.add("/urunler/baski-cozumleri");
+    paths.add("/urunler/yapi-gerecleri");
+    paths.add("/urunler/ofis-urunleri");
 
     for (const p of [...paths].sort()) {
       if (p.startsWith("/api/")) continue;

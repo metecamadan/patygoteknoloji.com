@@ -32,6 +32,8 @@ const {
   createCategoryStore,
   setCategoryListLoader,
   setPublicCategoryLeafKeysLoader,
+  parseUrunlerPathname,
+  categoryQueryToPath,
 } = require("./lib/categories");
 const {
   CATEGORY_FEED_DEFAULTS,
@@ -2525,8 +2527,22 @@ function sendCatalogHtml(res, req, filePath, method) {
     if (readErr) return serveNotFound(res, method);
     let html = data.toString("utf8");
     const requestUrl = new URL(req.url || "/urunler", `http://${req.headers.host || "localhost"}`);
+    const pathCats = parseUrunlerPathname(requestUrl.pathname);
+    if (pathCats && pathCats.parent && !requestUrl.searchParams.get("kategori")) {
+      requestUrl.searchParams.set("kategori", pathCats.parent);
+      if (pathCats.mid) requestUrl.searchParams.set("ara", pathCats.mid);
+      if (pathCats.child) requestUrl.searchParams.set("alt", pathCats.child);
+    }
     const bootstrap = catalogBootstrapPayload(requestUrl);
     html = injectCatalogBootstrapHtml(html, bootstrap);
+    if (pathCats && pathCats.parent) {
+      const canonPath =
+        categoryQueryToPath(requestUrl.searchParams) || "/urunler";
+      html = html.replace(
+        /<link rel="canonical" href="https:\/\/patygoteknoloji\.com\/urunler"\s*\/?>/i,
+        '<link rel="canonical" href="https://patygoteknoloji.com' + canonPath + '" />'
+      );
+    }
     const headers = {
       "Content-Type": MIME[".html"],
       "Cache-Control": "public, max-age=0, must-revalidate",
@@ -2635,6 +2651,28 @@ const server = http.createServer(async (req, res) => {
       res.end(data);
     });
     return;
+  }
+
+  // SEO: kategori query → path (/urunler?kategori=… → /urunler/…)
+  if (urlPath === "/urunler" || urlPath === "/urunler/") {
+    const pathTarget = categoryQueryToPath(requestUrl.searchParams);
+    if (pathTarget) {
+      const next = new URL(pathTarget, "https://patygoteknoloji.com");
+      ["marka", "minFiyat", "maxFiyat", "q"].forEach((key) => {
+        const value = requestUrl.searchParams.get(key);
+        if (value) next.searchParams.set(key, value);
+      });
+      return permanentRedirect(res, next.pathname + next.search);
+    }
+  }
+
+  // SEO: /urunler/ana[/ara[/alt]] listing pages
+  if (/^\/urunler\/[^/]+/i.test(urlPath)) {
+    if (urlPath.endsWith("/")) {
+      return permanentRedirect(res, urlPath.replace(/\/+$/, "") + search);
+    }
+    const htmlPath = safeJoin(ROOT, "/urunler.html");
+    if (htmlPath) return sendCatalogHtml(res, req, htmlPath, req.method);
   }
 
   // SEO: /sayfa.html → /sayfa (301)

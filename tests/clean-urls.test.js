@@ -38,4 +38,18 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   const trailing = await fetch(baseUrl + "/markalar/", { redirect: "manual" });
   assert.equal(trailing.status, 301);
   assert.equal(trailing.headers.get("location"), "/markalar");
+
+  const categoryPath = await fetch(baseUrl + "/urunler/kartus-toner");
+  assert.equal(categoryPath.status, 200);
+  assert.match(await categoryPath.text(), /Ürünler|Faks|Kartuş|catalog/i);
+
+  const legacyQuery = await fetch(
+    baseUrl + "/urunler?kategori=kartus-toner&ara=faks-tuketim-urunleri&alt=faks-tonerler",
+    { redirect: "manual" }
+  );
+  assert.equal(legacyQuery.status, 301);
+  assert.equal(
+    legacyQuery.headers.get("location"),
+    "/urunler/kartus-toner/faks-tuketim-urunleri/faks-tonerler"
+  );
 });

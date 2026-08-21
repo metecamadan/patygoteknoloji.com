@@ -6,16 +6,19 @@
   const NAV_SOURCE_FALLBACK = "/assets/data/categories.json";
 
   function categoryHref(parentSlug, midSlug, childSlug) {
-    const params = new URLSearchParams();
-    if (parentSlug) params.set("kategori", parentSlug);
+    const parent = String(parentSlug || "").trim();
+    if (!parent) return "/urunler";
+    const parts = ["/urunler", parent];
     if (arguments.length < 3) {
-      if (midSlug) params.set("alt", midSlug);
-    } else {
-      if (midSlug) params.set("ara", midSlug);
-      if (childSlug) params.set("alt", childSlug);
+      const second = String(midSlug || "").trim();
+      if (second) parts.push(second);
+      return parts.join("/");
     }
-    const q = params.toString();
-    return q ? "/urunler?" + q : "/urunler";
+    const mid = String(midSlug || "").trim();
+    const child = String(childSlug || "").trim();
+    if (mid) parts.push(mid);
+    if (child) parts.push(child);
+    return parts.join("/");
   }
 
   function splitNavCategoryName(name) {

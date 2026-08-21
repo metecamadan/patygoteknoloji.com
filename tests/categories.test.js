@@ -50,7 +50,11 @@ test("findCategory and href helpers", () => {
   assert.equal(found.child.name, "İşlemciler");
   assert.equal(
     categoryHref("oem-cevre-birimleri", "islemciler"),
-    "/urunler?kategori=oem-cevre-birimleri&alt=islemciler"
+    "/urunler/oem-cevre-birimleri/islemciler"
+  );
+  assert.equal(
+    categoryHref("kartus-toner", "faks-tuketim-urunleri", "faks-tonerler"),
+    "/urunler/kartus-toner/faks-tuketim-urunleri/faks-tonerler"
   );
   assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "usb-bellek"), true);
   assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "yok"), false);

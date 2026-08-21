@@ -98,12 +98,14 @@
       return Boolean(window.PatygoCatalog.parseProductPath(pathname));
     },
     categoryHref(parentSlug, midSlug, childSlug) {
-      const params = new URLSearchParams();
-      if (parentSlug) params.set("kategori", parentSlug);
-      if (midSlug) params.set("ara", midSlug);
-      if (childSlug) params.set("alt", childSlug);
-      const q = params.toString();
-      return q ? "/urunler?" + q : "/urunler";
+      const parent = String(parentSlug || "").trim();
+      if (!parent) return "/urunler";
+      const parts = ["/urunler", parent];
+      const mid = String(midSlug || "").trim();
+      const child = String(childSlug || "").trim();
+      if (mid) parts.push(mid);
+      if (child) parts.push(child);
+      return parts.join("/");
     },
     prettyCategoryName(name) {
       const text = String(name || "").trim();
@@ -219,6 +221,17 @@
 
   function readCategoryQuery() {
     const params = new URLSearchParams(location.search || "");
+    const pathMatch = String(location.pathname || "").match(
+      /^\/urunler(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?\/?$/i
+    );
+    if (pathMatch && (pathMatch[1] || pathMatch[2] || pathMatch[3])) {
+      const rawParent = String(pathMatch[1] || "").trim();
+      return {
+        parent: CATEGORY_QUERY_ALIASES[rawParent] || rawParent,
+        mid: String(pathMatch[2] || "").trim(),
+        child: String(pathMatch[3] || "").trim(),
+      };
+    }
     const rawParent = String(params.get("kategori") || "").trim();
     return {
       parent: CATEGORY_QUERY_ALIASES[rawParent] || rawParent,
@@ -636,6 +649,16 @@
     if (title) title.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
     if (lead) lead.hidden = true;
     document.title = (window.PatygoCatalog.prettyCategoryName(label) || label) + " | Patygo Teknoloji";
+    const canon = document.querySelector('link[rel="canonical"]');
+    if (canon) {
+      const path =
+        window.PatygoCatalog.categoryHref(
+          resolved.parent && resolved.parent.slug,
+          resolved.mid && resolved.mid.slug,
+          resolved.child && resolved.child.slug
+        ) || "/urunler";
+      canon.setAttribute("href", "https://patygoteknoloji.com" + path);
+    }
   }
 
   const prefetchingIds = new Set();
@@ -1634,7 +1657,7 @@
     const token = ++listingReloadToken;
     const path = location.pathname || "";
     const query = readCategoryQuery();
-    const onProductsPage = /\/urunler\/?$/i.test(path);
+    const onProductsPage = /^\/urunler(?:\/|$)/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const facets = readFacetQuery();
     const listingParams = listingParamsFromPage(query, wantsCategory, facets, 1);
@@ -1808,11 +1831,17 @@
   function prefetchListingHref(href) {
     try {
       const url = new URL(href, location.origin);
-      if (!/\/urunler\/?$/i.test(url.pathname)) return;
+      if (!/^\/urunler(?:\/|$)/i.test(url.pathname)) return;
+      const pathMatch = url.pathname.match(
+        /^\/urunler(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?\/?$/i
+      );
       const params = {
-        kategori: url.searchParams.get("kategori") || "",
-        ara: url.searchParams.get("ara") || "",
-        alt: url.searchParams.get("alt") || "",
+        kategori:
+          (pathMatch && pathMatch[1]) ||
+          url.searchParams.get("kategori") ||
+          "",
+        ara: (pathMatch && pathMatch[2]) || url.searchParams.get("ara") || "",
+        alt: (pathMatch && pathMatch[3]) || url.searchParams.get("alt") || "",
         page: 1,
         limit: LISTING_PAGE_SIZE,
       };
@@ -1844,8 +1873,9 @@
   );
 
   document.addEventListener("patygo:nav-ready", () => {
-    if (!/\/urunler\/?$/i.test(location.pathname || "") || !location.search) return;
+    if (!/^\/urunler(?:\/|$)/i.test(location.pathname || "")) return;
     const query = readCategoryQuery();
+    if (!query.parent && !query.mid && !query.child) return;
     const cats = window.PatygoNav && window.PatygoNav.categories;
     if (!Array.isArray(cats) || !cats.length) return;
     const resolved = resolveCategoryLabels(cats, query);
@@ -1865,6 +1895,6 @@
   });
 
   window.addEventListener("popstate", () => {
-    if (/\/urunler\/?$/i.test(location.pathname || "")) reloadCatalog();
+    if (/^\/urunler(?:\/|$)/i.test(location.pathname || "")) reloadCatalog();
   });
 })();
