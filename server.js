@@ -61,8 +61,9 @@ const {
   SHIPPING_CARRIERS,
   NOTIFY_STATUSES,
   sendOrderStatusMail,
+  sendInvoiceCustomerMail,
 } = require("./lib/order-mail");
-const { submitSalesInvoice, bizimhesapConfigured, pingBizimHesap } = require("./lib/bizimhesap");
+const { submitSalesInvoice, bizimhesapConfigured, pingBizimHesap, orderAllowsBizimHesapInvoice, fetchInvoicePdfAttachment } = require("./lib/bizimhesap");
 const {
   createContactStore,
   normalizeContactPayload,
@@ -1364,9 +1365,7 @@ async function handleApi(req, res, urlPath) {
             sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
               console.error("order paid mail failed:", err.message);
             });
-            submitSalesInvoice(updated, { store: orderStore }).catch((err) => {
-              console.error("bizimhesap invoice failed:", err.message);
-            });
+            // BizimHesap faturası otomatik kesilmez; panelden "Fatura kes" ile gönderilir.
           });
         }
       }
@@ -1826,14 +1825,69 @@ async function handleApi(req, res, urlPath) {
           error: "BizimHesap yapılandırılmamış. .env içinde BIZIMHESAP_FIRM_ID, BIZIMHESAP_API_KEY ve BIZIMHESAP_API_TOKEN gerekli.",
         });
       }
+      const allow = orderAllowsBizimHesapInvoice(order);
+      if (!allow.ok) {
+        const msg =
+          allow.reason === "order_status_blocked"
+            ? "İptal veya iade edilmiş siparişte fatura kesilemez."
+            : "Yalnızca ödemesi alınmış siparişlerde fatura kesilebilir.";
+        return json(res, 400, { ok: false, error: msg, reason: allow.reason });
+      }
+
+      const existing = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+      const mailOnly = body.mailOnly === true || body.action === "mail";
+      const forceRecut = body.force === true;
+
+      // GUID varsa varsayılan: yalnızca müşteriye PDF/link maili (BH'ye yeniden gitme).
+      // Yeniden kesmek için force:true gerekir.
+      if (mailOnly || (existing && existing.guid && !forceRecut)) {
+        if (!(existing && (existing.guid || existing.url))) {
+          return json(res, 400, {
+            ok: false,
+            error: "Önce fatura kesilmeli. BizimHesap GUID/URL yok.",
+          });
+        }
+        const attachment = await fetchInvoicePdfAttachment(existing.url, {
+          filename: "fatura-" + orderId + ".pdf",
+        });
+        const mail = await sendInvoiceCustomerMail(order, {
+          store: orderStore,
+          pdfUrl: existing.url || "",
+          attachment,
+          force: body.forceMail === true || mailOnly === true,
+        });
+        return json(res, 200, {
+          ok: true,
+          mode: "mail",
+          result: { submitted: false, reason: "mail_only", guid: existing.guid, url: existing.url },
+          integration: existing,
+          mail,
+        });
+      }
+
       const result = await submitSalesInvoice(order, {
         store: orderStore,
-        force: body.force === true,
+        force: forceRecut,
+      });
+      const integration =
+        orderStore.getIntegration(orderId, "bizimhesap_invoice") ||
+        (result.guid ? { guid: result.guid, url: result.url || null } : null);
+      const pdfUrl = (integration && integration.url) || result.url || "";
+      const attachment = await fetchInvoicePdfAttachment(pdfUrl, {
+        filename: "fatura-" + orderId + ".pdf",
+      });
+      const mail = await sendInvoiceCustomerMail(order, {
+        store: orderStore,
+        pdfUrl,
+        attachment,
+        force: true,
       });
       return json(res, 200, {
         ok: true,
+        mode: "cut",
         result,
-        integration: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
+        integration,
+        mail,
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: (err && err.message) || "BizimHesap faturası gönderilemedi" });

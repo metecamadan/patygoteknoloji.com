@@ -3790,16 +3790,23 @@
   function renderBizimHesapBlock(order) {
     const paid = order.paymentStatus === "paid" || order.paymentTaken;
     if (!paid) return "";
+    const status = String(order.status || "");
+    const blocked = status === "cancelled" || status === "refunded";
     const configured = order._bizimhesapConfigured === true;
     const bh = order._bizimhesap;
     let body = "";
     if (!configured) {
       body =
-        "<p class='admin-field-help'>BizimHesap yapılandırılmamış (.env). Ödeme sonrası otomatik satış faturası oluşturulmaz.</p>";
+        "<p class='admin-field-help'>BizimHesap yapılandırılmamış (.env). Panelden fatura kesilemez.</p>";
+    } else if (blocked) {
+      body =
+        "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
+        "<strong>İptal/iade siparişte fatura kesilmez.</strong> Fatura daha önce kesildiyse BizimHesap panelinden kontrol edin." +
+        "</p>";
     } else if (bh && bh.guid) {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
-        "<strong>Satış faturası BizimHesap'a aktarıldı.</strong><br>" +
+        "<strong>Satış faturası BizimHesap'ta.</strong><br>" +
         "GUID: " +
         escapeHtml(bh.guid) +
         (bh.createdAt ? " · " + escapeHtml(formatOrderDate(bh.createdAt)) : "") +
@@ -3812,15 +3819,24 @@
     } else {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
-        "<strong>Fatura henüz BizimHesap'a gitmedi.</strong> Ödeme sonrası otomatik denenir; gerekirse alttaki butonla tekrar gönderin." +
+        "<strong>Fatura henüz kesilmedi.</strong> Ödeme sonrası otomatik kesilmez; müşteri iptal edebilsin diye yalnızca bu butonla kesilir ve PDF mail gider." +
         "</p>";
     }
-    const action =
-      configured && order.id
-        ? "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>" +
-          (bh && bh.guid ? "Faturayı tekrar gönder" : "Faturayı BizimHesap'a gönder") +
-          "</button></div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>"
-        : "";
+    let action = "";
+    if (configured && order.id && !blocked) {
+      if (bh && bh.guid) {
+        action =
+          "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
+          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapMail'>PDF mailini tekrar gönder</button>" +
+          "<button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>Faturayı tekrar kes</button>" +
+          "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
+      } else {
+        action =
+          "<div class='admin-form-actions'>" +
+          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapSend'>Fatura kes</button>" +
+          "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
+      }
+    }
     return (
       "<h3 class='admin-order-section-title'>BizimHesap faturası</h3>" + body + action
     );
@@ -4050,56 +4066,103 @@
         }
       });
     }
+    async function postBizimHesapInvoice(body, busyLabel) {
+      const bhNote = document.getElementById("adminOrderBizimhesapNote");
+      const sendBtn = document.getElementById("adminOrderBizimhesapSend");
+      const mailBtn = document.getElementById("adminOrderBizimhesapMail");
+      if (sendBtn) sendBtn.disabled = true;
+      if (mailBtn) mailBtn.disabled = true;
+      if (bhNote) {
+        bhNote.hidden = false;
+        bhNote.className = "admin-note";
+        bhNote.textContent = busyLabel || "İşleniyor…";
+      }
+      try {
+        const data = await api("/api/admin/orders/" + encodeURIComponent(orderId) + "/bizimhesap-invoice", {
+          method: "POST",
+          body: JSON.stringify(body || {}),
+        });
+        const mail = data.mail || {};
+        const mode = data.mode || "";
+        let msg = "";
+        if (mode === "cut" && data.result && data.result.submitted) {
+          msg = "Fatura kesildi.";
+          if (data.result.guid) msg += " GUID: " + data.result.guid;
+        } else if (mode === "mail") {
+          msg = "PDF maili işlemi tamamlandı.";
+        } else {
+          msg = (data.result && data.result.reason) || "Tamamlandı.";
+        }
+        if (mail.sent) {
+          msg += mail.attached
+            ? " Müşteriye PDF ekli mail gitti."
+            : mail.linked
+              ? " Müşteriye PDF linkli mail gitti."
+              : " Müşteriye fatura maili gitti.";
+        } else if (mail.reason === "smtp_not_configured") {
+          msg += " SMTP yok — PDF linkini elle iletin.";
+        } else if (mail.reason === "already_notified") {
+          msg += " Mail daha önce gönderilmişti (tekrar için tekrar dene).";
+        } else if (mail.reason) {
+          msg += " Mail: " + mail.reason;
+        }
+        const ok = mode === "cut" ? Boolean(data.result && data.result.submitted) : mail.sent !== false;
+        if (bhNote) {
+          bhNote.className = "admin-note " + (ok || mail.sent ? "ok" : "warn");
+          bhNote.textContent = msg;
+        }
+        note(adminOrdersNote, ok || mail.sent ? "ok" : "warn", msg);
+        const rowOrder = ordersCache.find((row) => row.id === orderId);
+        if (rowOrder) {
+          rowOrder._bizimhesap = data.integration || rowOrder._bizimhesap || null;
+          rowOrder._bizimhesapConfigured = true;
+          applyOrderPatchToUi(rowOrder, rowOrder._statusMails);
+        } else {
+          await expandOrderRow(orderId, { forceFetch: true });
+        }
+      } catch (err) {
+        if (bhNote) {
+          bhNote.hidden = false;
+          bhNote.className = "admin-note err";
+          bhNote.textContent = err.message || "BizimHesap işlemi başarısız";
+        }
+        note(adminOrdersNote, "err", err.message || "BizimHesap işlemi başarısız");
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+        if (mailBtn) mailBtn.disabled = false;
+      }
+    }
+
     const bizimhesapBtn = document.getElementById("adminOrderBizimhesapSend");
     if (bizimhesapBtn) {
       bizimhesapBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
         if (bizimhesapBtn.disabled) return;
-        const bhNote = document.getElementById("adminOrderBizimhesapNote");
         const cached = ordersCache.find((row) => row.id === orderId);
         const hasGuid = Boolean(cached && cached._bizimhesap && cached._bizimhesap.guid);
-        bizimhesapBtn.disabled = true;
-        if (bhNote) {
-          bhNote.hidden = false;
-          bhNote.className = "admin-note";
-          bhNote.textContent = "BizimHesap'a gönderiliyor…";
+        if (hasGuid) {
+          const ok = window.confirm(
+            "Mevcut BizimHesap faturası iptal edilip yeniden kesilecek ve müşteriye tekrar mail gidecek. Devam?"
+          );
+          if (!ok) return;
         }
-        try {
-          const data = await api("/api/admin/orders/" + encodeURIComponent(orderId) + "/bizimhesap-invoice", {
-            method: "POST",
-            body: JSON.stringify({ force: hasGuid }),
-          });
-          const ok = data.result && data.result.submitted;
-          const msg = ok
-            ? "Satış faturası BizimHesap'a gönderildi." +
-              (data.result.guid ? " GUID: " + data.result.guid : "")
-            : data.result && data.result.reason === "already_submitted"
-              ? "Bu sipariş için fatura zaten kayıtlı."
-              : (data.result && data.result.reason) || "Gönderilemedi.";
-          if (bhNote) {
-            bhNote.className = "admin-note " + (ok ? "ok" : "warn");
-            bhNote.textContent = msg;
-          }
-          note(adminOrdersNote, ok ? "ok" : "warn", msg);
-          const rowOrder = ordersCache.find((row) => row.id === orderId);
-          if (rowOrder) {
-            rowOrder._bizimhesap = data.integration || null;
-            rowOrder._bizimhesapConfigured = true;
-            applyOrderPatchToUi(rowOrder, rowOrder._statusMails);
-          } else {
-            await expandOrderRow(orderId, { forceFetch: true });
-          }
-        } catch (err) {
-          if (bhNote) {
-            bhNote.hidden = false;
-            bhNote.className = "admin-note err";
-            bhNote.textContent = err.message || "BizimHesap faturası gönderilemedi";
-          }
-          note(adminOrdersNote, "err", err.message || "BizimHesap faturası gönderilemedi");
-        } finally {
-          bizimhesapBtn.disabled = false;
-        }
+        await postBizimHesapInvoice(
+          hasGuid ? { force: true } : {},
+          hasGuid ? "Fatura yeniden kesiliyor…" : "Fatura kesiliyor…"
+        );
+      });
+    }
+    const bizimhesapMailBtn = document.getElementById("adminOrderBizimhesapMail");
+    if (bizimhesapMailBtn) {
+      bizimhesapMailBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (bizimhesapMailBtn.disabled) return;
+        await postBizimHesapInvoice(
+          { mailOnly: true, forceMail: true },
+          "PDF maili gönderiliyor…"
+        );
       });
     }
   }

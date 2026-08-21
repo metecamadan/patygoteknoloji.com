@@ -44,10 +44,12 @@ test("order mail templates define paid, preparing, shipped and cancelled", () =>
   assert.ok(ORDER_MAIL_TEMPLATES.preparing);
   assert.ok(ORDER_MAIL_TEMPLATES.shipped);
   assert.ok(ORDER_MAIL_TEMPLATES.cancelled);
+  assert.ok(ORDER_MAIL_TEMPLATES.invoice);
   assert.equal(ORDER_MAIL_TEMPLATES.paid.subject, "Siparişinizi Aldık");
   assert.equal(ORDER_MAIL_TEMPLATES.preparing.subject, "Siparişiniz hazırlanıyor");
   assert.equal(ORDER_MAIL_TEMPLATES.shipped.subject, "Siparişiniz kargoda");
   assert.equal(ORDER_MAIL_TEMPLATES.cancelled.subject, "Siparişiniz iptal edildi");
+  assert.equal(ORDER_MAIL_TEMPLATES.invoice.subject, "Sipariş faturanız");
 });
 
 test("paid template includes order summary with line items", () => {

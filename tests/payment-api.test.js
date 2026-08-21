@@ -104,6 +104,11 @@ test("payment APIs start hosted form and verify callback", async (t) => {
 
   const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /setImmediate\(\(\) => \{\s*sendOrderStatusMail/);
+  assert.match(serverJs, /BizimHesap faturası otomatik kesilmez/);
+  assert.doesNotMatch(
+    serverJs,
+    /sendOrderStatusMail\(updated, "paid"[\s\S]{0,500}submitSalesInvoice\(updated/
+  );
 
   const order = await fetch(
     baseUrl +

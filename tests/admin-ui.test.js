@@ -197,7 +197,7 @@ test("admin login distinguishes timeout from wrong password and retries once", (
   assert.match(script, /Bu şifre hatası değil/);
   assert.match(script, /Bağlantı yenileniyor, tekrar deneniyor/);
   assert.match(script, /timeout:\s*60000/);
-  assert.match(html, /admin\.js\?v=admin-api-nonblock-1/);
+  assert.match(html, /admin\.js\?v=bizimhesap-manual-1/);
 });
 
 test("admin supplier load keeps panel responsive without blocking on feed=1", () => {
@@ -325,8 +325,12 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /admin-order-mail-badge--sent/);
   assert.match(script, /renderBizimHesapBlock/);
   assert.match(script, /adminOrderBizimhesapSend/);
+  assert.match(script, /adminOrderBizimhesapMail/);
+  assert.match(script, /Fatura kes/);
+  assert.match(script, /PDF mailini tekrar gönder/);
   assert.match(script, /BizimHesap faturası/);
   assert.match(script, /\/api\/admin\/orders\/.*\/bizimhesap-invoice/);
+  assert.match(script, /mailOnly:\s*true/);
   assert.match(script, /notifyEmail/);
   assert.match(script, /\/api\/admin\/users/);
   assert.match(script, /supplier\/products\?/);

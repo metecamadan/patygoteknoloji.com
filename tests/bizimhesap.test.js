@@ -11,6 +11,8 @@ const {
   pingBizimHesap,
   customerAddress,
   formatMoney,
+  orderAllowsBizimHesapInvoice,
+  fetchInvoicePdfAttachment,
 } = require("../lib/bizimhesap");
 const { createOrderStore } = require("../lib/orders");
 const { resetDbForTests } = require("../lib/db");
@@ -141,13 +143,23 @@ test("submitSalesInvoice force retries after claim", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-bh-force-"));
   resetDbForTests(root);
   const store = createOrderStore(root);
-  let callCount = 0;
-  const fetchImpl = async () => {
-    callCount += 1;
+  let addCount = 0;
+  let cancelCount = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes("cancelinvoice")) {
+      cancelCount += 1;
+      return {
+        ok: true,
+        async text() {
+          return JSON.stringify({ error: "", status: "0" });
+        },
+      };
+    }
+    addCount += 1;
     return {
       ok: true,
       async text() {
-        return JSON.stringify({ error: "", guid: "GUID-" + callCount, url: "https://bizimhesap.com/" + callCount });
+        return JSON.stringify({ error: "", guid: "GUID-" + addCount, url: "https://bizimhesap.com/" + addCount });
       },
     };
   };
@@ -160,7 +172,42 @@ test("submitSalesInvoice force retries after claim", async () => {
   const retry = await submitSalesInvoice(sampleOrder, { env, fetchImpl, store, force: true });
   assert.equal(retry.submitted, true);
   assert.equal(retry.guid, "GUID-2");
-  assert.equal(callCount, 2);
+  assert.equal(addCount, 2);
+  assert.equal(cancelCount, 1);
+});
+
+test("orderAllowsBizimHesapInvoice blocks cancelled and unpaid", () => {
+  assert.equal(orderAllowsBizimHesapInvoice(sampleOrder).ok, true);
+  assert.equal(
+    orderAllowsBizimHesapInvoice({ ...sampleOrder, status: "cancelled" }).ok,
+    false
+  );
+  assert.equal(
+    orderAllowsBizimHesapInvoice({
+      ...sampleOrder,
+      paymentTaken: false,
+      paymentStatus: "payment_pending",
+      status: "payment_pending",
+    }).ok,
+    false
+  );
+});
+
+test("fetchInvoicePdfAttachment accepts PDF bytes", async () => {
+  const pdfBytes = Buffer.from("%PDF-1.4 fake");
+  const attachment = await fetchInvoicePdfAttachment("https://example.com/f.pdf", {
+    filename: "fatura-x.pdf",
+    fetchImpl: async () => ({
+      ok: true,
+      headers: { get: () => "application/pdf" },
+      async arrayBuffer() {
+        return pdfBytes;
+      },
+    }),
+  });
+  assert.ok(attachment);
+  assert.equal(attachment.filename, "fatura-x.pdf");
+  assert.equal(attachment.content.slice(0, 4).toString("utf8"), "%PDF");
 });
 
 test("pingBizimHesap calls products endpoint", async () => {
