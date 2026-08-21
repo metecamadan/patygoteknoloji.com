@@ -852,17 +852,26 @@
   const LISTING_CACHE_TTL_MS = 10 * 60 * 1000;
   const LISTING_CACHE_MAX = 30;
   const LISTING_FETCH_MS = 8000;
-  const listingScroll = { page: 1, totalPages: 0, total: 0, loading: false, observer: null };
+  const LISTING_LOAD_MORE_MS = 45000;
+  const listingScroll = {
+    page: 1,
+    totalPages: 0,
+    total: 0,
+    loading: false,
+    observer: null,
+    failUntil: 0,
+  };
   let listingReloadToken = 0;
 
-  function listingFetchSignal() {
+  function listingFetchSignal(timeoutMs) {
+    const ms = Math.max(1000, Number(timeoutMs) || LISTING_FETCH_MS);
     if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
-      return AbortSignal.timeout(LISTING_FETCH_MS);
+      return AbortSignal.timeout(ms);
     }
     const controller = new AbortController();
     setTimeout(function () {
       controller.abort();
-    }, LISTING_FETCH_MS);
+    }, ms);
     return controller.signal;
   }
 
@@ -881,11 +890,18 @@
     return (safe(parent) || "all") + "__" + (safe(mid) || "_") + "__" + safe(child) + ".json";
   }
 
-  async function fetchJsonCached(url) {
+  function listingSnapshotPageFileName(baseFile, page) {
+    const pageNum = Math.max(1, Math.floor(Number(page) || 1));
+    const base = String(baseFile || "all.json");
+    if (pageNum <= 1) return base;
+    return base.replace(/\.json$/i, "") + "__p" + pageNum + ".json";
+  }
+
+  async function fetchJsonCached(url, timeoutMs) {
     const cacheMode = String(url || "").indexOf("/listing/") === 0 ? "no-store" : "default";
     const res = await fetch(url, {
       cache: cacheMode,
-      signal: listingFetchSignal(),
+      signal: listingFetchSignal(timeoutMs),
     });
     if (!res.ok) throw new Error("http " + res.status);
     return res.json();
@@ -947,6 +963,7 @@
     listingScroll.totalPages = 0;
     listingScroll.total = 0;
     listingScroll.loading = false;
+    listingScroll.failUntil = 0;
   }
 
   function updateListingLoadStatus(text, visible) {
@@ -1014,7 +1031,7 @@
     const facets = readFacetQuery();
     const q = readSearchQuery();
     const wantsCategory = query.parent || query.mid || query.child;
-    return fetchProductPage({
+    const params = {
       kategori: wantsCategory ? query.parent : "",
       ara: wantsCategory ? query.mid : "",
       alt: wantsCategory ? query.child : "",
@@ -1024,7 +1041,38 @@
       maxFiyat: facets.maxFiyat,
       page,
       limit: LISTING_PAGE_SIZE,
-    });
+    };
+    // Prefer nginx static page snapshots so infinite scroll survives a busy Node process.
+    if (
+      page > 1 &&
+      !q &&
+      !facets.brands.length &&
+      !facets.minFiyat &&
+      !facets.maxFiyat
+    ) {
+      try {
+        const base = listingSnapshotFileName({
+          kategori: params.kategori,
+          ara: params.ara,
+          alt: params.alt,
+        });
+        const file = listingSnapshotPageFileName(base, page);
+        const data = await fetchJsonCached("/listing/" + file, LISTING_LOAD_MORE_MS);
+        if (listingPayloadUsable(data) && Number(data.page) === page) {
+          const payload = {
+            products: Array.isArray(data.products) ? data.products : [],
+            total: Number(data.total) || 0,
+            page: Number(data.page) || page,
+            limit: Number(data.limit) || LISTING_PAGE_SIZE,
+            totalPages: Number(data.totalPages) || 0,
+            facets: null,
+          };
+          writeListingCache(listingCacheKey(params), payload);
+          return payload;
+        }
+      } catch (_) {}
+    }
+    return fetchProductPage(params, LISTING_LOAD_MORE_MS);
   }
 
   function appendListingProducts(grid, products) {
@@ -1036,6 +1084,7 @@
 
   async function loadMoreListing() {
     if (listingScroll.loading) return;
+    if (Date.now() < listingScroll.failUntil) return;
     if (listingScroll.page >= listingScroll.totalPages) {
       if (listingScroll.total > 0) updateListingLoadStatus("Tüm ürünler listelendi.", true);
       return;
@@ -1052,20 +1101,28 @@
           window.PatygoCatalog.byId[product.id] = product;
         });
       }
+      if (!payload.products.length) {
+        throw new Error("empty page");
+      }
       listingScroll.page = nextPage;
       listingScroll.totalPages = payload.totalPages || listingScroll.totalPages;
       listingScroll.total = payload.total || listingScroll.total;
+      listingScroll.failUntil = 0;
       renderCatalogMeta(
         countDisplayedListingProducts(),
         listingScroll.total,
         readFacetQuery()
       );
-    } catch (_) {}
-    listingScroll.loading = false;
-    if (listingScroll.page >= listingScroll.totalPages) {
-      updateListingLoadStatus("Tüm ürünler listelendi.", true);
-    } else {
-      updateListingLoadStatus("", false);
+      listingScroll.loading = false;
+      if (listingScroll.page >= listingScroll.totalPages) {
+        updateListingLoadStatus("Tüm ürünler listelendi.", true);
+      } else {
+        updateListingLoadStatus("", false);
+      }
+    } catch (_) {
+      listingScroll.loading = false;
+      listingScroll.failUntil = Date.now() + 4000;
+      updateListingLoadStatus("Devamı yüklenemedi. Kaydırınca yeniden denenecek.", true);
     }
   }
 
@@ -1414,13 +1471,13 @@
     });
   }
 
-  async function fetchProductPage(params) {
+  async function fetchProductPage(params, timeoutMs) {
     const qs = new URLSearchParams();
     Object.keys(params || {}).forEach((key) => {
       const value = params[key];
       if (value !== undefined && value !== null && String(value) !== "") qs.set(key, String(value));
     });
-    const data = await fetchJsonCached("/api/products?" + qs.toString());
+    const data = await fetchJsonCached("/api/products?" + qs.toString(), timeoutMs);
     const products = Array.isArray(data.products) ? data.products : Array.isArray(data) ? data : [];
     const payload = {
       products,

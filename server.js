@@ -25,6 +25,7 @@ const {
   homeFeaturedCatalog,
   isHomeFeaturedSnapshotValid,
   listingSnapshotFileName,
+  listingSnapshotPageFileName,
   listingSnapshotJobs,
   enrichCatalogSnapshotProducts,
 } = require("./lib/catalog");
@@ -597,6 +598,7 @@ const storefrontCatalogMemo = { active: null, all: null };
 let akakceXmlMemo = null;
 let akakceFeedSummaryMemo = { products: null, summary: null };
 const CATALOG_BOOTSTRAP_LIMIT = 20;
+const CATALOG_BOOTSTRAP_EXTRA_PAGES = 9; // pages 2..10 served from /listing without Node
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 const STARTUP_WARM_DEFER_MS = 45000;
 
@@ -758,6 +760,16 @@ function bootstrapSnapshotsReady() {
   }
 }
 
+function listingExtraPageSnapshotsReady() {
+  // New infinite-scroll pages are written as all__p2.json (and category__pN.json).
+  const probe = path.join(CATALOG_BOOTSTRAP_DIR, "all__p2.json");
+  try {
+    return fs.existsSync(probe) && fs.statSync(probe).size > 50;
+  } catch (_) {
+    return false;
+  }
+}
+
 function scheduleWarmStorefrontCatalog() {
   if (warmCatalogTimer) clearTimeout(warmCatalogTimer);
   warmCatalogTimer = setTimeout(() => {
@@ -775,12 +787,14 @@ function warmStorefrontCatalog() {
 }
 
 function scheduleStartupCatalogWarm() {
+  const needsExtraPages = !listingExtraPageSnapshotsReady();
+  const delayMs = needsExtraPages ? 5000 : STARTUP_WARM_DEFER_MS;
   const timer = setTimeout(() => {
     try {
-      if (bootstrapSnapshotsReady()) return;
+      if (bootstrapSnapshotsReady() && listingExtraPageSnapshotsReady()) return;
       warmStorefrontCatalog();
     } catch (_) {}
-  }, STARTUP_WARM_DEFER_MS);
+  }, delayMs);
   if (typeof timer.unref === "function") timer.unref();
 }
 
@@ -820,22 +834,36 @@ function writeCatalogBootstrapSnapshots() {
   } catch (_) {}
   const jobs = listingSnapshotJobs(index, categoryStore.publicList());
   const writeJob = (job) => {
-    const payload = queryPublicCatalogIndexed(
+    const first = queryPublicCatalogIndexed(
       index,
       Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
     );
-    const products = enrichCatalogSnapshotProducts(
-      { products: payload.products },
-      index.routeIndex
-    ).products;
-    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, job.file), {
-      products,
-      total: payload.total,
-      page: payload.page,
-      limit: payload.limit,
-      totalPages: payload.totalPages,
-      facets: payload.facets || null,
-    });
+    const writePage = (pageNum, payload) => {
+      const products = enrichCatalogSnapshotProducts(
+        { products: payload.products },
+        index.routeIndex
+      ).products;
+      const fileName =
+        pageNum <= 1 ? job.file : listingSnapshotPageFileName(job.file, pageNum);
+      atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, fileName), {
+        products,
+        total: payload.total,
+        page: payload.page,
+        limit: payload.limit,
+        totalPages: payload.totalPages,
+        facets: pageNum <= 1 ? payload.facets || null : null,
+      });
+    };
+    writePage(1, first);
+    const totalPages = Math.max(1, Number(first.totalPages) || 1);
+    const lastPage = Math.min(totalPages, 1 + CATALOG_BOOTSTRAP_EXTRA_PAGES);
+    for (let pageNum = 2; pageNum <= lastPage; pageNum += 1) {
+      const payload = queryPublicCatalogIndexed(
+        index,
+        Object.assign({ page: pageNum, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
+      );
+      writePage(pageNum, payload);
+    }
   };
   writeJob(jobs[0]);
   let offset = 1;
@@ -846,7 +874,7 @@ function writeCatalogBootstrapSnapshots() {
     });
   } catch (_) {}
   const runChunk = () => {
-    const end = Math.min(offset + 12, jobs.length);
+    const end = Math.min(offset + 4, jobs.length);
     for (; offset < end; offset += 1) writeJob(jobs[offset]);
     if (offset < jobs.length) setImmediate(runChunk);
   };

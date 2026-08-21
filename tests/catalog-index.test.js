@@ -154,6 +154,8 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /max-age=120/);
   assert.match(serverJs, /\/listing\//);
   assert.match(serverJs, /listingSnapshotJobs/);
+  assert.match(serverJs, /listingSnapshotPageFileName/);
+  assert.match(serverJs, /CATALOG_BOOTSTRAP_EXTRA_PAGES/);
   assert.match(serverJs, /lookupPublicProductsByIds/);
   assert.match(serverJs, /enqueueXmlCategorySync/);
   assert.match(serverJs, /syncXmlSiteCategoriesAsync/);
