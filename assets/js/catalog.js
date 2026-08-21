@@ -858,7 +858,8 @@
   const LISTING_CACHE_TTL_MS = 10 * 60 * 1000;
   const LISTING_CACHE_MAX = 30;
   const LISTING_FETCH_MS = 8000;
-  const LISTING_LOAD_MORE_MS = 45000;
+  const LISTING_LOAD_MORE_MS = 15000;
+  const LISTING_SNAPSHOT_MS = 2500;
   const listingScroll = {
     page: 1,
     totalPages: 0,
@@ -1048,6 +1049,8 @@
       page,
       limit: LISTING_PAGE_SIZE,
     };
+    const cached = readListingCache(listingCacheKey(params));
+    if (cached && Number(cached.page) === page && listingPayloadUsable(cached)) return cached;
     // Prefer nginx static page snapshots so infinite scroll survives a busy Node process.
     if (
       page > 1 &&
@@ -1063,7 +1066,7 @@
           alt: params.alt,
         });
         const file = listingSnapshotPageFileName(base, page);
-        const data = await fetchJsonCached("/listing/" + file, LISTING_LOAD_MORE_MS);
+        const data = await fetchJsonCached("/listing/" + file, LISTING_SNAPSHOT_MS);
         if (listingPayloadUsable(data) && Number(data.page) === page) {
           const payload = {
             products: Array.isArray(data.products) ? data.products : [],
@@ -1158,6 +1161,10 @@
     listingScroll.totalPages = Number(meta && meta.totalPages) || 0;
     listingScroll.total = Number(meta && meta.total) || 0;
     bindListingInfiniteScroll();
+    // Prefetch next page so scroll append feels instant.
+    if (listingScroll.totalPages > listingScroll.page) {
+      fetchListingPage(listingScroll.page + 1).catch(function () {});
+    }
   }
 
   const FEATURED_PARENTS = [

@@ -49,10 +49,11 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.match(catalogJs, /if \(compactListing\)/);
   assert.match(catalogJs, /LISTING_LOAD_MORE_MS/);
   assert.match(catalogJs, /failUntil/);
+  assert.match(catalogJs, /Prefetch next page/);
   assert.match(urunler, /data-catalog-infinite/);
   assert.match(urunler, /data-catalog-load-sentinel/);
   assert.doesNotMatch(urunler, /data-catalog-pager/);
-  assert.match(urunler, /listing-infinite-v7/);
+  assert.match(urunler, /listing-infinite-v8/);
   assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(css, /repeat\(5, minmax\(0, 1fr\)\)/);
 });
@@ -119,8 +120,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /Promise\.race/);
   assert.match(catalogJs, /function listingSnapshotFileName\s*\(\s*query\s*\)/);
   assert.match(catalogJs, /listingSnapshotFileName/);
-  assert.match(indexHtml, /listing-infinite-v7/);
-  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /listing-infinite-v7/);
+  assert.match(indexHtml, /listing-infinite-v8/);
+  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /listing-infinite-v8/);
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);
