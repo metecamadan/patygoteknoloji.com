@@ -60,6 +60,7 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   );
   assert.match(nginx, /try_files \$uri\.html @node/);
   assert.match(nginx, /location \^~ \/api\//);
+  assert.match(nginx, /location = \/assets\/data\/categories\.json[\s\S]*rewrite \^ \/listing\/categories\.json last/);
   assert.match(nginx, /location \^~ \/assets\/data\/ \{\s*return 404;/);
   assert.match(nginx, /gzip on;/);
   assert.match(nginx, /gzip_proxied any;/);

@@ -97,6 +97,26 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   assert.equal(shipBody2.order.status, "shipped");
   assert.equal(shipBody2.mailSent, false);
 
+  const resendPatch = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-2", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      shippingCarrier: "MNG Kargo",
+      trackingCode: "MNG987654",
+      resendMail: true,
+    }),
+  });
+  assert.equal(resendPatch.status, 200);
+  const resendBody = await resendPatch.json();
+  assert.equal(resendBody.order.status, "shipped");
+
+  const badStatusShip = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-2", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "shipped" }),
+  });
+  assert.equal(badStatusShip.status, 400);
+
   const meAfter = await fetch(baseUrl + "/api/admin/me", { headers });
   assert.equal(meAfter.status, 200);
 

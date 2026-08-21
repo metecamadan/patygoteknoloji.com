@@ -1736,7 +1736,11 @@ async function handleApi(req, res, urlPath) {
     if (req.method === "GET") {
       const order = orderStore.get(orderId);
       if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
-      return json(res, 200, { ok: true, order });
+      return json(res, 200, {
+        ok: true,
+        order,
+        statusMails: orderStore.listStatusMails(orderId),
+      });
     }
     if (req.method === "PATCH") {
       try {
@@ -1770,12 +1774,26 @@ async function handleApi(req, res, urlPath) {
           mailKey = "shipped";
           mailExtra = { shippingCarrier: carrier, trackingCode: tracking };
           shippingSave = true;
+          const resendMail = body.resendMail === true;
+          const shippingChanged =
+            String(current.shippingCarrier || "") !== carrier ||
+            String(current.trackingCode || "") !== tracking;
+          if (resendMail || shippingChanged) {
+            orderStore.releaseStatusMail(orderId, "shipped");
+          }
         }
 
         if (Object.prototype.hasOwnProperty.call(body, "status")) {
           const status = String(body.status || "").trim();
           if (!ORDER_STATUSES.has(status)) {
             return json(res, 400, { ok: false, error: "Geçersiz sipariş durumu" });
+          }
+          if (!shippingSave && status === "shipped") {
+            return json(res, 400, {
+              ok: false,
+              error:
+                "Kargoda durumu yalnızca alttaki “Kargoyu kaydet ve müşteriye bildir” ile güncellenir.",
+            });
           }
           if (!shippingSave) {
             patch.status = status;
@@ -1799,8 +1817,8 @@ async function handleApi(req, res, urlPath) {
 
         const order = orderStore.update(orderId, patch);
         let mailSent = false;
+        let mailResult = null;
         try {
-          let mailResult = null;
           if (mailKey) {
             mailResult = await sendOrderStatusMail(order, mailKey, {
               extra: mailExtra,
@@ -1821,6 +1839,7 @@ async function handleApi(req, res, urlPath) {
         } catch (err) {
           console.error("order status mail failed:", err.message);
         }
+        const mailReason = mailResult && !mailResult.sent ? mailResult.reason || null : null;
         try {
           const session = getSession(req);
           auditStore.record({
@@ -1835,12 +1854,19 @@ async function handleApi(req, res, urlPath) {
                   trackingCode: patch.trackingCode,
                   status: patch.status,
                   mailSent,
+                  mailReason,
                 }
-              : { from: current.status, to: patch.status, mailSent },
+              : { from: current.status, to: patch.status, mailSent, mailReason },
             ip: clientIp(req),
           });
         } catch (_) {}
-        return json(res, 200, { ok: true, order, mailSent });
+        return json(res, 200, {
+          ok: true,
+          order,
+          mailSent,
+          mailReason,
+          statusMails: orderStore.listStatusMails(orderId),
+        });
       } catch (err) {
         return json(res, 400, { ok: false, error: (err && err.message) || "Güncellenemedi" });
       }

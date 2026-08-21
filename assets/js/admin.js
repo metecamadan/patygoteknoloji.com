@@ -545,7 +545,7 @@
 
   function note(el, type, text) {
     if (!el) return;
-    el.classList.remove("ok", "err");
+    el.classList.remove("ok", "err", "warn");
     if (type) el.classList.add(type);
     el.textContent = text || "";
   }
@@ -1820,9 +1820,15 @@
         siteCategories = Array.isArray(data.categories) ? data.categories : [];
         return;
       }
-      const res = await fetch("/assets/data/categories.json", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
+      const publicSources = ["/listing/categories.json", "/assets/data/categories.json"];
+      let data = null;
+      for (const source of publicSources) {
+        const res = await fetch(source, { cache: "no-store" });
+        if (!res.ok) continue;
+        data = await res.json();
+        break;
+      }
+      if (!data) return;
       siteCategories = Array.isArray(data.categories) ? data.categories : [];
     } catch (_) {
       siteCategories = [];
@@ -3652,8 +3658,47 @@
     return params.toString();
   }
 
-  function buildOrderDetailHtml(order) {
+  function orderStatusMailLabels() {
+    return {
+      paid: "Ödeme alındı",
+      preparing: "Hazırlanıyor",
+      shipped: "Kargoda",
+      cancelled: "İptal",
+    };
+  }
+
+  function formatOrderMailFeedback(result) {
+    if (!result) return "Kaydedildi.";
+    if (result.mailSent) return "Kaydedildi. Müşteriye bilgilendirme maili gönderildi.";
+    const reason = String(result.mailReason || "");
+    if (reason === "already_notified") {
+      return "Kaydedildi. Bu durum için mail daha önce gönderilmiş; tekrar göndermek için kutucuğu işaretleyin.";
+    }
+    if (reason === "smtp_not_configured") {
+      return "Kaydedildi. Canlı SMTP yok; mail gönderilmedi.";
+    }
+    if (reason === "no_email") return "Kaydedildi. Müşteri e-postası yok; mail gönderilmedi.";
+    return "Kaydedildi.";
+  }
+
+  function buildOrderDetailHtml(order, statusMails) {
     const c = order.customer || {};
+    const mails = Array.isArray(statusMails) ? statusMails : order._statusMails || [];
+    const shippedMailSent = mails.some((row) => row && row.status === "shipped");
+    const mailLines = mails.length
+      ? mails
+          .map(function (row) {
+            const label = orderStatusMailLabels()[row.status] || row.status;
+            return (
+              "<li>" +
+              escapeHtml(label) +
+              " · " +
+              escapeHtml(formatOrderDate(row.sentAt)) +
+              "</li>"
+            );
+          })
+          .join("")
+      : "<li>Henüz bilgilendirme maili yok.</li>";
     const items = (order.items || [])
       .map(
         (it) =>
@@ -3722,9 +3767,13 @@
         )
         .join("") +
       "</select></div>" +
+      "<p class='admin-field-help'>Kargoda durumu bu listeden değil, alttaki kargo kaydı ile güncellenir.</p>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
       "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
-      "<p class='admin-field-help'>Hazırlanıyor ve iptal durumlarında müşteriye bilgilendirme maili gider. Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur; aynı durum için yalnızca bir mail gider (SMTP yapılandırılmış olmalı).</p>" +
+      "<p class='admin-field-help' data-smtp-mail-help>Hazırlanıyor ve iptal durumlarında müşteriye bilgilendirme maili gider. Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur.</p>" +
+      "<ul class='admin-order-items admin-order-mail-log'>" +
+      mailLines +
+      "</ul>" +
       "<div class='admin-order-shipping-fields'>" +
       "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
       "<select id='adminOrderCarrier'>" +
@@ -3748,13 +3797,17 @@
       escapeAttr(order.trackingCode || "") +
       "' placeholder='Örn. 1234567890'></div>" +
       "</div>" +
-      "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>" +
+      (shippedMailSent
+        ? "<label class='admin-check'><input type='checkbox' id='adminOrderResendShippingMail'> Kargo mailini tekrar gönder</label>"
+        : "") +
+      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>" +
       "</div></div>"
     );
   }
 
-  function applyOrderPatchToUi(order) {
+  function applyOrderPatchToUi(order, statusMails) {
     if (!order || !order.id || !adminOrderList) return;
+    if (Array.isArray(statusMails)) order._statusMails = statusMails;
     const idx = ordersCache.findIndex((row) => row.id === order.id);
     if (idx >= 0) ordersCache[idx] = Object.assign({}, ordersCache[idx], order);
     else ordersCache.push(order);
@@ -3773,7 +3826,7 @@
     if (!expand) return;
     expand.hidden = false;
     block.classList.add("is-open");
-    expand.innerHTML = buildOrderDetailHtml(order);
+    expand.innerHTML = buildOrderDetailHtml(order, order._statusMails);
     bindOrderDetailActions(order.id);
   }
 
@@ -3784,8 +3837,16 @@
         event.preventDefault();
         event.stopPropagation();
         if (saveBtn.disabled) return;
-        saveBtn.disabled = true;
         const status = document.getElementById("adminOrderStatus").value;
+        if (status === "shipped") {
+          note(
+            adminOrdersNote,
+            "err",
+            "Kargoda durumu için alttaki kargo firması + gönderi kodu alanlarını doldurup “Kargoyu kaydet ve müşteriye bildir” kullanın."
+          );
+          return;
+        }
+        saveBtn.disabled = true;
         try {
           const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
             method: "PATCH",
@@ -3794,9 +3855,11 @@
           note(
             adminOrdersNote,
             "ok",
-            result.mailSent ? "Durum güncellendi. Müşteriye mail gönderildi." : "Durum güncellendi."
+            result.mailSent
+              ? "Durum güncellendi. Müşteriye mail gönderildi."
+              : formatOrderMailFeedback(result)
           );
-          applyOrderPatchToUi(result.order);
+          applyOrderPatchToUi(result.order, result.statusMails);
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Güncellenemedi");
         } finally {
@@ -3818,18 +3881,17 @@
         }
         saveShippingBtn.disabled = true;
         try {
+          const resendEl = document.getElementById("adminOrderResendShippingMail");
           const result = await api("/api/admin/orders/" + encodeURIComponent(orderId), {
             method: "PATCH",
-            body: JSON.stringify({ shippingCarrier, trackingCode }),
+            body: JSON.stringify({
+              shippingCarrier,
+              trackingCode,
+              resendMail: Boolean(resendEl && resendEl.checked),
+            }),
           });
-          note(
-            adminOrdersNote,
-            "ok",
-            result.mailSent
-              ? "Kargo kaydedildi. Müşteriye kargoya verildi maili gönderildi."
-              : "Kargo kaydedildi."
-          );
-          applyOrderPatchToUi(result.order);
+          note(adminOrdersNote, result.mailSent ? "ok" : "warn", formatOrderMailFeedback(result));
+          applyOrderPatchToUi(result.order, result.statusMails);
         } catch (err) {
           note(adminOrdersNote, "err", err.message || "Kargo kaydedilemedi");
         } finally {
@@ -3859,7 +3921,7 @@
     const cached = ordersCache.find((order) => order.id === orderId);
     if (cached && !opts.forceFetch) {
       if (selectedOrderId !== orderId) return;
-      expand.innerHTML = buildOrderDetailHtml(cached);
+      expand.innerHTML = buildOrderDetailHtml(cached, cached._statusMails);
       bindOrderDetailActions(orderId);
       return;
     }
@@ -3869,10 +3931,11 @@
       const data = await api("/api/admin/orders/" + encodeURIComponent(orderId), { timeout: 20000 });
       const order = data.order;
       if (!order || selectedOrderId !== orderId) return;
+      if (Array.isArray(data.statusMails)) order._statusMails = data.statusMails;
       const idx = ordersCache.findIndex((row) => row.id === orderId);
       if (idx >= 0) ordersCache[idx] = order;
       else ordersCache.push(order);
-      expand.innerHTML = buildOrderDetailHtml(order);
+      expand.innerHTML = buildOrderDetailHtml(order, order._statusMails);
       bindOrderDetailActions(orderId);
     } catch (err) {
       expand.innerHTML =
@@ -3969,6 +4032,9 @@
       const expand = document.createElement("div");
       expand.className = "admin-order-expand";
       expand.hidden = selectedOrderId !== order.id;
+      expand.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
 
       block.appendChild(row);
       block.appendChild(expand);

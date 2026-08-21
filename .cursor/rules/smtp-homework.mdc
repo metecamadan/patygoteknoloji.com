@@ -1,12 +1,10 @@
 ---
-description: Canlı SMTP kurulumu ödev; her yanıtın altında hatırlat
-alwaysApply: true
+description: Canlı SMTP — tamamlandı (20 Ağu 2026)
+alwaysApply: false
 ---
 
-# SMTP ödev (ertelendi)
+# SMTP — tamamlandı
 
-Canlı VPS `.env` içinde `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` boş. Sipariş ve takvim mailleri yalnızca SMTP ile gider; FormSubmit’e düşürme. Kullanıcı açıkça istemedikçe SMTP kurulumuna başlama. Şifreyi sohbete isteme.
+Canlı VPS `.env` içinde SMTP yapılandırıldı (`info@patygoteknoloji.com`). Sipariş mailleri (paid, preparing, shipped, cancelled) SMTP ile gidiyor; canlı e2e doğrulandı.
 
-**Her kullanıcı yanıtının en altında** şu satırı ekle (başka işin parçası olsa da):
-
-Ödev: canlı SMTP kurulumu (sipariş mailleri) — sonra bakacağız.
+Secret değerleri sohbete veya commit'e yazma.

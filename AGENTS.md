@@ -117,6 +117,6 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 - `.cursor/rules/github-deploy-fallback.mdc` — Deploy SSH kırmızıysa sahte yeşil yok
 - `.cursor/rules/no-cover-up.mdc` — hatayı örtme; geleceği düşün
 - `.cursor/rules/supplier-xml-ip.mdc` — tedarikçi XML yalnızca kayıtlı IP
-- `.cursor/rules/smtp-homework.mdc` — SMTP ödevi (ertelendi)
+- `.cursor/rules/smtp-homework.mdc` — SMTP canlı (tamamlandı)
 - `.cursor/rules/agent-task-breakdown.mdc` — agent içi görev parçalama
 - `.cursor/rules/designer-agent.mdc` — Product Designer UX denetimi

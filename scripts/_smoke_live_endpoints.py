@@ -42,12 +42,11 @@ def main() -> int:
                     failed += 1
             elif kind == "html":
                 text = body.decode("utf-8", errors="replace")
-                print(
-                    " bootstrap="
-                    + str("patygo-catalog-bootstrap" in text)
-                    + " infinite="
-                    + str("data-catalog-infinite" in text)
-                )
+                has_infinite = "data-catalog-infinite" in text
+                print(" infinite=" + str(has_infinite))
+                if not has_infinite:
+                    print("  FAIL urunler missing infinite catalog shell")
+                    failed += 1
             else:
                 print(" ok", body[:80].decode("utf-8", errors="replace"))
         except urllib.error.HTTPError as err:
