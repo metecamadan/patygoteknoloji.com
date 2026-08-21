@@ -80,3 +80,29 @@ test("supplier getProductById uses an id map", () => {
   assert.match(supplier, /cacheIndex\(\)\.get\(wanted\)/);
   assert.doesNotMatch(supplier, /cache\.find\(\(row\) => row && row\.id === wanted\)/);
 });
+
+test("supplier status never parses the full product cache", () => {
+  const statusFn = supplier.match(/function status\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(statusFn, "status() bulunmalı");
+  assert.doesNotMatch(statusFn[1], /getCache\(\)/);
+  assert.match(statusFn[1], /settings\.itemCount/);
+});
+
+test("multi-supplier decorate does not call status per product", () => {
+  const multi = fs.readFileSync(path.join(root, "lib", "multi-supplier.js"), "utf8");
+  assert.match(multi, /getDisplayName\(\)/);
+  assert.doesNotMatch(
+    multi,
+    /function decorateListedProduct\([\s\S]*slot\.store\.status\(\)/
+  );
+  assert.match(multi, /preloadCachesAsync/);
+});
+
+test("image mirror skips empty queues and does not always invalidate", () => {
+  const mirror = fs.readFileSync(path.join(root, "lib", "product-image-mirror.js"), "utf8");
+  assert.match(mirror, /skipped:\s*true/);
+  assert.match(server, /Number\(result\.mirrored\) > 0/);
+  assert.match(server, /skipIfRecent:\s*true/);
+  assert.match(server, /preloadCachesAsync/);
+  assert.match(server, /eventLoopLagMs/);
+});

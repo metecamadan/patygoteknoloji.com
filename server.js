@@ -889,31 +889,90 @@ function storefrontAkakceXml() {
 }
 
 let akakceMirrorTimer = null;
+let akakceMirrorRunning = false;
+let eventLoopLagMs = 0;
 
-function scheduleAkakceImageMirror() {
+const eventLoopProbeTimer = setInterval(() => {
+  const started = Date.now();
+  setImmediate(() => {
+    eventLoopLagMs = Date.now() - started;
+  });
+}, 2000);
+if (typeof eventLoopProbeTimer.unref === "function") eventLoopProbeTimer.unref();
+
+function isEventLoopBusy(thresholdMs) {
+  return eventLoopLagMs > (Number(thresholdMs) || 150);
+}
+
+function mirrorIndexIsFresh(maxAgeMs) {
+  const { indexFile } = mirrorPaths(DATA_ROOT);
+  try {
+    if (!fs.existsSync(indexFile)) return false;
+    return Date.now() - fs.statSync(indexFile).mtimeMs < (Number(maxAgeMs) || 6 * 60 * 60 * 1000);
+  } catch (_) {
+    return false;
+  }
+}
+
+function scheduleAkakceImageMirror(options) {
+  const settings = options || {};
+  const delayMs = Number.isFinite(Number(settings.delayMs))
+    ? Math.max(0, Number(settings.delayMs))
+    : 30000;
+  if (settings.skipIfRecent && mirrorIndexIsFresh(settings.freshMs || 6 * 60 * 60 * 1000)) {
+    return;
+  }
   if (akakceMirrorTimer) clearTimeout(akakceMirrorTimer);
   akakceMirrorTimer = setTimeout(() => {
     akakceMirrorTimer = null;
+    if (akakceMirrorRunning) return;
+    if (isEventLoopBusy(200)) {
+      scheduleAkakceImageMirror({ delayMs: 60000 });
+      return;
+    }
+    akakceMirrorRunning = true;
     setImmediate(() => {
       const memo = storefrontCatalogMemo.active;
       const products =
         memo && Array.isArray(memo.products) && memo.products.length
           ? memo.products
-          : mergedProducts(false);
-      mirrorAkakceCatalogImages(products, {
-        dataRoot: DATA_ROOT,
-        siteBaseUrl: SITE_BASE_URL,
-        logError: (message, source, detail) =>
-          console.warn("Akakçe görsel aynası", source, detail || message),
-      })
-        .then(() => {
-          invalidateStorefrontCatalog();
+          : null;
+      const run = (list) =>
+        mirrorAkakceCatalogImages(list, {
+          dataRoot: DATA_ROOT,
+          siteBaseUrl: SITE_BASE_URL,
+          logError: (message, source, detail) =>
+            console.warn("Akakçe görsel aynası", source, detail || message),
         })
-        .catch((err) => {
-          console.warn("Akakçe görsel aynası atlandı:", err.message || err);
-        });
+          .then((result) => {
+            if (result && Number(result.mirrored) > 0) {
+              invalidateStorefrontCatalog();
+            }
+          })
+          .catch((err) => {
+            console.warn("Akakçe görsel aynası atlandı:", err.message || err);
+          })
+          .finally(() => {
+            akakceMirrorRunning = false;
+          });
+      if (products) {
+        run(products);
+        return;
+      }
+      // Avoid sync mergedProducts on a busy loop; retry later.
+      if (isEventLoopBusy(100)) {
+        akakceMirrorRunning = false;
+        scheduleAkakceImageMirror({ delayMs: 90000 });
+        return;
+      }
+      try {
+        run(mergedProducts(false));
+      } catch (err) {
+        akakceMirrorRunning = false;
+        console.warn("Akakçe görsel aynası atlandı:", err.message || err);
+      }
     });
-  }, 30000);
+  }, delayMs);
   if (typeof akakceMirrorTimer.unref === "function") akakceMirrorTimer.unref();
 }
 
@@ -2150,14 +2209,11 @@ async function handleApi(req, res, urlPath) {
       supplierManager.updateProducts(updates);
       invalidateStorefrontCatalog();
       warmStorefrontCatalog();
-      const feedAnalysis = analyzeAkakceProducts(mergedProducts(false), {
-        siteBaseUrl: SITE_BASE_URL,
-        mirrorIndex: loadMirrorIndex(DATA_ROOT),
-      });
+      scheduleAkakceFeedSummaryWarm();
       return json(res, 200, {
         ok: true,
-        feedCount: feedAnalysis.eligible.length,
-        feedExcludedCount: feedAnalysis.excluded.length,
+        feedCount: null,
+        feedExcludedCount: null,
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Ürünler güncellenemedi" });
@@ -2697,8 +2753,15 @@ setImmediate(() => {
   try {
     ensureListingTreeSnapshotFiles();
   } catch (_) {}
+  // Load supplier cache/hydrate off the request path so admin status stays instant.
+  if (supplierManager && typeof supplierManager.preloadCachesAsync === "function") {
+    supplierManager.preloadCachesAsync().catch((err) => {
+      console.warn("Tedarikçi önbellek ön yükleme atlandı:", err && err.message ? err.message : err);
+    });
+  }
   scheduleStartupCatalogWarm();
-  scheduleAkakceImageMirror();
+  // Do not hammer image mirror on every process restart when the index is already fresh.
+  scheduleAkakceImageMirror({ delayMs: 180000, skipIfRecent: true });
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();
