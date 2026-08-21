@@ -773,16 +773,12 @@ function warmStorefrontCatalog() {
 }
 
 function scheduleStartupCatalogWarm() {
-  if (bootstrapSnapshotsReady()) {
-    const timer = setTimeout(() => {
-      try {
-        warmStorefrontCatalog();
-      } catch (_) {}
-    }, STARTUP_WARM_DEFER_MS);
-    if (typeof timer.unref === "function") timer.unref();
-    return;
-  }
-  warmStorefrontCatalog();
+  const timer = setTimeout(() => {
+    try {
+      warmStorefrontCatalog();
+    } catch (_) {}
+  }, STARTUP_WARM_DEFER_MS);
+  if (typeof timer.unref === "function") timer.unref();
 }
 
 function emptyListingSnapshotPayload() {
@@ -1543,6 +1539,13 @@ async function handleApi(req, res, urlPath) {
           supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
         if (!matches) {
           return json(res, 401, { ok: false, error: "Şifre hatalı" });
+        }
+        if (adminUserStore.count() === 0) {
+          try {
+            adminUserStore.ensureBootstrapOwner(process.env);
+          } catch (err) {
+            console.warn("Admin owner bootstrap atlandı:", err.message || err);
+          }
         }
       }
 
