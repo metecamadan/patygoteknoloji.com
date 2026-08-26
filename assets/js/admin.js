@@ -3787,6 +3787,76 @@
     return html;
   }
 
+  function bankPaymentBlock(order) {
+    const br = order.bankResponse || null;
+    const events = Array.isArray(order.paymentEvents) ? order.paymentEvents : [];
+    let rows = "";
+    if (br) {
+      const fields = [
+        ["Sonuç kodu", br.responseCode],
+        ["Mesaj", br.responseMessage],
+        ["Auth / onay", br.authCode],
+        ["Host ref", br.hostRefNum || br.hostRefNumber],
+        ["Host log", br.hostLogKey],
+        ["RRN", br.rrn],
+        ["Tutar (banka)", br.amount],
+        ["Hash OK", br.hashOk === true ? "evet" : br.hashOk === false ? "hayır" : "—"],
+        ["Tutar eşleşti", br.amountOk === true ? "evet" : br.amountOk === false ? "hayır" : "—"],
+        ["Outcome", br.outcome],
+        ["Zaman", br.at ? formatOrderDate(br.at) : null],
+      ];
+      rows = fields
+        .filter((pair) => pair[1] != null && String(pair[1]).trim() !== "")
+        .map(
+          (pair) =>
+            "<div><dt>" +
+            escapeHtml(pair[0]) +
+            "</dt><dd>" +
+            escapeHtml(String(pair[1])) +
+            "</dd></div>"
+        )
+        .join("");
+    }
+    const hist =
+      events.length > 0
+        ? "<p class='admin-field-help'>Kayıtlı banka callback sayısı: " +
+          String(events.length) +
+          ". Son olay panelde; tüm geçmiş sunucuda saklanır.</p>" +
+          "<ul class='admin-order-items'>" +
+          events
+            .slice()
+            .reverse()
+            .slice(0, 8)
+            .map(function (ev) {
+              return (
+                "<li>" +
+                escapeHtml(formatOrderDate(ev.at || "")) +
+                " · " +
+                escapeHtml(String(ev.outcome || "—")) +
+                " · " +
+                escapeHtml(String(ev.responseCode || "—")) +
+                (ev.authCode ? " · auth " + escapeHtml(String(ev.authCode)) : "") +
+                (ev.hostRefNum || ev.hostRefNumber
+                  ? " · ref " + escapeHtml(String(ev.hostRefNum || ev.hostRefNumber))
+                  : "") +
+                "</li>"
+              );
+            })
+            .join("") +
+          "</ul>"
+        : br
+          ? "<p class='admin-field-help'>Eski kayıt: tek banka özeti var (callback geçmişi bu sürümden sonra birikir).</p>"
+          : "<p class='admin-field-help'>Henüz imzalı banka callback kaydı yok.</p>";
+
+    return (
+      "<h3 class='admin-order-section-title'>Banka ödeme kanıtı</h3>" +
+      (rows
+        ? "<dl class='admin-xml-meta'>" + rows + "</dl>"
+        : "<p class='admin-field-help'>Banka cevabı yok.</p>") +
+      hist
+    );
+  }
+
   function renderBizimHesapBlock(order) {
     const paid = order.paymentStatus === "paid" || order.paymentTaken;
     if (!paid) return "";
@@ -3900,13 +3970,14 @@
       "</dl>" +
       "<div>" +
       mailBanner +
+      bankPaymentBlock(order) +
       bizimHesapBlock +
       "<h3 class='admin-order-section-title'>Kalemler</h3><ul class='admin-order-items'>" +
       (items || "<li>—</li>") +
       "</ul>" +
       "<div class='field'><label for='adminOrderStatus'>Durum güncelle</label>" +
       "<select id='adminOrderStatus'>" +
-      ["payment_pending", "paid", "payment_failed", "preparing", "shipped", "cancelled", "refunded"]
+      ["preparing", "cancelled", "refunded"]
         .map(
           (s) =>
             "<option value='" +
@@ -3919,7 +3990,7 @@
         )
         .join("") +
       "</select></div>" +
-      "<p class='admin-field-help'>Kargoda durumu bu listeden değil, alttaki kargo kaydı ile güncellenir.</p>" +
+      "<p class='admin-field-help'>Ödeme durumu (ödendi / başarısız) yalnızca banka callback ile gelir; panelden değiştirilemez. Kargoda durumu alttaki kargo kaydı ile güncellenir.</p>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
       "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
       "<p class='admin-field-help' data-smtp-mail-help>Hazırlanıyor ve iptal durumlarında müşteriye bilgilendirme maili gider. Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur.</p>" +

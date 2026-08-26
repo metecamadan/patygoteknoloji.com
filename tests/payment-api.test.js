@@ -123,6 +123,45 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   assert.equal(orderBody.order.paymentStatus, "paid");
   assert.equal(orderBody.order.paymentTaken, true);
   assert.equal(orderBody.order.status, "paid");
+  assert.ok(orderBody.order.bankResponse);
+  assert.equal(orderBody.order.bankResponse.responseCode, "VPS-0000");
+  assert.equal(orderBody.order.bankResponse.hashOk, true);
+  assert.ok(orderBody.order.paymentEventCount >= 1);
+
+  // Başarılı ödeme sonrası başarısız banka cevabı paid'i bozamaz
+  const failAfterPay = {
+    orderId: startBody.orderId,
+    responseCode: "VPS-0001",
+    responseMessage: "Declined",
+    amount: startBody.fields.amount,
+    authCode: "AUTH99",
+    hostRefNum: "HOSTREF99",
+    hashParams: "orderId+responseCode+amount",
+  };
+  failAfterPay.hash = hmacSha512Base64(
+    failAfterPay.orderId + failAfterPay.responseCode + failAfterPay.amount,
+    secret
+  );
+  const failCb = await fetch(baseUrl + "/api/payment/callback", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(failAfterPay).toString(),
+    redirect: "manual",
+  });
+  assert.equal(failCb.status, 303);
+  assert.match(failCb.headers.get("location") || "", /payment=success/);
+  const stillPaid = await (
+    await fetch(
+      baseUrl +
+        "/api/payment/order?orderId=" +
+        encodeURIComponent(startBody.orderId) +
+        "&token=" +
+        encodeURIComponent(startBody.orderAccessToken)
+    )
+  ).json();
+  assert.equal(stillPaid.order.paymentTaken, true);
+  assert.equal(stillPaid.order.paymentStatus, "paid");
+  assert.ok(stillPaid.order.paymentEventCount >= 2);
   assert.ok(!orderBody.order.customer, "genel sipariş bakışında müşteri PII olmamalı");
 });
 

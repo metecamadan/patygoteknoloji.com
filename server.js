@@ -48,10 +48,12 @@ const {
   buildHostedPaymentForm,
   verifyCallbackHash,
   isPaymentSuccess,
+  sanitizeBankCallbackPayload,
+  decidePaymentFromBank,
   publicPosStatus,
   formatAmount,
 } = require("./lib/akbank-pos");
-const { createOrderStore, ORDER_STATUSES } = require("./lib/orders");
+const { createOrderStore, ORDER_STATUSES, ADMIN_FULFILLMENT_STATUSES } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createConsentStore } = require("./lib/consent");
@@ -1342,25 +1344,31 @@ async function handleApi(req, res, urlPath) {
         payload.amount != null &&
         String(payload.amount).trim() !== "" &&
         formatAmount(payload.amount) === formatAmount(order.total);
-      const paid = hashOk && amountOk && isPaymentSuccess(payload);
+      const success = isPaymentSuccess(payload);
       const alreadyPaid = Boolean(order && (order.paymentTaken || order.paymentStatus === "paid"));
+      const decision = decidePaymentFromBank({
+        hashOk,
+        amountOk,
+        success,
+        alreadyPaid,
+      });
+      const sanitized = sanitizeBankCallbackPayload(payload);
+      const event = Object.assign({}, sanitized, {
+        hashOk,
+        amountOk,
+        at: new Date().toISOString(),
+        method: req.method === "GET" ? "GET" : "POST",
+      });
 
-      // İmzasız GET/POST sipariş durumunu değiştiremez; tutarsız tutar da "ödendi" yazmaz.
-      if (order && hashOk && !(alreadyPaid && !paid)) {
-        orderStore.update(orderId, {
-          paymentStatus: paid ? "paid" : "failed",
-          paymentTaken: paid,
-          status: paid ? "paid" : "payment_failed",
-          bankResponse: {
-            responseCode: String(payload.responseCode || "").slice(0, 40),
-            responseMessage: String(payload.responseMessage || "").slice(0, 200),
-            hashOk,
-            amountOk,
-            at: new Date().toISOString(),
-          },
-        });
-        if (paid) {
-          const updated = orderStore.get(orderId);
+      // Yalnızca geçerli imza ile kayıt / durum güncellemesi (spam ve sahte cevap engeli).
+      if (order && hashOk) {
+        const beforePaid = alreadyPaid;
+        orderStore.recordBankCallback(orderId, event, decision);
+        const updated = orderStore.get(orderId);
+        const nowPaid = Boolean(
+          updated && (updated.paymentTaken || updated.paymentStatus === "paid")
+        );
+        if (nowPaid && !beforePaid) {
           setImmediate(() => {
             sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
               console.error("order paid mail failed:", err.message);
@@ -1370,7 +1378,11 @@ async function handleApi(req, res, urlPath) {
         }
       }
 
-      const result = paid || alreadyPaid ? "success" : "failed";
+      const finalOrder = orderId ? orderStore.get(orderId) : null;
+      const result =
+        finalOrder && (finalOrder.paymentTaken || finalOrder.paymentStatus === "paid")
+          ? "success"
+          : "failed";
       const location =
         SITE_BASE_URL +
         "/odeme?payment=" +
@@ -1392,6 +1404,7 @@ async function handleApi(req, res, urlPath) {
       return json(res, 403, { ok: false, error: "Sipariş görüntüleme izni yok." });
     }
     const bank = order.bankResponse || null;
+    const events = Array.isArray(order.paymentEvents) ? order.paymentEvents : [];
     return json(res, 200, {
       ok: true,
       order: {
@@ -1409,9 +1422,18 @@ async function handleApi(req, res, urlPath) {
           ? {
               responseCode: String(bank.responseCode || "").slice(0, 40),
               responseMessage: String(bank.responseMessage || "").slice(0, 200),
+              authCode: bank.authCode ? String(bank.authCode).slice(0, 40) : null,
+              hostRefNum: String(bank.hostRefNum || bank.hostRefNumber || "").slice(0, 64) || null,
+              hostLogKey: bank.hostLogKey ? String(bank.hostLogKey).slice(0, 80) : null,
+              rrn: bank.rrn ? String(bank.rrn).slice(0, 40) : null,
+              amount: bank.amount ? String(bank.amount).slice(0, 24) : null,
               hashOk: Boolean(bank.hashOk),
+              amountOk: bank.amountOk !== false,
+              outcome: bank.outcome ? String(bank.outcome).slice(0, 64) : null,
+              at: bank.at || null,
             }
           : null,
+        paymentEventCount: events.length,
       },
     });
   }
@@ -1916,8 +1938,9 @@ async function handleApi(req, res, urlPath) {
   if (adminOrderMatch) {
     const orderId = decodeURIComponent(adminOrderMatch[1]);
     if (req.method === "GET") {
-      const order = orderStore.get(orderId);
+      let order = orderStore.get(orderId);
       if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+      order = orderStore.reconcilePaidFromBankEvidence(orderId) || order;
       return json(res, 200, {
         ok: true,
         order,
@@ -1972,6 +1995,17 @@ async function handleApi(req, res, urlPath) {
           if (!ORDER_STATUSES.has(status)) {
             return json(res, 400, { ok: false, error: "Geçersiz sipariş durumu" });
           }
+          if (
+            status === "paid" ||
+            status === "payment_failed" ||
+            status === "payment_pending"
+          ) {
+            return json(res, 400, {
+              ok: false,
+              error:
+                "Ödeme durumu yalnızca banka callback ile güncellenir; panelden değiştirilemez.",
+            });
+          }
           if (!shippingSave && status === "shipped") {
             return json(res, 400, {
               ok: false,
@@ -1980,17 +2014,12 @@ async function handleApi(req, res, urlPath) {
             });
           }
           if (!shippingSave) {
+            if (!ADMIN_FULFILLMENT_STATUSES.has(status)) {
+              return json(res, 400, { ok: false, error: "Bu durum panelden seçilemez." });
+            }
             patch.status = status;
-            if (status === "paid") {
-              if (!requireOwner(req, res)) return;
-              patch.paymentStatus = "paid";
-              patch.paymentTaken = true;
-            }
-            if (status === "payment_failed") {
-              patch.paymentStatus = "failed";
-              patch.paymentTaken = false;
-            }
             if (status === "refunded") {
+              if (!requireOwner(req, res)) return;
               patch.paymentStatus = "refunded";
               patch.paymentTaken = false;
             }

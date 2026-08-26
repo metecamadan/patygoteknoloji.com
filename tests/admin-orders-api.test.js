@@ -59,6 +59,22 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
   const cancelBody = await cancelPatch.json();
   assert.equal(cancelBody.order.status, "cancelled");
 
+  const manualPaid = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "paid" }),
+  });
+  assert.equal(manualPaid.status, 400);
+  const manualPaidBody = await manualPaid.json();
+  assert.match(String(manualPaidBody.error || ""), /banka callback/i);
+
+  const manualFailed = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "payment_failed" }),
+  });
+  assert.equal(manualFailed.status, 400);
+
   store.save({
     id: "PTY-ADMIN-2",
     total: 300,

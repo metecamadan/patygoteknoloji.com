@@ -11,6 +11,8 @@ const {
   isPaymentSuccess,
   resolveEndpoints,
   createAkbankConfig,
+  sanitizeBankCallbackPayload,
+  decidePaymentFromBank,
 } = require("../lib/akbank-pos");
 
 test("HMAC-SHA512 base64 matches known vector", () => {
@@ -136,4 +138,44 @@ test("resolveEndpoints switches test and live hosting URLs", () => {
     resolveEndpoints({ testMode: false, paymentModel: "3D_PAY_HOSTING" }).hosted,
     "https://virtualpospaymentgateway.akbank.com/payhosting"
   );
+});
+
+test("sanitizeBankCallbackPayload keeps refs and drops card secrets", () => {
+  const clean = sanitizeBankCallbackPayload({
+    orderId: "PTY-1",
+    responseCode: "VPS-0000",
+    responseMessage: "OK",
+    authCode: "A1",
+    hostRefNum: "H9",
+    creditCard: "4355093000315232",
+    cvv: "123",
+    secretKey: "nope",
+  });
+  assert.equal(clean.orderId, "PTY-1");
+  assert.equal(clean.authCode, "A1");
+  assert.equal(clean.hostRefNum, "H9");
+  assert.equal(clean.creditCard, undefined);
+  assert.equal(clean.cvv, undefined);
+  assert.equal(clean.secretKey, undefined);
+});
+
+test("decidePaymentFromBank never demotes paid and rejects amount mismatch", () => {
+  assert.deepEqual(
+    decidePaymentFromBank({ hashOk: true, amountOk: true, success: true, alreadyPaid: false }),
+    { applyStatus: true, paid: true, outcome: "paid" }
+  );
+  assert.equal(
+    decidePaymentFromBank({ hashOk: true, amountOk: false, success: true, alreadyPaid: false })
+      .outcome,
+    "rejected_amount_mismatch"
+  );
+  const keep = decidePaymentFromBank({
+    hashOk: true,
+    amountOk: true,
+    success: false,
+    alreadyPaid: true,
+  });
+  assert.equal(keep.applyStatus, false);
+  assert.equal(keep.paid, true);
+  assert.equal(keep.outcome, "already_paid_keep");
 });
