@@ -1,0 +1,11 @@
+[Unit]
+Description=Patygo watchdog - 60 saniyede bir (boot sonrasi 10 dk bekleme)
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=60s
+AccuracySec=5s
+Unit=patygo-watchdog.service
+
+[Install]
+WantedBy=timers.target

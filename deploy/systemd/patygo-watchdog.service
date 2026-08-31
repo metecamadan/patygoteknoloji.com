@@ -1,0 +1,9 @@
+[Unit]
+Description=Patygo Node saglik kontrolu (event loop kilitlenme tespiti)
+After=network-online.target pm2-root.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PM2_HOME=/root/.pm2
+ExecStart=/usr/local/sbin/patygo-watchdog.sh
