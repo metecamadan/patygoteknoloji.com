@@ -899,8 +899,10 @@ let storefrontSitemapMemo = null;
 
 function storefrontSitemapXml() {
   const categories = categoryStore.list().filter((row) => row && row.active !== false);
-  const routeIndex = storefrontIndex(false).routeIndex;
-  const productCount = routeIndex && routeIndex.byId ? Object.keys(routeIndex.byId).length : 0;
+  // Avoid cold-start stall: use warm storefront index only; otherwise categories-only.
+  const warm = storefrontCatalogMemo.active && storefrontCatalogMemo.active.index;
+  const routeIndex = warm && warm.routeIndex ? warm.routeIndex : { byId: {} };
+  const productCount = routeIndex.byId ? Object.keys(routeIndex.byId).length : 0;
   const stamp = categories.length + ":" + productCount;
   if (storefrontSitemapMemo && storefrontSitemapMemo.stamp === stamp) {
     return storefrontSitemapMemo.xml;

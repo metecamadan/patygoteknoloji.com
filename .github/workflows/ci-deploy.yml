@@ -101,7 +101,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
           timeout: 40s
-          command_timeout: 5m
+          command_timeout: 10m
           envs: DEPLOY_APP_DIR,DEPLOY_PM2_NAME,DEPLOY_APP_PORT,DEPLOY_PUBLIC_URL
           script: |
             set -euo pipefail
