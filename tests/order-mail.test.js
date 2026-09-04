@@ -39,17 +39,20 @@ const sampleOrder = {
   trackingCode: "YK123456789",
 };
 
-test("order mail templates define paid, preparing, shipped and cancelled", () => {
+test("order mail templates define paid, preparing, shipped, cancelled and refunded", () => {
   assert.ok(ORDER_MAIL_TEMPLATES.paid);
   assert.ok(ORDER_MAIL_TEMPLATES.preparing);
   assert.ok(ORDER_MAIL_TEMPLATES.shipped);
   assert.ok(ORDER_MAIL_TEMPLATES.cancelled);
+  assert.ok(ORDER_MAIL_TEMPLATES.refunded);
   assert.ok(ORDER_MAIL_TEMPLATES.invoice);
   assert.equal(ORDER_MAIL_TEMPLATES.paid.subject, "Siparişinizi Aldık");
   assert.equal(ORDER_MAIL_TEMPLATES.preparing.subject, "Siparişiniz hazırlanıyor");
   assert.equal(ORDER_MAIL_TEMPLATES.shipped.subject, "Siparişiniz kargoda");
   assert.equal(ORDER_MAIL_TEMPLATES.cancelled.subject, "Siparişiniz iptal edildi");
+  assert.equal(ORDER_MAIL_TEMPLATES.refunded.subject, "Sipariş iadeniz işleme alındı");
   assert.equal(ORDER_MAIL_TEMPLATES.invoice.subject, "Sipariş faturanız");
+  assert.ok(NOTIFY_STATUSES.has("refunded"));
 });
 
 test("paid template includes order summary with line items", () => {
@@ -91,8 +94,11 @@ test("shipped template includes carrier and tracking code", () => {
   assert.match(mail.html, /Sipariş özeti/);
 });
 
-test("notify statuses include paid preparing shipped and cancelled", () => {
-  assert.deepEqual([...NOTIFY_STATUSES].sort(), ["cancelled", "paid", "preparing", "shipped"].sort());
+test("notify statuses include paid preparing shipped cancelled and refunded", () => {
+  assert.deepEqual(
+    [...NOTIFY_STATUSES].sort(),
+    ["cancelled", "paid", "preparing", "refunded", "shipped"].sort()
+  );
 });
 
 test("customerEmail normalizes address", () => {

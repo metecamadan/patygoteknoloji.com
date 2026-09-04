@@ -5,7 +5,8 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "admin.html"), "utf8");
-const script = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
+const loginScript = fs.readFileSync(path.join(root, "assets", "js", "admin-login.js"), "utf8");
+const script = fs.readFileSync(path.join(root, "assets", "js", "admin-panel.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "assets", "css", "admin.css"), "utf8");
 
 test("admin markup has unique element IDs", () => {
@@ -194,10 +195,13 @@ test("admin login does not block on supplier catalog or dashboard merge", () => 
 });
 
 test("admin login distinguishes timeout from wrong password and retries once", () => {
-  assert.match(script, /Bu şifre hatası değil/);
-  assert.match(script, /Bağlantı yenileniyor, tekrar deneniyor/);
-  assert.match(script, /timeout:\s*60000/);
-  assert.match(html, /admin\.js\?v=bizimhesap-manual-1/);
+  assert.match(loginScript, /Bu şifre hatası değil/);
+  assert.match(loginScript, /Bağlantı yenileniyor, tekrar deneniyor/);
+  assert.match(loginScript, /timeout|60000/);
+  assert.match(html, /admin-login\.js\?v=login-split-1/);
+  assert.match(html, /defer src="\/assets\/js\/admin-login\.js/);
+  assert.match(loginScript, /admin-panel\.js\?v=login-split-1/);
+  assert.match(loginScript, /createElement\("script"\)/);
 });
 
 test("admin supplier load keeps panel responsive without blocking on feed=1", () => {
@@ -302,14 +306,20 @@ test("admin users tab supports panel account management", () => {
   assert.doesNotMatch(html, /id="adminOrderDetailTitle"/);
   assert.match(
     html,
-    /id="overviewTab"[\s\S]*?id="ordersTab"[\s\S]*?id="productsTab"/
+    /id="overviewTab"[\s\S]*?id="ordersTab"[\s\S]*?id="leadsTab"[\s\S]*?id="productsTab"/
   );
+  assert.match(html, /id="adminTabLeads"/);
+  assert.match(html, /id="adminLeadList"/);
   assert.match(html, /id="xmlProductsView"[\s\S]*id="supplierFeedModal"/);
   assert.doesNotMatch(html, /id="manualProductsView"[\s\S]*id="supplierFeedModal"[\s\S]*id="xmlProductsView"/);
   assert.match(html, /Son başarılı katalog/);
   assert.match(html, /stok dondurulur/);
   assert.match(script, /loadAdminUsers/);
   assert.match(script, /loadAdminOrders/);
+  assert.match(script, /loadAdminLeads/);
+  assert.match(script, /\/api\/admin\/leads/);
+  assert.match(script, /adminOrderAnonymize/);
+  assert.match(script, /\/anonymize/);
   assert.match(script, /formatOrderDate/);
   assert.match(script, /admin-order-date/);
   assert.match(script, /paymentStatusBadge/);

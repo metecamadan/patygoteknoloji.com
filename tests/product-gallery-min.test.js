@@ -9,7 +9,7 @@ const products = JSON.parse(
   fs.readFileSync(path.join(root, "assets", "data", "products.json"), "utf8")
 );
 const adminHtml = fs.readFileSync(path.join(root, "admin.html"), "utf8");
-const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
+const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin-panel.js"), "utf8");
 const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
 const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
 

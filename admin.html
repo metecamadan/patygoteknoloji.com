@@ -75,6 +75,7 @@
         <nav class="admin-nav" aria-label="Admin bölümleri">
           <button type="button" class="admin-nav-item active" id="overviewTab" aria-current="page" aria-controls="adminTabOverview" data-admin-tab="overview"><span class="admin-nav-icon">⌂</span>Genel Bakış</button>
           <button type="button" class="admin-nav-item" id="ordersTab" aria-controls="adminTabOrders" data-admin-tab="orders"><span class="admin-nav-icon">☰</span>Siparişler</button>
+          <button type="button" class="admin-nav-item" id="leadsTab" aria-controls="adminTabLeads" data-admin-tab="leads"><span class="admin-nav-icon">✉</span>Talepler</button>
           <button type="button" class="admin-nav-item" id="productsTab" aria-controls="adminTabProducts" data-admin-tab="products" aria-expanded="false"><span class="admin-nav-icon">▣</span>Ürünler</button>
           <div class="admin-nav-children" id="productsNavChildren" hidden>
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
@@ -301,6 +302,31 @@
               </div>
               <div id="adminOrderList" class="admin-orders-list" role="list"></div>
               <p class="admin-note" id="adminOrdersNote" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section id="adminTabLeads" class="admin-tab-panel" aria-labelledby="leadsTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">İLETİŞİM</span>
+                  <h2>Talepler</h2>
+                  <p class="admin-card-lead">İletişim / teklif formundan gelen kayıtlar. Saklama süresi taslak politikaya göredir (önerilen 2 yıl).</p>
+                </div>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminLeadsRefresh">Yenile</button>
+                </div>
+              </div>
+              <div class="admin-order-list-head admin-leads-list-head" aria-hidden="true">
+                <span>Tarih</span>
+                <span>Firma</span>
+                <span>E-posta</span>
+                <span>Telefon</span>
+              </div>
+              <div id="adminLeadList" class="admin-list admin-leads-list" role="list"></div>
+              <p class="admin-note" id="adminLeadsNote" role="status"></p>
             </section>
           </div>
         </section>
@@ -1003,6 +1029,6 @@
     </div>
   </div>
 
-  <script src="/assets/js/admin.js?v=bizimhesap-manual-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=login-split-1"></script>
 </body>
 </html>

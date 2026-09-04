@@ -32,7 +32,7 @@ test("admin product form exposes feed required fields", () => {
 });
 
 test("admin feed category fields cascade from a selectable tree", () => {
-  const script = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "admin.js"), "utf8");
+  const script = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "admin-panel.js"), "utf8");
   assert.match(script, /FEED_CATEGORY_TREE/);
   assert.match(script, /bindFeedCategoryCascade/);
   assert.match(script, /setFeedCategorySelects/);

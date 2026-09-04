@@ -726,6 +726,16 @@ html.admin-theme-dark .admin-order-block.is-open {
   margin: 0 0 14px;
 }
 .admin-list { display: grid; gap: 10px; max-height: 70vh; overflow: auto; }
+.admin-leads-list-head {
+  grid-template-columns: 140px minmax(120px, 1.2fr) minmax(140px, 1.2fr) minmax(110px, 1fr);
+}
+.admin-lead-row .admin-lead-message {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
 .admin-list-item {
   display: flex;
   align-items: center;

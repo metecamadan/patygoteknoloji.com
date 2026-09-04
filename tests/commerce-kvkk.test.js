@@ -30,4 +30,7 @@ test("sqlite commerce plan doc exists", () => {
   assert.match(doc, /SQLite/);
   assert.match(doc, /consent_events/);
   assert.match(doc, /Faz 1/);
+  assert.match(doc, /Faz 2/);
+  assert.match(doc, /anonymize|Anonimleştir/i);
+  assert.match(doc, /retention/i);
 });

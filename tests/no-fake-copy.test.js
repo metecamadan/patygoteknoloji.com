@@ -11,7 +11,7 @@ function read(rel) {
 
 test("admin does not self-report process health as site health", () => {
   const adminHtml = read("admin.html");
-  const adminJs = read("assets/js/admin.js");
+  const adminJs = read("assets/js/admin-panel.js");
   const server = read("server.js");
 
   assert.doesNotMatch(adminHtml, /Sistem hazır/);

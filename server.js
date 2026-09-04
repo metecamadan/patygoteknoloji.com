@@ -77,6 +77,10 @@ const {
   smtpConfigured,
 } = require("./lib/contact");
 const {
+  anonymizeOrder,
+  createRetentionScheduler,
+} = require("./lib/retention");
+const {
   validateCustomerName,
   validateCustomerPhone,
 } = require("./lib/customer-identity");
@@ -628,6 +632,10 @@ function invalidateStorefrontCatalog() {
     clearTimeout(warmCatalogTimer);
     warmCatalogTimer = null;
   }
+  try {
+    const catFile = path.join(CATALOG_BOOTSTRAP_DIR, "categories.json");
+    if (fs.existsSync(catFile)) fs.unlinkSync(catFile);
+  } catch (_) {}
 }
 
 function catalogImageContext() {
@@ -754,12 +762,52 @@ function resolveProductNamesByIds(ids) {
 
 let warmCatalogTimer = null;
 
-function bootstrapSnapshotsReady() {
-  const file = path.join(CATALOG_BOOTSTRAP_DIR, "all.json");
-  if (!fs.existsSync(file)) return false;
+function readCategoriesBootstrapSnapshot() {
+  const file = path.join(CATALOG_BOOTSTRAP_DIR, "categories.json");
+  if (!fs.existsSync(file)) return null;
   try {
-    const stat = fs.statSync(file);
-    return stat.size > 100;
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!data || !Array.isArray(data.categories)) return null;
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeCategoriesBootstrapSnapshot(payload) {
+  fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+  const body = payload || {
+    version: 5,
+    categories: categoryStore.publicList(),
+  };
+  atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "categories.json"), {
+    version: body.version || 5,
+    categories: Array.isArray(body.categories) ? body.categories : [],
+  });
+}
+
+function ensureCategoriesBootstrapSnapshot() {
+  const existing = readCategoriesBootstrapSnapshot();
+  if (existing) return existing;
+  const payload = {
+    version: 5,
+    categories: categoryStore.publicList(),
+  };
+  try {
+    writeCategoriesBootstrapSnapshot(payload);
+  } catch (_) {}
+  return payload;
+}
+
+function bootstrapSnapshotsReady() {
+  const allFile = path.join(CATALOG_BOOTSTRAP_DIR, "all.json");
+  const catFile = path.join(CATALOG_BOOTSTRAP_DIR, "categories.json");
+  try {
+    if (!fs.existsSync(allFile) || fs.statSync(allFile).size <= 100) return false;
+    if (!fs.existsSync(catFile)) return false;
+    const cat = JSON.parse(fs.readFileSync(catFile, "utf8"));
+    if (!cat || !Array.isArray(cat.categories)) return false;
+    return true;
   } catch (_) {
     return false;
   }
@@ -847,10 +895,7 @@ function writeCatalogBootstrapSnapshots() {
   writeJob(jobs[0]);
   let offset = 1;
   try {
-    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "categories.json"), {
-      version: 5,
-      categories: categoryStore.publicList(),
-    });
+    writeCategoriesBootstrapSnapshot();
   } catch (_) {}
   const runChunk = () => {
     const end = Math.min(offset + 12, jobs.length);
@@ -1857,6 +1902,70 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/leads") {
+    const leads = contactStore.readAll().map((lead) => ({
+      id: lead.id || null,
+      createdAt: lead.createdAt || null,
+      firma: lead.firma || "",
+      email: lead.email || "",
+      tel: lead.tel || "",
+      vkn: lead.vkn || "",
+      konu: lead.konu || "",
+      urun: lead.urun || "",
+      kategori: lead.kategori || "",
+      mesaj: lead.mesaj || "",
+      spam: Boolean(lead.spam),
+    }));
+    return json(res, 200, {
+      ok: true,
+      leads,
+      policyNote: "taslak politika — iletişim lead saklama süresi önerilen 2 yıl",
+    });
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/customers") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const limit = requestUrl.searchParams.get("limit") || "50";
+    return json(res, 200, {
+      ok: true,
+      customers: orderStore.listCustomers({ limit }),
+    });
+  }
+
+  const adminOrderAnonymizeMatch = /^\/api\/admin\/orders\/([^/]+)\/anonymize$/.exec(urlPath);
+  if (adminOrderAnonymizeMatch && req.method === "POST") {
+    const orderId = decodeURIComponent(adminOrderAnonymizeMatch[1]);
+    const current = orderStore.get(orderId);
+    if (!current) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+    const result = anonymizeOrder(DATA_ROOT, orderId);
+    if (!result.ok) {
+      return json(res, 400, { ok: false, error: result.error || "Anonimleştirilemedi" });
+    }
+    const order = orderStore.get(orderId);
+    try {
+      const session = getSession(req);
+      auditStore.record({
+        actorType: "admin_user",
+        actorId: session && session.userId,
+        action: "order.anonymize",
+        entityType: "order",
+        entityId: orderId,
+        detail: {
+          already: Boolean(result.already),
+          legalHold: Boolean(order && order.legalHold),
+          anonymizedAt: result.anonymizedAt,
+        },
+        ip: clientIp(req),
+      });
+    } catch (_) {}
+    return json(res, 200, {
+      ok: true,
+      already: Boolean(result.already),
+      order,
+      policyNote: "taslak politika — PII anonim; tutar/kalem korunur; legal_hold silmeyi engeller",
+    });
+  }
+
   const adminOrderBizimhesapMatch = /^\/api\/admin\/orders\/([^/]+)\/bizimhesap-invoice$/.exec(urlPath);
   if (adminOrderBizimhesapMatch && req.method === "POST") {
     const orderId = decodeURIComponent(adminOrderBizimhesapMatch[1]);
@@ -2123,6 +2232,9 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 256 * 1024)).toString("utf8") || "{}");
       const categories = categoryStore.save(body.categories);
+      try {
+        writeCategoriesBootstrapSnapshot();
+      } catch (_) {}
       return json(res, 200, { ok: true, categories });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Kategori ağacı kaydedilemedi" });
@@ -2715,12 +2827,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (urlPath === "/assets/data/categories.json") {
-    return json(
-      res,
-      200,
-      { version: 5, categories: categoryStore.publicList() },
-      { "Cache-Control": "public, max-age=60, stale-while-revalidate=600" }
-    );
+    return json(res, 200, ensureCategoriesBootstrapSnapshot(), {
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=600",
+    });
   }
 
   if (urlPath.startsWith("/listing/")) {
@@ -2729,12 +2838,14 @@ const server = http.createServer(async (req, res) => {
       return serveNotFound(res, req.method);
     }
     if (name === "categories.json") {
-      return json(
-        res,
-        200,
-        { version: 5, categories: categoryStore.publicList() },
-        { "Cache-Control": "public, max-age=60, stale-while-revalidate=600" }
-      );
+      const payload = ensureCategoriesBootstrapSnapshot();
+      const catPath = path.resolve(CATALOG_BOOTSTRAP_DIR, name);
+      const rootDir = path.resolve(CATALOG_BOOTSTRAP_DIR);
+      if (!catPath.startsWith(rootDir + path.sep) || !fs.existsSync(catPath)) {
+        return json(res, 200, payload, {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=600",
+        });
+      }
     }
     const filePath = path.resolve(CATALOG_BOOTSTRAP_DIR, name);
     const rootDir = path.resolve(CATALOG_BOOTSTRAP_DIR);
@@ -2868,6 +2979,14 @@ const server = http.createServer(async (req, res) => {
 
   const productRoute = parseProductRoutePath(urlPath);
   if (productRoute) {
+    const htmlPath = safeJoin(ROOT, "/urun-detay.html");
+    const accept = String(req.headers.accept || "");
+    const wantsHtml =
+      !accept || /\btext\/html\b/i.test(accept) || accept.includes("*/*");
+    // Browser HTML: disk shell without storefrontIndex (client resolves via /listing).
+    if (wantsHtml && htmlPath && fs.existsSync(htmlPath)) {
+      return sendFile(res, htmlPath, req.method);
+    }
     const routeIndex = storefrontIndex(false).routeIndex;
     const productId = resolveProductIdFromRoute(
       routeIndex,
@@ -2877,7 +2996,6 @@ const server = http.createServer(async (req, res) => {
     if (!productId) {
       return serveNotFound(res, req.method);
     }
-    const htmlPath = safeJoin(ROOT, "/urun-detay.html");
     if (htmlPath && fs.existsSync(htmlPath)) {
       return sendFile(res, htmlPath, req.method);
     }
@@ -2924,6 +3042,12 @@ if (typeof calendarMailTimer.unref === "function") calendarMailTimer.unref();
 setTimeout(() => {
   processCalendarReminderEmails().catch(() => {});
 }, 8 * 1000);
+
+const retentionScheduler = createRetentionScheduler(DATA_ROOT, {
+  contactStore,
+  intervalMs: 60 * 60 * 1000,
+});
+retentionScheduler.start();
 
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,

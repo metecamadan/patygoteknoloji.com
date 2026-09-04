@@ -63,7 +63,7 @@ test("admin VAT field is a required 1/8/10/20 select", () => {
 });
 
 test("admin client requires VAT before save", () => {
-  const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin.js"), "utf8");
+  const adminJs = fs.readFileSync(path.join(root, "assets", "js", "admin-panel.js"), "utf8");
   assert.match(adminJs, /KDV oranı zorunludur/);
   assert.match(adminJs, /fields\.vat\.value = ""/);
   assert.match(adminJs, /vatOk/);

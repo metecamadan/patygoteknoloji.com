@@ -93,11 +93,13 @@ flowchart TB
 | 1.7 | QA | `npm test` + regression | `tests/*` | 119+ yeşil |
 | 1.8 | Release | commit/push/CI | — | Actions yeşil |
 
-### Faz 2 — Operasyon & haklar
-- Sipariş durumları: preparing / shipped / cancelled / refunded  
-- Müşteri birleştirme, panelden lead listesi  
-- DSAR: admin “anonimleştir” (yasal hold korumalı)  
-- Otomatik retention cron (gece job)  
+### Faz 2 — Operasyon & haklar *(uygulandı — 5 Eyl 2026)*
+- [x] Sipariş durumları: preparing / shipped / cancelled / refunded (+ refunded mail şablonu)
+- [x] Panelden lead listesi (`GET /api/admin/leads`, Talepler sekmesi)
+- [x] DSAR: admin “Anonimleştir” (`POST /api/admin/orders/:id/anonymize`, audit; legal_hold hard-delete engeli)
+- [x] Otomatik retention cron (gece job, taslak süreler: 10y ödenen / 2y ödenmeyen / 2y lead) — `lib/retention.js`
+- [x] Minimal `GET /api/admin/customers` listesi
+- Müşteri birleştirme: e-posta ile upsert (mevcut); ayrı merge UI yok  
 
 ### Faz 3 — Sertleştirme
 - Postgres adapter (opsiyonel)  

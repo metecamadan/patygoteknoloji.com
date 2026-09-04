@@ -654,7 +654,7 @@
     try {
       const saved = sessionStorage.getItem("patygo_admin_tab");
       if (
-        ["overview", "calendar", "orders", "users", "shipping", "products", "xml", "categories"].includes(
+        ["overview", "calendar", "orders", "leads", "users", "shipping", "products", "xml", "categories"].includes(
           saved
         )
       ) {
@@ -780,6 +780,7 @@
     if (tab === "products" && !xmlView) ensureManualProducts().catch(() => {});
     if (tab === "overview") loadDigitalDashboard().catch(() => {});
     if (tab === "orders") loadAdminOrders().catch(() => {});
+    if (tab === "leads") loadAdminLeads().catch(() => {});
     if (tab === "shipping") loadAdminShippingSettings().catch(() => {});
     if (tab === "calendar") loadCalendarMonth().catch(() => {});
     if (tab === "categories") loadCategoryTree().catch(() => {});
@@ -814,6 +815,7 @@
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
       calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
       orders: ["Siparişler", "Ödeme durumu, müşteri ve kalemleri yönetin."],
+      leads: ["Talepler", "İletişim formundan gelen teklif / talep kayıtları."],
       users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
       shipping: ["Kargo", "Ücretsiz kargo eşiği ve kargo bedelini yönetin."],
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
@@ -866,6 +868,7 @@
       ensureCalendarNotificationPermission().catch(() => {});
     }
     if (name === "users" && token) loadAdminUsers().catch(() => {});
+    if (name === "leads" && token) loadAdminLeads().catch(() => {});
     if (name === "shipping" && token) loadAdminShippingSettings().catch(() => {});
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
@@ -2599,7 +2602,7 @@
           statusNote,
           "ok",
           assigned +
-            " ürün siteye yayınlandı. Ürünler sayfasında kategorilerden görünür."
+            " ürün kategori eşlendi ve yayına alındı. Stok/fiyat kuralını geçenler vitrinde görünür."
         );
       } catch (err) {
         note(statusNote, "err", err.message);
@@ -3705,6 +3708,7 @@
       preparing: "Hazırlanıyor",
       shipped: "Kargoda",
       cancelled: "İptal",
+      refunded: "İade",
     };
   }
 
@@ -3967,6 +3971,14 @@
       "<div><dt>Toplam</dt><dd>" +
       moneyTr(order.total) +
       "</dd></div>" +
+      (order.anonymizedAt
+        ? "<div><dt>Anonimleştirme</dt><dd>" +
+          escapeHtml(formatOrderDate(order.anonymizedAt)) +
+          (order.legalHold ? " · yasal saklama (legal_hold)" : "") +
+          "</dd></div>"
+        : order.legalHold
+          ? "<div><dt>Yasal saklama</dt><dd>legal_hold — hard silme yok</dd></div>"
+          : "") +
       "</dl>" +
       "<div>" +
       mailBanner +
@@ -3992,6 +4004,11 @@
       "</select></div>" +
       "<p class='admin-field-help'>Ödeme durumu (ödendi / başarısız) yalnızca banka callback ile gelir; panelden değiştirilemez. Kargoda durumu alttaki kargo kaydı ile güncellenir.</p>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
+      "<h3 class='admin-order-section-title'>KVKK / anonimleştirme</h3>" +
+      "<p class='admin-field-help'>Taslak politika: kişisel verileri temizler; tutar ve kalemler kalır. legal_hold olan kayıtlar hard silinmez.</p>" +
+      (order.anonymizedAt
+        ? "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>Bu sipariş anonimleştirilmiş.</p>"
+        : "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderAnonymize'>Anonimleştir</button></div>") +
       "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
       "<p class='admin-field-help' data-smtp-mail-help>Hazırlanıyor ve iptal durumlarında müşteriye bilgilendirme maili gider. Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur.</p>" +
       "<div class='admin-order-shipping-fields'>" +
@@ -4134,6 +4151,40 @@
           note(adminOrdersNote, "err", err.message || "Kargo kaydedilemedi");
         } finally {
           saveShippingBtn.disabled = false;
+        }
+      });
+    }
+    const anonymizeBtn = document.getElementById("adminOrderAnonymize");
+    if (anonymizeBtn) {
+      anonymizeBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (anonymizeBtn.disabled) return;
+        if (
+          !confirm(
+            "Bu siparişteki kişisel verileri anonimleştirmek istiyor musunuz? Tutar ve kalemler kalır; işlem geri alınamaz."
+          )
+        ) {
+          return;
+        }
+        anonymizeBtn.disabled = true;
+        try {
+          const result = await api(
+            "/api/admin/orders/" + encodeURIComponent(orderId) + "/anonymize",
+            { method: "POST", body: "{}" }
+          );
+          note(
+            adminOrdersNote,
+            "ok",
+            result.already
+              ? "Sipariş zaten anonimleştirilmişti."
+              : "Sipariş anonimleştirildi (taslak politika)."
+          );
+          applyOrderPatchToUi(result.order, result.order && result.order._statusMails);
+        } catch (err) {
+          note(adminOrdersNote, "err", err.message || "Anonimleştirilemedi");
+        } finally {
+          anonymizeBtn.disabled = false;
         }
       });
     }
@@ -4454,6 +4505,61 @@
     adminUserEmail.value = user.email || "";
     adminUserPassword.value = "";
     adminUserPassword.required = false;
+  }
+
+  async function loadAdminLeads() {
+    const listEl = document.getElementById("adminLeadList");
+    const noteEl = document.getElementById("adminLeadsNote");
+    if (!listEl) return;
+    try {
+      const data = await api("/api/admin/leads");
+      const leads = Array.isArray(data.leads) ? data.leads : [];
+      listEl.textContent = "";
+      if (!leads.length) {
+        const empty = document.createElement("div");
+        empty.className = "admin-table-empty";
+        empty.textContent = "Henüz iletişim talebi yok.";
+        listEl.appendChild(empty);
+        note(noteEl, "ok", "Liste boş.");
+        return;
+      }
+      leads.forEach((lead) => {
+        const row = document.createElement("div");
+        row.className = "admin-list-item admin-lead-row";
+        row.setAttribute("role", "listitem");
+        const main = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = lead.firma || "—";
+        const meta = document.createElement("span");
+        meta.textContent =
+          formatOrderDate(lead.createdAt) +
+          " · " +
+          (lead.email || "—") +
+          " · " +
+          (lead.tel || "—") +
+          (lead.spam ? " · spam" : "");
+        main.appendChild(title);
+        main.appendChild(meta);
+        if (lead.mesaj) {
+          const msg = document.createElement("span");
+          msg.className = "admin-lead-message";
+          msg.textContent = String(lead.mesaj).slice(0, 180);
+          main.appendChild(msg);
+        }
+        row.appendChild(main);
+        listEl.appendChild(row);
+      });
+      note(noteEl, "ok", leads.length + " talep · saklama taslak politika (önerilen 2 yıl).");
+    } catch (err) {
+      note(noteEl, "err", err.message || "Talepler yüklenemedi");
+    }
+  }
+
+  const adminLeadsRefresh = document.getElementById("adminLeadsRefresh");
+  if (adminLeadsRefresh) {
+    adminLeadsRefresh.addEventListener("click", () => {
+      loadAdminLeads().catch(() => {});
+    });
   }
 
   async function loadAdminUsers() {
