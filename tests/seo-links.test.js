@@ -7,8 +7,8 @@ const root = path.resolve(__dirname, "..");
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const catalogJs = fs.readFileSync(path.join(root, "assets", "js", "catalog.js"), "utf8");
 const detailJs = fs.readFileSync(path.join(root, "assets", "js", "urun-detay.js"), "utf8");
-const sitemap = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
 const robots = fs.readFileSync(path.join(root, "robots.txt"), "utf8");
+const { buildStorefrontSitemap } = require("../lib/sitemap");
 
 const ANA = [
   "bilgisayar-tablet",
@@ -31,6 +31,12 @@ test("footer and homepage expose crawlable ANA category hrefs", () => {
 });
 
 test("sitemap lists category pages and omits checkout surfaces", () => {
+  const sitemap = buildStorefrontSitemap({
+    baseUrl: "https://patygoteknoloji.com",
+    categories: ANA.map((slug) => ({ slug, name: slug, children: [] })),
+    routeIndex: { byId: {} },
+    now: new Date("2026-09-04T12:00:00Z"),
+  });
   assert.match(sitemap, /<lastmod>/);
   for (const slug of ANA) {
     assert.match(sitemap, new RegExp("urunler/" + slug));
@@ -40,6 +46,8 @@ test("sitemap lists category pages and omits checkout surfaces", () => {
   assert.doesNotMatch(sitemap, /\/admin/);
   assert.match(robots, /Disallow: \/odeme/);
   assert.match(robots, /Disallow: \/sepet/);
+  assert.match(robots, /Sitemap: https:\/\/patygoteknoloji\.com\/sitemap\.xml/);
+  assert.equal(fs.existsSync(path.join(root, "sitemap.xml")), false);
 });
 
 test("server builds dynamic storefront sitemap and bare category redirects", () => {
