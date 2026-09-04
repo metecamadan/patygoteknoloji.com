@@ -483,20 +483,119 @@
     });
   }
 
+  const PATH_CACHE_KEY = "patygo_detail_by_path_v1";
+
+  function normalizePathKey(value) {
+    return String(value || "")
+      .replace(/^\/+/, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+  }
+
+  function rememberProduct(product) {
+    if (!product || !product.id) return;
+    if (window.PatygoCatalog) {
+      window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+      window.PatygoCatalog.byId[product.id] = product;
+    }
+    const pathKey = normalizePathKey(product.urlPath || (detailRoute.mode === "path" ? detailRoute.path : ""));
+    if (!pathKey) return;
+    try {
+      const raw = sessionStorage.getItem(PATH_CACHE_KEY);
+      const map = raw ? JSON.parse(raw) : {};
+      map[pathKey] = product;
+      const keys = Object.keys(map);
+      if (keys.length > 40) {
+        keys.slice(0, keys.length - 40).forEach((key) => {
+          delete map[key];
+        });
+      }
+      sessionStorage.setItem(PATH_CACHE_KEY, JSON.stringify(map));
+    } catch (_) {}
+  }
+
+  function cachedProductForRoute() {
+    const byId = (window.PatygoCatalog && window.PatygoCatalog.byId) || {};
+    if (detailRoute.mode === "id" && byId[detailRoute.id]) return byId[detailRoute.id];
+    if (detailRoute.mode === "path") {
+      const want = normalizePathKey(detailRoute.path);
+      for (const id of Object.keys(byId)) {
+        const item = byId[id];
+        if (item && normalizePathKey(item.urlPath) === want) return item;
+      }
+      try {
+        const raw = sessionStorage.getItem(PATH_CACHE_KEY);
+        const map = raw ? JSON.parse(raw) : {};
+        if (map[want]) return map[want];
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function productFromListingPayload(data, route) {
+    const products = data && Array.isArray(data.products) ? data.products : [];
+    if (!products.length) return null;
+    if (route.mode === "id") {
+      return products.find((item) => item && String(item.id) === String(route.id)) || null;
+    }
+    if (route.mode === "path") {
+      const want = normalizePathKey(route.path);
+      return (
+        products.find((item) => item && normalizePathKey(item.urlPath) === want) ||
+        products.find((item) => {
+          if (!item) return false;
+          const segment = String(item.urlCategorySegment || item.siteChild || item.category || "")
+            .replace(/^\/+|\/+$/g, "")
+            .toLowerCase();
+          const slug = String(item.urlSlug || "").toLowerCase();
+          return segment && slug && normalizePathKey(segment + "/" + slug) === want;
+        }) ||
+        null
+      );
+    }
+    return null;
+  }
+
+  function fetchJson(url, timeoutMs) {
+    const opts = { cache: "default" };
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      opts.signal = AbortSignal.timeout(timeoutMs);
+    }
+    return fetch(url, opts).then((res) => {
+      if (!res.ok) throw new Error("http " + res.status);
+      return res.json();
+    });
+  }
+
+  /** Node API (tam alan) ile nginx disk listing yarışır; ilk geçerli ürün boyanır. */
+  function raceProductSources(route) {
+    const apiUrl =
+      route.mode === "path"
+        ? "/api/products?path=" + encodeURIComponent(route.path)
+        : "/api/products?id=" + encodeURIComponent(route.id);
+    const api = fetchJson(apiUrl, 12000).then((data) => {
+      const product =
+        Array.isArray(data.products) && data.products.length ? data.products[0] : null;
+      if (!product) throw new Error("api empty");
+      return { product, source: "api" };
+    });
+    const listing = fetchJson("/listing/all.json", 8000).then((data) => {
+      const product = productFromListingPayload(data, route);
+      if (!product) throw new Error("listing miss");
+      return { product, source: "listing" };
+    });
+    return Promise.any([api, listing]);
+  }
+
   async function loadDetail() {
+    // Kargo metni ürünü bloklamasın; arka planda gelsin.
     if (window.PatygoShipping && typeof window.PatygoShipping.load === "function") {
-      await window.PatygoShipping.load().catch(() => {});
+      window.PatygoShipping.load().catch(() => {});
     }
     if (detailRoute.mode === "none") {
       render(null, []);
       return;
     }
-    const cached =
-      detailRoute.mode === "id" &&
-      window.PatygoCatalog &&
-      window.PatygoCatalog.byId
-        ? window.PatygoCatalog.byId[detailRoute.id]
-        : null;
     const cats =
       (window.PatygoCatalog &&
       window.PatygoCatalog._lastCategories &&
@@ -507,27 +606,15 @@
         ? window.PatygoNav.categories
         : []) ||
       [];
+    const cached = cachedProductForRoute();
     if (cached) render(cached, cats);
 
     let product = cached;
     try {
-      const fetchUrl =
-        detailRoute.mode === "path"
-          ? "/api/products?path=" + encodeURIComponent(detailRoute.path)
-          : "/api/products?id=" + encodeURIComponent(detailRoute.id);
-      const fetchOpts = { cache: "default" };
-      if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
-        fetchOpts.signal = AbortSignal.timeout(15000);
-      }
-      const res = await fetch(fetchUrl, fetchOpts);
-      const data = await res.json();
-      const fresh =
-        Array.isArray(data.products) && data.products.length ? data.products[0] : null;
+      const won = await raceProductSources(detailRoute);
+      const fresh = won && won.product ? won.product : null;
       if (fresh) {
-        if (window.PatygoCatalog) {
-          window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
-          window.PatygoCatalog.byId[fresh.id] = fresh;
-        }
+        rememberProduct(fresh);
         product = fresh;
         if (
           fresh.urlPath &&

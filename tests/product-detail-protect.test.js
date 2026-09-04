@@ -39,9 +39,13 @@ test("product detail keeps add-to-cart only without buy-now shortcut", () => {
   assert.doesNotMatch(script, /\/odeme\?id=/);
 });
 
-test("product detail paints cached card then fetches full copy by id", () => {
+test("product detail paints cached card then races api with listing snapshot", () => {
   assert.match(script, /detailRoute\.mode === "id"/);
   assert.match(script, /if \(cached\) render\(cached, cats\)/);
   assert.match(script, /\/api\/products\?path=/);
   assert.match(script, /\/api\/products\?id=/);
+  assert.match(script, /\/listing\/all\.json/);
+  assert.match(script, /raceProductSources|Promise\.any/);
+  assert.match(script, /PatygoShipping\.load\(\)\.catch/);
+  assert.doesNotMatch(script, /await window\.PatygoShipping\.load/);
 });

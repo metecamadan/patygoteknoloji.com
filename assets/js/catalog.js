@@ -662,6 +662,23 @@
   }
 
   const prefetchingIds = new Set();
+  const DETAIL_PATH_CACHE = "patygo_detail_by_path_v1";
+  function cacheDetailProduct(product) {
+    if (!product || !product.id) return;
+    window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+    window.PatygoCatalog.byId[product.id] = product;
+    const pathKey = String(product.urlPath || "")
+      .replace(/^\/+/, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+    if (!pathKey) return;
+    try {
+      const raw = sessionStorage.getItem(DETAIL_PATH_CACHE);
+      const map = raw ? JSON.parse(raw) : {};
+      map[pathKey] = product;
+      sessionStorage.setItem(DETAIL_PATH_CACHE, JSON.stringify(map));
+    } catch (_) {}
+  }
   function prefetchProductDetail(id) {
     const key = String(id || "").trim();
     if (!key) return;
@@ -674,8 +691,7 @@
         const product =
           data && Array.isArray(data.products) && data.products.length ? data.products[0] : null;
         if (!product) return;
-        window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
-        window.PatygoCatalog.byId[product.id] = product;
+        cacheDetailProduct(product);
       })
       .catch(() => {})
       .finally(() => prefetchingIds.delete(key));
