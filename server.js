@@ -34,7 +34,9 @@ const {
   setPublicCategoryLeafKeysLoader,
   parseUrunlerPathname,
   categoryQueryToPath,
+  categoryHref,
 } = require("./lib/categories");
+const { buildStorefrontSitemap } = require("./lib/sitemap");
 const {
   CATEGORY_FEED_DEFAULTS,
   validateManualFeedFields,
@@ -2797,6 +2799,53 @@ const server = http.createServer(async (req, res) => {
         return permanentRedirect(res, canonical);
       }
     }
+  }
+
+  // SEO: bare ANA slug /bilgisayar-tablet → /urunler/bilgisayar-tablet
+  // Use list() (not publicList): publicList hides empty parents when catalog is cold.
+  if (/^\/[a-z0-9-]+$/i.test(urlPath)) {
+    const slug = urlPath.slice(1).toLowerCase();
+    const reserved = new Set([
+      "admin",
+      "urunler",
+      "sepet",
+      "odeme",
+      "kurumsal",
+      "hizmetler",
+      "markalar",
+      "iletisim",
+      "kvkk",
+      "gizlilik",
+      "cerez",
+      "robots.txt",
+      "sitemap.xml",
+      "favicon.ico",
+    ]);
+    if (!reserved.has(slug) && !slug.includes(".")) {
+      const parent = categoryStore
+        .list()
+        .find((row) => row && row.slug === slug && row.active !== false);
+      if (parent) {
+        return permanentRedirect(res, categoryHref(parent.slug) + search);
+      }
+    }
+  }
+
+  if (urlPath === "/sitemap.xml") {
+    const xml = buildStorefrontSitemap({
+      baseUrl: SITE_BASE_URL || "https://patygoteknoloji.com",
+      categories: categoryStore.list().filter((row) => row && row.active !== false),
+      routeIndex: storefrontIndex(false).routeIndex,
+    });
+    res.writeHead(
+      200,
+      securityHeaders({
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+      })
+    );
+    if (req.method === "HEAD") return res.end();
+    return res.end(xml);
   }
 
   const productRoute = parseProductRoutePath(urlPath);

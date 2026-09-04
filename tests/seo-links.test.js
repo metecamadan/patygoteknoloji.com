@@ -42,6 +42,13 @@ test("sitemap lists category pages and omits checkout surfaces", () => {
   assert.match(robots, /Disallow: \/sepet/);
 });
 
+test("server builds dynamic storefront sitemap and bare category redirects", () => {
+  const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  assert.match(server, /buildStorefrontSitemap/);
+  assert.match(server, /urlPath === "\/sitemap\.xml"/);
+  assert.match(server, /categoryHref\(parent\.slug\)/);
+});
+
 test("product cards wrap media in a real product-detail href", () => {
   assert.match(catalogJs, /product-card-media/);
   assert.match(catalogJs, /visualWrap\.href = window\.PatygoCatalog\.productHref\(product\)/);
