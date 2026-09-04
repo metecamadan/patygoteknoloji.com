@@ -47,11 +47,15 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   assert.equal(bareCategory.status, 301);
   assert.equal(bareCategory.headers.get("location"), "/urunler/kartus-toner");
 
-  const sitemap = await fetch(baseUrl + "/sitemap.xml");
+  const sitemap = await fetch(baseUrl + "/sitemap");
   assert.equal(sitemap.status, 200);
   const sitemapXml = await sitemap.text();
   assert.match(sitemapXml, /urunler\/kartus-toner/);
   assert.doesNotMatch(sitemapXml, /\/sepet/);
+
+  const sitemapIndex = await fetch(baseUrl + "/sitemap.xml");
+  assert.equal(sitemapIndex.status, 200);
+  assert.match(await sitemapIndex.text(), /sitemapindex|urlset/);
 
   const legacyQuery = await fetch(
     baseUrl + "/urunler?kategori=kartus-toner&ara=faks-tuketim-urunleri&alt=faks-tonerler",

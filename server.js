@@ -2818,6 +2818,7 @@ const server = http.createServer(async (req, res) => {
       "gizlilik",
       "cerez",
       "robots.txt",
+      "sitemap",
       "sitemap.xml",
       "favicon.ico",
     ]);
@@ -2831,7 +2832,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (urlPath === "/sitemap.xml") {
+  if (urlPath === "/sitemap.xml" || urlPath === "/sitemap") {
     const xml = buildStorefrontSitemap({
       baseUrl: SITE_BASE_URL || "https://patygoteknoloji.com",
       categories: categoryStore.list().filter((row) => row && row.active !== false),

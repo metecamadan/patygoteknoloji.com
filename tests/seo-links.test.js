@@ -47,13 +47,15 @@ test("sitemap lists category pages and omits checkout surfaces", () => {
   assert.match(robots, /Disallow: \/odeme/);
   assert.match(robots, /Disallow: \/sepet/);
   assert.match(robots, /Sitemap: https:\/\/patygoteknoloji\.com\/sitemap\.xml/);
-  assert.equal(fs.existsSync(path.join(root, "sitemap.xml")), false);
+  const indexXml = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
+  assert.match(indexXml, /sitemapindex/);
+  assert.match(indexXml, /https:\/\/patygoteknoloji\.com\/sitemap/);
 });
 
 test("server builds dynamic storefront sitemap and bare category redirects", () => {
   const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
   assert.match(server, /buildStorefrontSitemap/);
-  assert.match(server, /urlPath === "\/sitemap\.xml"/);
+  assert.match(server, /urlPath === "\/sitemap\.xml" \|\| urlPath === "\/sitemap"/);
   assert.match(server, /categoryHref\(parent\.slug\)/);
 });
 
