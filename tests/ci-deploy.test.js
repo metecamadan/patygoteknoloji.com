@@ -52,6 +52,7 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /while \[ "\$i" -lt 30 \]/);
   assert.match(workflow, /data-catalog-infinite/);
   assert.match(workflow, /ensure-sitemap-nginx\.sh/);
+  assert.match(workflow, /ensure-product-shell-nginx\.sh/);
   assert.match(workflow, /ensure-agent-ssh-key\.sh/);
   assert.match(workflow, /\/bilgisayar-tablet/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
@@ -64,6 +65,15 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(ensureNginx, /systemctl reload nginx/);
   assert.match(ensureNginx, /removed .* existing location|existing location = \/sitemap\.xml/);
   assert.match(ensureNginx, /re\.DOTALL|DOTALL/);
+  const ensureProductShell = fs.readFileSync(
+    path.join(root, "scripts", "ensure-product-shell-nginx.sh"),
+    "utf8"
+  );
+  assert.match(ensureProductShell, /location ~ \^\/\[a-z0-9-\]\+\/\[a-z0-9-\]\+\/\?\$/);
+  assert.match(ensureProductShell, /try_files \/urun-detay\.html =404/);
+  assert.match(ensureProductShell, /systemctl reload nginx/);
+  assert.match(ensureProductShell, /inserted before location \//);
+  assert.doesNotMatch(ensureProductShell, /proxy_pass/);
   const ensureAgentKey = fs.readFileSync(
     path.join(root, "scripts", "ensure-agent-ssh-key.sh"),
     "utf8"
@@ -95,6 +105,16 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.ok(urunlerPathBlock, "urunler path nginx block missing");
   assert.doesNotMatch(urunlerPathBlock[0], /proxy_pass/);
   assert.match(urunlerPathBlock[0], /try_files \/urunler\.html/);
+  const productSeoBlock = nginx.match(
+    /location ~ \^\/\[a-z0-9-\]\+\/\[a-z0-9-\]\+\/\?\$ \{[\s\S]*?\n  \}/
+  );
+  assert.ok(productSeoBlock, "product SEO nginx block missing");
+  assert.doesNotMatch(productSeoBlock[0], /proxy_pass/);
+  assert.match(productSeoBlock[0], /try_files \/urun-detay\.html =404/);
+  assert.match(
+    nginx,
+    /try_files \/urun-detay\.html =404;[\s\S]*?location \/ \{/
+  );
   assert.match(nginx, /location \^~ \/media\/catalog\//);
   assert.match(nginx, /location \^~ \/listing\//);
   assert.doesNotMatch(nginx, /location = \/listing\/categories\.json/);

@@ -122,6 +122,10 @@ jobs:
             bash "$APP_DIR/scripts/ensure-sitemap-nginx.sh" "$APP_PORT" || {
               echo "WARN: ensure-sitemap-nginx.sh failed; continuing to smoke checks"
             }
+            sed -i 's/\r$//' "$APP_DIR/scripts/ensure-product-shell-nginx.sh" || true
+            bash "$APP_DIR/scripts/ensure-product-shell-nginx.sh" "$APP_PORT" || {
+              echo "WARN: ensure-product-shell-nginx.sh failed; continuing to smoke checks"
+            }
             sed -i 's/\r$//' "$APP_DIR/scripts/ensure-agent-ssh-key.sh" || true
             bash "$APP_DIR/scripts/ensure-agent-ssh-key.sh" "$APP_DIR" || {
               echo "WARN: ensure-agent-ssh-key.sh failed; continuing to smoke checks"
