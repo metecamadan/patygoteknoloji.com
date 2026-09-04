@@ -117,7 +117,11 @@ jobs:
             git reset --hard origin/main
             npm ci --omit=dev
             pm2 restart "$PM2_NAME" --update-env
-            bash "$APP_DIR/scripts/ensure-sitemap-nginx.sh" "$APP_PORT"
+            # LF-only helper; do not fail whole deploy if nginx conf path missing.
+            sed -i 's/\r$//' "$APP_DIR/scripts/ensure-sitemap-nginx.sh" || true
+            bash "$APP_DIR/scripts/ensure-sitemap-nginx.sh" "$APP_PORT" || {
+              echo "WARN: ensure-sitemap-nginx.sh failed; continuing to smoke checks"
+            }
 
             LOOP_JSON=""
             i=0
@@ -145,10 +149,11 @@ jobs:
             curl -fsS --max-time 20 "${PUBLIC_URL}/urunler" | grep -q 'data-catalog-infinite'
             curl -fsS --max-time 20 "${PUBLIC_URL}/assets/data/categories.json" | grep -q '"categories"'
             curl -fsS --max-time 20 "${PUBLIC_URL}/listing/categories.json" | grep -q '"categories"'
-            # SEO smoke: bare ANA redirect + dynamic sitemap (Node, not nginx 404)
+            # SEO smoke: bare ANA redirect + dynamic sitemap via Node loopback then public
             REDIR="$(curl -sSI --max-time 20 "${PUBLIC_URL}/bilgisayar-tablet" | tr -d '\r')"
             echo "$REDIR" | grep -qiE '^HTTP/.* 301'
             echo "$REDIR" | grep -qiE '^Location: .*/urunler/bilgisayar-tablet'
+            curl -fsS --max-time 30 "http://127.0.0.1:${APP_PORT}/sitemap.xml" | grep -q 'urunler/'
             SM_CODE="$(curl -sS -o /tmp/patygo-sitemap.xml -w '%{http_code}' --max-time 30 "${PUBLIC_URL}/sitemap.xml")"
             [ "$SM_CODE" = "200" ] || { echo "sitemap.xml HTTP $SM_CODE"; exit 1; }
             grep -q 'urunler/' /tmp/patygo-sitemap.xml
