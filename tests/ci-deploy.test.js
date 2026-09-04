@@ -51,6 +51,9 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /\/api\/payment\/status/);
   assert.match(workflow, /while \[ "\$i" -lt 30 \]/);
   assert.match(workflow, /data-catalog-infinite/);
+  assert.match(workflow, /location = \/sitemap\.xml/);
+  assert.match(workflow, /systemctl reload nginx/);
+  assert.match(workflow, /\/bilgisayar-tablet/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
 });
@@ -79,6 +82,7 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(nginx, /location \^~ \/listing\//);
   assert.doesNotMatch(nginx, /location = \/listing\/categories\.json/);
   assert.match(nginx, /alias \/var\/www\/patygoteknoloji\.com\/\.runtime\/catalog-bootstrap\//);
+  assert.match(nginx, /location = \/sitemap\.xml[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:5173/);
   const serverJs = fs.readFileSync(path.join(root, "server.js"), "utf8");
   assert.match(serverJs, /scheduleStartupCatalogWarm/);
   assert.match(serverJs, /STARTUP_WARM_DEFER_MS/);
