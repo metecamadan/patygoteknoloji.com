@@ -52,6 +52,7 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /while \[ "\$i" -lt 30 \]/);
   assert.match(workflow, /data-catalog-infinite/);
   assert.match(workflow, /ensure-sitemap-nginx\.sh/);
+  assert.match(workflow, /ensure-agent-ssh-key\.sh/);
   assert.match(workflow, /\/bilgisayar-tablet/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
@@ -63,6 +64,15 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(ensureNginx, /systemctl reload nginx/);
   assert.match(ensureNginx, /removed .* existing location|existing location = \/sitemap\.xml/);
   assert.match(ensureNginx, /re\.DOTALL|DOTALL/);
+  const ensureAgentKey = fs.readFileSync(
+    path.join(root, "scripts", "ensure-agent-ssh-key.sh"),
+    "utf8"
+  );
+  assert.match(ensureAgentKey, /agent-laptop\.pub/);
+  assert.match(ensureAgentKey, /authorized_keys/);
+  assert.match(ensureAgentKey, /idempotent|already in authorized_keys/);
+  const agentPub = fs.readFileSync(path.join(root, "deploy", "agent-laptop.pub"), "utf8").trim();
+  assert.match(agentPub, /^ssh-ed25519\s+[A-Za-z0-9+/=]+/);
 });
 
 test("nginx serves checkout HTML from disk when Node is busy", () => {
