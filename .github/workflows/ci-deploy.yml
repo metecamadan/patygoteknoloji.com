@@ -117,50 +117,7 @@ jobs:
             git reset --hard origin/main
             npm ci --omit=dev
             pm2 restart "$PM2_NAME" --update-env
-
-            # Dinamik /sitemap.xml: disk dosyasi silindi; nginx Node'a proxy etmeli.
-            NGINX_CONF="$(grep -Rsl "server_name patygoteknoloji.com" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -n 1 || true)"
-            if [ -n "$NGINX_CONF" ] && [ -f "$NGINX_CONF" ]; then
-              if ! grep -qE 'location[[:space:]]*=[[:space:]]*/sitemap\.xml' "$NGINX_CONF"; then
-                echo "Inserting nginx location = /sitemap.xml into $NGINX_CONF"
-                python3 - "$NGINX_CONF" <<'PY'
-import pathlib, sys
-path = pathlib.Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-needle = "  location = /urun-detay {"
-block = """  location = /sitemap.xml {
-    proxy_pass http://127.0.0.1:5173;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_connect_timeout 3s;
-    proxy_read_timeout 15s;
-  }
-
-"""
-if "location = /sitemap.xml" in text:
-    print("sitemap location already present")
-elif needle in text:
-    path.write_text(text.replace(needle, block + needle, 1), encoding="utf-8")
-    print("sitemap location inserted before /urun-detay")
-else:
-    alt = "  location / {"
-    if alt not in text:
-        raise SystemExit("Could not find insertion point for /sitemap.xml")
-    path.write_text(text.replace(alt, block + alt, 1), encoding="utf-8")
-    print("sitemap location inserted before location /")
-PY
-                nginx -t
-                systemctl reload nginx
-                echo "nginx reloaded with /sitemap.xml proxy"
-              else
-                echo "nginx already has location = /sitemap.xml ($NGINX_CONF)"
-              fi
-            else
-              echo "WARN: nginx site conf for patygoteknoloji.com not found; sitemap proxy not applied"
-            fi
+            bash "$APP_DIR/scripts/ensure-sitemap-nginx.sh" "$APP_PORT"
 
             LOOP_JSON=""
             i=0

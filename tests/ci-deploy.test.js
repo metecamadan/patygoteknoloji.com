@@ -51,11 +51,18 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /\/api\/payment\/status/);
   assert.match(workflow, /while \[ "\$i" -lt 30 \]/);
   assert.match(workflow, /data-catalog-infinite/);
-  assert.match(workflow, /location = \/sitemap\.xml/);
-  assert.match(workflow, /systemctl reload nginx/);
+  assert.match(workflow, /ensure-sitemap-nginx\.sh/);
   assert.match(workflow, /\/bilgisayar-tablet/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
+  const ensureNginx = fs.readFileSync(
+    path.join(root, "scripts", "ensure-sitemap-nginx.sh"),
+    "utf8"
+  );
+  assert.match(ensureNginx, /location = \/sitemap\.xml/);
+  assert.match(ensureNginx, /systemctl reload nginx/);
+  assert.match(ensureNginx, /removed .* existing location|existing location = \/sitemap\.xml/);
+  assert.match(ensureNginx, /re\.DOTALL|DOTALL/);
 });
 
 test("nginx serves checkout HTML from disk when Node is busy", () => {
