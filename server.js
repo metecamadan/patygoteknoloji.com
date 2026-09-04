@@ -895,6 +895,25 @@ function storefrontAkakceXml() {
   return xml;
 }
 
+let storefrontSitemapMemo = null;
+
+function storefrontSitemapXml() {
+  const categories = categoryStore.list().filter((row) => row && row.active !== false);
+  const routeIndex = storefrontIndex(false).routeIndex;
+  const productCount = routeIndex && routeIndex.byId ? Object.keys(routeIndex.byId).length : 0;
+  const stamp = categories.length + ":" + productCount;
+  if (storefrontSitemapMemo && storefrontSitemapMemo.stamp === stamp) {
+    return storefrontSitemapMemo.xml;
+  }
+  const xml = buildStorefrontSitemap({
+    baseUrl: SITE_BASE_URL || "https://patygoteknoloji.com",
+    categories,
+    routeIndex,
+  });
+  storefrontSitemapMemo = { stamp, xml };
+  return xml;
+}
+
 let akakceMirrorTimer = null;
 let akakceMirrorRunning = false;
 let eventLoopLagMs = 0;
@@ -2833,11 +2852,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (urlPath === "/sitemap.xml" || urlPath === "/sitemap") {
-    const xml = buildStorefrontSitemap({
-      baseUrl: SITE_BASE_URL || "https://patygoteknoloji.com",
-      categories: categoryStore.list().filter((row) => row && row.active !== false),
-      routeIndex: storefrontIndex(false).routeIndex,
-    });
+    const xml = storefrontSitemapXml();
     res.writeHead(
       200,
       securityHeaders({

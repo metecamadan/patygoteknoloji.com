@@ -55,6 +55,7 @@ test("sitemap lists category pages and omits checkout surfaces", () => {
 test("server builds dynamic storefront sitemap and bare category redirects", () => {
   const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
   assert.match(server, /buildStorefrontSitemap/);
+  assert.match(server, /storefrontSitemapXml/);
   assert.match(server, /urlPath === "\/sitemap\.xml" \|\| urlPath === "\/sitemap"/);
   assert.match(server, /categoryHref\(parent\.slug\)/);
 });
