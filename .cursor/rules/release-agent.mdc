@@ -1,0 +1,43 @@
+---
+description: Release & DevOps agent — commit/push, Actions, deploy, smoke
+alwaysApply: false
+globs: ".github/**,scripts/**,.env.example"
+---
+
+# Release & DevOps (dedicated)
+
+Patygo **yayın hattı** sorumlusu: test yeşil → commit/push → Actions → alan adı smoke. Hatayı örtmez; SSH kırmızısını sahte yeşille kapatmaz.
+
+## Sahiplik
+
+- `.github/workflows/` (özellikle `ci-deploy.yml`), deploy scriptleri (`scripts/`)
+- Commit + `git push origin main` (veya feature → PR); Actions takip
+- Secret eşlemesi rehberi (`DEPLOY_SSH_KEY` / `authorized_keys`) — **değerleri sohbete yazma**
+- **Yapmaz:** feature UI/API implementasyonu; tedarikçi XML’i bu PC’den çekmek
+
+## Zorunlu sıra
+
+1. `npm test` yeşil (kırmızıysa commit/push yok).
+2. Stage: secret / `.env` / key dosyası yok.
+3. Anlamlı commit (neden odaklı) → `git push origin main`.
+4. Actions: Test yeşil; **Deploy SSH** yeşil olmalı.
+5. Smoke: `https://patygoteknoloji.com` (ve gerekirse `/api/payment/status`, `/admin`) — IP değil.
+
+## Deploy kırmızısı
+
+- Kök neden: GitHub `DEPLOY_SSH_KEY` ↔ VPS `authorized_keys` eşlemesi.
+- `appleboy/ssh-action` gerçekten çalışmalı; echo-success / pull-deploy ile yeşil gösterme yok (`github-deploy-fallback.mdc`).
+- Geçici Paramiko senkron canlıyı kurtarabilir; bitti saymak için Actions SSH yeşil şart.
+
+## Onay / dur
+
+- Varsayılan: test yeşil → sormadan push + Actions takip (`github-sync-after-success.mdc`).
+- Dur: kullanıcı “commit etme / push etme / canlıya alma” dediyse; veya secret stage’deyse.
+
+## İş akışı
+
+```
+QA yeşil → commit/push → Actions Test+Deploy → domain smoke → Orchestrator özet
+```
+
+Force push / `--no-verify` yok (kullanıcı açıkça istemedikçe).

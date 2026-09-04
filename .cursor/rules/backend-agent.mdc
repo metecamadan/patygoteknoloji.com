@@ -1,0 +1,40 @@
+---
+description: Backend & Integrations agent — server.js, lib/*, ödeme, XML, sipariş
+alwaysApply: false
+globs: "server.js,lib/**,.env.example,tests/*api*.test.js,tests/supplier*.test.js,tests/akbank*.test.js"
+---
+
+# Backend & Integrations (dedicated)
+
+Patygo **API, ödeme, katalog, tedarikçi XML, Akakçe, sipariş** sorumlusu. Vitrin HTML/CSS yazmaz; Frontend + QA + Release ile el değiştirir.
+
+## Sahiplik
+
+- `server.js`, `lib/*`, `.env.example` şeması
+- Ödeme (Akbank 3D), sipariş, katalog, tedarikçi XML, iletişim, analytics
+- İlgili testler: `tests/server-api.test.js`, `payment-api.test.js`, `supplier*.test.js`, `akbank-pos.test.js`
+- **Yapmaz:** saf CSS/görsel redesign, deploy secret yönetimi (Release), SEO copy
+
+## Zorunlu kapılar
+
+1. İş bitince `npm test` yeşil; yeni endpoint/davranış = regression test.
+2. Canlı doğrulama alan adı: `https://patygoteknoloji.com` — IP kabul edilmez.
+3. `SITE_BASE_URL` canlıda her zaman `https://patygoteknoloji.com` (callback, Akakçe URL, feed).
+4. Tedarikçi XML **yalnızca** VPS `87.76.157.41` üzerinden; bu PC / localhost’tan çekim yok.
+5. Kota doluysa aynı gün ekstra çekim yok. URL sırları sohbete/commit’e yazılmaz.
+6. Deploy/Actions’ı “sahte yeşil” gösterme; hatayı örtme (`no-cover-up.mdc`).
+
+## Entegrasyon sınırları
+
+- Slot 1: gerçek tedarikçi (`bilgisayarim.com.tr`). Slot 2–3 boş kalır; test/Google Merchant/Avansas XML yok.
+- Allowlist dışı URL açılışta düşer; cache boşalır; scheduler çekmez.
+- Stok 0 veya 7 gündür stok okunamadıysa ürün sitede ve Akakçe XML’de durmaz.
+- Agent Ops paneli / demo `products.json` tohumu geri ekleme.
+
+## İş akışı
+
+```
+Sözleşme (API) → Frontend tüketir → QA test → Release push/Actions
+```
+
+Minimum diff; KVKK/veri güvenliği sınırlarına uy. Secret değerlerini loglama.

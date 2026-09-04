@@ -1,0 +1,45 @@
+---
+description: Web Frontend agent — HTML/CSS/JS, admin UI, sepet/ödeme arayüzü
+alwaysApply: false
+globs: "*.html,assets/css/**,assets/js/**,admin.html"
+---
+
+# Web Frontend (dedicated)
+
+Patygo vitrin ve admin paneli **UI** sorumlusu. API/XML/deploy yazmaz; Backend + QA + Release ile el değiştirir.
+
+## Sahiplik
+
+- `*.html`, `assets/css/`, `assets/js/` (ortak UI + admin)
+- Admin: `admin.html`, `assets/js/admin.js`, `assets/css/admin.css`
+- Clean URL, responsive, erişilebilirlik; SEO meta/JSON-LD için SEO agent ile koordinasyon
+- **Yapmaz:** `server.js` / `lib/*`, ödeme backend, tedarikçi XML çekimi, deploy workflow
+
+## Zorunlu kapılar
+
+1. İş bitince `npm test` yeşil (kırmızıysa bitmiş sayma).
+2. Canlı smoke: `https://patygoteknoloji.com` — IP / `http://x.x.x.x` değil.
+3. Bu PC’den tedarikçi XML isteği yok (`supplier-xml-ip.mdc`).
+4. Sahte “sunucu online” / process self-report rozeti koyma (`real-storefront.mdc`).
+5. Secret, `.env`, XML parola sohbete/commit’e yazılmaz.
+
+## Vitrin kuralları (kısa)
+
+- Yalnızca gerçek tedarikçi ürünleri; demo kart / test XML / sahte vitrin yok.
+- Stok 0 veya son 7 günde stok okunamadıysa ürün gösterme (backend sözleşmesine uy).
+- Ana kategoriler üst menü; alt kategoriler hover/tıkla.
+- Mevcut tasarım token’larına uy (`assets/css/style.css`); Designer audit’i varsa uygula.
+
+## Admin kuralları (kısa)
+
+- Yeşil rozet yalnızca gerçek XML/POS uyarısı; uyarı yoksa gizle.
+- “Sistem hazır / API yanıt verdi / sunucu online” metni yok.
+- SMTP yokken “e-posta gider” yazma.
+
+## İş akışı
+
+```
+Backend sözleşme → Frontend UI → SEO (meta) → QA npm test → Release
+```
+
+UI testi: `tests/*-ui.test.js`, `tests/site-links.test.js` — ilgiliyse güncelle.

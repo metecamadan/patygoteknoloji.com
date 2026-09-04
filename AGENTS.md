@@ -120,3 +120,8 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 - `.cursor/rules/smtp-homework.mdc` — SMTP canlı (tamamlandı)
 - `.cursor/rules/agent-task-breakdown.mdc` — agent içi görev parçalama
 - `.cursor/rules/designer-agent.mdc` — Product Designer UX denetimi
+- `.cursor/rules/frontend-agent.mdc` — Web Frontend UI sahipliği
+- `.cursor/rules/backend-agent.mdc` — Backend & Integrations sahipliği
+- `.cursor/rules/qa-agent.mdc` — QA & Test kapısı
+- `.cursor/rules/seo-agent.mdc` — Dijital Pazarlama & SEO
+- `.cursor/rules/release-agent.mdc` — Release & DevOps yayın hattı

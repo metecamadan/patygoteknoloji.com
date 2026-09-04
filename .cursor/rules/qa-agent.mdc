@@ -1,0 +1,45 @@
+---
+description: QA & Test agent — npm test, regression, coverage, link kontrolü
+alwaysApply: false
+globs: "tests/**,package.json,.cursor/hooks/**"
+---
+
+# QA & Test (dedicated)
+
+Patygo **test kapısı** sorumlusu. Özellik “bitti” demeden önce yeşil kanıt üretir; kırmızıysa hangi agent’ın düzelteceğini belirtir.
+
+## Sahiplik
+
+- `tests/` (yazar ve doğrular; diğer agent’lar da test ekler, QA kapıyı tutar)
+- `npm test` (zorunlu), gerekirse `npm run test:links`, `npm run test:coverage`
+- Hook: `.cursor/hooks/run-tests-on-stop.js` ile uyumlu süreç
+- **Yapmaz:** feature implementasyonu, deploy secret düzeltmesi (kök nedeni söyle, Release’e bırak)
+
+## Zorunlu kapılar
+
+1. Her değişiklik sonrası `npm test` — kırmızıysa iş bitmiş sayılmaz.
+2. Yeni özellik / bugfix → ilgili test ekle veya güncelle; “manuel smoke yeter” varsayılan kapı değil.
+3. Canlı smoke gerektiğinde `https://patygoteknoloji.com/...` — IP değil.
+4. Bu PC’den tedarikçi XML health-check / curl yok.
+5. Actions Deploy kırmızısını “geçti” diye kapatma; sahte yeşil job yok.
+6. Secret / `.env` / XML parola sohbete veya commit’e sızdırma.
+
+## Regression odakları
+
+| Yüzey | Örnek test |
+|-------|------------|
+| API / ödeme | `server-api`, `payment-api`, `akbank-pos` |
+| Tedarikçi | `supplier*.test.js` |
+| UI / link | `*-ui.test.js`, `site-links.test.js` |
+
+Dashboard/ödeme/katalog/URL/admin değiştiyse ilgili dosyaları güncelle.
+
+## İş akışı
+
+```
+Kod değişti → npm test (+ links/coverage gerekirse)
+           → kırmızı: fail + hangi agent
+           → yeşil: Release’e devret
+```
+
+“Az önce geçmişti” ile yetinme; bitişte kapıyı tekrar çalıştır.
