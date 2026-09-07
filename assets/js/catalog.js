@@ -1258,10 +1258,11 @@
 
   function featuredListForFilter(filter, byParent, mixed) {
     if (filter === "all") {
-      let list = mixFeatured(byParent, FEATURED_PER_CATEGORY);
-      if (!list.length && Array.isArray(mixed) && mixed.length) {
-        list = mixed.slice(0, FEATURED_PER_CATEGORY);
+      // Sunucunun popüler (Akakçe market + satış) sıralı "tümü" listesini tercih et
+      if (Array.isArray(mixed) && mixed.length) {
+        return mixed.slice(0, FEATURED_PER_CATEGORY);
       }
+      let list = mixFeatured(byParent, FEATURED_PER_CATEGORY);
       if (!list.length) {
         list = (window.PatygoCatalog.list || []).slice(0, FEATURED_PER_CATEGORY);
       }
@@ -1288,10 +1289,10 @@
     const show = async (filter) => {
       tabs.forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === filter));
       let list = featuredListForFilter(filter, byParent, mixed);
-      if (!list.length && filter !== "all") {
+      if (!list.length) {
         try {
           const page = await fetchProductPage({
-            kategori: filter,
+            kategori: filter !== "all" ? filter : undefined,
             limit: FEATURED_PER_CATEGORY,
             sort: "popular",
           });

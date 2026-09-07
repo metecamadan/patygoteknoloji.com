@@ -382,8 +382,9 @@ test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
     assert.equal(featured.byParent[slug].length, 12);
   });
   assert.equal(featured.products.length, 12);
+  // "Tümü" global popüler sıralama: en yüksek skorlar önce (kategori round-robin değil)
   assert.equal(featured.products[0].id, "bilgisayar-tablet-3");
-  assert.equal(featured.products[4].id, "yapi-gerecleri-1");
+  assert.equal(featured.products[1].id, "yapi-gerecleri-1");
 });
 
 test("isHomeFeaturedSnapshotValid rejects incomplete featured snapshots", () => {
@@ -401,6 +402,44 @@ test("isHomeFeaturedSnapshotValid rejects incomplete featured snapshots", () => 
       byParent: { "bilgisayar-tablet": [{ id: "a" }] },
     }),
     true
+  );
+});
+
+test("homeFeaturedCatalog Tümü list ranks global popularity before category mix", () => {
+  const { homeFeaturedCatalog } = require("../lib/catalog");
+  const products = [
+    {
+      id: "low-bt",
+      name: "Sakin Tablet",
+      brand: "NO-NAME",
+      price: 100,
+      category: "bilgisayar-tablet",
+      active: true,
+    },
+    {
+      id: "hot-toner",
+      name: "HP Muadil Toner",
+      brand: "NO-NAME",
+      price: 100,
+      category: "kartus-toner",
+      active: true,
+    },
+    {
+      id: "mid-comp",
+      name: "RTX 4060 Ekran Kartı",
+      brand: "MSI",
+      price: 5000,
+      category: "bilgisayar-bilesenleri",
+      active: true,
+    },
+  ];
+  const featured = homeFeaturedCatalog(products, {
+    popularity: { "hot-toner": 900, "mid-comp": 100 },
+    limit: 3,
+  });
+  assert.deepEqual(
+    featured.products.map((row) => row.id),
+    ["hot-toner", "mid-comp", "low-bt"]
   );
 });
 
