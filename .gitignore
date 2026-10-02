@@ -32,3 +32,6 @@ node_modules/
 dist/
 .tmp/
 .runtime/
+
+# Tek seferlik yerel teşhis/deploy yardımcıları (scripts/_*); kalıcı olanlar `git add -f` ile eklenir
+scripts/_*

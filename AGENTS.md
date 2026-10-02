@@ -88,10 +88,10 @@ Kullanıcı isteği
 ## Test ortamı
 
 ```bash
-cd /Users/camadan/Patygoteknoloji
+cd C:\Users\mcamadan\Desktop\Patygoteknoloji.com
 npm install          # veya npm ci
 cp .env.example .env # ilk kurulum
-npm test             # 55 test — her işten sonra
+npm test             # tüm testler — her işten sonra yeşil olmalı
 npm start            # http://localhost:5173
 ```
 
@@ -111,6 +111,7 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 
 ## Kurallar
 
+- `.cursor/rules/unutulmayanlar.mdc` — kullanıcının kalıcı "Unutulmayanlar" listesi (önce test → GitHub → canlı)
 - `.cursor/rules/real-storefront.mdc` — gerçek vitrin, test XML yok, Agent Ops yok
 - `.cursor/rules/test-and-deploy.mdc` — test kapısı, alan adı, canlı doğrulama
 - `.cursor/rules/github-sync-after-success.mdc` — başarılı akışta GitHub güncelleme

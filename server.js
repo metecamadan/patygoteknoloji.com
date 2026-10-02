@@ -3199,9 +3199,8 @@ const supplierScheduler = createSupplierScheduler({
     enqueueXmlCategorySync(slotId);
     scheduleAkakceImageMirror();
   },
-  log: (message, slotId, key) => console.log(message, slotId, key),
-  logError: (message, slotId, key, detail) =>
-    console.error(message, slotId, key, detail || ""),
+  log: (...parts) => console.log(...parts),
+  logError: (...parts) => console.error(...parts),
 });
 supplierScheduler.start();
 setImmediate(() => {

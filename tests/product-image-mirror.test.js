@@ -111,6 +111,41 @@ test("mirrorAkakceCatalogImages downloads supplier images to local media", async
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
+test("mirrorAkakceCatalogImages does not retry 404 images until the retry window passes", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-mirror-404-"));
+  const missing = "https://cdn.bilgisayarim.com.tr/images/missing.jpg";
+  const flaky = "https://cdn.bilgisayarim.com.tr/images/flaky.jpg";
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    return { ok: false, status: url === missing ? 404 : 500, headers: { get: () => "" } };
+  };
+  const products = [
+    feedReadyProduct({ id: "a", image: missing, images: [missing] }),
+    feedReadyProduct({ id: "b", image: flaky, images: [flaky] }),
+  ];
+  const base = {
+    dataRoot: tmp,
+    siteBaseUrl: "https://patygoteknoloji.com",
+    fetchImpl,
+    resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+  };
+  const now = Date.parse("2026-10-03T00:00:00Z");
+
+  await mirrorAkakceCatalogImages(products, Object.assign({ now }, base));
+  assert.deepEqual(calls.sort(), [flaky, missing].sort());
+
+  calls.length = 0;
+  const second = await mirrorAkakceCatalogImages(products, Object.assign({ now: now + 60000 }, base));
+  assert.deepEqual(calls, [flaky], "404 skipped, transient 500 retried");
+  assert.equal(second.skippedNotFound, 1);
+
+  calls.length = 0;
+  await mirrorAkakceCatalogImages(products, Object.assign({ now: now + 8 * 24 * 60 * 60 * 1000 }, base));
+  assert.deepEqual(calls.sort(), [flaky, missing].sort(), "retried after 7 days");
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
 test("server exposes mirrored catalog media route and mirror scheduler", () => {
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /\/media\/catalog\//);
