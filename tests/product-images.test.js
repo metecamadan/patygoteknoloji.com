@@ -4,8 +4,24 @@ const {
   filterSupplierGalleryImages,
   supplierImageFullUrl,
   isSupplierThumbnailUrl,
+  mirrorIndexHasEntries,
 } = require("../lib/product-images");
 const { toPublicProduct } = require("../lib/catalog");
+
+test("mirrorIndexHasEntries handles empty, null and filled indexes", () => {
+  assert.equal(mirrorIndexHasEntries(null), false);
+  assert.equal(mirrorIndexHasEntries(undefined), false);
+  assert.equal(mirrorIndexHasEntries({}), false);
+  assert.equal(mirrorIndexHasEntries({ "https://x/1.jpg": { publicPath: "/m/1.jpg" } }), true);
+});
+
+test("mirrorIndexHasEntries stays fast on large mirror indexes (catalog startup)", () => {
+  const index = {};
+  for (let i = 0; i < 20000; i += 1) index["https://resim.example/" + i + ".jpg"] = { file: i + ".jpg" };
+  const started = Date.now();
+  for (let i = 0; i < 100000; i += 1) mirrorIndexHasEntries(index);
+  assert.ok(Date.now() - started < 1000, "per-product checks must not enumerate all keys");
+});
 
 test("filterSupplierGalleryImages removes _th when full image exists", () => {
   const images = filterSupplierGalleryImages([

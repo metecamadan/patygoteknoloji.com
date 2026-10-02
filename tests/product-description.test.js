@@ -150,6 +150,19 @@ test("buildSpecRows covers PSU, network, UPS and peripheral titles", () => {
   assert.ok(mouseRows.some((row) => row.label === "DPI" && /25600/.test(row.value)));
 });
 
+test("buildSpecRows never repeats a label (Turkish case-insensitive)", () => {
+  const names = [
+    LENOVO_V15,
+    'Power Boost PowerBoost 24" PB-M24VH 5ms 1920x1080 FHD 75Hz TN Panel VGA+HDMI Slim Frame PC Monitör',
+    "Kingston 16GB DDR5 5600MHz CL40 DIMM Bellek",
+    "Kablo",
+  ];
+  for (const name of names) {
+    const labels = buildSpecRows({ name }).map((row) => row.label.toLocaleLowerCase("tr-TR"));
+    assert.equal(new Set(labels).size, labels.length, name);
+  }
+});
+
 test("buildSpecRows pads sparse titles to minimum content rows", () => {
   const rows = buildSpecRows({
     brand: "Patygo",
