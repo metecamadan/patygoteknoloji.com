@@ -1,0 +1,21 @@
+---
+description: Kullanıcının "Unutulmayanlar" listesi — her işte uyulacak kalıcı kurallar
+alwaysApply: true
+---
+
+# Unutulmayanlar listesi
+
+Bu liste kullanıcının kalıcı kurallarıdır. Her işte uy.
+
+## Liste nasıl yönetilir
+
+- Kullanıcı "Unutulmayan listeye ekle: ..." (veya benzeri) dediğinde maddeyi aşağıya **numaralı** ekle, eklenme tarihini yaz, güncel listeyi sohbette göster.
+- Madde değişir/silinirse kullanıcının açık talebiyle yap.
+- Arada hatırlat: büyük bir işe başlarken ve bir işi canlıya almadan önce listeyi kısaca kullanıcıya göster.
+
+## Maddeler
+
+1. **Başarılı iş sırası: önce test → sonra GitHub → sonra canlı.** (2 Eki 2026)
+   - `npm test` yeşil olmadan commit/push yok.
+   - GitHub `main` push + Actions yeşil olmadan canlı "bitti" sayılmaz.
+   - Canlı doğrulama alan adıyla: `https://patygoteknoloji.com`.

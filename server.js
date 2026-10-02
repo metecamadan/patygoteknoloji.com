@@ -54,7 +54,15 @@ const {
   decidePaymentFromBank,
   publicPosStatus,
   formatAmount,
+  executeBankReversal,
 } = require("./lib/akbank-pos");
+const {
+  createBankReversalConfig,
+  buildReversalPreview,
+  buildReversalEvent,
+  sanitizeReversalResponse,
+  publicBankReversalStatus,
+} = require("./lib/akbank-reversal");
 const { createOrderStore, ORDER_STATUSES, ADMIN_FULFILLMENT_STATUSES } = require("./lib/orders");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
@@ -216,6 +224,7 @@ const consentStore = createConsentStore(DATA_ROOT);
 const auditStore = createAuditStore(DATA_ROOT);
 const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
+const bankReversalConfig = createBankReversalConfig(process.env, akbankConfig);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 const contactAttempts = new Map(); // IP -> { count, resetAt }
 const adminLoginAttempts = new Map(); // IP -> { count, resetAt }
@@ -1205,6 +1214,23 @@ function requireOwner(req, res) {
   return true;
 }
 
+function reversalReasonMessage(reason) {
+  const map = {
+    order_missing: "Sipariş bulunamadı.",
+    not_paid: "Yalnızca ödemesi alınmış siparişlerde banka iadesi yapılabilir.",
+    missing_bank_success_evidence: "Banka başarı kanıtı (VPS-0000) olmadan iade yapılamaz.",
+    already_reversed: "Bu siparişin tutarı zaten iade edilmiş.",
+    shipped_use_refund_not_void: "Kargoya verilmiş siparişte void yerine iade (refund) kullanın.",
+    invalid_amount: "Geçersiz iade tutarı.",
+    amount_exceeds_remaining: "İade tutarı kalan tutarı aşıyor.",
+    customer_email_required:
+      "Müşteri e-posta adresi zorunlu (Akbank iade API). Siparişte e-posta yok.",
+    void_only_same_day: "Void yalnızca ödeme günü (İstanbul) içinde yapılabilir.",
+    void_requires_full_amount: "Void yalnızca kalan tutarın tamamı için uygulanır.",
+  };
+  return map[String(reason || "")] || "Banka iadesi/iptali şu an yapılamaz.";
+}
+
 function passwordChangeBlocksAdmin(req, res, pathName) {
   const session = getSession(req);
   if (!session || !session.mustChangePassword) return false;
@@ -1265,7 +1291,9 @@ async function sendCalendarReminderMail(entry, kind) {
 
 async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/payment/status") {
-    return json(res, 200, publicPosStatus(akbankConfig));
+    return json(res, 200, Object.assign({}, publicPosStatus(akbankConfig), {
+      bankReversal: publicBankReversalStatus(bankReversalConfig),
+    }));
   }
 
   if (req.method === "GET" && urlPath === "/api/shipping") {
@@ -2066,6 +2094,118 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  const adminOrderReversalMatch = /^\/api\/admin\/orders\/([^/]+)\/bank-reversal$/.exec(urlPath);
+  if (adminOrderReversalMatch && req.method === "POST") {
+    if (!requireOwner(req, res)) return;
+    const orderId = decodeURIComponent(adminOrderReversalMatch[1]);
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const order = orderStore.get(orderId);
+      if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+      const clientIp =
+        String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1")
+          .split(",")[0]
+          .trim() || "127.0.0.1";
+      const preview = buildReversalPreview(order, bankReversalConfig, {
+        action: body.action || "auto",
+        amount: body.amount,
+        clientIp,
+      });
+      if (!preview.ok) {
+        return json(res, 400, {
+          ok: false,
+          error: reversalReasonMessage(preview.reason),
+          reason: preview.reason,
+          preview,
+        });
+      }
+      if (body.dryRun === true || body.preview === true) {
+        return json(res, 200, { ok: true, dryRun: true, preview });
+      }
+      if (body.confirm !== true) {
+        return json(res, 400, {
+          ok: false,
+          error: "Banka iadesi için confirm:true gönderin.",
+          preview,
+        });
+      }
+      if (!bankReversalConfig.canCallBank) {
+        return json(res, 503, {
+          ok: false,
+          error:
+            "Banka iadesi API kapalı. Test için AKBANK_BANK_REVERSAL_ENABLED=true ve AKBANK_TEST_MODE=true; canlı için ayrıca AKBANK_BANK_REVERSAL_LIVE=true gerekir.",
+          preview,
+        });
+      }
+      const session = getSession(req);
+      const result = await executeBankReversal(akbankConfig, preview.plan);
+      const successAttempt = (result.attempts || []).find((row) => row.success);
+      const sanitized = sanitizeReversalResponse(
+        (successAttempt && successAttempt.response) || (result.attempts && result.attempts[0] && result.attempts[0].response)
+      );
+      const event = buildReversalEvent({
+        type: result.method || (successAttempt && successAttempt.type) || "unknown",
+        amount: result.amount || preview.plan.amount,
+        success: Boolean(result.ok),
+        dryRun: false,
+        response: sanitized,
+        actorId: session && session.userId,
+      });
+      const updated = orderStore.recordBankReversal(orderId, {
+        event,
+        success: Boolean(result.ok),
+        dryRun: false,
+      });
+      auditStore.record({
+        actorType: "admin_user",
+        actorId: session && session.userId,
+        action: result.ok ? "order.bank_reversal_ok" : "order.bank_reversal_fail",
+        entityType: "order",
+        entityId: orderId,
+        detail: {
+          method: result.method,
+          amount: result.amount,
+          responseCode: result.responseCode || sanitized.responseCode,
+          attempts: (result.attempts || []).map((row) => ({
+            type: row.type,
+            success: row.success,
+            responseCode: row.response && row.response.responseCode,
+          })),
+        },
+      });
+      if (!result.ok) {
+        return json(res, 502, {
+          ok: false,
+          error: result.responseMessage || "Banka iadesi/iptali reddedildi.",
+          responseCode: result.responseCode,
+          attempts: result.attempts,
+          order: updated,
+          preview,
+        });
+      }
+      let mailResult = null;
+      try {
+        mailResult = await sendOrderStatusMail(updated, "refunded", { store: orderStore });
+      } catch (err) {
+        console.error("order refunded mail failed:", err.message);
+      }
+      return json(res, 200, {
+        ok: true,
+        method: result.method,
+        amount: result.amount,
+        order: updated,
+        attempts: result.attempts,
+        mailSent: Boolean(mailResult && mailResult.sent),
+        preview,
+      });
+    } catch (err) {
+      return json(res, 502, {
+        ok: false,
+        error: (err && err.message) || "Banka iadesi işlenemedi.",
+      });
+    }
+  }
+
   const adminOrderMatch = /^\/api\/admin\/orders\/([^/]+)$/.exec(urlPath);
   if (adminOrderMatch) {
     const orderId = decodeURIComponent(adminOrderMatch[1]);
@@ -2079,6 +2219,7 @@ async function handleApi(req, res, urlPath) {
         statusMails: orderStore.listStatusMails(orderId),
         bizimhesap: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
         bizimhesapConfigured: bizimhesapConfigured(process.env),
+        bankReversal: buildReversalPreview(order, bankReversalConfig, { action: "auto" }),
       });
     }
     if (req.method === "PATCH") {
@@ -2146,15 +2287,17 @@ async function handleApi(req, res, urlPath) {
             });
           }
           if (!shippingSave) {
+            if (status === "refunded") {
+              return json(res, 400, {
+                ok: false,
+                error:
+                  "İade durumu yalnızca “Banka iadesi/iptal” işlemi başarılı olunca güncellenir.",
+              });
+            }
             if (!ADMIN_FULFILLMENT_STATUSES.has(status)) {
               return json(res, 400, { ok: false, error: "Bu durum panelden seçilemez." });
             }
             patch.status = status;
-            if (status === "refunded") {
-              if (!requireOwner(req, res)) return;
-              patch.paymentStatus = "refunded";
-              patch.paymentTaken = false;
-            }
           }
         } else if (!shippingSave) {
           return json(res, 400, { ok: false, error: "Durum veya kargo bilgisi gerekli." });

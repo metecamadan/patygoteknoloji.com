@@ -50,7 +50,7 @@ test("order mail templates define paid, preparing, shipped, cancelled and refund
   assert.equal(ORDER_MAIL_TEMPLATES.preparing.subject, "Siparişiniz hazırlanıyor");
   assert.equal(ORDER_MAIL_TEMPLATES.shipped.subject, "Siparişiniz kargoda");
   assert.equal(ORDER_MAIL_TEMPLATES.cancelled.subject, "Siparişiniz iptal edildi");
-  assert.equal(ORDER_MAIL_TEMPLATES.refunded.subject, "Sipariş iadeniz işleme alındı");
+  assert.equal(ORDER_MAIL_TEMPLATES.refunded.subject, "Ödemeniz iade edildi");
   assert.equal(ORDER_MAIL_TEMPLATES.invoice.subject, "Sipariş faturanız");
   assert.ok(NOTIFY_STATUSES.has("refunded"));
 });

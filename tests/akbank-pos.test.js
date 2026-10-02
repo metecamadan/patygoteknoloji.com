@@ -179,3 +179,110 @@ test("decidePaymentFromBank never demotes paid and rejects amount mismatch", () 
   assert.equal(keep.paid, true);
   assert.equal(keep.outcome, "already_paid_keep");
 });
+
+test("void and refund request bodies use JSON API txn codes", () => {
+  const {
+    buildVoidRequestBody,
+    buildRefundRequestBody,
+    hashJsonBody,
+    executeBankReversal,
+    TXN_VOID,
+    TXN_REFUND,
+  } = require("../lib/akbank-pos");
+  const config = {
+    merchantSafeId: "merchant-1",
+    terminalSafeId: "terminal-1",
+    secretKey: "test-secret",
+    testMode: true,
+  };
+  const plan = {
+    orderId: "PTY-VOID-1",
+    amount: "99.50",
+    currency: "TRY",
+    clientIp: "127.0.0.1",
+    emailAddress: "musteri@example.com",
+    requestDateTime: "2026-08-31T12:00:00.000",
+    randomNumber: "R".repeat(64),
+  };
+  const voidBody = buildVoidRequestBody(config, plan);
+  assert.equal(voidBody.txnCode, TXN_VOID);
+  assert.equal(voidBody.order.orderId, "PTY-VOID-1");
+  assert.equal(voidBody.customer.emailAddress, "musteri@example.com");
+
+  const refundBody = buildRefundRequestBody(config, plan);
+  assert.equal(refundBody.txnCode, TXN_REFUND);
+  assert.equal(refundBody.transaction.amount, "99.50");
+  assert.equal(refundBody.transaction.currencyCode, 949);
+
+  const jsonBody = JSON.stringify(voidBody);
+  assert.equal(typeof hashJsonBody(jsonBody, config.secretKey), "string");
+});
+
+test("executeBankReversal void success skips refund and uses mock fetch", async () => {
+  const { executeBankReversal } = require("../lib/akbank-pos");
+  const config = {
+    merchantSafeId: "merchant-1",
+    terminalSafeId: "terminal-1",
+    secretKey: "test-secret",
+    testMode: true,
+  };
+  const plan = {
+    orderId: "PTY-EXEC-1",
+    amount: "10.00",
+    currency: "TRY",
+    clientIp: "127.0.0.1",
+    emailAddress: "musteri@example.com",
+    tryVoid: true,
+    tryRefund: true,
+    requestDateTime: "2026-08-31T12:00:00.000",
+    randomNumber: "R".repeat(64),
+  };
+  let calls = 0;
+  const mockFetch = async () => {
+    calls += 1;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ responseCode: "VPS-0000", responseMessage: "OK" }),
+    };
+  };
+  const result = await executeBankReversal(config, plan, mockFetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.method, "void");
+  assert.equal(calls, 1);
+});
+
+test("executeBankReversal falls back to refund when void fails", async () => {
+  const { executeBankReversal } = require("../lib/akbank-pos");
+  const config = {
+    merchantSafeId: "merchant-1",
+    terminalSafeId: "terminal-1",
+    secretKey: "test-secret",
+    testMode: true,
+  };
+  const plan = {
+    orderId: "PTY-EXEC-2",
+    amount: "10.00",
+    currency: "TRY",
+    clientIp: "127.0.0.1",
+    emailAddress: "musteri@example.com",
+    tryVoid: true,
+    tryRefund: true,
+    requestDateTime: "2026-08-31T12:00:00.000",
+    randomNumber: "R".repeat(64),
+  };
+  let calls = 0;
+  const mockFetch = async () => {
+    calls += 1;
+    const code = calls === 1 ? "VPS-9999" : "VPS-0000";
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ responseCode: code, responseMessage: code }),
+    };
+  };
+  const result = await executeBankReversal(config, plan, mockFetch);
+  assert.equal(result.ok, true);
+  assert.equal(result.method, "refund");
+  assert.equal(calls, 2);
+});
