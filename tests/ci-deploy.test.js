@@ -51,6 +51,13 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /\/api\/payment\/status/);
   assert.match(workflow, /while \[ "\$i" -lt 30 \]/);
   assert.match(workflow, /data-catalog-infinite/);
+  assert.match(workflow, /set -euo pipefail/);
+  assert.doesNotMatch(
+    workflow,
+    /curl [^\n|]*\|\s*grep -q/,
+    "under pipefail, curl | grep -q fails with curl (23) on large bodies once grep exits early"
+  );
+  assert.match(workflow, /fetch_has "http:\/\/127\.0\.0\.1:\$\{APP_PORT\}\/sitemap" 'urunler\/'/);
   assert.match(workflow, /ensure-sitemap-nginx\.sh/);
   assert.match(workflow, /ensure-product-shell-nginx\.sh/);
   assert.match(workflow, /ensure-agent-ssh-key\.sh/);
