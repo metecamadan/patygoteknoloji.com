@@ -2577,6 +2577,11 @@ async function handleApi(req, res, urlPath) {
       invalidateStorefrontCatalog();
       warmStorefrontCatalog();
       scheduleAkakceFeedSummaryWarm();
+      // A product newly placed in the menu has never been a storefront candidate, so its
+      // images were never mirrored; without this it stays hidden until the next XML read.
+      if (updates.some((row) => row && (row.siteCategoryManual === true || row.active === true))) {
+        scheduleAkakceImageMirror();
+      }
       return json(res, 200, {
         ok: true,
         feedCount: null,

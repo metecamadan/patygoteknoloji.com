@@ -166,6 +166,17 @@ test("mirror scheduler feeds on storefront candidates, not the image-gated merge
   assert.doesNotMatch(body, /mergedProducts\(|storefrontCatalogMemo/);
 });
 
+test("panel category move or publish schedules the image mirror instead of waiting for the next XML read", () => {
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const start = serverJs.indexOf('req.method === "PATCH" && urlPath === "/api/admin/supplier/products"');
+  assert.ok(start > 0);
+  const body = serverJs.slice(start, start + 2000);
+  assert.match(
+    body,
+    /row\.siteCategoryManual === true \|\| row\.active === true\)\)\) \{\s*scheduleAkakceImageMirror\(\);/
+  );
+});
+
 test("new XML product without a mirrored image is mirrored and then reaches the storefront", async () => {
   const { mergeCatalogProducts, supplierStorefrontCandidates } = require("../lib/catalog");
   const { TEST_SITE_CATEGORIES } = require("./helpers/site-categories");
