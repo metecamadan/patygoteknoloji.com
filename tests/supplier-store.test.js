@@ -446,6 +446,53 @@ test("unlisted override survives publish re-activation and clears explicitly", a
   }
 });
 
+test("one override change re-hydrates only that row and copy is generated lazily", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-incremental-"));
+  const twoProducts = SAMPLE_XML.replace(
+    "</product></products>",
+    `</product><product>
+  <StokKodu>SKU-2</StokKodu>
+  <UrunAdi>İkinci Ürün</UrunAdi>
+  <Marka>Patygo</Marka>
+  <Fiyat>200</Fiyat>
+  <Stok>2</Stok>
+  <Kategori>Bilgisayar</Kategori>
+  <ResimUrl>https://cdn.example/sku-2.jpg</ResimUrl>
+</product></products>`
+  );
+  const store = createSupplierStore(root, {
+    allowedHosts: ["supplier.example"],
+    defaultMarginPercent: 20,
+    validateUrl: async (raw) => new URL(raw),
+    fetchXml: async () => twoProducts,
+  });
+  try {
+    installTestSiteCategories(root);
+    await store.saveUrl("https://supplier.example/feed.xml");
+    await store.refresh();
+    const first = store.listProducts();
+    assert.equal(first.length, 2);
+    assert.ok(first.every((item) => item.copyEnriched === false));
+    assert.equal(store.listProducts(), first, "unchanged files return the memoized list");
+
+    store.updateOverrides([{ supplierSku: "SKU-1", marginPercent: 50 }]);
+    const second = store.listProducts();
+    assert.notEqual(second, first);
+    const sku1 = second.find((item) => item.supplierSku === "SKU-1");
+    const sku2 = second.find((item) => item.supplierSku === "SKU-2");
+    assert.equal(sku1.marginPercent, 50);
+    assert.notEqual(sku1, first.find((item) => item.supplierSku === "SKU-1"));
+    assert.equal(sku2, first.find((item) => item.supplierSku === "SKU-2"), "untouched row reused");
+
+    const byId = store.getProductById(sku2.id);
+    assert.equal(byId.copyEnriched, true);
+    assert.ok(byId.description);
+  } finally {
+    clearTestSiteCategories();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("disallowed stored feed host is dropped and cache is emptied", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-dropfeed-"));
   const runtime = path.join(root, ".runtime");

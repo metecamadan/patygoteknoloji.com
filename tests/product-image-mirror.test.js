@@ -152,3 +152,100 @@ test("server exposes mirrored catalog media route and mirror scheduler", () => {
   assert.match(serverJs, /scheduleAkakceImageMirror/);
   assert.match(serverJs, /mirrorAkakceCatalogImages/);
 });
+
+test("mirror scheduler feeds on storefront candidates, not the image-gated merged catalog", () => {
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const start = serverJs.indexOf("function scheduleAkakceImageMirror");
+  const end = serverJs.slice(start).search(/\r?\n\}\r?\n/);
+  const body = serverJs
+    .slice(start, start + end)
+    .split(/\r?\n/)
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n");
+  assert.match(body, /supplierStorefrontCandidates\(supplierManager\.listProducts\(\)\)/);
+  assert.doesNotMatch(body, /mergedProducts\(|storefrontCatalogMemo/);
+});
+
+test("new XML product without a mirrored image is mirrored and then reaches the storefront", async () => {
+  const { mergeCatalogProducts, supplierStorefrontCandidates } = require("../lib/catalog");
+  const { TEST_SITE_CATEGORIES } = require("./helpers/site-categories");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-mirror-new-"));
+  const oldSrc = "https://cdn.bilgisayarim.com.tr/images/old.jpg";
+  const newSrc = "https://cdn.bilgisayarim.com.tr/images/new.jpg";
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+  const fetched = [];
+  const fetchImpl = async (url) => {
+    fetched.push(url);
+    return { ok: true, status: 200, headers: { get: () => "image/png" }, arrayBuffer: async () => png };
+  };
+  const base = {
+    dataRoot: tmp,
+    siteBaseUrl: "https://patygoteknoloji.com",
+    fetchImpl,
+    resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+  };
+  const row = (id, src) =>
+    feedReadyProduct({
+      id,
+      supplierSku: id,
+      salePrice: 100,
+      image: src,
+      images: [src],
+      siteParent: "oem-cevre-birimleri",
+      siteMid: "",
+      siteChild: "notebook",
+    });
+  try {
+    await mirrorAkakceCatalogImages([row("old", oldSrc)], base);
+    const supplier = [row("old", oldSrc), row("new", newSrc)];
+    const ctx = () => ({
+      categories: TEST_SITE_CATEGORIES,
+      mirrorIndex: loadMirrorIndex(tmp),
+      siteBaseUrl: "https://patygoteknoloji.com",
+      dataRoot: tmp,
+    });
+    const before = mergeCatalogProducts([], supplier, ctx());
+    assert.deepEqual(before.map((p) => p.id), ["old"]);
+
+    const candidates = supplierStorefrontCandidates(supplier, { categories: TEST_SITE_CATEGORIES });
+    assert.deepEqual(candidates.map((p) => p.id), ["old", "new"]);
+    fetched.length = 0;
+    await mirrorAkakceCatalogImages(candidates, base);
+    assert.deepEqual(fetched, [newSrc]);
+
+    const after = mergeCatalogProducts([], supplier, ctx());
+    assert.deepEqual(after.map((p) => p.id), ["old", "new"]);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("mirror downloads the full-size URL the storefront gate looks up, not the thumbnail", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-mirror-th-"));
+  const thumb = "https://cdn.bilgisayarim.com.tr/images/115392_th.jpg";
+  const full = "https://cdn.bilgisayarim.com.tr/images/115392.jpg";
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+  const fetched = [];
+  const fetchImpl = async (url) => {
+    fetched.push(url);
+    return { ok: true, status: 200, headers: { get: () => "image/png" }, arrayBuffer: async () => png };
+  };
+  try {
+    await mirrorAkakceCatalogImages([feedReadyProduct({ image: thumb, images: [thumb] })], {
+      dataRoot: tmp,
+      siteBaseUrl: "https://patygoteknoloji.com",
+      fetchImpl,
+      resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+    });
+    assert.deepEqual(fetched, [full]);
+    assert.ok(loadMirrorIndex(tmp)[full]);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

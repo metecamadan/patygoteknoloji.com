@@ -103,7 +103,20 @@ test("image mirror skips empty queues and does not always invalidate", () => {
   assert.match(mirror, /skipped:\s*true/);
   assert.match(server, /Number\(result\.mirrored\) > 0/);
   assert.match(server, /skipIfRecent:\s*true/);
-  assert.match(server, /preloadCachesAsync/);
-  assert.match(server, /preloadRawCachesAsync/);
   assert.match(server, /eventLoopLagMs/);
+});
+
+test("startup hydrates supplier rows off the request path and then warms the storefront", () => {
+  const multi = fs.readFileSync(path.join(root, "lib", "multi-supplier.js"), "utf8");
+  assert.match(multi, /async function preloadCachesAsync\(\) \{\s*await preloadRawCachesAsync\(\);/);
+  assert.match(server, /\.preloadCachesAsync\(\)\s*\.then\(\(\) => \{\s*warmStorefrontCatalog\(\);/);
+  assert.doesNotMatch(server, /hydrateTimer/);
+});
+
+test("supplier hydrate does not generate product copy for all 17k rows", () => {
+  const supplier = fs.readFileSync(path.join(root, "lib", "supplier.js"), "utf8");
+  const hydrate = supplier.match(/function hydrateListedProduct\([\s\S]*?\n  \}\r?\n/);
+  assert.ok(hydrate, "hydrateListedProduct bulunmalı");
+  assert.doesNotMatch(hydrate[0], /enrichProductCopy|ensureListedProductCopy/);
+  assert.match(hydrate[0], /copyEnriched = false/);
 });

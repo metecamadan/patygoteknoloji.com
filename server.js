@@ -27,6 +27,7 @@ const {
   listingSnapshotFileName,
   listingSnapshotJobs,
   enrichCatalogSnapshotProducts,
+  supplierStorefrontCandidates,
 } = require("./lib/catalog");
 const {
   createCategoryStore,
@@ -1014,11 +1015,6 @@ function scheduleAkakceImageMirror(options) {
     }
     akakceMirrorRunning = true;
     setImmediate(() => {
-      const memo = storefrontCatalogMemo.active;
-      const products =
-        memo && Array.isArray(memo.products) && memo.products.length
-          ? memo.products
-          : null;
       const run = (list) =>
         mirrorAkakceCatalogImages(list, {
           dataRoot: DATA_ROOT,
@@ -1037,18 +1033,16 @@ function scheduleAkakceImageMirror(options) {
           .finally(() => {
             akakceMirrorRunning = false;
           });
-      if (products) {
-        run(products);
-        return;
-      }
-      // Avoid sync mergedProducts on a busy loop; retry later.
+      // Avoid a sync supplier hydrate on a busy loop; retry later.
       if (isEventLoopBusy(100)) {
         akakceMirrorRunning = false;
         scheduleAkakceImageMirror({ delayMs: 90000 });
         return;
       }
       try {
-        run(mergedProducts(false));
+        // Not mergedProducts(): it already drops rows without a mirrored image, so new XML
+        // products would never be mirrored and never reach the storefront.
+        run(supplierStorefrontCandidates(supplierManager.listProducts()));
       } catch (err) {
         akakceMirrorRunning = false;
         console.warn("Akakçe görsel aynası atlandı:", err.message || err);
@@ -3208,22 +3202,20 @@ setImmediate(() => {
   try {
     ensureListingTreeSnapshotFiles();
   } catch (_) {}
-  // Worker-parse supplier JSON without hydrating 16k rows on the request thread.
-  if (supplierManager && typeof supplierManager.preloadRawCachesAsync === "function") {
-    supplierManager.preloadRawCachesAsync().catch((err) => {
-      console.warn("Tedarikçi cache ön yükleme atlandı:", err && err.message ? err.message : err);
-    });
-  }
-  // Full hydrate later, only when the loop is quiet.
-  const hydrateTimer = setTimeout(() => {
-    if (isEventLoopBusy(200)) return;
-    if (supplierManager && typeof supplierManager.preloadCachesAsync === "function") {
-      supplierManager.preloadCachesAsync().catch((err) => {
-        console.warn("Tedarikçi hydrate ön yükleme atlandı:", err && err.message ? err.message : err);
+  // Worker-parse supplier JSON, hydrate in yielding chunks, then build the storefront index so
+  // the first visitor after a restart does not pay the cold build on the request thread.
+  if (supplierManager && typeof supplierManager.preloadCachesAsync === "function") {
+    const startedAt = Date.now();
+    supplierManager
+      .preloadCachesAsync()
+      .then(() => {
+        warmStorefrontCatalog();
+        console.log("Katalog ön ısıtma: tedarikçi verisi hazır", Date.now() - startedAt, "ms");
+      })
+      .catch((err) => {
+        console.warn("Tedarikçi ön yükleme atlandı:", err && err.message ? err.message : err);
       });
-    }
-  }, 90000);
-  if (typeof hydrateTimer.unref === "function") hydrateTimer.unref();
+  }
   scheduleStartupCatalogWarm();
   // Do not hammer image mirror on every process restart when the index is already fresh.
   scheduleAkakceImageMirror({ delayMs: 180000, skipIfRecent: true });

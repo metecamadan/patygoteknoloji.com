@@ -60,7 +60,11 @@ test("three supplier slots keep configuration, products and overrides isolated",
       await manager.refresh(slot.id);
     }
 
+    const listed = manager.listProducts();
+    assert.equal(manager.listProducts(), listed, "decorated list is memoized");
+    assert.ok(listed.every((item) => item.copyEnriched === false));
     const paged = manager.queryProducts({ page: 1, limit: 2 });
+    assert.ok(paged.products.every((item) => item.copyEnriched === true));
     assert.equal(paged.catalogCount, 3);
     assert.equal(paged.total, 3);
     assert.equal(paged.products.length, 2);
