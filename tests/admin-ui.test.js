@@ -20,12 +20,24 @@ test("sidebar has an unlisted products tab wired to the supplier API", () => {
   assert.match(html, /id="adminTabUnlisted"/);
   assert.match(html, /id="adminUnlistedRows"/);
   assert.match(html, /id="unlistedNavCount"/);
-  assert.match(script, /status=unlisted/);
+  assert.match(script, /status: "unlisted"/);
   assert.match(script, /unlisted: false/);
   assert.match(script, /unlisted: true/);
   assert.match(script, /"categories", "unlisted"\]\.includes/);
   assert.match(script, /textContent = text \|\| "—"/);
   assert.doesNotMatch(script, /adminUnlistedRows[^\n]*innerHTML/);
+});
+
+test("unlisted tab also lists products whose category left the menu, with paging and a move action", () => {
+  assert.match(html, /id="adminUnlistedSearch"/);
+  assert.match(html, /id="adminUnlistedReason"[\s\S]*?value="menu"[\s\S]*?value="manual"/);
+  assert.match(html, /id="adminUnlistedPager"/);
+  assert.match(script, /reason: unlistedReason/);
+  assert.match(script, /item\.menuMissing/);
+  assert.match(script, /Kategoriye taşı/);
+  assert.match(script, /data\.menuMissingCount/);
+  assert.match(script, /renderUnlistedNavCount\(unlistedTotal\(results\[1\]\)\)/);
+  assert.doesNotMatch(script, /status=unlisted&limit=100/);
 });
 
 test("products tab separates manual and XML product areas", () => {
@@ -211,9 +223,10 @@ test("admin login distinguishes timeout from wrong password and retries once", (
   assert.match(loginScript, /Bu şifre hatası değil/);
   assert.match(loginScript, /Bağlantı yenileniyor, tekrar deneniyor/);
   assert.match(loginScript, /timeout|60000/);
-  assert.match(html, /admin-login\.js\?v=login-split-1/);
+  const loginVersion = (html.match(/admin-login\.js\?v=([\w-]+)/) || [])[1];
+  assert.ok(loginVersion, "admin-login.js must carry a cache-busting version");
   assert.match(html, /defer src="\/assets\/js\/admin-login\.js/);
-  assert.match(loginScript, /admin-panel\.js\?v=login-split-1/);
+  assert.equal((loginScript.match(/admin-panel\.js\?v=([\w-]+)/) || [])[1], loginVersion);
   assert.match(loginScript, /createElement\("script"\)/);
 });
 

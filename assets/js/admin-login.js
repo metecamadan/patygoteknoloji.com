@@ -2,7 +2,7 @@
   "use strict";
 
   const TOKEN_KEY = "patygo_admin_token";
-  const PANEL_SRC = "/assets/js/admin-panel.js?v=login-split-1";
+  const PANEL_SRC = "/assets/js/admin-panel.js?v=unlisted-menu-1";
   const loginForm = document.getElementById("loginForm");
   const loginNote = document.getElementById("loginNote");
 

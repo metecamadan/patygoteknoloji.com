@@ -18,7 +18,7 @@ const TEST_SITE_CATEGORIES = [
 function installTestSiteCategories(root) {
   const store = createCategoryStore(root);
   store.save(TEST_SITE_CATEGORIES);
-  setCategoryListLoader(() => store.list());
+  setCategoryListLoader(() => store.list(), () => store.stamp());
   return store;
 }
 

@@ -223,7 +223,7 @@ const orderStore = createOrderStore(DATA_ROOT);
 const shippingSettingsStore = createShippingSettingsStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
-setCategoryListLoader(() => categoryStore.list());
+setCategoryListLoader(() => categoryStore.list(), () => categoryStore.stamp());
 const adminUserStore = createAdminUserStore(DATA_ROOT);
 const consentStore = createConsentStore(DATA_ROOT);
 const auditStore = createAuditStore(DATA_ROOT);
@@ -2526,6 +2526,7 @@ async function handleApi(req, res, urlPath) {
     const queried = supplierManager.queryProducts({
       q: requestUrl.searchParams.get("q") || "",
       status: requestUrl.searchParams.get("status") || "",
+      reason: requestUrl.searchParams.get("reason") || "",
       slot: requestUrl.searchParams.get("slot") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 50,
@@ -2539,6 +2540,7 @@ async function handleApi(req, res, urlPath) {
       catalogCount: queried.catalogCount,
       activeCount: queried.activeCount,
       unlistedCount: queried.unlistedCount,
+      menuMissingCount: queried.menuMissingCount,
       slots,
       status: slots[0],
     });

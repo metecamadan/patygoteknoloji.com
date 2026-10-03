@@ -2421,7 +2421,7 @@
       activeCount: Number(results[1].activeCount) || 0,
       limit: Number(results[1].limit) || POOL_PAGE_SIZE,
     };
-    renderUnlistedNavCount(results[1].unlistedCount);
+    renderUnlistedNavCount(unlistedTotal(results[1]));
     supplierPoolPage = supplierPoolMeta.page;
     renderXmlYesterdayAlert(results[0].yesterdayXmlAlert);
     renderOpsHealth(results[0].opsHealth);
@@ -2490,21 +2490,118 @@
     );
   }
 
+  let unlistedPage = 1;
+  let unlistedQuery = "";
+  let unlistedReason = "";
+
+  function unlistedTotal(data) {
+    return (Number(data && data.unlistedCount) || 0) + (Number(data && data.menuMissingCount) || 0);
+  }
+
+  function renderUnlistedPager(totalPages) {
+    const pager = document.getElementById("adminUnlistedPager");
+    if (!pager) return;
+    pager.textContent = "";
+    pager.hidden = totalPages <= 1;
+    if (totalPages <= 1) return;
+    const addBtn = (label, page, opts) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts && opts.current) btn.className = "is-current";
+      btn.disabled = !!(opts && opts.disabled);
+      btn.addEventListener("click", () => {
+        unlistedPage = page;
+        loadUnlistedProducts().catch(() => {});
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", unlistedPage - 1, { disabled: unlistedPage <= 1 });
+    addBtn(unlistedPage + " / " + totalPages, unlistedPage, { current: true, disabled: true });
+    addBtn("›", unlistedPage + 1, { disabled: unlistedPage >= totalPages });
+  }
+
+  function unlistedMoveControls(item, noteEl) {
+    const wrap = document.createElement("div");
+    wrap.className = "admin-cat-selects";
+    const parentSelect = document.createElement("select");
+    const midSelect = document.createElement("select");
+    const childSelect = document.createElement("select");
+    [parentSelect, midSelect, childSelect].forEach((select, i) => {
+      select.setAttribute("aria-label", ["Ana kategori", "Ara kategori", "Alt kategori"][i]);
+    });
+    fillSiteParentSelect(parentSelect, "");
+    fillSiteMidSelect(midSelect, "", "");
+    fillSiteChildSelect(childSelect, "", "", "");
+    parentSelect.addEventListener("change", () => {
+      fillSiteMidSelect(midSelect, parentSelect.value, "");
+      fillSiteChildSelect(childSelect, parentSelect.value, "", "");
+    });
+    midSelect.addEventListener("change", () => {
+      fillSiteChildSelect(childSelect, parentSelect.value, midSelect.value, "");
+    });
+    const move = document.createElement("button");
+    move.type = "button";
+    move.className = "btn btn-primary btn-xs";
+    move.textContent = "Kategoriye taşı";
+    move.addEventListener("click", async () => {
+      if (!parentSelect.value || !midSelect.value || !childSelect.value) {
+        note(noteEl, "err", "ANA, ARA ve ALT kategori seçin.");
+        return;
+      }
+      move.disabled = true;
+      try {
+        await api("/api/admin/supplier/products", {
+          method: "PATCH",
+          body: JSON.stringify({
+            updates: [
+              {
+                supplierSku: item.supplierSku,
+                supplierSlot: item.supplierSlot,
+                siteParent: parentSelect.value,
+                siteMid: midSelect.value,
+                siteChild: childSelect.value,
+              },
+            ],
+          }),
+        });
+        notifySite();
+        await loadUnlistedProducts();
+        note(noteEl, "ok", (item.name || item.supplierSku) + " kategorisine taşındı; stok ve görsel uygunsa sitede görünür.");
+      } catch (err) {
+        move.disabled = false;
+        note(noteEl, "err", err.message);
+      }
+    });
+    [parentSelect, midSelect, childSelect, move].forEach((el) => wrap.appendChild(el));
+    return wrap;
+  }
+
   async function loadUnlistedProducts() {
     const rows = document.getElementById("adminUnlistedRows");
     const noteEl = document.getElementById("adminUnlistedNote");
     if (!rows) return;
     try {
-      const data = await api("/api/admin/supplier/products?status=unlisted&limit=100");
+      if (!siteCategories.length) await loadSiteCategories();
+      const qs = new URLSearchParams({
+        status: "unlisted",
+        reason: unlistedReason,
+        q: unlistedQuery,
+        page: String(unlistedPage),
+        limit: "50",
+      });
+      const data = await api("/api/admin/supplier/products?" + qs.toString());
       const list = Array.isArray(data.products) ? data.products : [];
-      renderUnlistedNavCount(data.unlistedCount != null ? data.unlistedCount : data.total);
+      unlistedPage = Number(data.page) || 1;
+      renderUnlistedNavCount(unlistedTotal(data));
+      renderUnlistedPager(Number(data.totalPages) || 1);
       rows.textContent = "";
       if (!list.length) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
         td.colSpan = 6;
         td.className = "admin-table-empty";
-        td.textContent = "Listeden çıkarılmış ürün yok.";
+        td.textContent = unlistedQuery ? "Aramaya uyan ürün yok." : "Listelenmeyen ürün yok.";
         tr.appendChild(td);
         rows.appendChild(tr);
       }
@@ -2518,11 +2615,24 @@
         };
         cell(item.name);
         cell(item.supplierSku);
+        cell(item.stockQty == null ? "" : String(item.stockQty));
         cell(
           [item.xmlMainCategory, item.xmlMidCategory, item.xmlSubCategory].filter(Boolean).join(" › ")
         );
-        cell(item.unlistedReason);
-        cell(item.unlistedAt ? new Date(item.unlistedAt).toLocaleString("tr-TR") : "");
+        if (item.menuMissing) {
+          const site = [item.siteParent, item.siteMid, item.siteChild].filter(Boolean).join(" › ");
+          cell("Menüde kategorisi yok" + (site ? " (" + site + ")" : ""));
+          const actionTd = document.createElement("td");
+          actionTd.appendChild(unlistedMoveControls(item, noteEl));
+          tr.appendChild(actionTd);
+          rows.appendChild(tr);
+          return;
+        }
+        cell(
+          [item.unlistedReason, item.unlistedAt ? new Date(item.unlistedAt).toLocaleString("tr-TR") : ""]
+            .filter(Boolean)
+            .join(" · ") || "Listeden çıkarıldı"
+        );
         const actionTd = document.createElement("td");
         const relist = document.createElement("button");
         relist.type = "button";
@@ -2538,8 +2648,8 @@
               }),
             });
             notifySite();
-            note(noteEl, "ok", "Ürün tekrar listelendi; yayın durumu XML Ürünleri'ndeki gibi kalır.");
             await loadUnlistedProducts();
+            note(noteEl, "ok", "Ürün tekrar listelendi; yayın durumu XML Ürünleri'ndeki gibi kalır.");
           } catch (err) {
             relist.disabled = false;
             note(noteEl, "err", err.message);
@@ -2549,11 +2659,12 @@
         tr.appendChild(actionTd);
         rows.appendChild(tr);
       });
-      if (data.total > list.length) {
-        note(noteEl, "warn", "İlk " + list.length + " ürün gösteriliyor (toplam " + data.total + ").");
-      } else if (list.length) {
-        note(noteEl, "", "");
-      }
+      note(
+        noteEl,
+        "",
+        "Toplam " + data.total + " ürün · listeden çıkarılan " + (Number(data.unlistedCount) || 0) +
+          " · menüde kategorisi yok " + (Number(data.menuMissingCount) || 0)
+      );
     } catch (err) {
       note(noteEl, "err", err.message || "Liste yüklenemedi");
     }
@@ -2562,6 +2673,26 @@
   const unlistedRefreshBtn = document.getElementById("adminUnlistedRefresh");
   if (unlistedRefreshBtn) {
     unlistedRefreshBtn.addEventListener("click", () => loadUnlistedProducts().catch(() => {}));
+  }
+  const unlistedSearch = document.getElementById("adminUnlistedSearch");
+  if (unlistedSearch) {
+    let unlistedSearchTimer = null;
+    unlistedSearch.addEventListener("input", () => {
+      clearTimeout(unlistedSearchTimer);
+      unlistedSearchTimer = setTimeout(() => {
+        unlistedQuery = unlistedSearch.value.trim();
+        unlistedPage = 1;
+        loadUnlistedProducts().catch(() => {});
+      }, 280);
+    });
+  }
+  const unlistedReasonSelect = document.getElementById("adminUnlistedReason");
+  if (unlistedReasonSelect) {
+    unlistedReasonSelect.addEventListener("change", () => {
+      unlistedReason = unlistedReasonSelect.value;
+      unlistedPage = 1;
+      loadUnlistedProducts().catch(() => {});
+    });
   }
 
   let productsLoaded = false;

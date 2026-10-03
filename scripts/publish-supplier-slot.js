@@ -25,7 +25,7 @@ const manager = createMultiSupplierManager(root, {
   ],
 });
 const categoryStore = createCategoryStore(root);
-setCategoryListLoader(() => categoryStore.list());
+setCategoryListLoader(() => categoryStore.list(), () => categoryStore.stamp());
 
 publishSupplierSlot({ manager, categoryStore, slotId, root })
   .then((result) => {

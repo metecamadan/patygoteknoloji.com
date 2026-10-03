@@ -339,18 +339,27 @@
                 <div>
                   <span class="admin-eyebrow">KATALOG</span>
                   <h2>Listelenmeyen ürünler</h2>
-                  <p class="admin-card-lead">XML Ürünleri'nde “Listeden çıkar” denen ürünler. Sitede, ürün sayfasında, ödemede ve Akakçe XML'inde görünmez; XML okuması ve “Siteye yayınla” bunları geri açmaz.</p>
+                  <p class="admin-card-lead">Sitede, ürün sayfasında, ödemede ve Akakçe XML'inde görünmeyen yayındaki XML ürünleri: XML Ürünleri'nde “Listeden çıkar” denenler ve site kategorisi menü ağacında artık bulunmayanlar. Menüdeki bir kategoriye taşınan ürün buradan çıkar ve sitede görünür.</p>
                 </div>
                 <div class="admin-card-head-actions">
                   <button type="button" class="btn btn-outline btn-sm" id="adminUnlistedRefresh">Yenile</button>
                 </div>
               </div>
+              <div class="admin-toolbar">
+                <input id="adminUnlistedSearch" type="search" placeholder="Ürün, stok kodu veya marka ara" />
+                <select id="adminUnlistedReason" aria-label="Gerekçe">
+                  <option value="">Tümü</option>
+                  <option value="menu">Menüde kategorisi yok</option>
+                  <option value="manual">Listeden çıkarılan</option>
+                </select>
+              </div>
               <div class="admin-table-wrap">
                 <table class="admin-table">
-                  <thead><tr><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">Tedarikçi kategorisi</th><th scope="col">Gerekçe</th><th scope="col">Tarih</th><th scope="col">İşlem</th></tr></thead>
+                  <thead><tr><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">Stok</th><th scope="col">Tedarikçi kategorisi</th><th scope="col">Gerekçe</th><th scope="col">İşlem</th></tr></thead>
                   <tbody id="adminUnlistedRows"><tr><td colspan="6" class="admin-table-empty">Yükleniyor…</td></tr></tbody>
                 </table>
               </div>
+              <nav id="adminUnlistedPager" class="admin-pager" aria-label="Listelenmeyen ürün sayfaları" hidden></nav>
               <p class="admin-note" id="adminUnlistedNote" role="status"></p>
             </section>
           </div>
@@ -1054,6 +1063,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=login-split-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=unlisted-menu-1"></script>
 </body>
 </html>

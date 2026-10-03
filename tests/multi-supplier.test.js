@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createMultiSupplierManager } = require("../lib/multi-supplier");
 const {
+  TEST_SITE_CATEGORIES,
   installTestSiteCategories,
   clearTestSiteCategories,
 } = require("./helpers/site-categories");
@@ -51,7 +52,7 @@ test("three supplier slots keep configuration, products and overrides isolated",
     defaultMarginPercent: 10,
   });
   try {
-    installTestSiteCategories(root);
+    const categoryStore = installTestSiteCategories(root);
     for (const slot of manager.listSlots()) {
       await manager.saveConfig(slot.id, {
         url: `https://${slot.id}.example/feed.xml?token=secret`,
@@ -117,6 +118,31 @@ test("three supplier slots keep configuration, products and overrides isolated",
     const pool = manager.queryProducts({ status: "pool", page: 1, limit: 50 });
     assert.ok(pool.products.every((item) => !item.unlisted));
     assert.equal(manager.queryProducts({ page: 1, limit: 50 }).unlistedCount, 1);
+
+    manager.updateProducts([
+      {
+        supplierSlot: "supplier-3",
+        supplierSku: "SKU-3",
+        active: true,
+        siteParent: "oem-cevre-birimleri",
+        siteChild: "islemciler",
+      },
+    ]);
+    // The menu tree is curated later and drops the leaf this published product sits in.
+    categoryStore.save([
+      Object.assign({}, TEST_SITE_CATEGORIES[0], {
+        children: TEST_SITE_CATEGORIES[0].children.filter((row) => row.slug !== "islemciler"),
+      }),
+    ]);
+    const both = manager.queryProducts({ status: "unlisted", page: 1, limit: 50 });
+    assert.equal(both.total, 2, "active products whose category is not in the menu tree are listed too");
+    assert.equal(both.unlistedCount, 1);
+    assert.equal(both.menuMissingCount, 1);
+    const menuOnly = manager.queryProducts({ status: "unlisted", reason: "menu", page: 1, limit: 50 });
+    assert.deepEqual(menuOnly.products.map((item) => [item.supplierSlot, item.menuMissing]), [["supplier-3", true]]);
+    const manualOnly = manager.queryProducts({ status: "unlisted", reason: "manual", page: 1, limit: 50 });
+    assert.deepEqual(manualOnly.products.map((item) => [item.supplierSlot, item.menuMissing]), [["supplier-2", undefined]]);
+    assert.equal(manager.listProducts().some((item) => "menuMissing" in item), false, "shared rows stay unmutated");
 
     const statuses = manager.listSlots();
     assert.equal(statuses.length, 3);
