@@ -30,10 +30,55 @@ test("custom interval builds schedule until 20:00", () => {
   ]);
 });
 
-test("findDueScheduleKey matches exact Istanbul schedule minute", () => {
-  const due = findDueScheduleKey(new Date("2026-08-13T05:00:00.000Z"));
-  assert.equal(due, "2026-08-13 08:00");
-  assert.equal(findDueScheduleKey(new Date("2026-08-13T05:01:00.000Z")), "");
+test("findDueScheduleKey keeps a slot due for a 15 minute catch-up window", () => {
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T05:00:00.000Z")), "2026-08-13 08:00");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T05:07:00.000Z")), "2026-08-13 08:00");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T05:14:59.000Z")), "2026-08-13 08:00");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T05:15:00.000Z")), "");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T04:59:00.000Z")), "");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T20:40:00.000Z")), "2026-08-13 23:30");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T05:01:00.000Z"), null, 1), "");
+});
+
+test("scheduler catches a late slot once and never refetches the same key", async () => {
+  const { createSupplierScheduler } = require("../lib/supplier-schedule");
+  let refreshed = 0;
+  let lastKey = "";
+  const manager = {
+    listSlots() {
+      return [{ id: "supplier-1", configured: true, lastScheduledFetchKey: lastKey, lastError: "" }];
+    },
+    async refresh() {
+      refreshed += 1;
+    },
+    markScheduledFetch(_slotId, key) {
+      lastKey = key;
+    },
+  };
+  const scheduler = createSupplierScheduler({ manager, intervalMs: 60 * 60 * 1000, log() {}, logError() {} });
+  const realDate = Date;
+  const runAt = async (iso) => {
+    const frozen = new realDate(iso);
+    global.Date = class extends realDate {
+      constructor(...args) {
+        if (!args.length) return frozen;
+        super(...args);
+      }
+      static now() {
+        return frozen.getTime();
+      }
+    };
+    try {
+      await scheduler.tick();
+    } finally {
+      global.Date = realDate;
+    }
+  };
+  await runAt("2026-08-13T08:06:00.000Z");
+  assert.equal(refreshed, 1);
+  assert.equal(lastKey, "2026-08-13 11:00");
+  await runAt("2026-08-13T08:09:00.000Z");
+  assert.equal(refreshed, 1, "same slot is not pulled twice inside the window");
 });
 
 test("getNextScheduledAt returns later slot same day", () => {
