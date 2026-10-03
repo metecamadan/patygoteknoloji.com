@@ -434,6 +434,11 @@ test("unlisted override survives publish re-activation and clears explicitly", a
     assert.equal(item.unlisted, true);
     assert.equal(item.unlistedAt, firstAt);
 
+    store.updateOverrides([{ supplierSku: "SKU-1", siteCategoryManual: true }]);
+    assert.equal(store.listProducts()[0].siteCategoryManual, true);
+    store.updateOverrides([{ supplierSku: "SKU-1", siteCategoryManual: false }]);
+    assert.equal(store.listProducts()[0].siteCategoryManual, false);
+
     store.updateOverrides([{ supplierSku: "SKU-1", unlisted: false }]);
     item = store.listProducts()[0];
     assert.equal(item.unlisted, false);

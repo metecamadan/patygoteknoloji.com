@@ -12,6 +12,7 @@ const {
   syncXmlSiteCategories,
   syncXmlSiteCategoriesAsync,
   ensureCanonicalSiteTree,
+  markPanelCategoryChoice,
 } = require("../lib/supplier-site");
 const { createCategoryStore, slugifyCategory } = require("../lib/categories");
 const { queryPublicCatalog } = require("../lib/catalog");
@@ -189,6 +190,54 @@ test("merge aliases XML OEM parent onto curated Bilgisayar Bileşenleri", () => 
   assert.ok(merged.some((row) => row.slug === "bilgisayar-bilesenleri"));
   assert.ok(!merged.some((row) => row.slug === "oem-cevre-birimleri"));
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("panel-chosen category survives XML sync; publish only activates it", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-manual-"));
+  const store = createCategoryStore(root);
+  const misfiled = {
+    supplierSlot: "supplier-1",
+    supplierSku: "AIO-1",
+    name: "Lenovo ThinkCentre Neo 50a 23.8 FHD",
+    mainCategory: "KİŞİSEL BİLGİSAYARLAR",
+    midCategory: "Taşınabilir Bilgisayarlar",
+    subCategory: "Notebooklar",
+    siteParent: "bilgisayar-tablet",
+    siteMid: "masaustu-bilgisayarlar",
+    siteChild: "all-in-one",
+    siteCategoryManual: true,
+    siteCategoryAssigned: true,
+    active: false,
+  };
+  const updates = [];
+  const manager = {
+    listProducts: () => [misfiled],
+    updateProducts: (rows) => updates.push(...rows),
+  };
+  try {
+    syncXmlSiteCategories({ manager, categoryStore: store, slotId: "supplier-1" });
+    assert.deepEqual(updates, [], "XML refresh must not move a panel-chosen category back");
+
+    syncXmlSiteCategories({ manager, categoryStore: store, slotId: "supplier-1", activate: true });
+    assert.deepEqual(updates, [{ supplierSlot: "supplier-1", supplierSku: "AIO-1", active: true }]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("panel PATCH marks category edits as manual unless explicitly released", () => {
+  assert.equal(
+    markPanelCategoryChoice({ supplierSku: "A", siteParent: "x", siteMid: "y", siteChild: "z" })
+      .siteCategoryManual,
+    true
+  );
+  assert.equal(markPanelCategoryChoice({ supplierSku: "A", siteParent: "" }).siteCategoryManual, true);
+  const toggle = { supplierSku: "A", active: true };
+  assert.equal(markPanelCategoryChoice(toggle), toggle);
+  const release = { supplierSku: "A", siteParent: "x", siteCategoryManual: false };
+  assert.equal(markPanelCategoryChoice(release).siteCategoryManual, false);
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(serverJs, /body\.updates\.slice\(0, 5000\) : \[\]\)\.map\(\s*markPanelCategoryChoice/);
 });
 
 test("sync maps XML products onto the curated schema without rebuilding the menu", () => {

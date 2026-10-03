@@ -12,7 +12,11 @@ require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const { createMultiSupplierManager } = require("./lib/multi-supplier");
 const { atomicWriteJson } = require("./lib/supplier");
 const { createAdminSessionStore } = require("./lib/admin-sessions");
-const { publishSupplierSlot, syncXmlSiteCategoriesAsync } = require("./lib/supplier-site");
+const {
+  publishSupplierSlot,
+  syncXmlSiteCategoriesAsync,
+  markPanelCategoryChoice,
+} = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
@@ -2560,7 +2564,9 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "PATCH" && urlPath === "/api/admin/supplier/products") {
     try {
       const body = JSON.parse((await readBody(req, 512 * 1024)).toString("utf8") || "{}");
-      const updates = Array.isArray(body.updates) ? body.updates.slice(0, 5000) : [];
+      const updates = (Array.isArray(body.updates) ? body.updates.slice(0, 5000) : []).map(
+        markPanelCategoryChoice
+      );
       if (!updates.length) {
         return json(res, 422, { ok: false, error: "Güncellenecek ürün seçilmedi." });
       }
