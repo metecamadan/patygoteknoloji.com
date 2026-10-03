@@ -35,3 +35,6 @@ dist/
 
 # Tek seferlik yerel teşhis/deploy yardımcıları (scripts/_*); kalıcı olanlar `git add -f` ile eklenir
 scripts/_*
+scripts/generate-smtp-vps-oneliner.py
+scripts/migrate-dual-vps.py
+scripts/send-shipping-notice-batch.js

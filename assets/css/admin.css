@@ -972,6 +972,18 @@ html.admin-theme-dark .admin-order-block.is-open {
   font-size: 1rem;
 }
 .admin-nav-item.active .admin-nav-icon { color: var(--brand); }
+.admin-nav-count {
+  margin-left: auto;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+.admin-nav-count[hidden] { display: none; }
 .admin-sidebar-foot {
   display: grid;
   gap: 8px;

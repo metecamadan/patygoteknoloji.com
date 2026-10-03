@@ -201,6 +201,37 @@ test("active supplier products without site category stay off the public catalog
   assert.equal(result[0].siteChild, "notebook");
 });
 
+test("unlisted supplier products stay off the public catalog even when active", () => {
+  const base = {
+    brand: "TEDARİKÇİ",
+    salePrice: 220,
+    stockQty: 4,
+    category: "bilgisayar",
+    image: "https://cdn.example/x.jpg",
+    active: true,
+    siteParent: "oem-cevre-birimleri",
+    siteChild: "notebook",
+  };
+  const result = mergeCatalogProducts(
+    [],
+    [
+      Object.assign({}, base, { id: "sup-a", supplierSku: "A", name: "Görünür" }),
+      Object.assign({}, base, {
+        id: "sup-b",
+        supplierSku: "B",
+        name: "Gizli",
+        unlisted: true,
+        unlistedReason: "Yanlış kategori",
+      }),
+    ],
+    { categories: TEST_SITE_CATEGORIES }
+  );
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["sup-a"]
+  );
+});
+
 test("supplier out of stock and unread stock in last 7 days stay off the public catalog", () => {
   const now = new Date("2026-08-15T12:00:00.000Z");
   const fresh = now.toISOString();

@@ -2539,6 +2539,7 @@ async function handleApi(req, res, urlPath) {
       totalPages: queried.totalPages,
       catalogCount: queried.catalogCount,
       activeCount: queried.activeCount,
+      unlistedCount: queried.unlistedCount,
       slots,
       status: slots[0],
     });

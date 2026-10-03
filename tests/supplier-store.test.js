@@ -399,6 +399,53 @@ test("supplier store blocks publish without a valid site category", async () => 
   }
 });
 
+test("unlisted override survives publish re-activation and clears explicitly", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-unlisted-"));
+  const store = createSupplierStore(root, {
+    allowedHosts: ["supplier.example"],
+    defaultMarginPercent: 20,
+    validateUrl: async (raw) => new URL(raw),
+    fetchXml: async () => SAMPLE_XML,
+  });
+  try {
+    installTestSiteCategories(root);
+    await store.saveUrl("https://supplier.example/feed.xml");
+    await store.refresh();
+    store.updateOverrides([
+      { supplierSku: "SKU-1", siteParent: "oem-cevre-birimleri", siteChild: "notebook", active: true },
+    ]);
+    assert.equal(store.listProducts()[0].unlisted, false);
+
+    store.updateOverrides([
+      { supplierSku: "SKU-1", unlisted: true, unlistedReason: "  Tedarikçi yanlış kategoride  " },
+    ]);
+    let item = store.listProducts()[0];
+    assert.equal(item.unlisted, true);
+    assert.equal(item.unlistedReason, "Tedarikçi yanlış kategoride");
+    assert.ok(item.unlistedAt);
+    const firstAt = item.unlistedAt;
+
+    // "Siteye yayınla" XML senkronu yalnızca kategori + active:true yazar.
+    store.updateOverrides([
+      { supplierSku: "SKU-1", siteParent: "oem-cevre-birimleri", siteMid: "", siteChild: "notebook", active: true },
+    ]);
+    item = store.listProducts()[0];
+    assert.equal(item.active, true);
+    assert.equal(item.unlisted, true);
+    assert.equal(item.unlistedAt, firstAt);
+
+    store.updateOverrides([{ supplierSku: "SKU-1", unlisted: false }]);
+    item = store.listProducts()[0];
+    assert.equal(item.unlisted, false);
+    assert.equal(item.unlistedReason, "");
+    assert.equal(item.unlistedAt, null);
+    assert.equal(item.active, true);
+  } finally {
+    clearTestSiteCategories();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("disallowed stored feed host is dropped and cache is emptied", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-dropfeed-"));
   const runtime = path.join(root, ".runtime");

@@ -15,6 +15,19 @@ test("admin markup has unique element IDs", () => {
   assert.deepEqual(duplicates, []);
 });
 
+test("sidebar has an unlisted products tab wired to the supplier API", () => {
+  assert.match(html, /data-admin-tab="unlisted"[^>]*>[\s\S]*?Listelenmeyen Ürünler/);
+  assert.match(html, /id="adminTabUnlisted"/);
+  assert.match(html, /id="adminUnlistedRows"/);
+  assert.match(html, /id="unlistedNavCount"/);
+  assert.match(script, /status=unlisted/);
+  assert.match(script, /unlisted: false/);
+  assert.match(script, /unlisted: true/);
+  assert.match(script, /"categories", "unlisted"\]\.includes/);
+  assert.match(script, /textContent = text \|\| "—"/);
+  assert.doesNotMatch(script, /adminUnlistedRows[^\n]*innerHTML/);
+});
+
 test("products tab separates manual and XML product areas", () => {
   assert.match(html, /id="manualProductsView"/);
   assert.match(html, /id="xmlProductsView"/);

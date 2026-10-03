@@ -102,6 +102,18 @@ test("three supplier slots keep configuration, products and overrides isolated",
       false
     );
 
+    manager.updateProducts([
+      { supplierSlot: "supplier-2", supplierSku: "SKU-1", unlisted: true, unlistedReason: "Test" },
+    ]);
+    const unlisted = manager.queryProducts({ status: "unlisted", page: 1, limit: 50 });
+    assert.equal(unlisted.total, 1);
+    assert.equal(unlisted.unlistedCount, 1);
+    assert.equal(unlisted.products[0].supplierSlot, "supplier-2");
+    assert.equal(unlisted.products[0].unlistedReason, "Test");
+    const pool = manager.queryProducts({ status: "pool", page: 1, limit: 50 });
+    assert.ok(pool.products.every((item) => !item.unlisted));
+    assert.equal(manager.queryProducts({ page: 1, limit: 50 }).unlistedCount, 1);
+
     const statuses = manager.listSlots();
     assert.equal(statuses.length, 3);
     assert.ok(statuses.every((slot) => slot.configured));

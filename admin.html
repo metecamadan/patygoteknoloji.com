@@ -81,6 +81,7 @@
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
           </div>
+          <button type="button" class="admin-nav-item" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted"><span class="admin-nav-icon">⊘</span>Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
           <button type="button" class="admin-nav-item" id="categoriesTab" aria-controls="adminTabCategories" data-admin-tab="categories"><span class="admin-nav-icon">▤</span>Kategoriler</button>
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
@@ -327,6 +328,30 @@
               </div>
               <div id="adminLeadList" class="admin-list admin-leads-list" role="list"></div>
               <p class="admin-note" id="adminLeadsNote" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section id="adminTabUnlisted" class="admin-tab-panel" aria-labelledby="unlistedTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">KATALOG</span>
+                  <h2>Listelenmeyen ürünler</h2>
+                  <p class="admin-card-lead">XML Ürünleri'nde “Listeden çıkar” denen ürünler. Sitede, ürün sayfasında, ödemede ve Akakçe XML'inde görünmez; XML okuması ve “Siteye yayınla” bunları geri açmaz.</p>
+                </div>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminUnlistedRefresh">Yenile</button>
+                </div>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">Tedarikçi kategorisi</th><th scope="col">Gerekçe</th><th scope="col">Tarih</th><th scope="col">İşlem</th></tr></thead>
+                  <tbody id="adminUnlistedRows"><tr><td colspan="6" class="admin-table-empty">Yükleniyor…</td></tr></tbody>
+                </table>
+              </div>
+              <p class="admin-note" id="adminUnlistedNote" role="status"></p>
             </section>
           </div>
         </section>
