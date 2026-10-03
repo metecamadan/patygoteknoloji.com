@@ -170,6 +170,36 @@ test("admin sessions expire after idle timeout and slide on activity", async (t)
   assert.equal(expired.status, 401);
 });
 
+test("catalog invalidation rewrites the nginx-served categories snapshot instead of deleting it", async (t) => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const password = "test-admin-password";
+  const { baseUrl, dataRoot } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+  const catFile = path.join(dataRoot, ".runtime", "catalog-bootstrap", "categories.json");
+  assert.equal((await fetch(baseUrl + "/listing/categories.json")).status, 200);
+  assert.ok(fs.existsSync(catFile));
+
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  const { token } = await login.json();
+  const patch = await fetch(baseUrl + "/api/admin/supplier/products", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({
+      updates: [{ supplierSlot: "supplier-1", supplierSku: "SKU-X", siteParent: "bilgisayar-tablet" }],
+    }),
+  });
+  assert.equal(patch.status, 200);
+  assert.ok(fs.existsSync(catFile), "nginx /listing/ alias has no Node fallback; a missing file is a public 404");
+  assert.ok(Array.isArray(JSON.parse(fs.readFileSync(catFile, "utf8")).categories));
+});
+
 test("admin login does not lock out after repeated wrong attempts", async (t) => {
   const password = "1234";
   const { baseUrl } = await spawnTestServer(t, {

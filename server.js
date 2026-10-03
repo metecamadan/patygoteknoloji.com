@@ -646,9 +646,10 @@ function invalidateStorefrontCatalog() {
     clearTimeout(warmCatalogTimer);
     warmCatalogTimer = null;
   }
+  // nginx serves /listing/categories.json straight from disk with no Node fallback,
+  // so the file must be replaced atomically, never deleted.
   try {
-    const catFile = path.join(CATALOG_BOOTSTRAP_DIR, "categories.json");
-    if (fs.existsSync(catFile)) fs.unlinkSync(catFile);
+    writeCategoriesBootstrapSnapshot();
   } catch (_) {}
 }
 
