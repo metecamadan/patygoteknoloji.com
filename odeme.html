@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p5" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p6" />
 </head>
 <body class="checkout-page">
   <header class="site-header">
@@ -53,8 +53,10 @@
             <form id="checkout-form" novalidate>
               <fieldset class="invoice-type">
                 <legend>Fatura türü</legend>
-                <label class="invoice-type-option"><input type="radio" name="customerType" value="bireysel" checked /> Bireysel</label>
-                <label class="invoice-type-option"><input type="radio" name="customerType" value="kurumsal" /> Kurumsal</label>
+                <div class="invoice-type-options">
+                  <label class="invoice-type-option"><input type="radio" name="customerType" value="bireysel" checked /> Bireysel</label>
+                  <label class="invoice-type-option"><input type="radio" name="customerType" value="kurumsal" /> Kurumsal</label>
+                </div>
               </fieldset>
               <div class="form-row">
                 <div class="field">

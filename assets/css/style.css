@@ -1867,15 +1867,16 @@ h1, h2, h3, h4 {
 }
 .field-short { max-width: 200px; }
 .invoice-type {
-  display: flex;
-  gap: 8px;
   margin: 0 0 12px;
   padding: 0;
   border: 0;
 }
+.invoice-type-options {
+  display: flex;
+  gap: 8px;
+}
 .invoice-type legend {
-  float: left;
-  width: 100%;
+  padding: 0;
   margin-bottom: 6px;
   font-size: 0.85rem;
   font-weight: 600;
