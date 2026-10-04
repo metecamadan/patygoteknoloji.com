@@ -71,7 +71,7 @@
   }
 
   function isMobileNav() {
-    return window.matchMedia("(max-width: 860px)").matches;
+    return window.matchMedia("(max-width: 1023px)").matches;
   }
 
   function closeMegaGroups(scope) {
@@ -209,7 +209,7 @@
     });
 
     let hoverCloseTimer = null;
-    const isDesktopNav = () => window.matchMedia("(min-width: 861px)").matches;
+    const isDesktopNav = () => window.matchMedia("(min-width: 1024px)").matches;
     const openMega = () => {
       if (!isDesktopNav()) return;
       clearTimeout(hoverCloseTimer);

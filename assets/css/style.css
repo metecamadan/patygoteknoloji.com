@@ -174,14 +174,10 @@ h1, h2, h3, h4 {
 }
 .brand { display: flex; align-items: center; line-height: 0; flex-shrink: 0; }
 .brand img {
-  height: 48px;
+  height: 56px;
   width: auto;
   display: block;
   border-radius: 0;
-}
-/* 861–1023px arasında iki satırlı menü başlıkları zaten dar; büyük logo yalnızca 1024px üstünde. */
-@media (min-width: 1024px) {
-  .brand img { height: 56px; }
 }
 .nav-links {
   display: flex;
@@ -396,7 +392,7 @@ h1, h2, h3, h4 {
   opacity: 1;
   pointer-events: auto;
 }
-@media (hover: hover) and (pointer: fine) and (min-width: 861px) {
+@media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
   .nav-mega:hover > .nav-mega-panel {
     visibility: visible;
     opacity: 1;
@@ -484,7 +480,7 @@ h1, h2, h3, h4 {
   flex-shrink: 0;
   transition: transform var(--t);
 }
-@media (max-width: 1180px) and (min-width: 861px) {
+@media (max-width: 1180px) and (min-width: 1024px) {
   .nav-mega-toggle {
     white-space: normal;
     font-size: 0.64rem;
@@ -2283,7 +2279,9 @@ h1, h2, h3, h4 {
   .dark-band-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 860px) {
+/* Üst bar + kategori menüsü: 1023px ve altı hamburger (861–1023'te iki satırlı başlıklar sığmıyor).
+   JS eşleri: main.js / nav.js isMobileNav(). */
+@media (max-width: 1023px) {
   :root { --header-h: 64px; }
   .brand img { height: 40px; }
   .site-header {
@@ -2323,15 +2321,6 @@ h1, h2, h3, h4 {
   .nav-actions {
     flex-shrink: 0;
     margin-left: auto;
-  }
-  .nav-search input[type="search"] {
-    width: 0;
-    padding: 7px 0;
-    transition: width 0.25s, padding 0.25s;
-  }
-  .nav-search.open input[type="search"] {
-    width: 140px;
-    padding: 7px 10px;
   }
   .nav-actions .cart-link {
     padding: 8px 10px;
@@ -2511,17 +2500,6 @@ h1, h2, h3, h4 {
     font-size: 0.84rem;
     text-align: left;
   }
-  .quote-rail {
-    padding: 14px 8px;
-    font-size: 0.74rem;
-  }
-  .products-page .quote-rail {
-    display: none;
-  }
-  .cart-page .quote-rail,
-  .product-detail-page .quote-rail {
-    display: none;
-  }
   .nav-actions { gap: 8px; }
   .nav-actions .btn-outline:not(.cart-link) { display: none; }
   .nav-actions .cart-link {
@@ -2538,6 +2516,29 @@ h1, h2, h3, h4 {
     font-size: 0.82rem;
     position: relative;
     z-index: 101;
+  }
+}
+
+@media (max-width: 860px) {
+  .nav-search input[type="search"] {
+    width: 0;
+    padding: 7px 0;
+    transition: width 0.25s, padding 0.25s;
+  }
+  .nav-search.open input[type="search"] {
+    width: 140px;
+    padding: 7px 10px;
+  }
+  .quote-rail {
+    padding: 14px 8px;
+    font-size: 0.74rem;
+  }
+  .products-page .quote-rail {
+    display: none;
+  }
+  .cart-page .quote-rail,
+  .product-detail-page .quote-rail {
+    display: none;
   }
   .hero { padding-top: 36px; }
   .hero-copy h1 { max-width: none; font-size: clamp(1.85rem, 8vw, 2.4rem); }

@@ -28,12 +28,11 @@ test("site and admin use the original PNG logo asset", () => {
   assert.ok(pngHasAlpha(logoPng), "header logo should be RGBA with transparent background");
 });
 
-test("header logo is 56px on desktop, 48px on narrow tablets, smaller on mobile", () => {
-  assert.match(styleCss, /\.brand img\s*\{[^}]*height:\s*48px/);
-  assert.match(styleCss, /@media \(min-width:\s*1024px\)\s*\{\s*\.brand img\s*\{\s*height:\s*56px;\s*\}/);
-  const mobile = styleCss.match(/@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.brand img\s*\{\s*height:\s*(\d+)px/);
-  assert.ok(mobile && Number(mobile[1]) < 56, "mobile header logo must stay smaller than desktop");
+test("header logo is 56px on desktop and smaller in the hamburger header", () => {
+  assert.match(styleCss, /\.brand img\s*\{[^}]*height:\s*56px/);
   assert.match(styleCss, /--header-h:\s*72px/);
+  const mobile = styleCss.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.brand img\s*\{\s*height:\s*(\d+)px/);
+  assert.ok(mobile && Number(mobile[1]) < 56, "hamburger header logo must stay smaller than desktop");
 });
 
 test("admin panel logo matches site header sizing", () => {

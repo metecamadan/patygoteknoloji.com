@@ -93,7 +93,7 @@ test("mobile category tab opens sheet below header", () => {
   assert.match(navCss, /\.nav-categories-btn/);
   assert.match(
     navCss,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-links\.open[\s\S]*?transform:\s*translateY\(0\)/s
+    /@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.nav-links\.open[\s\S]*?transform:\s*translateY\(0\)/s
   );
 });
 

@@ -7,17 +7,30 @@ const css = fs.readFileSync(
   path.join(__dirname, "..", "assets", "css", "style.css"),
   "utf8"
 );
+const navBlockMatch = css.match(/@media \(max-width:\s*1023px\)\s*\{([\s\S]*?)\n\}/);
+const navBlock = navBlockMatch ? navBlockMatch[1] : "";
+
+test("hamburger nav starts at 1023px so two-line tablet labels never overlap", () => {
+  assert.ok(navBlock, "missing @media (max-width: 1023px) header/nav block");
+  assert.match(navBlock, /\.nav-categories-btn\s*\{[^}]*display:\s*inline-flex/);
+  assert.match(navBlock, /--header-h:\s*64px/);
+  assert.match(css, /@media \(max-width:\s*1180px\) and \(min-width:\s*1024px\)/);
+  assert.doesNotMatch(css, /min-width:\s*861px/);
+  const root = path.join(__dirname, "..");
+  const mainJs = fs.readFileSync(path.join(root, "assets", "js", "main.js"), "utf8");
+  const navJs = fs.readFileSync(path.join(root, "assets", "js", "nav.js"), "utf8");
+  assert.match(mainJs, /function isMobileNav\(\)\s*\{\s*return window\.matchMedia\("\(max-width: 1023px\)"\)/);
+  assert.match(navJs, /function isMobileNav\(\)\s*\{\s*return window\.matchMedia\("\(max-width: 1023px\)"\)/);
+  assert.match(navJs, /isDesktopNav = \(\) => window\.matchMedia\("\(min-width: 1024px\)"\)/);
+});
 
 test("mobile nav keeps cart visible and disables mega hover open", () => {
-  assert.match(css, /\.nav-actions \.btn-outline:not\(\.cart-link\)\s*\{\s*display:\s*none/);
-  assert.match(css, /\.nav-actions \.cart-link\s*\{[^}]*display:\s*inline-flex/s);
+  assert.match(navBlock, /\.nav-actions \.btn-outline:not\(\.cart-link\)\s*\{\s*display:\s*none/);
+  assert.match(navBlock, /\.nav-actions \.cart-link\s*\{[^}]*display:\s*inline-flex/s);
+  assert.match(navBlock, /\.nav-mega:hover > \.nav-mega-panel\s*\{\s*display:\s*none/);
   assert.match(
     css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega:hover > \.nav-mega-panel\s*\{\s*display:\s*none/
-  );
-  assert.match(
-    css,
-    /@media \(hover: hover\) and \(pointer: fine\) and \(min-width:\s*861px\)/
+    /@media \(hover: hover\) and \(pointer: fine\) and \(min-width:\s*1024px\)/
   );
 });
 
@@ -52,50 +65,17 @@ test("mobile catalog: single column grid, static facets, no quote rail overlap",
 });
 
 test("mobile nav drawer aligns category labels to the left", () => {
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega\s*\{[^}]*flex-direction:\s*column/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega-group-title[\s\S]*?display:\s*none/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-toggle[\s\S]*?display:\s*none/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-links\s*\{[^}]*top:\s*var\(--header-h\)/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-links\s*\{[^}]*justify-content:\s*flex-start/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-links\s*\{[^}]*width:\s*100%/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.site-header\s*\{[^}]*backdrop-filter:\s*none/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?body\.nav-open::before/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega\s*\{[^}]*width:\s*100%/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega-group:not\(\.open\) > \.nav-mega-list[\s\S]*?display:\s*none/s
-  );
-  assert.match(
-    css,
-    /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.nav-mega-group-toggle[\s\S]*?display:\s*flex/s
-  );
+  assert.match(navBlock, /\.nav-mega\s*\{[^}]*flex-direction:\s*column/s);
+  assert.match(navBlock, /\.nav-mega-group-title[\s\S]*?display:\s*none/s);
+  assert.match(navBlock, /\.nav-toggle[\s\S]*?display:\s*none/s);
+  assert.match(navBlock, /\.nav-links\s*\{[^}]*top:\s*var\(--header-h\)/s);
+  assert.match(navBlock, /\.nav-links\s*\{[^}]*justify-content:\s*flex-start/s);
+  assert.match(navBlock, /\.nav-links\s*\{[^}]*width:\s*100%/s);
+  assert.match(navBlock, /\.site-header\s*\{[^}]*backdrop-filter:\s*none/s);
+  assert.match(navBlock, /body\.nav-open::before/s);
+  assert.match(navBlock, /\.nav-mega\s*\{[^}]*width:\s*100%/s);
+  assert.match(navBlock, /\.nav-mega-group:not\(\.open\) > \.nav-mega-list[\s\S]*?display:\s*none/s);
+  assert.match(navBlock, /\.nav-mega-group-toggle[\s\S]*?display:\s*flex/s);
 });
 
 test("wide screens use a 1440px layout with single-line menu and 5-slot product grids", () => {

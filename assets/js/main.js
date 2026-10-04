@@ -100,7 +100,7 @@
     const homeSlot = { parent: links.parentElement, before: links.nextElementSibling };
 
     function isMobileNav() {
-      return window.matchMedia("(max-width: 860px)").matches;
+      return window.matchMedia("(max-width: 1023px)").matches;
     }
 
     function portalNavLinks() {
