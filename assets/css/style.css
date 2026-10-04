@@ -3952,7 +3952,8 @@ h1, h2, h3, h4 {
   max-width: 100%;
 }
 .detail-info .actions .btn-buy {
-  width: 100%;
+  align-self: flex-start;
+  width: 50%;
   min-height: 48px;
   padding-top: 12px;
   padding-bottom: 12px;
