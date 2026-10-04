@@ -55,7 +55,12 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.doesNotMatch(urunler, /data-catalog-pager/);
   assert.match(urunler, /category-path-v1/);
   assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.doesNotMatch(css, /repeat\(5, minmax\(0, 1fr\)\)/);
+  // 5 sütun yalnızca 1440px düzende (>=1400px); daha dar ekranda kartlar sıkışmasın diye 4 sütun.
+  const fiveColumnRules = css.match(/repeat\(5, minmax\(0, 1fr\)\)/g) || [];
+  assert.equal(fiveColumnRules.length, 1);
+  const fiveAt = css.indexOf("repeat(5, minmax(0, 1fr))");
+  const wideOpen = css.lastIndexOf("@media (min-width: 1400px)", fiveAt);
+  assert.ok(wideOpen > -1 && css.indexOf("\n}", wideOpen) > fiveAt, "5-column grid must live inside the 1400px media block");
 });
 
 test("catalog filters storefront products by site category query instead of always emptying", () => {
