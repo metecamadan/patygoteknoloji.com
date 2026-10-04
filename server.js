@@ -114,7 +114,7 @@ const {
   parseProductRoutePath,
   resolveProductIdFromRoute,
   resolveLegacyProductPath,
-  legacyRedirectMapText,
+  legacyRedirectNginxText,
 } = require("./lib/product-url");
 const {
   createShippingSettingsStore,
@@ -667,27 +667,27 @@ let akakceFeedSummaryMemo = { products: null, summary: null };
 const CATALOG_BOOTSTRAP_LIMIT = 20;
 const CATALOG_BOOTSTRAP_DIR = path.join(DATA_ROOT, ".runtime", "catalog-bootstrap");
 const STARTUP_WARM_DEFER_MS = 45000;
-// nginx includes this map and 301s pre-fix product URLs without reaching Node.
-const LEGACY_REDIRECT_MAP_FILE = path.join(DATA_ROOT, ".runtime", "nginx", "legacy-product-redirects.map");
+// nginx includes these exact-match locations and 301s pre-fix product URLs without reaching Node.
+const LEGACY_REDIRECT_CONF_FILE = path.join(DATA_ROOT, ".runtime", "nginx", "legacy-product-redirects.conf");
 
-function legacyRedirectMapPresent() {
+function legacyRedirectConfPresent() {
   try {
-    return fs.statSync(LEGACY_REDIRECT_MAP_FILE).size > 0;
+    return fs.statSync(LEGACY_REDIRECT_CONF_FILE).size > 0;
   } catch (_) {
     return false;
   }
 }
 
-function writeLegacyRedirectMap(routeIndex) {
+function writeLegacyRedirectConf(routeIndex) {
   if (!routeIndex || !routeIndex.byId || !Object.keys(routeIndex.byId).length) return;
-  const text = legacyRedirectMapText(routeIndex);
+  const text = legacyRedirectNginxText(routeIndex);
   try {
-    if (fs.readFileSync(LEGACY_REDIRECT_MAP_FILE, "utf8") === text) return;
+    if (fs.readFileSync(LEGACY_REDIRECT_CONF_FILE, "utf8") === text) return;
   } catch (_) {}
-  fs.mkdirSync(path.dirname(LEGACY_REDIRECT_MAP_FILE), { recursive: true });
-  const tmp = LEGACY_REDIRECT_MAP_FILE + ".part";
+  fs.mkdirSync(path.dirname(LEGACY_REDIRECT_CONF_FILE), { recursive: true });
+  const tmp = LEGACY_REDIRECT_CONF_FILE + ".part";
   fs.writeFileSync(tmp, text, "utf8");
-  fs.renameSync(tmp, LEGACY_REDIRECT_MAP_FILE);
+  fs.renameSync(tmp, LEGACY_REDIRECT_CONF_FILE);
 }
 
 function clearCatalogBootstrapSnapshots() {
@@ -919,7 +919,7 @@ function warmStorefrontCatalog() {
 function scheduleStartupCatalogWarm() {
   const timer = setTimeout(() => {
     try {
-      if (bootstrapSnapshotsReady() && legacyRedirectMapPresent()) return;
+      if (bootstrapSnapshotsReady() && legacyRedirectConfPresent()) return;
       warmStorefrontCatalog();
     } catch (_) {}
   }, STARTUP_WARM_DEFER_MS);
@@ -945,9 +945,9 @@ function writeCatalogBootstrapSnapshots() {
   const index = storefrontIndex(false);
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
   try {
-    writeLegacyRedirectMap(index.routeIndex);
+    writeLegacyRedirectConf(index.routeIndex);
   } catch (err) {
-    console.warn("Eski ürün yönlendirme haritası yazılamadı:", err.message || err);
+    console.warn("Eski ürün yönlendirme dosyası yazılamadı:", err.message || err);
   }
   try {
     const featured = homeFeaturedCatalog(mergedProducts(false), {

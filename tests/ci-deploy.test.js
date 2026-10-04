@@ -80,14 +80,14 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(ensureProductShell, /systemctl reload nginx/);
   assert.match(ensureProductShell, /inserted before location \//);
   assert.doesNotMatch(ensureProductShell, /proxy_pass/);
-  assert.match(ensureProductShell, /map \$uri \$patygo_legacy_product/);
-  assert.match(ensureProductShell, /return 301 \$patygo_legacy_product\$is_args\$args;/);
-  assert.match(ensureProductShell, /\.runtime\/nginx\/legacy-product-redirects\.map/);
-  assert.match(ensureProductShell, /\[ -f "\$\{MAP_FILE\}" \] \|\| : > "\$\{MAP_FILE\}"/);
+  assert.match(ensureProductShell, /\.runtime\/nginx\/legacy-product-redirects\.conf/);
+  assert.match(ensureProductShell, /include \{redirects_file\};/);
+  assert.match(ensureProductShell, /\[ -f "\$\{REDIRECTS_FILE\}" \] \|\| : > "\$\{REDIRECTS_FILE\}"/);
   assert.match(ensureProductShell, /if ! nginx -t; then[\s\S]*cat "\$\{BACKUP\}" > "\$\{NGINX_CONF\}"[\s\S]*exit 1/);
   assert.match(ensureProductShell, /mktemp \/root\//, "backup must stay outside sites-enabled");
-  assert.match(ensureProductShell, /PathChanged=\$\{MAP_FILE\}/);
+  assert.match(ensureProductShell, /PathChanged=\$\{REDIRECTS_FILE\}/);
   assert.match(ensureProductShell, /nginx -t -q && systemctl reload nginx/);
+  assert.doesNotMatch(ensureProductShell, /map_hash_/, "map_hash_* must precede every map in http; other sites define maps first");
 });
 
 test("deploy does not install extra SSH keys on the VPS", () => {
@@ -124,8 +124,11 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.ok(productSeoBlock, "product SEO nginx block missing");
   assert.doesNotMatch(productSeoBlock[0], /proxy_pass/);
   assert.match(productSeoBlock[0], /try_files \/urun-detay\.html =404/);
-  assert.match(productSeoBlock[0], /if \(\$patygo_legacy_product\) \{\s*return 301 \$patygo_legacy_product\$is_args\$args;/);
-  assert.match(nginx, /map \$uri \$patygo_legacy_product \{[\s\S]*?include \/var\/www\/patygoteknoloji\.com\/\.runtime\/nginx\/legacy-product-redirects\.map;/);
+  assert.match(
+    nginx,
+    /include \/var\/www\/patygoteknoloji\.com\/\.runtime\/nginx\/legacy-product-redirects\.conf;\r?\n  location ~ \^\/\[a-z0-9-\]\+/
+  );
+  assert.doesNotMatch(nginx, /map_hash_|patygo_legacy_product/);
   assert.match(
     nginx,
     /try_files \/urun-detay\.html =404;[\s\S]*?location \/ \{/
