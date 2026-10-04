@@ -119,6 +119,18 @@ test("buildSpecRows covers RAM, storage, GPU and motherboard titles", () => {
   assert.ok(moboRows.some((row) => row.label === "Kablosuz" && /Wi-Fi/i.test(row.value)));
 });
 
+test("toner page yield keeps the thousands separator", () => {
+  const capacity = (name) =>
+    (buildSpecRows({ brand: "Ofispc", name }).find((row) => row.label === "Kapasite") || {}).value;
+  assert.equal(capacity("Ofispc Brother TN-1040 1.500 Sayfa Muadil Toner MFC-1811"), "1.500 sayfa");
+  assert.equal(capacity("HP 85A Black Siyah 1.600 Sayfa Toner CE285A"), "1.600 sayfa");
+  assert.equal(capacity("Canon CRG-737 2,400 page Toner"), "2.400 sayfa");
+  assert.equal(capacity("Samsung MLT-D111S 1000 Sayfa Toner"), "1.000 sayfa");
+  assert.equal(capacity("Kyocera TK-1150 3000 Sayfa Toner"), "3.000 sayfa");
+  assert.equal(capacity("Brother TN-2456 12.000 Sayfa Toner"), "12.000 sayfa");
+  assert.equal(capacity("Epson 700 sayfa Kartuş Toner"), "700 sayfa");
+});
+
 test("NON-ECC RAM is not labelled ECC", () => {
   const nonEcc = buildSpecRows({
     brand: "Kingston",

@@ -77,6 +77,15 @@ test("commerce contracts state storefront prices include VAT", () => {
   assert.match(onBilgi, /KDV dahil/);
 });
 
+test("commerce contracts promise the same 2 business day dispatch as the product page", () => {
+  for (const file of ["mesafeli-satis-sozlesmesi.html", "on-bilgilendirme-formu.html"]) {
+    const html = fs.readFileSync(path.join(root, file), "utf8");
+    assert.match(html, /sipariş onayından itibaren 2 iş günü içinde kargoya verilir/, file);
+    assert.match(html, /Yasal azami süreler saklıdır/, file);
+    assert.doesNotMatch(html, /Teslimat süresi stok ve tedarik durumuna göre değiş/, file);
+  }
+});
+
 test("return and distance sale contracts exclude cartridge toner battery returns", () => {
   const iade = fs.readFileSync(path.join(root, "iade-ve-cayma.html"), "utf8");
   const mesafeli = fs.readFileSync(path.join(root, "mesafeli-satis-sozlesmesi.html"), "utf8");
