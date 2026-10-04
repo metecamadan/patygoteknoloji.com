@@ -452,6 +452,57 @@
       });
   }
 
+  function buildPriceAlert(product) {
+    const box = document.createElement("details");
+    box.className = "price-alert";
+    box.innerHTML =
+      '<summary><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round"/></svg>Fiyatı düşünce haber ver</summary>' +
+      '<form class="price-alert-form" novalidate>' +
+      '<label for="priceAlertEmail">E-posta adresiniz</label>' +
+      '<div class="price-alert-row"><input type="email" id="priceAlertEmail" name="email" autocomplete="email" inputmode="email" maxlength="160" placeholder="ornek@eposta.com" required />' +
+      '<button type="submit" class="btn btn-outline btn-sm">Alarm kur</button></div>' +
+      '<label class="price-alert-consent"><input type="checkbox" name="consent" required /> <span>Bu ürünün fiyatı düştüğünde veya yeniden satışa girdiğinde e-posta almayı kabul ediyorum. <a href="/kvkk" target="_blank" rel="noopener">KVKK Aydınlatma Metni</a></span></label>' +
+      '<p class="price-alert-note" role="status" hidden></p>' +
+      "</form>";
+    const form = box.querySelector("form");
+    const note = box.querySelector(".price-alert-note");
+    const show = (kind, text) => {
+      note.className = "price-alert-note" + (kind ? " " + kind : "");
+      note.textContent = text;
+      note.hidden = !text;
+    };
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const email = form.elements.email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return show("err", "Geçerli bir e-posta girin.");
+      if (!form.elements.consent.checked) return show("err", "Bildirim almak için onay kutusunu işaretleyin.");
+      const btn = form.querySelector("button");
+      btn.disabled = true;
+      try {
+        const res = await fetch("/api/price-alerts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId: product.id, email, consent: true }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || "Fiyat alarmı kurulamadı.");
+        show(
+          "ok",
+          data.state === "active"
+            ? "Bu ürün için fiyat alarmınız zaten açık."
+            : "Onay e-postası gönderdik. E-postadaki bağlantıya tıkladığınızda alarm başlar."
+        );
+        form.elements.email.value = "";
+        form.elements.consent.checked = false;
+      } catch (err) {
+        show("err", err.message || "Fiyat alarmı kurulamadı.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    return box;
+  }
+
   function render(product, categories) {
     root.textContent = "";
     if (!product) {
@@ -677,6 +728,7 @@
     if (installmentTable) info.appendChild(installmentTable);
     info.appendChild(actions);
     if (shortlist) info.appendChild(shortlist);
+    info.appendChild(buildPriceAlert(product));
     info.appendChild(trust);
     const hub = buildHighlights(product);
     if (hub) info.appendChild(hub);

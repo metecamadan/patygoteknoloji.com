@@ -35,6 +35,7 @@ const {
   listingSnapshotJobs,
   enrichCatalogSnapshotProducts,
   supplierStorefrontCandidates,
+  priceInclVatAmount,
 } = require("./lib/catalog");
 const {
   createCategoryStore,
@@ -79,6 +80,8 @@ const {
   evaluateCoupon,
   normalizeCode: normalizeCouponCode,
 } = require("./lib/coupons");
+const { createPriceAlertStore } = require("./lib/price-alerts");
+const { buildConfirmMail: buildPriceAlertConfirmMail, buildNotifyMail: buildPriceAlertNotifyMail } = require("./lib/price-alert-mail");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createConsentStore } = require("./lib/consent");
@@ -265,6 +268,48 @@ try {
   console.error("[coupons] devre dışı:", err && err.message);
 }
 
+let priceAlertStore = null;
+try {
+  priceAlertStore = createPriceAlertStore(getDb(DATA_ROOT));
+} catch (err) {
+  console.error("[price-alerts] devre dışı:", err && err.message);
+}
+
+/** Storefront product (sellable, in stock) as the alert checker sees it, or null. */
+function priceAlertProduct(productId) {
+  const index = storefrontIndex(false);
+  if (!index.compactById) index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
+  const item = index.compactById.get(String(productId || ""));
+  if (!item) return null;
+  return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath };
+}
+
+let priceAlertRun = null;
+
+async function runPriceAlertCheck() {
+  if (!priceAlertStore || priceAlertRun || !smtpConfigured(process.env)) return priceAlertRun;
+  priceAlertRun = (async () => {
+    try {
+      priceAlertStore.purge();
+      const due = priceAlertStore.evaluate(priceAlertProduct);
+      for (const entry of due) {
+        try {
+          await deliverSimpleMail(buildPriceAlertNotifyMail(entry));
+          priceAlertStore.markNotified(entry);
+        } catch (err) {
+          console.error("[price-alerts] bildirim gönderilemedi:", err && err.message);
+        }
+      }
+      if (due.length) console.log("[price-alerts] gönderilen bildirim:", due.length);
+    } catch (err) {
+      console.error("[price-alerts] kontrol hatası:", err && err.message);
+    } finally {
+      priceAlertRun = null;
+    }
+  })();
+  return priceAlertRun;
+}
+
 /** Returns { coupon, discount } for a valid code, null for an empty code; throws on invalid. */
 function resolveCheckoutCoupon(code, merchandiseTotal) {
   const key = normalizeCouponCode(code);
@@ -298,6 +343,7 @@ const akbankConfig = createAkbankConfig(process.env);
 const bankReversalConfig = createBankReversalConfig(process.env, akbankConfig);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 const couponCheckAttempts = new Map(); // IP -> { count, resetAt }
+const priceAlertAttempts = new Map(); // IP -> { count, resetAt }
 const contactAttempts = new Map(); // IP -> { count, resetAt }
 const adminLoginAttempts = new Map(); // IP -> { count, resetAt }
 const analyticsAttempts = new Map(); // IP -> { count, resetAt }
@@ -620,6 +666,11 @@ function htmlRedirect(res, location) {
     })
   );
   res.end(body);
+}
+
+function redirectTo(res, location) {
+  res.writeHead(303, securityHeaders({ Location: String(location || "/"), "Cache-Control": "no-store" }));
+  res.end();
 }
 
 function isBlocked(relPosix) {
@@ -1510,6 +1561,61 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/shipping") {
     return json(res, 200, shippingSettingsStore.getPublic());
+  }
+
+  if (req.method === "POST" && urlPath === "/api/price-alerts") {
+    const ip = clientIp(req);
+    if (rateLimited(priceAlertAttempts, ip, 6, 15 * 60 * 1000)) {
+      return json(res, 429, { ok: false, error: "Çok fazla istek. Lütfen sonra tekrar deneyin." });
+    }
+    try {
+      if (!priceAlertStore) return json(res, 503, { ok: false, error: "Fiyat alarmı şu anda kullanılamıyor." });
+      const body = JSON.parse((await readBody(req, 8 * 1024)).toString("utf8") || "{}");
+      const email = String(body.email || "").trim().slice(0, 160);
+      if (!isValidEmail(email)) return json(res, 422, { ok: false, error: "Geçerli bir e-posta girin." });
+      if (body.consent !== true) {
+        return json(res, 422, { ok: false, error: "Bildirim almak için onay kutusunu işaretleyin." });
+      }
+      const product = priceAlertProduct(body.productId);
+      if (!product) return json(res, 404, { ok: false, error: "Bu ürün şu anda satışta değil." });
+      if (!smtpConfigured(process.env)) {
+        return json(res, 503, { ok: false, error: "E-posta bildirimi şu anda kullanılamıyor." });
+      }
+      const { alert, state } = priceAlertStore.subscribe({
+        email,
+        productId: body.productId,
+        productName: product.name,
+        price: product.priceIncl,
+      });
+      if (state === "active") return json(res, 200, { ok: true, state: "active" });
+      try {
+        consentStore.record({
+          subjectType: "price_alert",
+          subjectRef: String(alert.id),
+          purpose: "price_alert_email",
+          policyVersion: "2026-10-04",
+          evidence: { ip, email: alert.email, productId: alert.productId, granted: true },
+        });
+      } catch (_) {}
+      await deliverSimpleMail(buildPriceAlertConfirmMail(alert));
+      return json(res, 200, { ok: true, state: "pending" });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Fiyat alarmı kurulamadı." });
+    }
+  }
+
+  if (req.method === "GET" && (urlPath === "/api/price-alerts/confirm" || urlPath === "/api/price-alerts/unsubscribe")) {
+    const requestUrl = new URL(req.url || urlPath, "http://localhost");
+    const token = String(requestUrl.searchParams.get("token") || "").slice(0, 64);
+    const confirming = urlPath.endsWith("/confirm");
+    let alert = null;
+    try {
+      alert = priceAlertStore && token ? (confirming ? priceAlertStore.confirm(token) : priceAlertStore.unsubscribe(token)) : null;
+    } catch (_) {}
+    if (!alert) return redirectTo(res, SITE_BASE_URL + "/urunler?alarm=gecersiz");
+    const product = priceAlertProduct(alert.productId);
+    const target = product && product.urlPath ? product.urlPath : "/urunler";
+    return redirectTo(res, SITE_BASE_URL + target + "?alarm=" + (confirming ? "onay" : "iptal"));
   }
 
   if (req.method === "POST" && urlPath === "/api/coupons/check") {
@@ -3613,12 +3719,21 @@ const retentionScheduler = createRetentionScheduler(DATA_ROOT, {
 });
 retentionScheduler.start();
 
+const priceAlertTimer = setInterval(() => {
+  runPriceAlertCheck().catch(() => {});
+}, 60 * 60 * 1000);
+if (typeof priceAlertTimer.unref === "function") priceAlertTimer.unref();
+
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,
   digest: xmlFetchDigest,
   afterRefresh: (slotId) => {
     enqueueXmlCategorySync(slotId);
     scheduleAkakceImageMirror();
+    const alertTimer = setTimeout(() => {
+      runPriceAlertCheck().catch(() => {});
+    }, 3 * 60 * 1000);
+    if (typeof alertTimer.unref === "function") alertTimer.unref();
   },
   log: (...parts) => console.log(...parts),
   logError: (...parts) => console.error(...parts),

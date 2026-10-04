@@ -294,6 +294,8 @@
     document.body.appendChild(quote);
   }
 
+  let suggestSeq = 0;
+
   document.querySelectorAll(".nav-search").forEach((form) => {
     const input = form.querySelector('input[name="q"]');
     if (!input) return;
@@ -329,8 +331,6 @@
     });
     if (!form.classList.contains("not-found-search")) attachSearchSuggest(form, input);
   });
-
-  let suggestSeq = 0;
 
   function suggestPrice(product) {
     const net = Number(product && product.price) || 0;
@@ -494,5 +494,32 @@
       },
       { passive: true }
     );
+  }
+
+  // Landing message after the price-alert confirm / unsubscribe links in e-mails.
+  const ALERT_MESSAGES = {
+    onay: ["ok", "Fiyat alarmınız başladı. Fiyat düştüğünde veya ürün yeniden satışa girdiğinde e-posta göndereceğiz."],
+    iptal: ["ok", "Bu ürün için fiyat alarmı bildirimleri durduruldu."],
+    gecersiz: ["err", "Bağlantı geçersiz veya süresi dolmuş. Alarmı ürün sayfasından yeniden kurabilirsiniz."],
+  };
+  const alarmParams = new URLSearchParams(location.search);
+  const alarmMessage = ALERT_MESSAGES[alarmParams.get("alarm") || ""];
+  if (alarmMessage) {
+    const banner = document.createElement("div");
+    banner.className = "site-flash site-flash--" + alarmMessage[0];
+    banner.setAttribute("role", "status");
+    banner.textContent = alarmMessage[1];
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "site-flash-close";
+    close.setAttribute("aria-label", "Kapat");
+    close.textContent = "×";
+    close.addEventListener("click", () => banner.remove());
+    banner.appendChild(close);
+    const main = document.querySelector("main") || document.body;
+    main.insertBefore(banner, main.firstChild);
+    alarmParams.delete("alarm");
+    const rest = alarmParams.toString();
+    history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
   }
 })();
