@@ -417,7 +417,7 @@
     const trust = document.createElement("ul");
     trust.className = "detail-trust";
     trust.innerHTML =
-      "<li>Stokta · KDV dahil fiyat</li><li>3D Secure güvenli ödeme</li><li>Faturalı satış</li>";
+      "<li>Stokta · KDV dahil fiyat</li><li>3D Secure güvenli ödeme</li>";
 
     if (leaf) info.appendChild(cat);
     info.appendChild(tag);

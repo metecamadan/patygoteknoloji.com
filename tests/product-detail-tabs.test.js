@@ -37,6 +37,7 @@ test("product detail tabs and spec chips are rendered in JS", () => {
   assert.match(script, /buildSpecTableFromRows/);
   assert.doesNotMatch(script, /detail-empty/);
   assert.match(script, /İade ve Cayma/);
+  assert.match(script, /trust\.innerHTML =\s*"<li>Stokta · KDV dahil fiyat<\/li><li>3D Secure güvenli ödeme<\/li>";/);
   assert.match(css, /\.detail-spec-grid/);
   assert.match(css, /\.detail-spec-value\.is-highlight/);
   assert.match(html, /detail-specs\.js/);
