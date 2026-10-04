@@ -426,6 +426,32 @@
     );
   }
 
+  let similarLoadedFor = "";
+  function loadSimilar(product) {
+    const section = document.getElementById("similarProducts");
+    const grid = document.getElementById("similarGrid");
+    const id = product && product.id ? String(product.id) : "";
+    if (!section || !grid || !id || similarLoadedFor === id) return;
+    if (typeof window.PatygoCatalog.makeCard !== "function") return;
+    similarLoadedFor = id;
+    fetch("/api/products/similar?id=" + encodeURIComponent(id) + "&limit=8", { cache: "default" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (similarLoadedFor !== id) return;
+        const items = data && Array.isArray(data.products) ? data.products : [];
+        grid.textContent = "";
+        items.forEach((item, index) => {
+          window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+          if (!window.PatygoCatalog.byId[item.id]) window.PatygoCatalog.byId[item.id] = item;
+          grid.appendChild(window.PatygoCatalog.makeCard(item, index, { compactListing: true }));
+        });
+        section.hidden = items.length === 0;
+      })
+      .catch(() => {
+        if (similarLoadedFor === id) similarLoadedFor = "";
+      });
+  }
+
   function render(product, categories) {
     root.textContent = "";
     if (!product) {
@@ -433,6 +459,7 @@
         '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürün kataloğuna dön</a></p>';
       return;
     }
+    loadSimilar(product);
 
     document.title = product.name + " | Patygo Teknoloji";
     upsertCanonical(product.urlPath || location.pathname);

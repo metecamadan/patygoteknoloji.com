@@ -25,6 +25,7 @@ const {
   mergeCatalogProducts,
   queryPublicCatalog,
   queryPublicCatalogIndexed,
+  similarProductsIndexed,
   buildBrandCounts,
   buildStorefrontIndex,
   buildStorefrontLeafKeys,
@@ -1753,6 +1754,18 @@ async function handleApi(req, res, urlPath) {
       { brands: buildBrandCounts(storefrontIndex(false).compactAll) },
       { "Cache-Control": "public, max-age=300, stale-while-revalidate=900" }
     );
+  }
+
+  if (req.method === "GET" && urlPath === "/api/products/similar") {
+    const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const products = similarProductsIndexed(
+      storefrontIndex(false),
+      requestUrl.searchParams.get("id"),
+      requestUrl.searchParams.get("limit")
+    );
+    return json(res, 200, { products }, {
+      "Cache-Control": "public, max-age=300, stale-while-revalidate=900",
+    });
   }
 
   if (req.method === "GET" && urlPath === "/api/products") {

@@ -2330,6 +2330,7 @@
   window.PatygoCatalog.fetchProductPage = fetchProductPage;
   window.PatygoCatalog.loadCategories = loadCategories;
   window.PatygoCatalog.createQtyStepper = createQtyStepper;
+  window.PatygoCatalog.makeCard = makeCard;
 
   window.PatygoCatalog.ready = reloadCatalog();
 
