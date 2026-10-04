@@ -74,6 +74,11 @@ const {
 const { createOrderStore, ORDER_STATUSES, ADMIN_FULFILLMENT_STATUSES } = require("./lib/orders");
 const { getDb } = require("./lib/db");
 const { createPriceHistory } = require("./lib/price-history");
+const {
+  createCouponStore,
+  evaluateCoupon,
+  normalizeCode: normalizeCouponCode,
+} = require("./lib/coupons");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createConsentStore } = require("./lib/consent");
@@ -253,6 +258,24 @@ function recordPriceHistory(products) {
   }
 }
 
+let couponStore = null;
+try {
+  couponStore = createCouponStore(getDb(DATA_ROOT));
+} catch (err) {
+  console.error("[coupons] devre dışı:", err && err.message);
+}
+
+/** Returns { coupon, discount } for a valid code, null for an empty code; throws on invalid. */
+function resolveCheckoutCoupon(code, merchandiseTotal) {
+  const key = normalizeCouponCode(code);
+  if (!key) return null;
+  if (!couponStore) throw new Error("Kupon şu anda kullanılamıyor.");
+  const coupon = couponStore.get(key);
+  const result = evaluateCoupon(coupon, merchandiseTotal, Date.now());
+  if (!result.ok) throw new Error(result.error);
+  return { coupon, discount: result.discount };
+}
+
 function priceReferenceFor(id, price) {
   if (!priceHistory) return 0;
   try {
@@ -274,6 +297,7 @@ const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const bankReversalConfig = createBankReversalConfig(process.env, akbankConfig);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
+const couponCheckAttempts = new Map(); // IP -> { count, resetAt }
 const contactAttempts = new Map(); // IP -> { count, resetAt }
 const adminLoginAttempts = new Map(); // IP -> { count, resetAt }
 const analyticsAttempts = new Map(); // IP -> { count, resetAt }
@@ -416,8 +440,7 @@ function orderAccessOk(order, token) {
   return crypto.timingSafeEqual(a, b);
 }
 
-function buildCheckoutOrder(body) {
-  const rawItems = Array.isArray(body && body.items) ? body.items : [];
+function priceCheckoutItems(rawItems) {
   if (!rawItems.length) throw new Error("Sepet boş.");
   const productIds = rawItems.slice(0, 40).map((row) => String(row.productId || "").trim());
   const byId = lookupCheckoutProductsByIds(productIds, {
@@ -460,11 +483,27 @@ function buildCheckoutOrder(body) {
   subtotal = Math.round(subtotal * 100) / 100;
   vat = Math.round(vat * 100) / 100;
   const merchandiseTotal = Math.round((subtotal + vat) * 100) / 100;
+  return { items, subtotal, vat, merchandiseTotal };
+}
+
+function buildCheckoutOrder(body) {
+  const rawItems = Array.isArray(body && body.items) ? body.items : [];
+  const { items, subtotal, vat, merchandiseTotal } = priceCheckoutItems(rawItems);
   const shippingSettings = shippingSettingsStore.getSettings();
   const minimumError = minimumOrderError(merchandiseTotal, shippingSettings);
   if (minimumError) throw new Error(minimumError);
   const shippingFee = computeShippingFee(merchandiseTotal, shippingSettings);
-  const baseTotal = Math.round((merchandiseTotal + shippingFee) * 100) / 100;
+  const applied = resolveCheckoutCoupon(body && body.couponCode, merchandiseTotal);
+  const coupon = applied
+    ? {
+        code: applied.coupon.code,
+        type: applied.coupon.type,
+        value: applied.coupon.value,
+        discount: applied.discount,
+      }
+    : null;
+  const discount = coupon ? coupon.discount : 0;
+  const baseTotal = Math.round((merchandiseTotal - discount + shippingFee) * 100) / 100;
   const installment = resolveInstallment(
     baseTotal,
     body && body.installCount,
@@ -522,6 +561,7 @@ function buildCheckoutOrder(body) {
     vat,
     merchandiseTotal,
     shippingFee,
+    coupon,
     installment,
     total,
     currency: "TRY",
@@ -1472,6 +1512,31 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, shippingSettingsStore.getPublic());
   }
 
+  if (req.method === "POST" && urlPath === "/api/coupons/check") {
+    if (rateLimited(couponCheckAttempts, clientIp(req), 20, 15 * 60 * 1000)) {
+      return json(res, 429, { ok: false, error: "Çok fazla kupon denemesi. Lütfen sonra tekrar deneyin." });
+    }
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const rawItems = Array.isArray(body.items) ? body.items : [];
+      const { merchandiseTotal } = priceCheckoutItems(rawItems);
+      const applied = resolveCheckoutCoupon(body.code, merchandiseTotal);
+      if (!applied) return json(res, 422, { ok: false, error: "Kupon kodunu yazın." });
+      return json(res, 200, {
+        ok: true,
+        code: applied.coupon.code,
+        type: applied.coupon.type,
+        value: applied.coupon.value,
+        maxDiscount: applied.coupon.maxDiscount,
+        minOrder: applied.coupon.minOrder,
+        discount: applied.discount,
+        merchandiseTotal,
+      });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Kupon uygulanamadı." });
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/installments") {
     return json(res, 200, Object.assign({ posReady: akbankConfig.enabled }, installmentSettingsStore.getPublic()));
   }
@@ -1642,6 +1707,13 @@ async function handleApi(req, res, urlPath) {
           updated && (updated.paymentTaken || updated.paymentStatus === "paid")
         );
         if (nowPaid && !beforePaid) {
+          if (couponStore && updated.coupon && updated.coupon.code) {
+            try {
+              couponStore.redeem(updated.id, updated.coupon.code);
+            } catch (err) {
+              console.error("[coupons] kullanım sayılamadı:", err && err.message);
+            }
+          }
           setImmediate(() => {
             sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
               console.error("order paid mail failed:", err.message);
@@ -1685,6 +1757,7 @@ async function handleApi(req, res, urlPath) {
         total: order.total,
         shippingFee: order.shippingFee || 0,
         installment: order.installment || null,
+        coupon: order.coupon ? { code: order.coupon.code, discount: order.coupon.discount } : null,
         merchandiseTotal: order.merchandiseTotal || order.subtotal + order.vat,
         currency: order.currency,
         paymentStatus: order.paymentStatus,
@@ -2112,6 +2185,53 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, { ok: true, settings });
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Kargo ayarları kaydedilemedi." });
+    }
+  }
+
+  if (urlPath === "/api/admin/coupons" || urlPath.startsWith("/api/admin/coupons/")) {
+    if (!couponStore) return json(res, 503, { ok: false, error: "Kupon modülü kullanılamıyor." });
+    const codeParam = urlPath.startsWith("/api/admin/coupons/")
+      ? decodeURIComponent(urlPath.slice("/api/admin/coupons/".length))
+      : "";
+    const auditCoupon = (action, code, detail) => {
+      try {
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action,
+          entityType: "coupon",
+          entityId: code,
+          detail: detail || {},
+          ip: clientIp(req),
+        });
+      } catch (_) {}
+    };
+    try {
+      if (req.method === "GET" && !codeParam) {
+        return json(res, 200, { ok: true, coupons: couponStore.list() });
+      }
+      if (req.method === "POST" && !codeParam) {
+        const body = JSON.parse((await readBody(req, 8 * 1024)).toString("utf8") || "{}");
+        const coupon = couponStore.save(body);
+        auditCoupon("coupon.save", coupon.code, { type: coupon.type, value: coupon.value });
+        return json(res, 200, { ok: true, coupon });
+      }
+      if (req.method === "PATCH" && codeParam) {
+        const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+        const coupon = couponStore.setActive(codeParam, body.active !== false);
+        if (!coupon) return json(res, 404, { ok: false, error: "Kupon bulunamadı." });
+        auditCoupon("coupon.active", coupon.code, { active: coupon.active });
+        return json(res, 200, { ok: true, coupon });
+      }
+      if (req.method === "DELETE" && codeParam) {
+        if (!couponStore.remove(codeParam)) return json(res, 404, { ok: false, error: "Kupon bulunamadı." });
+        auditCoupon("coupon.delete", normalizeCouponCode(codeParam));
+        return json(res, 200, { ok: true });
+      }
+      return json(res, 405, { ok: false, error: "Desteklenmeyen işlem." });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Kupon kaydedilemedi." });
     }
   }
 

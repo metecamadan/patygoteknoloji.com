@@ -56,9 +56,16 @@
     installmentRow: document.getElementById("installmentRow"),
     installmentLabel: document.getElementById("installmentLabel"),
     installmentAmount: document.getElementById("installmentAmount"),
+    couponInput: document.getElementById("couponInput"),
+    couponApplyBtn: document.getElementById("couponApplyBtn"),
+    couponNote: document.getElementById("couponNote"),
+    couponRow: document.getElementById("couponRow"),
+    couponLabel: document.getElementById("couponLabel"),
+    couponAmount: document.getElementById("couponAmount"),
   };
 
   let selectedInstallCount = 1;
+  let appliedCoupon = null;
 
   let posStatus = { enabled: false, testMode: true, provider: "akbank" };
 
@@ -175,6 +182,105 @@
     summary.total = chosen ? chosen.total : baseTotal;
     if (els.grandTotal) els.grandTotal.textContent = formatTRY(summary.total);
     return summary;
+  }
+
+  function setCouponNote(kind, text) {
+    if (!els.couponNote) return;
+    els.couponNote.classList.remove("ok", "err");
+    if (kind) els.couponNote.classList.add(kind);
+    els.couponNote.textContent = text || "";
+    els.couponNote.hidden = !text;
+  }
+
+  // Mirrors lib/coupons.js evaluateCoupon; the server recomputes it at payment start.
+  function couponDiscountFor(merchandiseTotal) {
+    if (!appliedCoupon) return { discount: 0, error: "" };
+    const merch = Math.round((Number(merchandiseTotal) || 0) * 100) / 100;
+    if (appliedCoupon.minOrder > 0 && merch < appliedCoupon.minOrder) {
+      return {
+        discount: 0,
+        error: "Bu kupon " + formatTRY(appliedCoupon.minOrder) + " ve üzeri ürün toplamında geçerlidir.",
+      };
+    }
+    let discount =
+      appliedCoupon.type === "amount"
+        ? appliedCoupon.value
+        : Math.round(merch * appliedCoupon.value) / 100;
+    if (appliedCoupon.type === "percent" && appliedCoupon.maxDiscount > 0) {
+      discount = Math.min(discount, appliedCoupon.maxDiscount);
+    }
+    discount = Math.round(Math.min(discount, Math.max(0, merch - 1)) * 100) / 100;
+    return { discount: discount > 0 ? discount : 0, error: "" };
+  }
+
+  function applyCoupon(summary) {
+    const result = couponDiscountFor(summary.merchandiseTotal);
+    const discount = summary.lines && summary.lines.length ? result.discount : 0;
+    if (els.couponRow) els.couponRow.hidden = !(discount > 0);
+    if (discount > 0) {
+      if (els.couponLabel) els.couponLabel.textContent = "Kupon (" + appliedCoupon.code + ")";
+      if (els.couponAmount) els.couponAmount.textContent = "-" + formatTRY(discount);
+    }
+    if (appliedCoupon) {
+      setCouponNote(
+        result.error ? "err" : "ok",
+        result.error || appliedCoupon.code + " uygulandı: " + formatTRY(discount) + " indirim."
+      );
+    }
+    summary.couponDiscount = discount;
+    summary.couponCode = discount > 0 ? appliedCoupon.code : "";
+    summary.total = Math.round((summary.total - discount) * 100) / 100;
+    return summary;
+  }
+
+  function syncCouponButton() {
+    if (els.couponApplyBtn) els.couponApplyBtn.textContent = appliedCoupon ? "Kaldır" : "Uygula";
+    if (els.couponInput) els.couponInput.readOnly = Boolean(appliedCoupon);
+  }
+
+  async function submitCoupon(lines) {
+    if (appliedCoupon) {
+      appliedCoupon = null;
+      setCouponNote("", "");
+      if (els.couponInput) els.couponInput.value = "";
+      syncCouponButton();
+      if (calcFn) calcFn();
+      return;
+    }
+    const code = els.couponInput ? els.couponInput.value.trim() : "";
+    if (!code) {
+      setCouponNote("err", "Kupon kodunu yazın.");
+      return;
+    }
+    const items = (lines() || []).map((l) => ({ productId: l.product.id, qty: l.qty }));
+    if (!items.length) {
+      setCouponNote("err", "Sepetiniz boş.");
+      return;
+    }
+    if (els.couponApplyBtn) els.couponApplyBtn.disabled = true;
+    try {
+      const res = await fetch("/api/coupons/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, items }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Kupon uygulanamadı.");
+      appliedCoupon = {
+        code: data.code,
+        type: data.type === "amount" ? "amount" : "percent",
+        value: Number(data.value) || 0,
+        maxDiscount: Number(data.maxDiscount) || 0,
+        minOrder: Number(data.minOrder) || 0,
+      };
+      if (els.couponInput) els.couponInput.value = data.code;
+      syncCouponButton();
+      if (calcFn) calcFn();
+    } catch (err) {
+      setCouponNote("err", err.message || "Kupon uygulanamadı.");
+    } finally {
+      if (els.couponApplyBtn) els.couponApplyBtn.disabled = false;
+    }
   }
 
   function updateMinimumHint(totals) {
@@ -369,6 +475,9 @@
           order.items.map((i) => i.name + " × " + i.qty).join(" · ") +
           " — " +
           formatTRY(order.total) +
+          (order.coupon && order.coupon.discount > 0
+            ? " · " + order.coupon.code + " kuponu ile " + formatTRY(order.coupon.discount) + " indirim"
+            : "") +
           (paid ? " (KDV dahil) · Ödeme alındı" : " (KDV dahil)");
       } else {
         els.successSummary.textContent = paid
@@ -517,7 +626,7 @@
         const summary = { qty, sub, vat, merchandiseTotal, shipping, total, lines };
         updateShippingRow(summary);
         summary.minimumError = updateMinimumHint(summary);
-        return applyInstallment(summary);
+        return applyInstallment(applyCoupon(summary));
       }
       const t = window.PatygoCart.totals(window.PatygoCatalog.byId || catalogById || {});
       lines = t.lines;
@@ -532,18 +641,33 @@
       if (els.vatAmount) els.vatAmount.textContent = formatTRY(t.vat);
       if (els.grandTotal) els.grandTotal.textContent = formatTRY(t.total);
       updateShippingRow(t);
-      return applyInstallment({
-        qty: t.lines.reduce((n, l) => n + l.qty, 0),
-        sub: t.sub,
-        vat: t.vat,
-        merchandiseTotal: t.merchandiseTotal,
-        shipping: t.shipping,
-        total: t.total,
-        lines: t.lines,
-        minimumError: updateMinimumHint(t),
-      });
+      return applyInstallment(
+        applyCoupon({
+          qty: t.lines.reduce((n, l) => n + l.qty, 0),
+          sub: t.sub,
+          vat: t.vat,
+          merchandiseTotal: t.merchandiseTotal,
+          shipping: t.shipping,
+          total: t.total,
+          lines: t.lines,
+          minimumError: updateMinimumHint(t),
+        })
+      );
     }
     calcFn = calc;
+
+    if (els.couponApplyBtn && !els.couponApplyBtn.dataset.bound) {
+      els.couponApplyBtn.dataset.bound = "1";
+      const currentLines = () => (calcFn ? calcFn().lines : []);
+      els.couponApplyBtn.addEventListener("click", () => submitCoupon(currentLines));
+      if (els.couponInput) {
+        els.couponInput.addEventListener("keydown", (ev) => {
+          if (ev.key !== "Enter") return;
+          ev.preventDefault();
+          if (!appliedCoupon) submitCoupon(currentLines);
+        });
+      }
+    }
 
     if (!lines.length && mode === "cart") {
       if (els.name) {
@@ -703,6 +827,7 @@
               contractsAccepted: true,
               kvkkAccepted: true,
               installCount: totals.installCount || 1,
+              couponCode: totals.couponCode || undefined,
             }),
           });
           const data = await res.json();

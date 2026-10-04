@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p13" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=taksit-1" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p14" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=kupon-1" />
   <script>
     (function () {
       try {
@@ -567,6 +567,68 @@
                 <p class="admin-note" id="adminInstallmentNote" role="status"></p>
               </form>
             </section>
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">KAMPANYA</span>
+                  <h2>Kupon kodları</h2>
+                  <p class="admin-card-lead">Müşteri ödeme sayfasında kodu girer; indirim ürün toplamından düşülür ve faturaya satır fiyatlarına dağıtılarak yansır. Kullanım, ödeme başarılı olunca sayılır.</p>
+                </div>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table admin-coupon-table">
+                  <thead><tr><th>Kod</th><th>İndirim</th><th>Koşullar</th><th>Kullanım</th><th>Durum</th><th></th></tr></thead>
+                  <tbody id="couponTableBody"><tr><td colspan="6">Yükleniyor…</td></tr></tbody>
+                </table>
+              </div>
+              <form id="adminCouponForm" class="admin-form" method="post" action="#" novalidate>
+                <h3 class="admin-subhead">Kupon ekle / güncelle</h3>
+                <div class="admin-coupon-grid">
+                  <div class="field">
+                    <label for="couponCode">Kod</label>
+                    <input id="couponCode" type="text" maxlength="24" autocomplete="off" placeholder="ör. HOSGELDIN10" required />
+                  </div>
+                  <div class="field">
+                    <label for="couponType">Tür</label>
+                    <select id="couponType"><option value="percent">Yüzde (%)</option><option value="amount">Tutar (TL)</option></select>
+                  </div>
+                  <div class="field">
+                    <label for="couponValue">İndirim değeri</label>
+                    <input id="couponValue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ör. 10" required />
+                  </div>
+                  <div class="field">
+                    <label for="couponMaxDiscount">En fazla indirim (TL, yüzdede)</label>
+                    <input id="couponMaxDiscount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Sınırsız" />
+                  </div>
+                  <div class="field">
+                    <label for="couponMinOrder">Alt limit (KDV dahil ürün toplamı, TL)</label>
+                    <input id="couponMinOrder" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Yok" />
+                  </div>
+                  <div class="field">
+                    <label for="couponUsageLimit">Toplam kullanım limiti</label>
+                    <input id="couponUsageLimit" type="number" min="0" step="1" inputmode="numeric" placeholder="Sınırsız" />
+                  </div>
+                  <div class="field">
+                    <label for="couponStartsAt">Başlangıç</label>
+                    <input id="couponStartsAt" type="date" />
+                  </div>
+                  <div class="field">
+                    <label for="couponEndsAt">Bitiş</label>
+                    <input id="couponEndsAt" type="date" />
+                  </div>
+                </div>
+                <label class="admin-check">
+                  <input type="checkbox" id="couponActive" checked />
+                  <span>Aktif</span>
+                </label>
+                <p class="admin-field-help">Aynı kodla kaydetmek mevcut kuponu günceller; kullanım sayısı korunur. Üyelik olmadığı için kişi başı limit uygulanamaz, toplam limit kullanın.</p>
+                <div class="admin-form-actions">
+                  <button type="submit" class="btn btn-primary">Kaydet</button>
+                  <button type="reset" class="btn btn-outline">Temizle</button>
+                </div>
+                <p class="admin-note" id="adminCouponNote" role="status"></p>
+              </form>
+            </section>
           </div>
         </section>
 
@@ -1108,6 +1170,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=kargo-tarih-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=kupon-1"></script>
 </body>
 </html>

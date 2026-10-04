@@ -129,9 +129,50 @@
     return blocked;
   }
 
+  let suggestionsKey = "";
+
+  // Similar products of the priciest cart line, minus what is already in the cart.
+  function renderSuggestions(totals) {
+    const section = document.getElementById("cartSuggestions");
+    const grid = document.getElementById("cartSuggestionsGrid");
+    if (!section || !grid || typeof window.PatygoCatalog.makeCard !== "function") return;
+    const lines = totals.lines || [];
+    if (!lines.length) {
+      suggestionsKey = "";
+      section.hidden = true;
+      return;
+    }
+    const anchor = lines.reduce((best, line) =>
+      (Number(line.product.price) || 0) > (Number(best.product.price) || 0) ? line : best
+    );
+    const inCart = new Set(lines.map((line) => String(line.product.id)));
+    const key = String(anchor.product.id) + "|" + Array.from(inCart).sort().join(",");
+    if (key === suggestionsKey) return;
+    suggestionsKey = key;
+    fetch("/api/products/similar?id=" + encodeURIComponent(anchor.product.id) + "&limit=12", { cache: "default" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (suggestionsKey !== key) return;
+        const items = (data && Array.isArray(data.products) ? data.products : [])
+          .filter((item) => !inCart.has(String(item.id)))
+          .slice(0, 4);
+        grid.textContent = "";
+        items.forEach((item, index) => {
+          window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
+          if (!window.PatygoCatalog.byId[item.id]) window.PatygoCatalog.byId[item.id] = item;
+          grid.appendChild(window.PatygoCatalog.makeCard(item, index, { compactListing: true }));
+        });
+        section.hidden = items.length === 0;
+      })
+      .catch(() => {
+        if (suggestionsKey === key) suggestionsKey = "";
+      });
+  }
+
   function render() {
     const byId = window.PatygoCatalog.byId || {};
     const totals = window.PatygoCart.totals(byId);
+    renderSuggestions(totals);
     document.getElementById("cartSub").textContent = money(totals.sub);
     document.getElementById("cartVat").textContent = money(totals.vat);
     document.getElementById("cartTotal").textContent = money(totals.total);

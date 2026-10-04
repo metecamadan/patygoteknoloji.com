@@ -146,10 +146,10 @@ test("checkout and product page render installments from /api/installments and s
   assert.match(shared, /posReady !== false/);
   assert.match(odeme, /id="installmentFieldset"[^>]*hidden/);
   assert.match(odeme, /id="installmentRow" hidden/);
-  assert.match(odeme, /installments\.js\?v=[\w-]+"><\/script>\s*<script defer src="\/assets\/js\/checkout\.js\?v=checkout-p7"/);
+  assert.match(odeme, /installments\.js\?v=[\w-]+"><\/script>\s*<script defer src="\/assets\/js\/checkout\.js\?v=checkout-p8"/);
   assert.match(odeme, /kartınızın bankasına ve kart tipine bağlıdır/);
   assert.match(checkout, /installCount: totals\.installCount \|\| 1/);
-  assert.match(checkout, /return applyInstallment\(summary\)/);
+  assert.match(checkout, /return applyInstallment\(applyCoupon\(summary\)\)/);
   assert.match(checkout, /Vade farkı \(/);
   assert.match(detail, /buildInstallmentTable\(window\.PatygoCatalog\.priceInclVat\(product\)\)/);
   assert.match(detail, /kartınızın bankasına ve kart tipine bağlıdır/);

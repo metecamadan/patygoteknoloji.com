@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p13" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p14" />
 </head>
 <body class="checkout-page">
   <header class="site-header">
@@ -356,8 +356,17 @@
             </div>
             <div class="checkout-sum" id="unitPriceRow"><span>Birim fiyat (KDV dahil)</span><span id="unitPrice">₺0</span></div>
             <div class="checkout-sum"><span>Adet</span><span id="qtyLabel">1</span></div>
+            <div class="checkout-coupon" id="couponBox">
+              <label for="couponInput">İndirim kuponu</label>
+              <div class="checkout-coupon-row">
+                <input type="text" id="couponInput" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Kupon kodu" />
+                <button type="button" class="btn btn-outline" id="couponApplyBtn">Uygula</button>
+              </div>
+              <p class="checkout-coupon-note" id="couponNote" role="status" hidden></p>
+            </div>
             <div class="checkout-sum"><span>Ara toplam (KDV hariç)</span><span id="subtotal">₺0</span></div>
             <div class="checkout-sum"><span>KDV</span><span id="vatAmount">₺0</span></div>
+            <div class="checkout-sum checkout-sum--discount" id="couponRow" hidden><span id="couponLabel">Kupon</span><span id="couponAmount">-₺0</span></div>
             <div class="checkout-sum" id="shippingRow" hidden><span id="shippingLabel">Kargo</span><span id="shippingAmount">₺0</span></div>
             <div class="checkout-sum" id="installmentRow" hidden><span id="installmentLabel">Vade farkı</span><span id="installmentAmount">₺0</span></div>
             <div class="checkout-sum total"><span>Genel toplam (KDV dahil)</span><strong id="grandTotal">₺0</strong></div>
@@ -440,11 +449,11 @@
   <script defer src="/assets/js/shipping.js?v=storefront-ship-5"></script>
   <script defer src="/assets/js/cart.js"></script>
   <script defer src="/assets/js/favorites.js?v=fav-1"></script>
-  <script defer src="/assets/js/catalog.js?v=storefront-p13"></script>
+  <script defer src="/assets/js/catalog.js?v=storefront-p14"></script>
   <script defer src="/assets/js/nav.js?v=nav-d43-1"></script>
   <script defer src="/assets/js/main.js?v=main-csp-1"></script>
   <script defer src="/assets/js/customer-identity.js?v=checkout-p5"></script>
   <script defer src="/assets/js/installments.js?v=taksit-1"></script>
-  <script defer src="/assets/js/checkout.js?v=checkout-p7"></script>
+  <script defer src="/assets/js/checkout.js?v=checkout-p8"></script>
 </body>
 </html>

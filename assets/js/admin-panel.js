@@ -784,6 +784,7 @@
     if (tab === "shipping") {
       loadAdminShippingSettings().catch(() => {});
       loadAdminInstallmentSettings().catch(() => {});
+      loadAdminCoupons().catch(() => {});
     }
     if (tab === "calendar") loadCalendarMonth().catch(() => {});
     if (tab === "categories") loadCategoryTree().catch(() => {});
@@ -877,6 +878,7 @@
     if (name === "shipping" && token) {
       loadAdminShippingSettings().catch(() => {});
       loadAdminInstallmentSettings().catch(() => {});
+      loadAdminCoupons().catch(() => {});
     }
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
@@ -4302,6 +4304,13 @@
       "<div><dt>Toplam</dt><dd>" +
       moneyTr(order.total) +
       "</dd></div>" +
+      (order.coupon && order.coupon.discount > 0
+        ? "<div><dt>Kupon</dt><dd>" +
+          escapeHtml(order.coupon.code) +
+          " · -" +
+          moneyTr(order.coupon.discount) +
+          "</dd></div>"
+        : "") +
       (order.installment && order.installment.count > 1
         ? "<div><dt>Taksit</dt><dd>" +
           escapeHtml(String(order.installment.count)) +
@@ -5406,6 +5415,143 @@
         );
       } catch (err) {
         note(adminInstallmentNote, "err", err.message || "Kaydedilemedi");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const adminCouponForm = document.getElementById("adminCouponForm");
+  const couponTableBody = document.getElementById("couponTableBody");
+  const adminCouponNote = document.getElementById("adminCouponNote");
+
+  function couponDiscountLabel(coupon) {
+    if (coupon.type === "amount") return moneyTr(coupon.value);
+    return "%" + coupon.value + (coupon.maxDiscount > 0 ? " (en fazla " + moneyTr(coupon.maxDiscount) + ")" : "");
+  }
+
+  function couponConditionLabel(coupon) {
+    const parts = [];
+    if (coupon.minOrder > 0) parts.push(moneyTr(coupon.minOrder) + " ve üzeri");
+    if (coupon.startsAt || coupon.endsAt) {
+      parts.push((coupon.startsAt || "…") + " → " + (coupon.endsAt || "…"));
+    }
+    return parts.join(" · ") || "Koşulsuz";
+  }
+
+  function renderCouponTable(coupons) {
+    if (!couponTableBody) return;
+    if (!coupons.length) {
+      couponTableBody.innerHTML = '<tr><td colspan="6">Henüz kupon yok.</td></tr>';
+      return;
+    }
+    couponTableBody.innerHTML = coupons
+      .map((coupon) => {
+        const code = escapeHtml(coupon.code);
+        return (
+          "<tr><td><strong>" + code + "</strong></td>" +
+          "<td>" + escapeHtml(couponDiscountLabel(coupon)) + "</td>" +
+          "<td>" + escapeHtml(couponConditionLabel(coupon)) + "</td>" +
+          "<td>" + escapeHtml(String(coupon.usedCount)) + (coupon.usageLimit > 0 ? " / " + escapeHtml(String(coupon.usageLimit)) : "") + "</td>" +
+          "<td>" + (coupon.active ? "Aktif" : "Kapalı") + "</td>" +
+          '<td><button type="button" class="btn btn-outline" data-coupon-edit="' + code + '">Düzenle</button> ' +
+          '<button type="button" class="btn btn-outline" data-coupon-toggle="' + code + '" data-active="' + (coupon.active ? "1" : "0") + '">' +
+          (coupon.active ? "Kapat" : "Aç") +
+          "</button> " +
+          '<button type="button" class="btn btn-outline" data-coupon-delete="' + code + '">Sil</button></td></tr>'
+        );
+      })
+      .join("");
+  }
+
+  let adminCoupons = [];
+
+  async function loadAdminCoupons() {
+    if (!couponTableBody || !token) return;
+    const data = await api("/api/admin/coupons");
+    adminCoupons = (data && data.coupons) || [];
+    renderCouponTable(adminCoupons);
+  }
+
+  function fillCouponForm(coupon) {
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value == null ? "" : String(value);
+    };
+    set("couponCode", coupon.code);
+    set("couponType", coupon.type);
+    set("couponValue", coupon.value);
+    set("couponMaxDiscount", coupon.maxDiscount > 0 ? coupon.maxDiscount : "");
+    set("couponMinOrder", coupon.minOrder > 0 ? coupon.minOrder : "");
+    set("couponUsageLimit", coupon.usageLimit > 0 ? coupon.usageLimit : "");
+    set("couponStartsAt", coupon.startsAt);
+    set("couponEndsAt", coupon.endsAt);
+    const active = document.getElementById("couponActive");
+    if (active) active.checked = coupon.active !== false;
+  }
+
+  if (couponTableBody) {
+    couponTableBody.addEventListener("click", async (ev) => {
+      const target = ev.target.closest("button");
+      if (!target) return;
+      const editCode = target.getAttribute("data-coupon-edit");
+      const toggleCode = target.getAttribute("data-coupon-toggle");
+      const deleteCode = target.getAttribute("data-coupon-delete");
+      try {
+        if (editCode) {
+          const coupon = adminCoupons.find((item) => item.code === editCode);
+          if (coupon) fillCouponForm(coupon);
+          if (adminCouponForm) adminCouponForm.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        if (toggleCode) {
+          await api("/api/admin/coupons/" + encodeURIComponent(toggleCode), {
+            method: "PATCH",
+            body: JSON.stringify({ active: target.getAttribute("data-active") !== "1" }),
+          });
+        }
+        if (deleteCode) {
+          if (!confirm(deleteCode + " kuponu silinsin mi?")) return;
+          await api("/api/admin/coupons/" + encodeURIComponent(deleteCode), { method: "DELETE" });
+        }
+        await loadAdminCoupons();
+        note(adminCouponNote, "", "");
+      } catch (err) {
+        note(adminCouponNote, "err", err.message || "İşlem yapılamadı");
+      }
+    });
+  }
+
+  if (adminCouponForm) {
+    adminCouponForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const value = (id) => {
+        const el = document.getElementById(id);
+        return el ? String(el.value || "").trim() : "";
+      };
+      const activeEl = document.getElementById("couponActive");
+      const submitBtn = adminCouponForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const saved = await api("/api/admin/coupons", {
+          method: "POST",
+          body: JSON.stringify({
+            code: value("couponCode"),
+            type: value("couponType"),
+            value: Number(value("couponValue").replace(",", ".")) || 0,
+            maxDiscount: Number(value("couponMaxDiscount").replace(",", ".")) || 0,
+            minOrder: Number(value("couponMinOrder").replace(",", ".")) || 0,
+            usageLimit: Number(value("couponUsageLimit")) || 0,
+            startsAt: value("couponStartsAt"),
+            endsAt: value("couponEndsAt"),
+            active: Boolean(activeEl && activeEl.checked),
+          }),
+        });
+        adminCouponForm.reset();
+        await loadAdminCoupons();
+        note(adminCouponNote, "ok", (saved && saved.coupon ? saved.coupon.code : "Kupon") + " kaydedildi.");
+      } catch (err) {
+        note(adminCouponNote, "err", err.message || "Kaydedilemedi");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
