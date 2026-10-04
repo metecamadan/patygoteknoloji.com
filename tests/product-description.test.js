@@ -460,7 +460,7 @@ test("toner copy lists compatible models; other kinds ignore supplier tail", () 
     details: "M554-M555-M578",
   });
   assert.equal(toner.compatibleModels, "M554, M555, M578");
-  assert.match(toner.description, /Uyumlu modeller: M554, M555, M578\./);
+  assert.match(toner.description, /^HP sarf malzemesi \(W2121A\)\. Öne çıkan: .+\. Uyumlu modeller: M554, M555, M578\.$/);
   assert.match(toner.details, /^__SPEC_TABLE__/);
   assert.match(toner.details, /Uyumlu modeller/);
 
