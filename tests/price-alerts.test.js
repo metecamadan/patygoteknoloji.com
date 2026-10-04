@@ -127,10 +127,17 @@ test("product page offers the alert form with consent; KVKK lists purpose and re
 });
 
 test("price alert API validates input, needs SMTP, and confirm/unsubscribe links redirect to the product", async (t) => {
-  const { baseUrl, dataRoot } = await spawnTestServer(
+  const tokens = {};
+  const { baseUrl, dataRoot, stop } = await spawnTestServer(
     t,
     {},
     {
+      seed: (root) => {
+        const store = createPriceAlertStore(getDb(root));
+        const sub = (email) => store.subscribe({ email, productId: "alert-test-item", price: 1200 }).alert.token;
+        tokens.kept = sub("ali@example.com");
+        tokens.stopped = sub("veli@example.com");
+      },
       products: [
         {
           id: "alert-test-item",
@@ -173,18 +180,21 @@ test("price alert API validates input, needs SMTP, and confirm/unsubscribe links
   const urlPath = listed.products[0].urlPath;
   assert.ok(urlPath);
 
-  resetDbForTests();
-  const store = createPriceAlertStore(getDb(dataRoot));
-  const { alert } = store.subscribe({ email: "ali@example.com", productId: "alert-test-item", price: 1200 });
-  const confirm = await fetch(baseUrl + "/api/price-alerts/confirm?token=" + alert.token, { redirect: "manual" });
+  const confirmUrl = (token) => baseUrl + "/api/price-alerts/confirm?token=" + token;
+  const confirm = await fetch(confirmUrl(tokens.kept), { redirect: "manual" });
   assert.equal(confirm.status, 303);
   assert.equal(confirm.headers.get("location"), baseUrl + urlPath + "?alarm=onay");
-  assert.equal(store.get(alert.token).status, "active");
 
-  const stop = await fetch(baseUrl + "/api/price-alerts/unsubscribe?token=" + alert.token, { redirect: "manual" });
-  assert.equal(stop.headers.get("location"), baseUrl + urlPath + "?alarm=iptal");
-  assert.equal(store.get(alert.token), null);
-  const invalid = await fetch(baseUrl + "/api/price-alerts/confirm?token=yok", { redirect: "manual" });
+  await fetch(confirmUrl(tokens.stopped), { redirect: "manual" });
+  const unsub = await fetch(baseUrl + "/api/price-alerts/unsubscribe?token=" + tokens.stopped, { redirect: "manual" });
+  assert.equal(unsub.headers.get("location"), baseUrl + urlPath + "?alarm=iptal");
+  const invalid = await fetch(confirmUrl("yok"), { redirect: "manual" });
   assert.equal(invalid.headers.get("location"), baseUrl + "/urunler?alarm=gecersiz");
+
+  await stop();
+  resetDbForTests();
+  const store = createPriceAlertStore(getDb(dataRoot));
+  assert.equal(store.get(tokens.kept).status, "active");
+  assert.equal(store.get(tokens.stopped), null);
   resetDbForTests();
 });

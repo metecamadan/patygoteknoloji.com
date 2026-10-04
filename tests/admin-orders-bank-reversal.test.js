@@ -39,11 +39,10 @@ async function adminHeaders(baseUrl, password) {
 }
 
 test("bank reversal preview works without enabling bank API", async (t) => {
-  resetDbForTests();
   const password = "reversal-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save(paidOrder("PTY-REV-API-1"));
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => createOrderStore(dataRoot).save(paidOrder("PTY-REV-API-1")),
+  });
 
   const headers = await adminHeaders(baseUrl, password);
 
@@ -72,11 +71,10 @@ test("bank reversal preview works without enabling bank API", async (t) => {
 });
 
 test("bank reversal confirm is blocked when API disabled and PATCH refunded rejected", async (t) => {
-  resetDbForTests();
   const password = "reversal-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save(paidOrder("PTY-REV-API-2"));
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => createOrderStore(dataRoot).save(paidOrder("PTY-REV-API-2")),
+  });
 
   const headers = await adminHeaders(baseUrl, password);
 
@@ -109,24 +107,26 @@ test("bank reversal confirm is blocked when API disabled and PATCH refunded reje
 });
 
 test("bank reversal rejects unpaid orders and shipped auto skips void", async (t) => {
-  resetDbForTests();
   const password = "reversal-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save(
-    paidOrder("PTY-REV-SHIP", {
-      status: "shipped",
-      shippingCarrier: "Yurtiçi Kargo",
-      trackingCode: "YT123",
-    })
-  );
-  store.save(
-    paidOrder("PTY-REV-UNPAID", {
-      paymentStatus: "pending",
-      paymentTaken: false,
-      bankResponse: null,
-    })
-  );
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => {
+      const store = createOrderStore(dataRoot);
+      store.save(
+        paidOrder("PTY-REV-SHIP", {
+          status: "shipped",
+          shippingCarrier: "Yurtiçi Kargo",
+          trackingCode: "YT123",
+        })
+      );
+      store.save(
+        paidOrder("PTY-REV-UNPAID", {
+          paymentStatus: "pending",
+          paymentTaken: false,
+          bankResponse: null,
+        })
+      );
+    },
+  });
 
   const headers = await adminHeaders(baseUrl, password);
 

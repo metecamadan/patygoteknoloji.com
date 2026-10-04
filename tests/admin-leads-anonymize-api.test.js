@@ -9,19 +9,19 @@ const { resetDbForTests } = require("../lib/db");
 const { deleteOrderHard } = require("../lib/retention");
 
 test("GET /api/admin/leads returns contact leads when authenticated", async (t) => {
-  resetDbForTests();
   const password = "leads-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const contactStore = createContactStore(dataRoot);
-  contactStore.append({
-    id: "LEAD-API-1",
-    createdAt: "2026-09-01T10:00:00.000Z",
-    firma: "Acme A.Ş.",
-    email: "teklif@acme.example",
-    tel: "0555 507 07 24",
-    vkn: "1234567890",
-    mesaj: "10 adet laptop teklifi",
-    spam: false,
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) =>
+      createContactStore(dataRoot).append({
+        id: "LEAD-API-1",
+        createdAt: "2026-09-01T10:00:00.000Z",
+        firma: "Acme A.Ş.",
+        email: "teklif@acme.example",
+        tel: "0555 507 07 24",
+        vkn: "1234567890",
+        mesaj: "10 adet laptop teklifi",
+        spam: false,
+      }),
   });
 
   const unauthorized = await fetch(baseUrl + "/api/admin/leads");
@@ -49,24 +49,24 @@ test("GET /api/admin/leads returns contact leads when authenticated", async (t) 
 });
 
 test("POST /api/admin/orders/:id/anonymize clears PII and audit; legal_hold blocks hard delete", async (t) => {
-  resetDbForTests();
   const password = "anon-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save({
-    id: "PTY-DSAR-1",
-    total: 750,
-    status: "paid",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: {
-      name: "Zeynep Kara",
-      email: "zeynep@example.com",
-      phone: "0533 222 33 44",
-      billingAddress: "İstanbul",
-    },
-    items: [{ productId: "p1", name: "Klavye", qty: 1, line: 750, lineVat: 0 }],
-    createdAt: new Date().toISOString(),
+  const { baseUrl, dataRoot, stop } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (root) =>
+      createOrderStore(root).save({
+        id: "PTY-DSAR-1",
+        total: 750,
+        status: "paid",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: {
+          name: "Zeynep Kara",
+          email: "zeynep@example.com",
+          phone: "0533 222 33 44",
+          billingAddress: "İstanbul",
+        },
+        items: [{ productId: "p1", name: "Klavye", qty: 1, line: 750, lineVat: 0 }],
+        createdAt: new Date().toISOString(),
+      }),
   });
 
   const login = await fetch(baseUrl + "/api/admin/login", {
@@ -95,14 +95,17 @@ test("POST /api/admin/orders/:id/anonymize clears PII and audit; legal_hold bloc
   assert.equal(String(anonBody.order.customer.phone || ""), "");
   assert.equal(anonBody.order.legalHold, true);
 
-  const hard = deleteOrderHard(dataRoot, "PTY-DSAR-1");
-  assert.equal(hard.ok, false);
-  assert.equal(hard.error, "legal_hold");
-  assert.ok(store.get("PTY-DSAR-1"));
-
   const customers = await fetch(baseUrl + "/api/admin/customers", { headers });
   assert.equal(customers.status, 200);
   const custBody = await customers.json();
   assert.equal(custBody.ok, true);
   assert.ok(Array.isArray(custBody.customers));
+
+  await stop();
+  resetDbForTests();
+  const hard = deleteOrderHard(dataRoot, "PTY-DSAR-1");
+  assert.equal(hard.ok, false);
+  assert.equal(hard.error, "legal_hold");
+  assert.ok(createOrderStore(dataRoot).get("PTY-DSAR-1"));
+  resetDbForTests();
 });

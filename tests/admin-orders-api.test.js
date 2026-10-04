@@ -5,22 +5,33 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnTestServer } = require("./helpers/spawn-server");
 const { createOrderStore } = require("../lib/orders");
-const { resetDbForTests } = require("../lib/db");
 
 test("admin orders PATCH updates status and saves shipping with carriers list", async (t) => {
-  resetDbForTests();
   const password = "orders-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save({
-    id: "PTY-ADMIN-1",
-    total: 500,
-    status: "paid",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: { name: "Test Müşteri", email: "musteri@example.com", phone: "0555" },
-    items: [{ productId: "p1", name: "Ürün", qty: 1, line: 500, lineVat: 0 }],
-    createdAt: new Date().toISOString(),
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => {
+      const store = createOrderStore(dataRoot);
+      store.save({
+        id: "PTY-ADMIN-1",
+        total: 500,
+        status: "paid",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: { name: "Test Müşteri", email: "musteri@example.com", phone: "0555" },
+        items: [{ productId: "p1", name: "Ürün", qty: 1, line: 500, lineVat: 0 }],
+        createdAt: new Date().toISOString(),
+      });
+      store.save({
+        id: "PTY-ADMIN-2",
+        total: 300,
+        status: "paid",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: { name: "İkinci Müşteri", email: "ikinci@example.com" },
+        items: [{ productId: "p2", name: "Klavye", qty: 2, line: 250, lineVat: 50 }],
+        createdAt: new Date().toISOString(),
+      });
+    },
   });
 
   const login = await fetch(baseUrl + "/api/admin/login", {
@@ -74,17 +85,6 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
     body: JSON.stringify({ status: "payment_failed" }),
   });
   assert.equal(manualFailed.status, 400);
-
-  store.save({
-    id: "PTY-ADMIN-2",
-    total: 300,
-    status: "paid",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: { name: "İkinci Müşteri", email: "ikinci@example.com" },
-    items: [{ productId: "p2", name: "Klavye", qty: 2, line: 250, lineVat: 50 }],
-    createdAt: new Date().toISOString(),
-  });
 
   const shipPatch = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-2", {
     method: "PATCH",
@@ -145,29 +145,31 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
 });
 
 test("admin orders list filters by date range", async (t) => {
-  resetDbForTests();
   const password = "orders-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save({
-    id: "PTY-RANGE-OLD",
-    total: 100,
-    status: "paid",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: { name: "Eski", email: "eski@example.com" },
-    items: [{ productId: "p1", name: "Ürün", qty: 1, line: 100, lineVat: 0 }],
-    createdAt: "2026-08-01T10:00:00.000Z",
-  });
-  store.save({
-    id: "PTY-RANGE-NEW",
-    total: 200,
-    status: "paid",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: { name: "Yeni", email: "yeni@example.com" },
-    items: [{ productId: "p2", name: "Ürün", qty: 1, line: 200, lineVat: 0 }],
-    createdAt: "2026-08-18T12:00:00.000Z",
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => {
+      const store = createOrderStore(dataRoot);
+      store.save({
+        id: "PTY-RANGE-OLD",
+        total: 100,
+        status: "paid",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: { name: "Eski", email: "eski@example.com" },
+        items: [{ productId: "p1", name: "Ürün", qty: 1, line: 100, lineVat: 0 }],
+        createdAt: "2026-08-01T10:00:00.000Z",
+      });
+      store.save({
+        id: "PTY-RANGE-NEW",
+        total: 200,
+        status: "paid",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: { name: "Yeni", email: "yeni@example.com" },
+        items: [{ productId: "p2", name: "Ürün", qty: 1, line: 200, lineVat: 0 }],
+        createdAt: "2026-08-18T12:00:00.000Z",
+      });
+    },
   });
 
   const login = await fetch(baseUrl + "/api/admin/login", {
@@ -200,29 +202,31 @@ test("admin orders list filters by date range", async (t) => {
 });
 
 test("admin orders list searches by order id, email, and phone across dates", async (t) => {
-  resetDbForTests();
   const password = "orders-admin-test";
-  const { baseUrl, dataRoot } = await spawnTestServer(t, { ADMIN_PASSWORD: password });
-  const store = createOrderStore(dataRoot);
-  store.save({
-    id: "PTY-SEARCH-OLD",
-    total: 100,
-    status: "paid",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: { name: "Ayşe Kaya", email: "ayse.kaya@example.com", phone: "0532 111 22 33" },
-    items: [{ productId: "p1", name: "Ürün", qty: 1, line: 100, lineVat: 0 }],
-    createdAt: "2026-01-12T10:00:00.000Z",
-  });
-  store.save({
-    id: "PTY-SEARCH-NEW",
-    total: 200,
-    status: "preparing",
-    paymentStatus: "paid",
-    paymentTaken: true,
-    customer: { name: "Mehmet Demir", email: "mehmet@example.com", phone: "0555 999 00 11" },
-    items: [{ productId: "p2", name: "Ürün", qty: 1, line: 200, lineVat: 0 }],
-    createdAt: "2026-08-18T12:00:00.000Z",
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => {
+      const store = createOrderStore(dataRoot);
+      store.save({
+        id: "PTY-SEARCH-OLD",
+        total: 100,
+        status: "paid",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: { name: "Ayşe Kaya", email: "ayse.kaya@example.com", phone: "0532 111 22 33" },
+        items: [{ productId: "p1", name: "Ürün", qty: 1, line: 100, lineVat: 0 }],
+        createdAt: "2026-01-12T10:00:00.000Z",
+      });
+      store.save({
+        id: "PTY-SEARCH-NEW",
+        total: 200,
+        status: "preparing",
+        paymentStatus: "paid",
+        paymentTaken: true,
+        customer: { name: "Mehmet Demir", email: "mehmet@example.com", phone: "0555 999 00 11" },
+        items: [{ productId: "p2", name: "Ürün", qty: 1, line: 200, lineVat: 0 }],
+        createdAt: "2026-08-18T12:00:00.000Z",
+      });
+    },
   });
 
   const login = await fetch(baseUrl + "/api/admin/login", {

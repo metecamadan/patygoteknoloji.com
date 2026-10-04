@@ -3,6 +3,7 @@ const os = require("node:os");
 const path = require("node:path");
 const net = require("node:net");
 const { spawn } = require("node:child_process");
+const { resetDbForTests } = require("../../lib/db");
 
 const projectRoot = path.resolve(__dirname, "..", "..");
 
@@ -53,6 +54,16 @@ function spawnTestServer(t, envExtra, options) {
       JSON.stringify(seedProducts, null, 2),
       "utf8"
     );
+    // SQLite (WAL) aynı dosyayı iki süreç birlikte açınca Windows'ta ara sıra
+    // "disk I/O error" verir: test verisi sunucu başlamadan yazılır ve bağlantı kapanır.
+    resetDbForTests();
+    if (options && typeof options.seed === "function") {
+      try {
+        options.seed(dataRoot);
+      } finally {
+        resetDbForTests();
+      }
+    }
     const stderrChunks = [];
     const child = spawn(process.execPath, ["server.js"], {
       cwd: projectRoot,
@@ -72,14 +83,23 @@ function spawnTestServer(t, envExtra, options) {
     });
     t.after(() => {
       child.kill();
+      resetDbForTests();
       try {
         fs.rmSync(dataRoot, { recursive: true, force: true });
       } catch (_) {}
     });
     const baseUrl = `http://127.0.0.1:${port}`;
+    /** Sunucu tamamen kapanınca çözülür; sonrasında test veritabanını güvenle okuyabilir. */
+    function stop() {
+      if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+      return new Promise((resolve) => {
+        child.once("exit", () => resolve());
+        child.kill();
+      });
+    }
     return waitForServer(baseUrl, child, () =>
       Buffer.concat(stderrChunks).toString("utf8").trim().slice(-1500)
-    ).then(() => ({ port, baseUrl, child, dataRoot }));
+    ).then(() => ({ port, baseUrl, child, dataRoot, stop }));
   });
 }
 
