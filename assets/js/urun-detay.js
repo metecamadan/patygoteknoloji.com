@@ -822,10 +822,19 @@
     if (isOriginalProduct(product)) trustItems.push("<li>Orijinal ürün</li>");
     trustItems.push(
       "<li>" + dispatchDaysLabel() + " kargoda</li>",
-      "<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz</li>",
-      '<li>Sorunuz mu var? <a href="https://wa.me/905555070724" target="_blank" rel="noopener noreferrer">WhatsApp</a> · <a href="tel:+905555070724">0555 507 07 24</a></li>'
+      "<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz</li>"
     );
     trust.innerHTML = trustItems.join("");
+    const askItem = el("li", "", "Sorunuz mu var? ");
+    const askLink = el("a", "", "WhatsApp");
+    const productUrl = product.urlPath ? location.origin + product.urlPath : location.href;
+    askLink.href =
+      "https://wa.me/905555070724?text=" +
+      encodeURIComponent("Merhaba, bu ürün hakkında bilgi almak istiyorum: " + product.name + " " + productUrl);
+    askLink.target = "_blank";
+    askLink.rel = "noopener noreferrer";
+    askItem.appendChild(askLink);
+    trust.appendChild(askItem);
 
     info.appendChild(tag);
     info.appendChild(h1);

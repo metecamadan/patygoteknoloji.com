@@ -41,7 +41,9 @@ test("product detail tabs and spec chips are rendered in JS", () => {
   assert.match(script, /"<li>" \+ dispatchDaysLabel\(\) \+ " kargoda<\/li>"/);
   assert.match(script, /\|\| 2;\s*return days \+ " iş gününde";/);
   assert.match(script, /<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz<\/li>/);
-  assert.match(script, /href="https:\/\/wa\.me\/905555070724"[^>]*>WhatsApp<\/a> · <a href="tel:\+905555070724">0555 507 07 24<\/a>/);
+  assert.match(script, /el\("li", "", "Sorunuz mu var\? "\)/);
+  assert.match(script, /askLink\.href =\s*"https:\/\/wa\.me\/905555070724\?text=" \+\s*encodeURIComponent\("Merhaba, bu ürün hakkında bilgi almak istiyorum: " \+ product\.name/);
+  assert.doesNotMatch(script, /Sorunuz mu var\?[^\n]*tel:/, "Sorunuz mu var? satırında GSM numarası gösterilmez");
   assert.match(script, /if \(isOriginalProduct\(product\)\) trustItems\.push\("<li>Orijinal ürün<\/li>"\);/);
   assert.match(script, /"Siparişiniz " \+ dispatchDaysLabel\(\) \+ " kargoya verilir\."/);
   assert.doesNotMatch(script, /Teslimat süresi sipariş onayından sonra size bildirilir/);
