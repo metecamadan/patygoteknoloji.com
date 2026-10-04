@@ -860,7 +860,10 @@
         "Kategorilere göre ürünleri keşfedin; sepete ekleyin ve güvenle online ödeme yapın.";
       lead.hidden = false;
     }
-    document.title = "Ürünler | Patygo Teknoloji — Online Elektronik Mağaza";
+    document.title =
+      "Ürünler" +
+      (listingScroll.startPage > 1 ? " – Sayfa " + listingScroll.startPage : "") +
+      " | Patygo Teknoloji — Online Elektronik Mağaza";
     settleCatalogHeading();
   }
 
@@ -914,7 +917,12 @@
     }
     if (title) title.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
     if (lead) lead.hidden = true;
-    document.title = (window.PatygoCatalog.prettyCategoryName(label) || label) + " | Patygo Teknoloji";
+    const page = listingScroll.startPage > 1 ? listingScroll.startPage : 1;
+    document.title =
+      (window.PatygoCatalog.prettyCategoryName(label) || label) +
+      " Fiyatları ve Modelleri" +
+      (page > 1 ? " – Sayfa " + page : "") +
+      " | Patygo Teknoloji";
     const canon = document.querySelector('link[rel="canonical"]');
     if (canon) {
       const path =
@@ -923,7 +931,7 @@
           resolved.mid && resolved.mid.slug,
           resolved.child && resolved.child.slug
         ) || "/urunler";
-      canon.setAttribute("href", "https://patygoteknoloji.com" + path);
+      canon.setAttribute("href", "https://patygoteknoloji.com" + path + (page > 1 ? "?sayfa=" + page : ""));
     }
     settleCatalogHeading();
   }
@@ -1174,6 +1182,7 @@
   const LISTING_SNAPSHOT_MS = 2500;
   const listingScroll = {
     page: 1,
+    startPage: 1,
     totalPages: 0,
     total: 0,
     loading: false,
@@ -1279,10 +1288,44 @@
       listingScroll.observer = null;
     }
     listingScroll.page = 1;
+    listingScroll.startPage = 1;
     listingScroll.totalPages = 0;
     listingScroll.total = 0;
     listingScroll.loading = false;
     listingScroll.failUntil = 0;
+  }
+
+  function listingPageHref(page) {
+    const url = new URL(location.href);
+    if (page <= 1) url.searchParams.delete("sayfa");
+    else url.searchParams.set("sayfa", String(page));
+    return url.pathname + url.search;
+  }
+
+  // Crawlable prev/next anchors mirror the infinite scroll position (?sayfa=N).
+  function syncListingPageLinks() {
+    const prev = document.querySelector("[data-catalog-prev]");
+    const next = document.querySelector("[data-catalog-next]");
+    const first = listingScroll.startPage || 1;
+    if (prev) {
+      prev.hidden = first <= 1;
+      const link = prev.querySelector("a");
+      if (link) link.href = listingPageHref(first - 1);
+    }
+    if (next) {
+      next.hidden = listingScroll.page >= listingScroll.totalPages;
+      const link = next.querySelector("a");
+      if (link) {
+        link.href = listingPageHref(listingScroll.page + 1);
+        if (!link.dataset.bound) {
+          link.dataset.bound = "1";
+          link.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            loadMoreListing();
+          });
+        }
+      }
+    }
   }
 
   function updateListingLoadStatus(text, visible) {
@@ -1441,6 +1484,8 @@
       listingScroll.totalPages = payload.totalPages || listingScroll.totalPages;
       listingScroll.total = payload.total || listingScroll.total;
       listingScroll.failUntil = 0;
+      history.replaceState(history.state, "", listingPageHref(nextPage));
+      syncListingPageLinks();
       renderCatalogMeta(
         countDisplayedListingProducts(),
         listingScroll.total,
@@ -1482,9 +1527,11 @@
 
   function setupListingInfinite(meta) {
     listingScroll.page = Number(meta && meta.page) || 1;
+    listingScroll.startPage = listingScroll.page;
     listingScroll.totalPages = Number(meta && meta.totalPages) || 0;
     listingScroll.total = Number(meta && meta.total) || 0;
     bindListingInfiniteScroll();
+    syncListingPageLinks();
     // Prefetch next page so scroll append feels instant.
     if (listingScroll.totalPages > listingScroll.page) {
       fetchListingPage(listingScroll.page + 1).catch(function () {});
@@ -2062,7 +2109,8 @@
     const onProductsPage = /^\/urunler(?:\/|$)/i.test(path);
     const wantsCategory = onProductsPage && (query.parent || query.mid || query.child);
     const facets = readFacetQuery();
-    const listingParams = listingParamsFromPage(query, wantsCategory, facets, 1);
+    const startPage = onProductsPage ? readListingPageNumber() : 1;
+    const listingParams = listingParamsFromPage(query, wantsCategory, facets, startPage);
     const cacheKey = listingCacheKey(listingParams);
     const cachedListing = onProductsPage ? readListingCache(cacheKey) : null;
     const hasEmbeddedBootstrap = Boolean(document.getElementById("patygo-catalog-bootstrap"));
@@ -2071,12 +2119,8 @@
 
     if (onProductsPage) {
       resetListingScroll();
+      listingScroll.startPage = startPage;
       if (!wantsCategory && readSearchQuery()) applySearchHeading(readSearchQuery());
-      const cleanUrl = new URL(location.href);
-      if (cleanUrl.searchParams.has("sayfa")) {
-        cleanUrl.searchParams.delete("sayfa");
-        history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
-      }
     }
     if (onProductsPage && !cachedListing && !hasEmbeddedBootstrap) {
       document.querySelectorAll(".product-grid[data-catalog]").forEach((grid) => {
@@ -2099,7 +2143,7 @@
     const categoriesPromise = loadCategories();
     const payloadPromise = (async () => {
       if (cachedListing) return cachedListing;
-      if (onProductsPage && !facetQueryActive()) {
+      if (onProductsPage && startPage === 1 && !facetQueryActive()) {
         const boot = await loadCatalogBootstrap();
         if (boot) {
           usedFastPath.value = true;
@@ -2148,7 +2192,7 @@
             featuredTabs: home.byParent,
           };
         }
-        return await fetchListingPayload(query, wantsCategory, facets, 1);
+        return await fetchListingPayload(query, wantsCategory, facets, startPage);
       } catch (_) {
         return { products: [], total: 0, page: 1, totalPages: 0, failed: true };
       }
@@ -2213,7 +2257,7 @@
       .catch(() => {});
 
     if (usedFastPath.value && onProductsPage && !listingBootstrapLoaded) {
-      fetchListingPayload(query, wantsCategory, facets, 1)
+      fetchListingPayload(query, wantsCategory, facets, startPage)
         .then((fresh) => {
           if (token !== listingReloadToken) return;
           if (!listingPayloadUsable(fresh)) return;

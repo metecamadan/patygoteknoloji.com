@@ -75,6 +75,9 @@
   };
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
+  document.querySelectorAll(".fab .top").forEach((button) => {
+    button.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  });
 
   function initCategoryNav() {
     const nav = document.querySelector(".nav");

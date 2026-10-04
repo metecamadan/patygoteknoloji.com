@@ -122,6 +122,13 @@ const {
   minimumOrderError,
 } = require("./lib/shipping-settings");
 const { createInstallmentSettingsStore, resolveInstallment } = require("./lib/installment-settings");
+const {
+  renderProductHtml,
+  renderMissingProductHtml,
+  renderCategoryHtml,
+  renderMissingCategoryHtml,
+  withListingPage,
+} = require("./lib/product-ssr");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -257,6 +264,7 @@ const MIME = {
   ".ico": "image/x-icon",
   ".xml": "application/xml; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".woff": "font/woff",
   ".woff2": "font/woff2",
 };
@@ -1051,15 +1059,16 @@ function storefrontSitemapXml() {
   const routeIndex = warm && warm.routeIndex ? warm.routeIndex : { byId: {} };
   const productCount = routeIndex.byId ? Object.keys(routeIndex.byId).length : 0;
   const stamp = categories.length + ":" + productCount;
-  if (storefrontSitemapMemo && storefrontSitemapMemo.stamp === stamp) {
+  if (storefrontSitemapMemo && storefrontSitemapMemo.stamp === stamp && storefrontSitemapMemo.index === warm) {
     return storefrontSitemapMemo.xml;
   }
   const xml = buildStorefrontSitemap({
     baseUrl: SITE_BASE_URL || "https://patygoteknoloji.com",
     categories,
     routeIndex,
+    products: warm && Array.isArray(warm.compactAll) ? warm.compactAll : [],
   });
-  storefrontSitemapMemo = { stamp, xml };
+  storefrontSitemapMemo = { stamp, xml, index: warm };
   return xml;
 }
 
@@ -3064,6 +3073,44 @@ function injectCatalogBootstrapHtml(html, bootstrap) {
   );
 }
 
+const productHtmlCache = { index: null, shellMtime: 0, shell: "", pages: new Map() };
+const PRODUCT_HTML_CACHE_MAX = 3000;
+
+function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
+  let stat;
+  try {
+    stat = fs.statSync(shellPath);
+  } catch (_) {
+    return serveNotFound(res, req.method);
+  }
+  if (productHtmlCache.index !== warmIndex || productHtmlCache.shellMtime !== stat.mtimeMs) {
+    productHtmlCache.index = warmIndex;
+    productHtmlCache.shellMtime = stat.mtimeMs;
+    productHtmlCache.shell = fs.readFileSync(shellPath, "utf8");
+    productHtmlCache.pages.clear();
+  }
+  const key = urlPath.replace(/\/+$/, "");
+  let page = productHtmlCache.pages.get(key);
+  if (!page) {
+    const found = lookupPublicProductsByPath(key);
+    const product = found && Array.isArray(found.products) ? found.products[0] : null;
+    page = product
+      ? { status: 200, html: renderProductHtml(productHtmlCache.shell, product) }
+      : { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) };
+    if (productHtmlCache.pages.size >= PRODUCT_HTML_CACHE_MAX) productHtmlCache.pages.clear();
+    productHtmlCache.pages.set(key, page);
+  }
+  res.writeHead(
+    page.status,
+    securityHeaders({
+      "Content-Type": MIME[".html"],
+      "Cache-Control": "public, max-age=60",
+    })
+  );
+  if (req.method === "HEAD") return res.end();
+  res.end(page.html);
+}
+
 function sendCatalogHtml(res, req, filePath, method) {
   const rel = path.relative(ROOT, filePath).split(path.sep).join("/");
   if (isBlocked(rel) || rel.split("/").some((p) => p.startsWith("."))) {
@@ -3079,21 +3126,29 @@ function sendCatalogHtml(res, req, filePath, method) {
       if (pathCats.mid) requestUrl.searchParams.set("ara", pathCats.mid);
       if (pathCats.child) requestUrl.searchParams.set("alt", pathCats.child);
     }
-    const bootstrap = catalogBootstrapPayload(requestUrl);
+    const listingPage = Math.min(Math.floor(Number(requestUrl.searchParams.get("sayfa")) || 1), 9999);
+    // Embedded bootstrap is page 1; ?sayfa=N loads its own page client-side.
+    const bootstrap = listingPage > 1 ? null : catalogBootstrapPayload(requestUrl);
     html = injectCatalogBootstrapHtml(html, bootstrap);
+    let status = 200;
     if (pathCats && pathCats.parent) {
       const canonPath =
         categoryQueryToPath(requestUrl.searchParams) || "/urunler";
-      html = html.replace(
-        /<link rel="canonical" href="https:\/\/patygoteknoloji\.com\/urunler"\s*\/?>/i,
-        '<link rel="canonical" href="https://patygoteknoloji.com' + canonPath + '" />'
-      );
+      const categories = categoryStore.list();
+      const rendered = renderCategoryHtml(html, categories, pathCats, canonPath);
+      if (rendered) {
+        html = rendered;
+      } else if (Array.isArray(categories) && categories.length) {
+        status = 404;
+        html = renderMissingCategoryHtml(html);
+      }
     }
+    if (status === 200) html = withListingPage(html, listingPage);
     const headers = {
       "Content-Type": MIME[".html"],
       "Cache-Control": "public, max-age=0, must-revalidate",
     };
-    res.writeHead(200, securityHeaders(headers));
+    res.writeHead(status, securityHeaders(headers));
     if (method === "HEAD") return res.end();
     res.end(html);
   });
@@ -3323,8 +3378,9 @@ const server = http.createServer(async (req, res) => {
     const accept = String(req.headers.accept || "");
     const wantsHtml =
       !accept || /\btext\/html\b/i.test(accept) || accept.includes("*/*");
-    // Browser HTML: disk shell without storefrontIndex (client resolves via /listing).
+    // Warm index: crawler-ready head + h1; cold: disk shell (client resolves via /listing).
     if (wantsHtml && htmlPath && fs.existsSync(htmlPath)) {
+      if (warmIndex) return sendProductHtml(res, req, htmlPath, urlPath, warmIndex);
       return sendFile(res, htmlPath, req.method);
     }
     const routeIndex = storefrontIndex(false).routeIndex;

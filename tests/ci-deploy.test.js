@@ -79,7 +79,16 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(ensureProductShell, /try_files \/urun-detay\.html =404/);
   assert.match(ensureProductShell, /systemctl reload nginx/);
   assert.match(ensureProductShell, /inserted before location \//);
-  assert.doesNotMatch(ensureProductShell, /proxy_pass/);
+  // SSR via Node, but a down/busy Node must fall back to the disk shell instead of 502/504.
+  assert.match(ensureProductShell, /error_page 502 503 504 = \{fallback\}/);
+  assert.match(ensureProductShell, /node_proxy\("@product_shell"\)/);
+  assert.match(ensureProductShell, /node_proxy\("@catalog_shell"\)/);
+  assert.match(ensureProductShell, /proxy_read_timeout 3s/);
+  assert.match(ensureProductShell, /proxy_hide_header Strict-Transport-Security/);
+  assert.match(ensureProductShell, /try_files \/urunler\.html =404/);
+  assert.match(ensureProductShell, /return 301 https:\/\/patygoteknoloji\.com\$request_uri/);
+  assert.match(ensureProductShell, /location = \/\.well-known\/security\.txt/);
+  assert.match(ensureProductShell, /\(\?!\\n\[ \\t\]\*add_header Referrer-Policy\)/);
   assert.match(ensureProductShell, /\.runtime\/nginx\/legacy-product-redirects\.conf/);
   assert.match(ensureProductShell, /include \{redirects_file\};/);
   assert.match(ensureProductShell, /\[ -f "\$\{REDIRECTS_FILE\}" \] \|\| : > "\$\{REDIRECTS_FILE\}"/);
@@ -116,17 +125,25 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(urunlerBlock[0], /try_files \/urunler\.html/);
   const urunlerPathBlock = nginx.match(/location \^~ \/urunler\/ \{[\s\S]*?\n  \}/);
   assert.ok(urunlerPathBlock, "urunler path nginx block missing");
-  assert.doesNotMatch(urunlerPathBlock[0], /proxy_pass/);
-  assert.match(urunlerPathBlock[0], /try_files \/urunler\.html/);
+  assert.match(urunlerPathBlock[0], /proxy_read_timeout 3s/);
+  assert.match(urunlerPathBlock[0], /error_page 502 503 504 = @catalog_shell/);
+  const catalogShell = nginx.match(/location @catalog_shell \{[\s\S]*?\n  \}/);
+  assert.ok(catalogShell, "catalog shell fallback missing");
+  assert.match(catalogShell[0], /try_files \/urunler\.html =404/);
   const productSeoBlock = nginx.match(
     /location ~ \^\/\[a-z0-9-\]\+\/\[a-z0-9-\]\+\/\?\$ \{[\s\S]*?\n  \}/
   );
   assert.ok(productSeoBlock, "product SEO nginx block missing");
-  assert.doesNotMatch(productSeoBlock[0], /proxy_pass/);
-  assert.match(productSeoBlock[0], /try_files \/urun-detay\.html =404/);
+  assert.match(productSeoBlock[0], /proxy_connect_timeout 2s/);
+  assert.match(productSeoBlock[0], /error_page 502 503 504 = @product_shell/);
+  assert.doesNotMatch(productSeoBlock[0], /add_header/, "server-level headers must stay inherited");
+  const productShell = nginx.match(/location @product_shell \{[\s\S]*?\n  \}/);
+  assert.ok(productShell, "product shell fallback missing");
+  assert.match(productShell[0], /try_files \/urun-detay\.html =404/);
+  assert.match(productShell[0], /Content-Security-Policy/);
   assert.match(
     nginx,
-    /include \/var\/www\/patygoteknoloji\.com\/\.runtime\/nginx\/legacy-product-redirects\.conf;\r?\n  location ~ \^\/\[a-z0-9-\]\+/
+    /include \/var\/www\/patygoteknoloji\.com\/\.runtime\/nginx\/legacy-product-redirects\.conf;\r?\n(?:  #[^\n]*\n)*  location ~ \^\/\[a-z0-9-\]\+/
   );
   assert.doesNotMatch(nginx, /map_hash_|patygo_legacy_product/);
   assert.match(
