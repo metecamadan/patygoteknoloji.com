@@ -9,6 +9,7 @@ const {
   productPageUrl,
   resolveProductIdFromRoute,
   resolveLegacyProductPath,
+  legacyRedirectMapText,
   slugify,
 } = require("../lib/product-url");
 
@@ -35,6 +36,35 @@ test("pre-fix i-slemci URLs resolve to the canonical path for 301", () => {
   assert.equal(resolveLegacyProductPath(index, segment, legacySlug), canonical);
   assert.equal(resolveLegacyProductPath(index, segment, canonical.split("/")[2]), "");
   assert.equal(resolveLegacyProductPath(index, segment, "yok-boyle-bir-urun"), "");
+});
+
+test("legacy redirect map lists only pre-fix aliases for nginx", () => {
+  const legacyProduct = { id: "sup-1-abcd1234", brand: "ÇAYKUR", name: "Çaykur İnce Belli Bardak İkili Set", siteChild: "gida" };
+  const plainProduct = { id: "sup-2-ef567890", brand: "HP", name: "HP 212A Siyah Toner", siteChild: "toner" };
+  const index = buildProductRouteIndex([legacyProduct, plainProduct]);
+  const canonical = index.byId[legacyProduct.id];
+  const legacyPath = "/" + canonical.split("/")[1] + "/" + buildProductSlugBase(legacyProduct, { legacy: true });
+  const lines = legacyRedirectMapText(index).trim().split("\n");
+  assert.ok(lines.includes(legacyPath + " " + canonical + ";"));
+  assert.ok(lines.includes(legacyPath + "/ " + canonical + ";"));
+  assert.ok(lines.every((line) => /^\/[a-z0-9-]+\/[a-z0-9-]+\/? \/[a-z0-9-]+\/[a-z0-9-]+;$/.test(line)));
+  assert.ok(lines.every((line) => !line.includes(index.byId[plainProduct.id] + " ")));
+  const plainIndex = buildProductRouteIndex([plainProduct]);
+  const plainCanonical = plainIndex.byId[plainProduct.id];
+  assert.deepEqual(legacyRedirectMapText(plainIndex).trim().split("\n"), [
+    plainCanonical + "-ef567890 " + plainCanonical + ";",
+    plainCanonical + "-ef567890/ " + plainCanonical + ";",
+  ]);
+  assert.equal(legacyRedirectMapText(null), "");
+});
+
+test("server writes the legacy map with catalog snapshots and warms when it is missing", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(serverJs, /\.runtime", "nginx", "legacy-product-redirects\.map"/);
+  assert.match(serverJs, /function writeCatalogBootstrapSnapshots\(\) \{[\s\S]{0,200}writeLegacyRedirectMap\(index\.routeIndex\)/);
+  assert.match(serverJs, /bootstrapSnapshotsReady\(\) && legacyRedirectMapPresent\(\)/);
 });
 
 test("category segment maps notebooklar to notebook", () => {
