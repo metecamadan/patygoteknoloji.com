@@ -1406,10 +1406,6 @@ h1, h2, h3, h4 {
 .checkout-page .checkout-hero {
   padding: clamp(16px, 2.4vw, 22px) 0 8px;
 }
-.checkout-page .checkout-hero .container,
-.checkout-page .checkout-section .container {
-  max-width: 960px;
-}
 .checkout-page .checkout-hero h1 {
   margin: 4px 0 4px;
   font-size: clamp(1.45rem, 2.6vw, 1.85rem);
@@ -1440,10 +1436,11 @@ h1, h2, h3, h4 {
   max-width: none;
   font-size: 0.92rem;
 }
+/* Sepet (.cart-layout) ile aynı sütunlar: adım geçişinde özet aynı yerde kalır. */
 .checkout-wrap {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.85fr);
+  gap: 24px;
   align-items: start;
   max-width: none;
   margin: 0;

@@ -20,6 +20,16 @@ test("checkout page uses compact hero and section spacing", () => {
   assert.match(css, /checkout-card-title/);
 });
 
+test("cart and checkout steps share the wide container and the same column split", () => {
+  assert.doesNotMatch(css, /\.checkout-page \.checkout-(hero|section) \.container[^{]*\{[^}]*max-width/);
+  const cols = (sel) => {
+    const m = css.match(new RegExp("\\n" + sel.replace(".", "\\.") + "\\s*\\{[^}]*grid-template-columns:\\s*([^;]+);"));
+    return m && m[1].trim();
+  };
+  assert.ok(cols(".cart-layout"), "cart-layout columns");
+  assert.equal(cols(".checkout-wrap"), cols(".cart-layout"));
+});
+
 test("checkout funnel hides catalog nav and extra exits", () => {
   assert.doesNotMatch(html, /Sipariş notu/);
   assert.doesNotMatch(html, /id="not"/);
@@ -28,7 +38,6 @@ test("checkout funnel hides catalog nav and extra exits", () => {
   assert.doesNotMatch(html, /nav-toggle/);
   assert.match(css, /\.checkout-page \.nav-links/);
   assert.match(css, /\.checkout-page \.checkout-hero p\s*\{[^}]*white-space:\s*nowrap/s);
-  assert.match(css, /\.checkout-page \.checkout-hero \.container/);
   assert.match(css, /\.qty-row\[hidden\]/);
 });
 
