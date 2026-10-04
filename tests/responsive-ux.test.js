@@ -98,13 +98,17 @@ test("mobile nav drawer aligns category labels to the left", () => {
   );
 });
 
-test("wide screens use a 1440px layout with single-line menu and denser product grids", () => {
+test("wide screens use a 1440px layout with single-line menu and 5-slot product grids", () => {
   assert.match(css, /--container:\s*1440px/);
   const wide = /@media \(min-width:\s*1400px\)\s*\{([\s\S]*?)\n\}/g;
   const blocks = [...css.matchAll(wide)].map((m) => m[1]).join("\n");
   assert.match(blocks, /\.nav-mega-label\s*\{[^}]*flex-direction:\s*row/);
   assert.match(blocks, /\.nav-links > \.nav-mega\s*\{[^}]*flex:\s*1 1 auto/);
-  assert.match(blocks, /\.product-grid\s*\{[^}]*repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(blocks, /\.catalog-layout\.has-facets \.product-grid\s*\{[^}]*repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.match(blocks, /\.product-grid,\s*\.catalog-layout\.has-facets \.product-grid\s*\{[^}]*repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.match(
+    blocks,
+    /\.product-grid\[data-catalog="featured"\] > \.product-card:nth-child\(n \+ 11\)\s*\{\s*display:\s*none/
+  );
+  assert.doesNotMatch(css, /repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(blocks, /\.detail-thumbs\s*\{[^}]*max-width:\s*560px/);
 });

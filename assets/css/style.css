@@ -1113,10 +1113,12 @@ h1, h2, h3, h4 {
     gap: 14px;
   }
 }
-/* Ana sayfa 12 öne çıkan ürün gösterir: 6 sütun = iki dolu satır. Katalog sayfası 20 ürün: 5 sütun. */
+/* Ana sayfa 12 öne çıkan ürün yükler; 5 sütunda yarım satır kalmasın diye ilk 10'u gösterilir
+   (4 ve 2 sütunda 12'si dolu satır olur). Katalog sayfası 20'şer ürün: 5 sütun. */
 @media (min-width: 1400px) {
-  .product-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .product-grid,
   .catalog-layout.has-facets .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .product-grid[data-catalog="featured"] > .product-card:nth-child(n + 11) { display: none; }
 }
 .catalog-infinite {
   margin-top: 8px;
