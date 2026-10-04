@@ -33,6 +33,26 @@ test("specValues reads CPU, RAM, storage, screen and refresh rate from titles", 
   assert.equal(specValues({ name: "MSI Prestige Core Ultra 7 155H 32GB DDR5" }).islemci, "Core Ultra 7");
 });
 
+test("specValues understands common supplier title shorthands", () => {
+  const dell = specValues({ name: "Dell Pro 15 Essential i5 1334 16GB 512SSD 15.6 FHD 120Hz Ubuntu Notebook" });
+  assert.equal(dell.islemci, "Core i5");
+  assert.equal(dell.ram, "16 GB");
+  assert.equal(dell.depolama, "512 GB");
+  const asus = specValues({ name: "Asus Expertbook B3402FVA Core U7-150U 16GB 512GB Touch FreeDOS 14\" Notebook" });
+  assert.equal(asus.islemci, "Core Ultra 7");
+  assert.equal(asus.depolama, "512 GB");
+  assert.equal(specValues({ name: "Dell Pro Micro Ultra5 235T 16GB 512SSD FreeDOS Mini Pc" }).islemci, "Core Ultra 5");
+  assert.equal(specValues({ name: "Quadro Diamond Ci7 10850H 16gb 512gb NVME SSD 16\" Notebook" }).islemci, "Core i7");
+  assert.equal(specValues({ name: "Asus Vivobook 15 CORE 7-150U 8GB 512GB SSD 15.6\" Notebook" }).islemci, "Core 7");
+  const tablet = specValues({ name: "Technopc Quantum Elise T80P 10.95\" IPS 8 Core 2GHz 8-256GB LTE Tablet" });
+  assert.equal(tablet.ekran, "13\" ve altı");
+  assert.equal(tablet.ram, "8 GB");
+  assert.equal(tablet.depolama, "256 GB");
+  assert.equal(specValues({ name: "Adata 2000Gb SC750 Taşınabilir Usb 3.2 Type-C Ssd Harici Disk" }).depolama, "2 TB");
+  assert.equal(specValues({ name: "Adata 2000Gb SC750 Taşınabilir Usb 3.2 Type-C Ssd Harici Disk" }).ram, undefined);
+  assert.equal(specValues({ name: "HP ZBook Ultra 7 155H 16 GB RAM 14\" 512GB 4GB RTX A500 Notebook" }).depolama, "512 GB");
+});
+
 test("specValues ignores storage sizes as RAM and keeps unknown fields empty", () => {
   const row = specValues({ name: "Kingston 512GB NVMe SSD" });
   assert.equal(row.ram, undefined);
