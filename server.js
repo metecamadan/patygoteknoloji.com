@@ -82,6 +82,7 @@ const {
 } = require("./lib/coupons");
 const { createPriceAlertStore } = require("./lib/price-alerts");
 const { buildConfirmMail: buildPriceAlertConfirmMail, buildNotifyMail: buildPriceAlertNotifyMail } = require("./lib/price-alert-mail");
+const { createReviewStore, reviewEligibility, REVIEW_STATUSES } = require("./lib/reviews");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createConsentStore } = require("./lib/consent");
@@ -92,6 +93,7 @@ const {
   NOTIFY_STATUSES,
   sendOrderStatusMail,
   sendInvoiceCustomerMail,
+  itemDisplayName,
 } = require("./lib/order-mail");
 const { submitSalesInvoice, bizimhesapConfigured, pingBizimHesap, orderAllowsBizimHesapInvoice, fetchInvoicePdfAttachment } = require("./lib/bizimhesap");
 const {
@@ -275,6 +277,35 @@ try {
   console.error("[price-alerts] devre dışı:", err && err.message);
 }
 
+let reviewStore = null;
+try {
+  reviewStore = createReviewStore(getDb(DATA_ROOT));
+} catch (err) {
+  console.error("[reviews] devre dışı:", err && err.message);
+}
+
+function reviewDataFor(productId) {
+  if (!reviewStore) return null;
+  try {
+    const summary = reviewStore.summary(productId);
+    return summary.count ? { summary, reviews: reviewStore.publicList(productId, 10) } : null;
+  } catch (err) {
+    console.error("[reviews] okuma hatası:", err && err.message);
+    return null;
+  }
+}
+
+function reviewPageUrl(order) {
+  if (!order || !order.accessToken) return "";
+  return (
+    SITE_BASE_URL +
+    "/degerlendir?siparis=" +
+    encodeURIComponent(order.id) +
+    "&token=" +
+    encodeURIComponent(order.accessToken)
+  );
+}
+
 /** Storefront product (sellable, in stock) as the alert checker sees it, or null. */
 function priceAlertProduct(productId) {
   const index = storefrontIndex(false);
@@ -344,6 +375,7 @@ const bankReversalConfig = createBankReversalConfig(process.env, akbankConfig);
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 const couponCheckAttempts = new Map(); // IP -> { count, resetAt }
 const priceAlertAttempts = new Map(); // IP -> { count, resetAt }
+const reviewAttempts = new Map(); // IP -> { count, resetAt }
 const contactAttempts = new Map(); // IP -> { count, resetAt }
 const adminLoginAttempts = new Map(); // IP -> { count, resetAt }
 const analyticsAttempts = new Map(); // IP -> { count, resetAt }
@@ -1618,6 +1650,67 @@ async function handleApi(req, res, urlPath) {
     return redirectTo(res, SITE_BASE_URL + target + "?alarm=" + (confirming ? "onay" : "iptal"));
   }
 
+  if (req.method === "GET" && urlPath === "/api/reviews") {
+    const requestUrl = new URL(req.url || urlPath, "http://localhost");
+    const productId = String(requestUrl.searchParams.get("productId") || "").trim().slice(0, 80);
+    if (!productId) return json(res, 400, { ok: false, error: "Ürün gerekli." });
+    const data = reviewDataFor(productId);
+    return json(
+      res,
+      200,
+      {
+        ok: true,
+        summary: data ? data.summary : { count: 0, average: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
+        reviews: data ? data.reviews : [],
+      },
+      { "Cache-Control": "public, max-age=60" }
+    );
+  }
+
+  if (req.method === "GET" && urlPath === "/api/reviews/order") {
+    const requestUrl = new URL(req.url || urlPath, "http://localhost");
+    const orderId = String(requestUrl.searchParams.get("siparis") || "").slice(0, 64);
+    const token = String(requestUrl.searchParams.get("token") || "").slice(0, 64);
+    const order = orderId ? orderStore.get(orderId) : null;
+    if (!order || !orderAccessOk(order, token)) {
+      return json(res, 403, { ok: false, error: "Değerlendirme bağlantısı geçersiz." });
+    }
+    const eligible = reviewEligibility(order, null);
+    if (!eligible.ok) return json(res, 409, { ok: false, error: eligible.error });
+    const done = reviewStore ? reviewStore.forOrder(order.id) : {};
+    const seen = new Set();
+    const items = (order.items || [])
+      .filter((item) => item.productId && !seen.has(item.productId) && seen.add(item.productId))
+      .map((item) => {
+        const live = priceAlertProduct(item.productId);
+        return {
+          productId: item.productId,
+          name: itemDisplayName(item),
+          urlPath: live ? live.urlPath : null,
+          review: done[item.productId] || null,
+        };
+      });
+    return json(res, 200, { ok: true, orderId: order.id, items });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/reviews") {
+    if (rateLimited(reviewAttempts, clientIp(req), 10, 15 * 60 * 1000)) {
+      return json(res, 429, { ok: false, error: "Çok fazla istek. Lütfen sonra tekrar deneyin." });
+    }
+    try {
+      if (!reviewStore) return json(res, 503, { ok: false, error: "Değerlendirme şu anda kullanılamıyor." });
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const order = body.orderId ? orderStore.get(String(body.orderId).slice(0, 64)) : null;
+      if (!order || !orderAccessOk(order, String(body.token || "").slice(0, 64))) {
+        return json(res, 403, { ok: false, error: "Değerlendirme bağlantısı geçersiz." });
+      }
+      const review = reviewStore.submit(order, String(body.productId || "").slice(0, 80), body);
+      return json(res, 200, { ok: true, status: review.status });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Değerlendirme kaydedilemedi." });
+    }
+  }
+
   if (req.method === "POST" && urlPath === "/api/coupons/check") {
     if (rateLimited(couponCheckAttempts, clientIp(req), 20, 15 * 60 * 1000)) {
       return json(res, 429, { ok: false, error: "Çok fazla kupon denemesi. Lütfen sonra tekrar deneyin." });
@@ -2341,6 +2434,56 @@ async function handleApi(req, res, urlPath) {
     }
   }
 
+  if (urlPath === "/api/admin/reviews" || urlPath.startsWith("/api/admin/reviews/")) {
+    if (!reviewStore) return json(res, 503, { ok: false, error: "Yorum modülü kullanılamıyor." });
+    const idParam = urlPath.startsWith("/api/admin/reviews/")
+      ? Number(urlPath.slice("/api/admin/reviews/".length))
+      : 0;
+    const auditReview = (action, review, detail) => {
+      try {
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action,
+          entityType: "review",
+          entityId: String(review.id),
+          detail: Object.assign({ productId: review.productId, orderId: review.orderId }, detail || {}),
+          ip: clientIp(req),
+        });
+      } catch (_) {}
+    };
+    try {
+      if (req.method === "GET" && !idParam) {
+        const requestUrl = new URL(req.url || urlPath, "http://localhost");
+        const status = String(requestUrl.searchParams.get("status") || "");
+        return json(res, 200, {
+          ok: true,
+          reviews: reviewStore.adminList({ status: REVIEW_STATUSES.has(status) ? status : "" }),
+          counts: reviewStore.statusCounts(),
+        });
+      }
+      if (req.method === "PATCH" && idParam) {
+        const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+        const review = reviewStore.moderate(idParam, String(body.status || ""));
+        if (!review) return json(res, 404, { ok: false, error: "Yorum bulunamadı." });
+        productHtmlCache.pages.clear();
+        auditReview("review.moderate", review, { status: review.status });
+        return json(res, 200, { ok: true, review, counts: reviewStore.statusCounts() });
+      }
+      if (req.method === "DELETE" && idParam) {
+        const review = reviewStore.remove(idParam);
+        if (!review) return json(res, 404, { ok: false, error: "Yorum bulunamadı." });
+        productHtmlCache.pages.clear();
+        auditReview("review.delete", review);
+        return json(res, 200, { ok: true, counts: reviewStore.statusCounts() });
+      }
+      return json(res, 405, { ok: false, error: "Desteklenmeyen işlem." });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Yorum güncellenemedi." });
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/installments/settings") {
     return json(res, 200, { ok: true, settings: installmentSettingsStore.getSettings() });
   }
@@ -2746,6 +2889,12 @@ async function handleApi(req, res, urlPath) {
             if (!ADMIN_FULFILLMENT_STATUSES.has(status)) {
               return json(res, 400, { ok: false, error: "Bu durum panelden seçilemez." });
             }
+            if (status === "delivered" && current.status !== "shipped" && current.status !== "delivered") {
+              return json(res, 400, {
+                ok: false,
+                error: "Teslim edildi yalnızca kargoya verilmiş siparişte seçilebilir.",
+              });
+            }
             patch.status = status;
           }
         } else if (!shippingSave) {
@@ -2769,7 +2918,10 @@ async function handleApi(req, res, urlPath) {
             if (patch.status === "shipped" && !(order.shippingCarrier && order.trackingCode)) {
               mailResult = { sent: false, reason: "shipped_without_tracking" };
             } else {
-              mailResult = await sendOrderStatusMail(order, patch.status, { store: orderStore });
+              mailResult = await sendOrderStatusMail(order, patch.status, {
+                store: orderStore,
+                extra: patch.status === "delivered" ? { reviewUrl: reviewPageUrl(order) } : undefined,
+              });
             }
           }
           mailSent = Boolean(mailResult && mailResult.sent);
@@ -3369,7 +3521,7 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
     const found = lookupPublicProductsByPath(key);
     const product = found && Array.isArray(found.products) ? found.products[0] : null;
     page = product
-      ? { status: 200, html: renderProductHtml(productHtmlCache.shell, product) }
+      ? { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) }
       : { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) };
     if (productHtmlCache.pages.size >= PRODUCT_HTML_CACHE_MAX) productHtmlCache.pages.clear();
     productHtmlCache.pages.set(key, page);

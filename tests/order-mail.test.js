@@ -94,11 +94,20 @@ test("shipped template includes carrier and tracking code", () => {
   assert.match(mail.html, /Sipariş özeti/);
 });
 
-test("notify statuses include paid preparing shipped cancelled and refunded", () => {
+test("notify statuses include paid preparing shipped delivered cancelled and refunded", () => {
   assert.deepEqual(
     [...NOTIFY_STATUSES].sort(),
-    ["cancelled", "paid", "preparing", "refunded", "shipped"].sort()
+    ["cancelled", "delivered", "paid", "preparing", "refunded", "shipped"].sort()
   );
+});
+
+test("delivered template carries the review link", () => {
+  const reviewUrl = "https://patygoteknoloji.com/degerlendir?siparis=PTY-1&token=abc";
+  const mail = buildOrderMail(sampleOrder, "delivered", { reviewUrl });
+  assert.match(mail.subject, /teslim edildi/);
+  assert.ok(mail.text.includes(reviewUrl));
+  assert.ok(mail.html.includes("Ürünleri değerlendir"));
+  assert.ok(mail.html.includes(reviewUrl.replace(/&/g, "&amp;")));
 });
 
 test("customerEmail normalizes address", () => {

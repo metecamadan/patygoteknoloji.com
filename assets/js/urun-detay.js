@@ -452,6 +452,117 @@
       });
   }
 
+  const reviewCache = new Map();
+  const VERIFIED_BUYER_LABEL = "Doğrulanmış alıcı";
+
+  function loadReviews(productId) {
+    const key = String(productId || "");
+    if (!reviewCache.has(key)) {
+      reviewCache.set(
+        key,
+        fetch("/api/reviews?productId=" + encodeURIComponent(key), { cache: "default" })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => (data && data.summary && data.summary.count > 0 ? data : null))
+          .catch(() => null)
+      );
+    }
+    return reviewCache.get(key);
+  }
+
+  function buildStars(rating) {
+    const full = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+    const stars = el("span", "review-stars", "★★★★★".slice(0, full) + "☆☆☆☆☆".slice(0, 5 - full));
+    stars.setAttribute("role", "img");
+    stars.setAttribute("aria-label", "5 üzerinden " + String(rating).replace(".", ","));
+    return stars;
+  }
+
+  function formatReviewDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? ""
+      : date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function buildRatingLink(product) {
+    const link = el("a", "detail-rating");
+    link.href = "#degerlendirmeler";
+    link.hidden = true;
+    loadReviews(product.id).then((data) => {
+      if (!data) return;
+      link.appendChild(buildStars(data.summary.average));
+      link.appendChild(
+        el("span", "", String(data.summary.average).replace(".", ",") + " (" + data.summary.count + " değerlendirme)")
+      );
+      link.hidden = false;
+    });
+    return link;
+  }
+
+  function buildReviewSection(product) {
+    const section = el("section", "detail-reviews");
+    section.id = "degerlendirmeler";
+    section.hidden = true;
+    section.setAttribute("aria-labelledby", "detailReviewsTitle");
+    const title = el("h2", "detail-reviews-title", "Değerlendirmeler");
+    title.id = "detailReviewsTitle";
+    section.appendChild(title);
+    loadReviews(product.id).then((data) => {
+      if (!data) return;
+      const head = el("div", "detail-reviews-head");
+      head.appendChild(el("strong", "detail-reviews-avg", String(data.summary.average).replace(".", ",")));
+      head.appendChild(buildStars(data.summary.average));
+      head.appendChild(el("span", "detail-reviews-count", data.summary.count + " değerlendirme"));
+      section.appendChild(head);
+      const list = el("ul", "detail-reviews-list");
+      data.reviews.forEach((item) => {
+        const li = el("li", "detail-review");
+        const meta = el("div", "detail-review-meta");
+        meta.appendChild(buildStars(item.rating));
+        meta.appendChild(el("span", "detail-review-author", item.author));
+        if (item.author !== VERIFIED_BUYER_LABEL) {
+          meta.appendChild(el("span", "detail-review-badge", VERIFIED_BUYER_LABEL));
+        }
+        const date = formatReviewDate(item.createdAt);
+        if (date) meta.appendChild(el("time", "detail-review-date", date));
+        li.appendChild(meta);
+        if (item.title) li.appendChild(el("h3", "detail-review-title", item.title));
+        li.appendChild(el("p", "detail-review-body", item.body));
+        list.appendChild(li);
+      });
+      section.appendChild(list);
+      section.appendChild(
+        el(
+          "p",
+          "detail-reviews-note",
+          "Yorumları yalnızca bu ürünü satın alıp teslim alan müşteriler yazabilir; yorumlar kontrol edildikten sonra yayınlanır."
+        )
+      );
+      section.hidden = false;
+    });
+    return section;
+  }
+
+  function reviewJsonLd(data) {
+    return {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: String(data.summary.average),
+        reviewCount: data.summary.count,
+        bestRating: "5",
+        worstRating: "1",
+      },
+      review: data.reviews.slice(0, 5).map((item) => ({
+        "@type": "Review",
+        author: { "@type": "Person", name: item.author },
+        datePublished: String(item.createdAt || "").slice(0, 10),
+        reviewRating: { "@type": "Rating", ratingValue: String(item.rating), bestRating: "5", worstRating: "1" },
+        name: item.title || undefined,
+        reviewBody: item.body,
+      })),
+    };
+  }
+
   function buildPriceAlert(product) {
     const box = document.createElement("details");
     box.className = "price-alert";
@@ -721,6 +832,7 @@
 
     info.appendChild(tag);
     info.appendChild(h1);
+    info.appendChild(buildRatingLink(product));
     info.appendChild(price);
     if (shippingLine) info.appendChild(shippingLine);
     if (dispatchLine) info.appendChild(dispatchLine);
@@ -738,6 +850,7 @@
     root.appendChild(crumb);
     root.appendChild(grid);
     root.appendChild(buildDetailTabs(product));
+    root.appendChild(buildReviewSection(product));
     bindStickyBuyBar(product, actions, add);
 
     upsertProductJsonLd(product, trail);
@@ -776,7 +889,7 @@
       Array.isArray(product.images) ? product.images : [product.image]
     ).filter(Boolean);
     const price = window.PatygoCatalog.priceInclVat(product);
-    upsertJsonLd("product-jsonld", {
+    const productLd = {
       "@context": "https://schema.org",
       "@type": "Product",
       name: product.name,
@@ -797,6 +910,10 @@
         availability: "https://schema.org/InStock",
         itemCondition: "https://schema.org/NewCondition",
       },
+    };
+    upsertJsonLd("product-jsonld", productLd);
+    loadReviews(product.id).then((data) => {
+      if (data) upsertJsonLd("product-jsonld", Object.assign({}, productLd, reviewJsonLd(data)));
     });
     const crumbs = [
       { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: "https://patygoteknoloji.com/" },

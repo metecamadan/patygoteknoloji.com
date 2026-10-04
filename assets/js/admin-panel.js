@@ -654,7 +654,7 @@
     try {
       const saved = sessionStorage.getItem("patygo_admin_tab");
       if (
-        ["overview", "calendar", "orders", "leads", "users", "shipping", "products", "xml", "categories", "unlisted"].includes(
+        ["overview", "calendar", "orders", "reviews", "leads", "users", "shipping", "products", "xml", "categories", "unlisted"].includes(
           saved
         )
       ) {
@@ -780,6 +780,7 @@
     if (tab === "products" && !xmlView) ensureManualProducts().catch(() => {});
     if (tab === "overview") loadDigitalDashboard().catch(() => {});
     if (tab === "orders") loadAdminOrders().catch(() => {});
+    loadAdminReviews(tab === "reviews").catch(() => {});
     if (tab === "leads") loadAdminLeads().catch(() => {});
     if (tab === "shipping") {
       loadAdminShippingSettings().catch(() => {});
@@ -820,6 +821,7 @@
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
       calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
       orders: ["Siparişler", "Ödeme durumu, müşteri ve kalemleri yönetin."],
+      reviews: ["Yorumlar", "Teslim alınmış siparişlerden gelen ürün yorumlarını onaylayın veya reddedin."],
       leads: ["Talepler", "İletişim formundan gelen teklif / talep kayıtları."],
       users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
       shipping: ["Kargo ve taksit", "Kargo bedeli, ücretsiz kargo eşiği ve taksit oranlarını yönetin."],
@@ -881,6 +883,7 @@
       loadAdminCoupons().catch(() => {});
     }
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
+    if (name === "reviews" && token) loadAdminReviews(true).catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
     if (name === "unlisted" && token) loadUnlistedProducts().catch(() => {});
     try {
@@ -3815,6 +3818,7 @@
       payment_failed: "Ödeme başarısız",
       preparing: "Hazırlanıyor",
       shipped: "Kargoda",
+      delivered: "Teslim edildi",
       cancelled: "İptal",
       refunded: "İade",
     };
@@ -3828,6 +3832,7 @@
       payment_failed: "order-status--failed",
       preparing: "order-status--preparing",
       shipped: "order-status--shipped",
+      delivered: "order-status--delivered",
       cancelled: "order-status--cancelled",
       refunded: "order-status--refunded",
     };
@@ -3857,7 +3862,7 @@
 
   function fulfillmentStatusKey(order) {
     const status = String((order && order.status) || "");
-    if (status === "preparing" || status === "shipped" || status === "cancelled") {
+    if (status === "preparing" || status === "shipped" || status === "delivered" || status === "cancelled") {
       return status;
     }
     return "";
@@ -3973,6 +3978,7 @@
       paid: "Ödeme alındı",
       preparing: "Hazırlanıyor",
       shipped: "Kargoda",
+      delivered: "Teslim edildi",
       cancelled: "İptal",
       refunded: "İade",
     };
@@ -4339,20 +4345,22 @@
       "</ul>" +
       "<div class='field'><label for='adminOrderStatus'>Durum güncelle</label>" +
       "<select id='adminOrderStatus'>" +
-      ["preparing", "cancelled"]
+      (order.status === "shipped" || order.status === "delivered"
+        ? ["preparing", "delivered", "cancelled"]
+        : ["preparing", "cancelled"])
         .map(
           (s) =>
             "<option value='" +
             s +
             "'" +
-            (order.status === s ? " selected" : "") +
+            (order.status === s || (order.status === "shipped" && s === "delivered") ? " selected" : "") +
             ">" +
             orderStatusLabel(s) +
             "</option>"
         )
         .join("") +
       "</select></div>" +
-      "<p class='admin-field-help'>Ödeme durumu banka callback ile gelir; iade yalnızca “Banka iadesi/iptal” ile yapılır. Kargoda durumu alttaki kargo kaydı ile güncellenir.</p>" +
+      "<p class='admin-field-help'>Ödeme durumu banka callback ile gelir; iade yalnızca “Banka iadesi/iptal” ile yapılır. Kargoda durumu alttaki kargo kaydı ile güncellenir. Kargodaki sipariş müşteriye ulaşınca “Teslim edildi” seçin: müşteriye ürün değerlendirme bağlantısı gider.</p>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
       "<h3 class='admin-order-section-title'>KVKK / anonimleştirme</h3>" +
       "<p class='admin-field-help'>Taslak politika: kişisel verileri temizler; tutar ve kalemler kalır. legal_hold olan kayıtlar hard silinmez.</p>" +
@@ -5554,6 +5562,100 @@
         note(adminCouponNote, "err", err.message || "Kaydedilemedi");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const adminReviewList = document.getElementById("adminReviewList");
+  const adminReviewNote = document.getElementById("adminReviewNote");
+  const reviewStatusFilter = document.getElementById("reviewStatusFilter");
+  const reviewsNavCount = document.getElementById("reviewsNavCount");
+  const REVIEW_STATUS_LABELS = { pending: "Onay bekliyor", approved: "Yayında", rejected: "Reddedildi" };
+
+  function renderReviewCounts(counts) {
+    if (!reviewsNavCount) return;
+    const pending = Number(counts && counts.pending) || 0;
+    reviewsNavCount.textContent = String(pending);
+    reviewsNavCount.hidden = pending <= 0;
+  }
+
+  function renderAdminReviews(reviews) {
+    if (!adminReviewList) return;
+    if (!reviews.length) {
+      adminReviewList.innerHTML = "<p class='admin-hint'>Bu filtrede yorum yok.</p>";
+      return;
+    }
+    adminReviewList.innerHTML = reviews
+      .map((review) => {
+        const stars = "★★★★★".slice(0, review.rating) + "☆☆☆☆☆".slice(0, 5 - review.rating);
+        const actions = [];
+        if (review.status !== "approved") {
+          actions.push("<button type='button' class='btn btn-primary btn-sm' data-review-approve='" + review.id + "'>Onayla</button>");
+        }
+        if (review.status !== "rejected") {
+          actions.push("<button type='button' class='btn btn-outline btn-sm' data-review-reject='" + review.id + "'>Reddet</button>");
+        }
+        actions.push("<button type='button' class='btn btn-outline btn-sm' data-review-delete='" + review.id + "'>Sil</button>");
+        return (
+          "<article class='admin-review' data-review-id='" + review.id + "'>" +
+          "<header class='admin-review-head'>" +
+          "<strong>" + escapeHtml(review.productName || review.productId) + "</strong>" +
+          "<span class='admin-review-status admin-review-status--" + escapeAttr(review.status) + "'>" +
+          escapeHtml(REVIEW_STATUS_LABELS[review.status] || review.status) +
+          "</span></header>" +
+          "<p class='admin-review-meta'><span class='admin-review-stars' aria-label='" + review.rating + " / 5'>" + stars + "</span> · " +
+          escapeHtml(review.author) + " · " + escapeHtml(formatOrderDate(review.createdAt)) +
+          " · Sipariş " + escapeHtml(review.orderId) + "</p>" +
+          (review.title ? "<p class='admin-review-title'>" + escapeHtml(review.title) + "</p>" : "") +
+          "<p class='admin-review-body'>" + escapeHtml(review.body) + "</p>" +
+          "<div class='admin-form-actions'>" + actions.join("") + "</div>" +
+          "</article>"
+        );
+      })
+      .join("");
+  }
+
+  async function loadAdminReviews(withList) {
+    if (!token) return;
+    const status = reviewStatusFilter ? reviewStatusFilter.value : "pending";
+    const data = await api("/api/admin/reviews" + (status ? "?status=" + encodeURIComponent(status) : ""));
+    renderReviewCounts(data && data.counts);
+    if (withList) renderAdminReviews((data && data.reviews) || []);
+  }
+
+  if (reviewStatusFilter) {
+    reviewStatusFilter.addEventListener("change", () => {
+      loadAdminReviews(true).catch((err) => note(adminReviewNote, "err", err.message || "Yorumlar yüklenemedi"));
+    });
+  }
+
+  if (adminReviewList) {
+    adminReviewList.addEventListener("click", async (ev) => {
+      const target = ev.target.closest("button");
+      if (!target) return;
+      const approveId = target.getAttribute("data-review-approve");
+      const rejectId = target.getAttribute("data-review-reject");
+      const deleteId = target.getAttribute("data-review-delete");
+      target.disabled = true;
+      try {
+        if (approveId || rejectId) {
+          await api("/api/admin/reviews/" + encodeURIComponent(approveId || rejectId), {
+            method: "PATCH",
+            body: JSON.stringify({ status: approveId ? "approved" : "rejected" }),
+          });
+          note(adminReviewNote, "ok", approveId ? "Yorum yayına alındı." : "Yorum reddedildi.");
+        } else if (deleteId) {
+          if (!confirm("Yorum kalıcı olarak silinsin mi?")) {
+            target.disabled = false;
+            return;
+          }
+          await api("/api/admin/reviews/" + encodeURIComponent(deleteId), { method: "DELETE" });
+          note(adminReviewNote, "ok", "Yorum silindi.");
+        }
+        await loadAdminReviews(true);
+      } catch (err) {
+        target.disabled = false;
+        note(adminReviewNote, "err", err.message || "İşlem yapılamadı");
       }
     });
   }

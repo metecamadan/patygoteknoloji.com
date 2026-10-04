@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ürün Detayı | Patygo Teknoloji</title>
+  <title>Ürünleri Değerlendir | Patygo Teknoloji</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="referrer" content="no-referrer" />
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg" />
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
   <link rel="manifest" href="/assets/manifest.json" />
@@ -13,11 +15,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p18" />
 </head>
-<body class="product-detail-page">
+<body class="review-page">
   <header class="site-header">
     <div class="container">
       <nav class="nav" aria-label="Ana menü">
-        <a class="brand" href="/"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" /></a>
+        <a class="brand" href="/" aria-label="Patygo Teknoloji"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" /></a>
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
           <form class="nav-search" action="/urunler" method="get" role="search">
@@ -33,15 +35,18 @@
   </header>
 
   <main>
-    <section class="section">
-      <div class="container product-detail" id="detailRoot">
-        <p style="color:var(--muted)">Ürün yükleniyor…</p>
+    <section class="page-hero">
+      <div class="container">
+        <h1 class="reveal">Ürünleri değerlendirin</h1>
+        <p class="reveal d1">Yorumunuz kontrol edildikten sonra ürün sayfasında kısaltılmış adınızla (örneğin “Ayşe Y.”) yayınlanır.</p>
       </div>
     </section>
-    <section class="section similar-products" id="similarProducts" aria-labelledby="similarTitle" hidden>
+
+    <section class="section review-section">
       <div class="container">
-        <h2 class="similar-title" id="similarTitle">Benzer ürünler</h2>
-        <div class="product-grid similar-grid" id="similarGrid"></div>
+        <p class="review-status" id="reviewStatus" role="status">Siparişiniz yükleniyor…</p>
+        <div class="review-list" id="reviewList"></div>
+        <p class="review-legal">Değerlendirmenizi <a href="/kvkk">KVKK Aydınlatma Metni</a> kapsamında işleriz. Yayından kaldırılmasını istediğiniz yorum için <a href="mailto:info@patygoteknoloji.com">info@patygoteknoloji.com</a> adresine yazabilirsiniz.</p>
       </div>
     </section>
   </main>
@@ -98,19 +103,11 @@
     </div>
   </footer>
 
-  <div class="fab">
-    <a class="wa" href="https://wa.me/905555070724" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp ile yazın"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.2L2 22l4.9-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1-.7-.3-1.4-.6-2-1.3-.5-.5-.9-1.1-1-1.3-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3.2-.5 0-.2 0-.4 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3z"/></svg></a>
-    <button class="top" id="backTop" aria-label="Yukarı çık"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-  </div>
-
   <script defer src="/assets/js/cart.js"></script>
-  <script defer src="/assets/js/shipping.js?v=storefront-ship-5"></script>
-  <script defer src="/assets/js/installments.js?v=taksit-1"></script>
   <script defer src="/assets/js/favorites.js?v=fav-1"></script>
   <script defer src="/assets/js/catalog.js?v=storefront-p18"></script>
   <script defer src="/assets/js/nav.js?v=nav-d43-1"></script>
   <script defer src="/assets/js/main.js?v=main-alarm-2"></script>
-  <script defer src="/assets/js/detail-specs.js?v=detail-spec-hb-1"></script>
-  <script defer src="/assets/js/urun-detay.js?v=storefront-p18"></script>
+  <script defer src="/assets/js/degerlendir.js?v=review-2"></script>
 </body>
 </html>
