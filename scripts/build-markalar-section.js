@@ -13,6 +13,15 @@ function logoTag(file, alt) {
     const height = head.match(/\sheight="(\d+)"/)[1];
     return `<img src="/assets/img/brand-logos/${base}.svg" alt="${alt}" width="${width}" height="${height}" loading="lazy" />`;
   }
+  // PNG logos are stored at 2x the display size; the 2x descriptor keeps their rendered size standard.
+  const pngPath = path.join(logoDir, base + ".png");
+  if (fs.existsSync(pngPath)) {
+    const png = fs.readFileSync(pngPath);
+    const width = png.readUInt32BE(16) / 2;
+    const height = png.readUInt32BE(20) / 2;
+    const src = `/assets/img/brand-logos/${base}.png`;
+    return `<img src="${src}" srcset="${src} 2x" alt="${alt}" width="${width}" height="${height}" loading="lazy" />`;
+  }
   return `<img src="/assets/img/brands/${file}.svg" alt="${alt}" width="170" height="48" loading="lazy" />`;
 }
 

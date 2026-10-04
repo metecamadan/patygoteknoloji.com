@@ -2345,8 +2345,6 @@ h1, h2, h3, h4 {
 .brand-tile .logo img {
   max-width: 170px;
   max-height: 48px;
-  width: auto;
-  height: auto;
   object-fit: contain;
 }
 .brand-tile .logo-word {

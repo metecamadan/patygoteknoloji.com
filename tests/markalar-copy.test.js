@@ -13,19 +13,32 @@ test("markalar brand tiles show a sized logo and the brand name", () => {
   assert.equal(tiles.length, 97);
   let realLogos = 0;
   for (const tile of tiles) {
-    const img = tile.match(/<img src="\/assets\/img\/(brand-logos|brands)\/([a-z0-9-]+)\.svg" alt="([^"]+)" width="(\d+)" height="(\d+)"/);
+    const img = tile.match(/<img src="\/assets\/img\/(brand-logos|brands)\/([a-z0-9-]+)\.(svg|png)"(?: srcset="([^"]+)")? alt="([^"]+)" width="(\d+)" height="(\d+)"/);
     assert.ok(img, tile);
-    const [, dir, file, alt, width, height] = img;
-    assert.ok(fs.existsSync(path.join(root, "assets", "img", dir, file + ".svg")), file);
+    const [, dir, file, ext, srcset, alt, width, height] = img;
+    const filePath = path.join(root, "assets", "img", dir, `${file}.${ext}`);
+    assert.ok(fs.existsSync(filePath), file);
     assert.ok(tile.includes(`<strong class="brand-tile-name" aria-hidden="true">${alt}</strong>`), alt);
     if (dir === "brand-logos") {
       realLogos += 1;
       assert.ok(Number(width) <= 150 && Number(height) <= 44, file);
-      const head = fs.readFileSync(path.join(root, "assets", "img", dir, file + ".svg"), "utf8").match(/<svg\b[^>]*>/)[0];
-      assert.ok(head.includes(`width="${width}"`) && head.includes(`height="${height}"`), file);
+      if (ext === "svg") {
+        const head = fs.readFileSync(filePath, "utf8").match(/<svg\b[^>]*>/)[0];
+        assert.ok(head.includes(`width="${width}"`) && head.includes(`height="${height}"`), file);
+      } else {
+        assert.equal(srcset, `/assets/img/brand-logos/${file}.png 2x`, file);
+        const png = fs.readFileSync(filePath);
+        assert.equal(png.readUInt32BE(16), Number(width) * 2, file);
+        assert.equal(png.readUInt32BE(20), Number(height) * 2, file);
+      }
+    } else {
+      assert.equal(ext, "svg", file);
     }
   }
-  assert.ok(realLogos >= 80);
+  assert.ok(realLogos >= 95);
+  const logoRule = css.match(/\n\.brand-tile \.logo img \{([^}]*)\}/);
+  assert.ok(logoRule);
+  assert.doesNotMatch(logoRule[1], /(width|height):\s*auto/);
   assert.match(css, /\.brand-tile-name \{/);
   assert.match(html, /<p class="brand-credits">[^<]*Korkmaz logosu: Krkmz20[\s\S]*?CC BY-SA 4\.0<\/a>\.<\/p>/);
 });
