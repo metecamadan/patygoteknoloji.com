@@ -110,3 +110,11 @@ test("product detail and cart show the estimated dispatch date", () => {
   assert.match(admin, /id="shippingDispatchDays"/);
   assert.match(admin, /id="shippingClosedDays"/);
 });
+
+test("dispatch estimate line is a quiet muted note, not a highlighted callout", () => {
+  const css = read("assets/css/style.css");
+  const rule = css.match(/\.product-dispatch,\s*\.cart-dispatch\s*\{([^}]*)\}/);
+  assert.ok(rule, "shared dispatch rule");
+  assert.match(rule[1], /color:\s*var\(--muted\)/);
+  assert.match(rule[1], /font-weight:\s*500/);
+});

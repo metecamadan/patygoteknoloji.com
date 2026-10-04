@@ -41,6 +41,11 @@ test("product detail mobile adds qty stepper and trust copy", () => {
   assert.doesNotMatch(detailJs, /nameCrumb/);
   assert.match(css, /\.detail-trust/);
   assert.match(css, /\.detail-qty-row/);
+  const actions = css.match(/\.detail-info \.actions \{([^}]*)\}/);
+  assert.ok(actions, "detail actions rule");
+  assert.match(actions[1], /flex-direction:\s*column/, "Sepete Ekle sits below the qty stepper");
+  assert.doesNotMatch(css, /\.detail-info \.actions \{[^}]*flex-direction:\s*row/);
+  assert.match(css, /\.detail-info \.actions \.btn-buy \{[^}]*width:\s*100%/);
   assert.match(css, /\.detail-thumbs[\s\S]*?display:\s*flex/);
   assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*?\.product-detail \.breadcrumb[\s\S]*?overflow-x:\s*auto/);
 });
