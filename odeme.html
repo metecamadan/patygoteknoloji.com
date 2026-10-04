@@ -96,20 +96,8 @@
                 <textarea id="teslimatAdres" name="teslimatAdres" rows="2" required placeholder="Fatura ile aynıysa otomatik doldurulur"></textarea>
               </div>
               <div class="check-inline">
-                <input type="checkbox" id="onayOnBilgi" name="onayOnBilgi" required />
-                <label for="onayOnBilgi"><a href="/on-bilgilendirme-formu" target="_blank" rel="noopener" style="color:var(--brand)">Ön Bilgilendirme Formu</a>’nu okudum, onaylıyorum. *</label>
-              </div>
-              <div class="check-inline">
-                <input type="checkbox" id="onayMesafeli" name="onayMesafeli" required />
-                <label for="onayMesafeli"><a href="/mesafeli-satis-sozlesmesi" target="_blank" rel="noopener" style="color:var(--brand)">Mesafeli Satış Sözleşmesi</a>’ni okudum, kabul ediyorum. *</label>
-              </div>
-              <div class="check-inline">
-                <input type="checkbox" id="onayIade" name="onayIade" required />
-                <label for="onayIade"><a href="/iade-ve-cayma" target="_blank" rel="noopener" style="color:var(--brand)">İade ve Cayma Hakkı</a> koşullarını okudum. *</label>
-              </div>
-              <div class="check-inline">
-                <input type="checkbox" id="onayKvkk" name="onayKvkk" required />
-                <label for="onayKvkk"><a href="/kvkk" target="_blank" rel="noopener" style="color:var(--brand)">KVKK Aydınlatma Metni</a>’ni okudum; siparişimin ifası için kişisel verilerimin işlenmesini kabul ediyorum. *</label>
+                <input type="checkbox" id="onaySozlesmeler" name="onaySozlesmeler" required />
+                <label for="onaySozlesmeler"><a href="/on-bilgilendirme-formu" target="_blank" rel="noopener" style="color:var(--brand)">Ön Bilgilendirme Formu</a>’nu, <a href="/mesafeli-satis-sozlesmesi" target="_blank" rel="noopener" style="color:var(--brand)">Mesafeli Satış Sözleşmesi</a>’ni, <a href="/iade-ve-cayma" target="_blank" rel="noopener" style="color:var(--brand)">İade ve Cayma Hakkı</a> koşullarını ve <a href="/kvkk" target="_blank" rel="noopener" style="color:var(--brand)">KVKK Aydınlatma Metni</a>’ni okudum; sözleşmeleri kabul ediyorum. *</label>
               </div>
               <p class="form-note" id="checkoutNote" aria-live="polite"></p>
               <button type="submit" class="btn btn-primary btn-block btn-lg" id="payBtn">Güvenli Ödemeye Geç</button>
@@ -213,6 +201,6 @@
   <script defer src="/assets/js/nav.js?v=nav-1023-1"></script>
   <script defer src="/assets/js/main.js?v=nav-1023-1"></script>
   <script defer src="/assets/js/customer-identity.js?v=identity-1"></script>
-  <script defer src="/assets/js/checkout.js?v=unit-price-1"></script>
+  <script defer src="/assets/js/checkout.js?v=one-consent-1"></script>
 </body>
 </html>

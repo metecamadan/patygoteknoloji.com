@@ -16,7 +16,16 @@ test("kvkk page publishes retention schedule table", () => {
 test("checkout requires KVKK consent and addresses", () => {
   const html = fs.readFileSync(path.join(root, "odeme.html"), "utf8");
   const js = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
-  assert.match(html, /id="onayKvkk"/);
+  const boxes = html.match(/<input type="checkbox" id="onay\w+"/g) || [];
+  assert.deepEqual(boxes, ['<input type="checkbox" id="onaySozlesmeler"'], "one checkbox for all contracts");
+  const label = (html.match(/<label for="onaySozlesmeler">([\s\S]*?)<\/label>/) || [])[1] || "";
+  for (const href of ["/on-bilgilendirme-formu", "/mesafeli-satis-sozlesmesi", "/iade-ve-cayma", "/kvkk"]) {
+    assert.match(label, new RegExp('href="' + href + '"'), "label links " + href);
+  }
+  // KVKK: aydınlatma okundu beyanı; açık rıza sözleşme onayına bağlanmaz.
+  assert.doesNotMatch(label, /işlenmesini kabul/);
+  assert.match(js, /onaySozlesmeler\?\.checked/);
+  assert.doesNotMatch(js, /onayOnBilgi|onayMesafeli|onayIade|onayKvkk/);
   assert.match(html, /id="faturaAdres"/);
   assert.match(html, /id="teslimatAdres"/);
   assert.match(html, /customer-identity\.js/);

@@ -493,16 +493,11 @@
           els.note.textContent = "Geçerli bir e-posta adresi girin.";
           return;
         }
-        if (
-          !els.form.onayOnBilgi?.checked ||
-          !els.form.onayMesafeli?.checked ||
-          !els.form.onayIade?.checked ||
-          !els.form.onayKvkk?.checked
-        ) {
+        if (!els.form.onaySozlesmeler?.checked) {
           els.note.classList.remove("ok");
           els.note.classList.add("err");
           els.note.textContent =
-            "Devam etmek için Ön Bilgilendirme, Mesafeli Satış, İade/Cayma ve KVKK onaylarını işaretleyin.";
+            "Devam etmek için sözleşmeleri okuduğunuzu ve kabul ettiğinizi onaylayın.";
           return;
         }
         const billingAddress = (els.form.faturaAdres && els.form.faturaAdres.value.trim()) || "";
