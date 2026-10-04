@@ -98,6 +98,7 @@ const {
   validateCustomerName,
   validateCustomerPhone,
 } = require("./lib/customer-identity");
+const { normalizeAddress, normalizeInvoiceIdentity } = require("./lib/checkout-billing");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
 const {
@@ -438,9 +439,35 @@ function buildCheckoutOrder(body) {
   if (!body.contractsAccepted) throw new Error("Sözleşme onayları gerekli.");
   if (!body.kvkkAccepted) throw new Error("KVKK aydınlatma onayı gerekli.");
 
-  const billingAddress = String(customer.billingAddress || "").trim().slice(0, 400);
-  const shippingAddress = String(customer.shippingAddress || billingAddress).trim().slice(0, 400);
+  let billingAddress = String(customer.billingAddress || "").trim().slice(0, 400);
+  let shippingAddress = String(customer.shippingAddress || billingAddress).trim().slice(0, 400);
+  let billingParts = null;
+  let shippingParts = null;
+  if (customer.billing && typeof customer.billing === "object") {
+    const billingCheck = normalizeAddress(customer.billing, "Fatura adresi");
+    if (!billingCheck.ok) throw new Error(billingCheck.error);
+    billingParts = billingCheck.value;
+    shippingParts = billingParts;
+    if (customer.shipping && typeof customer.shipping === "object") {
+      const shippingCheck = normalizeAddress(customer.shipping, "Teslimat adresi");
+      if (!shippingCheck.ok) throw new Error(shippingCheck.error);
+      shippingParts = shippingCheck.value;
+    }
+    billingAddress = billingParts.text;
+    shippingAddress = shippingParts.text;
+  }
   if (!billingAddress) throw new Error("Fatura adresi gerekli.");
+  let invoice = {
+    customerType: "",
+    taxId: String(customer.taxId || "").trim().slice(0, 40),
+    company: String(customer.company || "").trim().slice(0, 120),
+    taxOffice: "",
+  };
+  if (customer.customerType) {
+    const invoiceCheck = normalizeInvoiceIdentity(customer);
+    if (!invoiceCheck.ok) throw new Error(invoiceCheck.error);
+    invoice = invoiceCheck.value;
+  }
 
   return {
     id: makeOrderId(),
@@ -454,13 +481,21 @@ function buildCheckoutOrder(body) {
     currency: "TRY",
     customer: {
       name,
-      company: String(customer.company || "").trim().slice(0, 120),
+      company: invoice.company,
       email,
       phone,
-      taxId: String(customer.taxId || "").trim().slice(0, 40),
+      customerType: invoice.customerType,
+      taxId: invoice.taxId,
+      taxOffice: invoice.taxOffice,
       note: String(customer.note || "").trim().slice(0, 500),
       billingAddress,
       shippingAddress,
+      billingCity: billingParts ? billingParts.city : "",
+      billingDistrict: billingParts ? billingParts.district : "",
+      billingPostalCode: billingParts ? billingParts.postalCode : "",
+      shippingCity: shippingParts ? shippingParts.city : "",
+      shippingDistrict: shippingParts ? shippingParts.district : "",
+      shippingPostalCode: shippingParts ? shippingParts.postalCode : "",
     },
     contractsAccepted: {
       onBilgilendirme: true,

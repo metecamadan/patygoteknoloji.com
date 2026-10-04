@@ -131,18 +131,138 @@
     return message;
   }
 
-  function makeOrderId() {
-    const d = new Date();
-    const stamp =
-      d.getFullYear().toString().slice(2) +
-      String(d.getMonth() + 1).padStart(2, "0") +
-      String(d.getDate()).padStart(2, "0");
-    const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
-    return "PTY-" + stamp + "-" + rand;
-  }
-
   function isValidEmail(v) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
+  function fieldError(input, message) {
+    if (!input) return;
+    const box = document.getElementById(input.id + "-error");
+    if (message) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
+    if (box) {
+      box.textContent = message || "";
+      box.hidden = !message;
+    }
+  }
+
+  function invoiceType() {
+    const picked = els.form && els.form.querySelector('input[name="customerType"]:checked');
+    return picked && picked.value === "kurumsal" ? "kurumsal" : "bireysel";
+  }
+
+  function sameAddressChecked() {
+    const same = document.getElementById("sameAddress");
+    return !same || same.checked;
+  }
+
+  function readAddress(prefix) {
+    const f = els.form.elements;
+    return {
+      line: f[prefix + "Adres"].value.trim(),
+      district: f[prefix + "Ilce"].value.trim(),
+      city: f[prefix + "Il"].value,
+      postalCode: f[prefix + "Posta"].value.trim(),
+    };
+  }
+
+  /** Each rule returns "" when valid; rules mirror the /api/payment/start checks. */
+  function fieldRules() {
+    const identity = window.PatygoCustomerIdentity || {};
+    const fromCheck = (check) => (check && !check.ok ? check.error : "");
+    const required = (message) => (input) => (String(input.value || "").trim() ? "" : message);
+    const minLength = (n, message) => (input) => (String(input.value || "").trim().length >= n ? "" : message);
+    const rules = {
+      ad: (input) =>
+        identity.validateCustomerName
+          ? fromCheck(identity.validateCustomerName(input.value))
+          : required("Ad soyad gerekli.")(input),
+      email: (input) => {
+        const value = input.value.trim();
+        if (!value) return "E-posta gerekli.";
+        return isValidEmail(value) ? "" : "Geçerli bir e-posta adresi girin.";
+      },
+      tel: (input) =>
+        identity.validateCustomerPhone
+          ? fromCheck(identity.validateCustomerPhone(input.value))
+          : required("Cep telefonu gerekli.")(input),
+      tckn: (input) => (identity.validateTckn ? fromCheck(identity.validateTckn(input.value)) : ""),
+      firma: minLength(2, "Firma ünvanı gerekli."),
+      vergiDairesi: minLength(2, "Vergi dairesi gerekli."),
+      vkn: (input) =>
+        identity.validateTaxNumber
+          ? fromCheck(identity.validateTaxNumber(input.value))
+          : required("Vergi numarası gerekli.")(input),
+    };
+    ["fatura", "teslimat"].forEach((prefix) => {
+      rules[prefix + "Il"] = required("İl seçin.");
+      rules[prefix + "Ilce"] = required("İlçe gerekli.");
+      rules[prefix + "Adres"] = minLength(10, "Açık adresi yazın (mahalle, sokak, bina no).");
+      rules[prefix + "Posta"] = (input) =>
+        identity.validatePostalCode ? fromCheck(identity.validatePostalCode(input.value)) : "";
+    });
+    return rules;
+  }
+
+  function activeFieldNames() {
+    const names = ["ad", "email", "tel"];
+    if (invoiceType() === "kurumsal") names.push("firma", "vergiDairesi", "vkn");
+    else names.push("tckn");
+    names.push("faturaIl", "faturaIlce", "faturaAdres", "faturaPosta");
+    if (!sameAddressChecked()) names.push("teslimatIl", "teslimatIlce", "teslimatAdres", "teslimatPosta");
+    return names;
+  }
+
+  function validateField(name, rules) {
+    const input = els.form && els.form.elements[name];
+    if (!input || !rules[name]) return "";
+    const message = rules[name](input);
+    fieldError(input, message);
+    return message;
+  }
+
+  function syncInvoiceType() {
+    const type = invoiceType();
+    els.form.querySelectorAll("[data-invoice]").forEach((block) => {
+      const on = block.getAttribute("data-invoice") === type;
+      block.hidden = !on;
+      if (!on) block.querySelectorAll("input").forEach((input) => fieldError(input, ""));
+    });
+  }
+
+  function syncShippingGroup() {
+    const group = document.getElementById("shippingAddressGroup");
+    if (!group) return;
+    const same = sameAddressChecked();
+    group.hidden = same;
+    if (same) group.querySelectorAll("input, select, textarea").forEach((input) => fieldError(input, ""));
+  }
+
+  /** Errors appear when a field is left (not while typing) and clear as soon as the value becomes valid. */
+  function bindLiveValidation(rules) {
+    Object.keys(rules).forEach((name) => {
+      const input = els.form.elements[name];
+      if (!input) return;
+      const leaveEvent = input.tagName === "SELECT" ? "change" : "blur";
+      input.addEventListener(leaveEvent, () => {
+        const identity = window.PatygoCustomerIdentity;
+        if (name === "tel" && identity && identity.formatTrMobilePhone) {
+          input.value = identity.formatTrMobilePhone(input.value);
+        }
+        if (!String(input.value || "").trim() && input.getAttribute("aria-invalid") !== "true") return;
+        validateField(name, rules);
+      });
+      input.addEventListener("input", () => {
+        if (input.getAttribute("aria-invalid") === "true") validateField(name, rules);
+      });
+    });
+    els.form
+      .querySelectorAll('input[name="customerType"]')
+      .forEach((radio) => radio.addEventListener("change", syncInvoiceType));
+    const same = document.getElementById("sameAddress");
+    if (same) same.addEventListener("change", syncShippingGroup);
+    syncInvoiceType();
+    syncShippingGroup();
   }
 
   function showResult(kind, order) {
@@ -421,9 +541,6 @@
       els.payBtn.textContent = posStatus.enabled ? "Güvenli Ödemeye Geç" : "POS Yapılandırması Bekleniyor";
     }
 
-    if (!els.orderIdPreview.textContent || els.orderIdPreview.textContent === "—") {
-      els.orderIdPreview.textContent = makeOrderId();
-    }
     calc();
     if (!booted && window.PatygoAnalytics) window.PatygoAnalytics.track("checkout_started");
 
@@ -435,86 +552,35 @@
 
     if (els.form && !submitBound) {
       submitBound = true;
-      const sameAddress = document.getElementById("sameAddress");
-      const billField = els.form.faturaAdres;
-      const shipField = els.form.teslimatAdres;
-      if (sameAddress && billField && shipField && !sameAddress.dataset.bound) {
-        sameAddress.dataset.bound = "1";
-        const syncAddresses = () => {
-          if (sameAddress.checked) {
-            shipField.value = billField.value;
-            shipField.readOnly = true;
-          } else {
-            shipField.readOnly = false;
-          }
-        };
-        sameAddress.addEventListener("change", syncAddresses);
-        billField.addEventListener("input", () => {
-          if (sameAddress.checked) shipField.value = billField.value;
-        });
-        syncAddresses();
-      }
+      const rules = fieldRules();
+      bindLiveValidation(rules);
+      const fail = (message) => {
+        els.note.classList.remove("ok");
+        els.note.classList.add("err");
+        els.note.textContent = message;
+      };
       els.form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
-        const ad = els.form.ad.value.trim();
-        const email = els.form.email.value.trim();
-        const tel = els.form.tel.value.trim();
-        const identity = window.PatygoCustomerIdentity;
-        if (identity) {
-          const nameCheck = identity.validateCustomerName(ad);
-          if (!nameCheck.ok) {
-            els.note.classList.remove("ok");
-            els.note.classList.add("err");
-            els.note.textContent = nameCheck.error;
-            return;
-          }
-          const phoneCheck = identity.validateCustomerPhone(tel);
-          if (!phoneCheck.ok) {
-            els.note.classList.remove("ok");
-            els.note.classList.add("err");
-            els.note.textContent = phoneCheck.error;
-            return;
-          }
-        } else if (!ad || !email || !tel) {
-          els.note.classList.remove("ok");
-          els.note.classList.add("err");
-          els.note.textContent = "Lütfen zorunlu alanları doldurun.";
-          return;
-        }
-        if (!email) {
-          els.note.classList.remove("ok");
-          els.note.classList.add("err");
-          els.note.textContent = "Lütfen e-posta adresinizi girin.";
-          return;
-        }
-        if (!isValidEmail(email)) {
-          els.note.classList.remove("ok");
-          els.note.classList.add("err");
-          els.note.textContent = "Geçerli bir e-posta adresi girin.";
+        let firstInvalid = null;
+        activeFieldNames().forEach((name) => {
+          if (validateField(name, rules) && !firstInvalid) firstInvalid = els.form.elements[name];
+        });
+        if (firstInvalid) {
+          fail("Lütfen işaretli alanları düzeltin.");
+          firstInvalid.focus();
           return;
         }
         if (!els.form.onaySozlesmeler?.checked) {
-          els.note.classList.remove("ok");
-          els.note.classList.add("err");
-          els.note.textContent =
-            "Devam etmek için sözleşmeleri okuduğunuzu ve kabul ettiğinizi onaylayın.";
+          fail("Devam etmek için sözleşmeleri okuduğunuzu ve kabul ettiğinizi onaylayın.");
           return;
         }
-        const billingAddress = (els.form.faturaAdres && els.form.faturaAdres.value.trim()) || "";
-        const sameAddressChecked =
-          document.getElementById("sameAddress") &&
-          document.getElementById("sameAddress").checked;
-        const shippingAddress =
-          sameAddressChecked
-            ? billingAddress
-            : (els.form.teslimatAdres && els.form.teslimatAdres.value.trim()) ||
-              billingAddress;
-        if (!billingAddress || !shippingAddress) {
-          els.note.classList.remove("ok");
-          els.note.classList.add("err");
-          els.note.textContent = "Fatura ve teslimat adreslerini girin.";
-          return;
-        }
+        const f = els.form.elements;
+        const ad = f.ad.value.trim();
+        const email = f.email.value.trim();
+        const tel = f.tel.value.trim();
+        const type = invoiceType();
+        const billing = readAddress("fatura");
+        const shipping = sameAddressChecked() ? null : readAddress("teslimat");
 
         const totals = calcFn ? calcFn() : { lines: [] };
         if (!totals.lines.length) {
@@ -553,13 +619,15 @@
               })),
               customer: {
                 name: ad,
-                company: els.form.firma.value.trim(),
                 email,
                 phone: tel,
-                taxId: (els.form.vergi && els.form.vergi.value.trim()) || "",
+                customerType: type,
+                company: type === "kurumsal" ? f.firma.value.trim() : "",
+                taxOffice: type === "kurumsal" ? f.vergiDairesi.value.trim() : "",
+                taxId: (type === "kurumsal" ? f.vkn.value : f.tckn.value).replace(/\D/g, ""),
                 note: "",
-                billingAddress,
-                shippingAddress,
+                billing: billing,
+                shipping: shipping || undefined,
               },
               contractsAccepted: true,
               kvkkAccepted: true,
@@ -569,7 +637,11 @@
           if (!res.ok || !data.ok) {
             throw new Error(data.error || "Ödeme başlatılamadı.");
           }
-          if (els.orderIdPreview) els.orderIdPreview.textContent = data.orderId;
+          if (els.orderIdPreview) {
+            els.orderIdPreview.textContent = data.orderId;
+            const row = document.getElementById("orderIdRow");
+            if (row) row.hidden = false;
+          }
           try {
             sessionStorage.setItem(PENDING_ORDER_KEY, data.orderId);
             if (data.orderAccessToken) {

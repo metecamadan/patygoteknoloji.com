@@ -232,6 +232,34 @@ test("payment start rejects invalid customer identity", async (t) => {
   assert.notEqual(badPhone.status, 200);
   const badPhoneBody = await badPhone.json();
   assert.equal(badPhoneBody.ok, false);
+
+  const billing = { line: "Mevlana Mah. Test Sk. No:1", district: "Gaziosmanpaşa", city: "İstanbul", postalCode: "34245" };
+  const structured = await tryStart({ billing, customerType: "bireysel" });
+  assert.equal(structured.status, 200);
+  assert.equal((await structured.json()).ok, true);
+
+  const rejected = [
+    { billing: Object.assign({}, billing, { city: "Gotham" }) },
+    { billing: Object.assign({}, billing, { district: "" }) },
+    { billing, shipping: Object.assign({}, billing, { line: "kısa" }) },
+    { billing, customerType: "bireysel", taxId: "12345678901" },
+    { billing, customerType: "kurumsal", company: "Örnek Ltd", taxOffice: "", taxId: "1234567890" },
+    { billing, customerType: "kurumsal", company: "Örnek Ltd", taxOffice: "Kadıköy", taxId: "123" },
+  ];
+  for (const customer of rejected) {
+    const res = await tryStart(customer);
+    assert.notEqual(res.status, 200, JSON.stringify(customer) + " reddedilmeli");
+    assert.equal((await res.json()).ok, false);
+  }
+
+  const corporate = await tryStart({
+    billing,
+    customerType: "kurumsal",
+    company: "Örnek Bilişim Ltd. Şti.",
+    taxOffice: "Kadıköy",
+    taxId: "1234567890",
+  });
+  assert.equal(corporate.status, 200);
 });
 
 test("unsigned callback and amount mismatch cannot mark order paid or failed", async (t) => {

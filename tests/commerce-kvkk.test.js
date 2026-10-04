@@ -31,7 +31,7 @@ test("checkout requires KVKK consent and addresses", () => {
   assert.match(html, /customer-identity\.js/);
   assert.match(js, /PatygoCustomerIdentity/);
   assert.match(js, /kvkkAccepted/);
-  assert.match(js, /billingAddress/);
+  assert.match(js, /billing: billing/);
 });
 
 test("sqlite commerce plan doc exists", () => {

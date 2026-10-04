@@ -1641,9 +1641,11 @@ h1, h2, h3, h4 {
   font-size: 0.8rem;
 }
 .checkout-page .checkout-card .field input,
+.checkout-page .checkout-card .field select,
 .checkout-page .checkout-card .field textarea {
   padding: 7px 10px;
   border-radius: 8px;
+  min-height: 40px;
 }
 .checkout-page .checkout-card .field textarea {
   min-height: 56px;
@@ -1849,6 +1851,67 @@ h1, h2, h3, h4 {
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 .field textarea { min-height: 110px; resize: vertical; }
+/* iOS Safari zooms into inputs below 16px. */
+.field input,
+.field select,
+.field textarea { font-size: 16px; }
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+.field-error {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+.field-short { max-width: 200px; }
+.invoice-type {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+.invoice-type legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.invoice-type-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.invoice-type-option:has(input:checked) {
+  border-color: var(--brand);
+  background: rgba(37, 99, 235, 0.06);
+  color: var(--brand);
+}
+.invoice-type-option:has(input:focus-visible) {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+.address-group {
+  margin: 4px 0 10px;
+  padding: 0;
+  border: 0;
+}
+.address-group legend {
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+}
 .check-inline {
   display: flex;
   gap: 10px;

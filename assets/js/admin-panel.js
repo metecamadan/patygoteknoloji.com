@@ -4228,6 +4228,16 @@
     );
   }
 
+  function invoiceIdentityText(c) {
+    if (c.customerType === "kurumsal") {
+      return ["Kurumsal", c.company, c.taxOffice ? "VD: " + c.taxOffice : "", c.taxId ? "VKN: " + c.taxId : ""]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    const parts = [c.customerType === "bireysel" ? "Bireysel" : "", c.company, c.taxId ? "T.C./VKN: " + c.taxId : ""];
+    return parts.filter(Boolean).join(" · ") || "—";
+  }
+
   function buildOrderDetailHtml(order, statusMails) {
     const c = order.customer || {};
     const mails = Array.isArray(statusMails) ? statusMails : order._statusMails || [];
@@ -4267,6 +4277,9 @@
       "</dd></div>" +
       "<div><dt>Telefon</dt><dd>" +
       escapeHtml(c.phone || "—") +
+      "</dd></div>" +
+      "<div><dt>Fatura</dt><dd>" +
+      escapeHtml(invoiceIdentityText(c)) +
       "</dd></div>" +
       "<div><dt>Fatura adresi</dt><dd>" +
       escapeHtml(c.billingAddress || "—") +

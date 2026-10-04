@@ -68,8 +68,52 @@
     return { ok: true, digits: digits };
   }
 
+  function formatTrMobilePhone(raw) {
+    const d = normalizeTrMobilePhone(raw);
+    if (!/^5\d{9}$/.test(d)) return String(raw || "");
+    return "0" + d.slice(0, 3) + " " + d.slice(3, 6) + " " + d.slice(6, 8) + " " + d.slice(8);
+  }
+
+  /** Mirrors lib/checkout-billing.js isValidTckn. */
+  function isValidTckn(value) {
+    const s = String(value || "");
+    if (!/^[1-9]\d{10}$/.test(s)) return false;
+    const d = s.split("").map(Number);
+    const odd = d[0] + d[2] + d[4] + d[6] + d[8];
+    const even = d[1] + d[3] + d[5] + d[7];
+    if ((((odd * 7 - even) % 10) + 10) % 10 !== d[9]) return false;
+    return d.slice(0, 10).reduce(function (sum, n) { return sum + n; }, 0) % 10 === d[10];
+  }
+
+  function validateTckn(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (!digits) return { ok: true, value: "" };
+    if (!isValidTckn(digits)) return { ok: false, error: "T.C. kimlik numarası geçersiz." };
+    return { ok: true, value: digits };
+  }
+
+  function validateTaxNumber(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (!digits) return { ok: false, error: "Vergi numarası gerekli." };
+    if (!/^\d{10}$/.test(digits) && !isValidTckn(digits)) {
+      return { ok: false, error: "Vergi numarası 10 haneli olmalı (şahıs şirketinde 11 haneli T.C. no)." };
+    }
+    return { ok: true, value: digits };
+  }
+
+  function validatePostalCode(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (!digits) return { ok: true, value: "" };
+    if (!/^(0[1-9]|[1-7]\d|8[01])\d{3}$/.test(digits)) return { ok: false, error: "Posta kodu 5 haneli olmalı." };
+    return { ok: true, value: digits };
+  }
+
   window.PatygoCustomerIdentity = {
     validateCustomerName,
     validateCustomerPhone,
+    formatTrMobilePhone,
+    validateTckn,
+    validateTaxNumber,
+    validatePostalCode,
   };
 })();

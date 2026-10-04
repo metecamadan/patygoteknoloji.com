@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p4" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p5" />
 </head>
 <body class="checkout-page">
   <header class="site-header">
@@ -50,51 +50,281 @@
         <div class="checkout-wrap" id="checkoutRoot">
           <div class="checkout-card reveal">
             <h2 class="checkout-card-title">Alıcı bilgileri</h2>
-            <form id="checkout-form">
+            <form id="checkout-form" novalidate>
+              <fieldset class="invoice-type">
+                <legend>Fatura türü</legend>
+                <label class="invoice-type-option"><input type="radio" name="customerType" value="bireysel" checked /> Bireysel</label>
+                <label class="invoice-type-option"><input type="radio" name="customerType" value="kurumsal" /> Kurumsal</label>
+              </fieldset>
               <div class="form-row">
                 <div class="field">
                   <label for="ad">Ad Soyad *</label>
-                  <input type="text" id="ad" name="ad" required autocomplete="name" minlength="5" maxlength="120" placeholder="Ad Soyad" />
+                  <input type="text" id="ad" name="ad" required autocomplete="name" minlength="5" maxlength="120" placeholder="Ad Soyad" aria-describedby="ad-error" />
+                  <p class="field-error" id="ad-error" hidden></p>
                 </div>
-                <div class="field">
-                  <label for="firma">Firma (opsiyonel)</label>
-                  <input type="text" id="firma" name="firma" autocomplete="organization" />
+                <div class="field" data-invoice="bireysel">
+                  <label for="tckn">T.C. Kimlik No (opsiyonel)</label>
+                  <input type="text" id="tckn" name="tckn" inputmode="numeric" maxlength="11" autocomplete="off" aria-describedby="tckn-error" />
+                  <p class="field-error" id="tckn-error" hidden></p>
                 </div>
               </div>
               <div class="form-row">
                 <div class="field">
                   <label for="email">E-posta *</label>
-                  <input type="email" id="email" name="email" required autocomplete="email" />
+                  <input type="email" id="email" name="email" required autocomplete="email" aria-describedby="email-error" />
+                  <p class="field-error" id="email-error" hidden></p>
                 </div>
                 <div class="field">
-                  <label for="tel">Telefon *</label>
-                  <input type="tel" id="tel" name="tel" required autocomplete="tel" inputmode="tel" placeholder="05XX XXX XX XX" />
+                  <label for="tel">Cep telefonu *</label>
+                  <input type="tel" id="tel" name="tel" required autocomplete="tel" inputmode="tel" placeholder="05XX XXX XX XX" aria-describedby="tel-error" />
+                  <p class="field-error" id="tel-error" hidden></p>
                 </div>
               </div>
-              <div class="form-row">
-                <div class="field">
-                  <label for="vergi">Vergi No / T.C. (opsiyonel)</label>
-                  <input type="text" id="vergi" name="vergi" inputmode="numeric" />
-                </div>
-                <div class="qty-row" hidden>
+              <div class="invoice-corporate" data-invoice="kurumsal" hidden>
+                <div class="form-row">
                   <div class="field">
-                    <label for="adet">Adet *</label>
-                    <input type="number" id="adet" name="adet" min="1" max="99" value="1" />
+                    <label for="firma">Firma ünvanı *</label>
+                    <input type="text" id="firma" name="firma" autocomplete="organization" maxlength="120" aria-describedby="firma-error" />
+                    <p class="field-error" id="firma-error" hidden></p>
+                  </div>
+                  <div class="field">
+                    <label for="vergiDairesi">Vergi dairesi *</label>
+                    <input type="text" id="vergiDairesi" name="vergiDairesi" maxlength="80" aria-describedby="vergiDairesi-error" />
+                    <p class="field-error" id="vergiDairesi-error" hidden></p>
                   </div>
                 </div>
+                <div class="field">
+                  <label for="vkn">Vergi numarası *</label>
+                  <input type="text" id="vkn" name="vkn" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="10 hane (şahıs şirketinde T.C. no)" aria-describedby="vkn-error" />
+                  <p class="field-error" id="vkn-error" hidden></p>
+                </div>
               </div>
-              <div class="field">
-                <label for="faturaAdres">Fatura adresi *</label>
-                <textarea id="faturaAdres" name="faturaAdres" rows="2" required placeholder="Mahalle, sokak, no, ilçe / il"></textarea>
+              <div class="qty-row" hidden>
+                <div class="field">
+                  <label for="adet">Adet *</label>
+                  <input type="number" id="adet" name="adet" min="1" max="99" value="1" />
+                </div>
               </div>
+              <fieldset class="address-group" data-address="fatura">
+                <legend>Fatura adresi</legend>
+                <div class="form-row">
+                  <div class="field">
+                    <label for="faturaIl">İl *</label>
+                    <select id="faturaIl" name="faturaIl" required autocomplete="address-level1" aria-describedby="faturaIl-error">
+                      <option value="">Seçin</option>
+                      <option value="Adana">Adana</option>
+                      <option value="Adıyaman">Adıyaman</option>
+                      <option value="Afyonkarahisar">Afyonkarahisar</option>
+                      <option value="Ağrı">Ağrı</option>
+                      <option value="Aksaray">Aksaray</option>
+                      <option value="Amasya">Amasya</option>
+                      <option value="Ankara">Ankara</option>
+                      <option value="Antalya">Antalya</option>
+                      <option value="Ardahan">Ardahan</option>
+                      <option value="Artvin">Artvin</option>
+                      <option value="Aydın">Aydın</option>
+                      <option value="Balıkesir">Balıkesir</option>
+                      <option value="Bartın">Bartın</option>
+                      <option value="Batman">Batman</option>
+                      <option value="Bayburt">Bayburt</option>
+                      <option value="Bilecik">Bilecik</option>
+                      <option value="Bingöl">Bingöl</option>
+                      <option value="Bitlis">Bitlis</option>
+                      <option value="Bolu">Bolu</option>
+                      <option value="Burdur">Burdur</option>
+                      <option value="Bursa">Bursa</option>
+                      <option value="Çanakkale">Çanakkale</option>
+                      <option value="Çankırı">Çankırı</option>
+                      <option value="Çorum">Çorum</option>
+                      <option value="Denizli">Denizli</option>
+                      <option value="Diyarbakır">Diyarbakır</option>
+                      <option value="Düzce">Düzce</option>
+                      <option value="Edirne">Edirne</option>
+                      <option value="Elazığ">Elazığ</option>
+                      <option value="Erzincan">Erzincan</option>
+                      <option value="Erzurum">Erzurum</option>
+                      <option value="Eskişehir">Eskişehir</option>
+                      <option value="Gaziantep">Gaziantep</option>
+                      <option value="Giresun">Giresun</option>
+                      <option value="Gümüşhane">Gümüşhane</option>
+                      <option value="Hakkari">Hakkari</option>
+                      <option value="Hatay">Hatay</option>
+                      <option value="Iğdır">Iğdır</option>
+                      <option value="Isparta">Isparta</option>
+                      <option value="İstanbul">İstanbul</option>
+                      <option value="İzmir">İzmir</option>
+                      <option value="Kahramanmaraş">Kahramanmaraş</option>
+                      <option value="Karabük">Karabük</option>
+                      <option value="Karaman">Karaman</option>
+                      <option value="Kars">Kars</option>
+                      <option value="Kastamonu">Kastamonu</option>
+                      <option value="Kayseri">Kayseri</option>
+                      <option value="Kırıkkale">Kırıkkale</option>
+                      <option value="Kırklareli">Kırklareli</option>
+                      <option value="Kırşehir">Kırşehir</option>
+                      <option value="Kilis">Kilis</option>
+                      <option value="Kocaeli">Kocaeli</option>
+                      <option value="Konya">Konya</option>
+                      <option value="Kütahya">Kütahya</option>
+                      <option value="Malatya">Malatya</option>
+                      <option value="Manisa">Manisa</option>
+                      <option value="Mardin">Mardin</option>
+                      <option value="Mersin">Mersin</option>
+                      <option value="Muğla">Muğla</option>
+                      <option value="Muş">Muş</option>
+                      <option value="Nevşehir">Nevşehir</option>
+                      <option value="Niğde">Niğde</option>
+                      <option value="Ordu">Ordu</option>
+                      <option value="Osmaniye">Osmaniye</option>
+                      <option value="Rize">Rize</option>
+                      <option value="Sakarya">Sakarya</option>
+                      <option value="Samsun">Samsun</option>
+                      <option value="Siirt">Siirt</option>
+                      <option value="Sinop">Sinop</option>
+                      <option value="Sivas">Sivas</option>
+                      <option value="Şanlıurfa">Şanlıurfa</option>
+                      <option value="Şırnak">Şırnak</option>
+                      <option value="Tekirdağ">Tekirdağ</option>
+                      <option value="Tokat">Tokat</option>
+                      <option value="Trabzon">Trabzon</option>
+                      <option value="Tunceli">Tunceli</option>
+                      <option value="Uşak">Uşak</option>
+                      <option value="Van">Van</option>
+                      <option value="Yalova">Yalova</option>
+                      <option value="Yozgat">Yozgat</option>
+                      <option value="Zonguldak">Zonguldak</option>
+                    </select>
+                    <p class="field-error" id="faturaIl-error" hidden></p>
+                  </div>
+                  <div class="field">
+                    <label for="faturaIlce">İlçe *</label>
+                    <input type="text" id="faturaIlce" name="faturaIlce" required maxlength="60" autocomplete="address-level2" aria-describedby="faturaIlce-error" />
+                    <p class="field-error" id="faturaIlce-error" hidden></p>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="faturaAdres">Açık adres *</label>
+                  <textarea id="faturaAdres" name="faturaAdres" rows="2" required maxlength="300" autocomplete="street-address" placeholder="Mahalle, cadde/sokak, bina no, daire" aria-describedby="faturaAdres-error"></textarea>
+                  <p class="field-error" id="faturaAdres-error" hidden></p>
+                </div>
+                <div class="field field-short">
+                  <label for="faturaPosta">Posta kodu (opsiyonel)</label>
+                  <input type="text" id="faturaPosta" name="faturaPosta" inputmode="numeric" maxlength="5" autocomplete="postal-code" aria-describedby="faturaPosta-error" />
+                  <p class="field-error" id="faturaPosta-error" hidden></p>
+                </div>
+              </fieldset>
               <div class="check-inline">
                 <input type="checkbox" id="sameAddress" name="sameAddress" checked />
                 <label for="sameAddress">Teslimat adresi fatura adresi ile aynı</label>
               </div>
-              <div class="field">
-                <label for="teslimatAdres">Teslimat adresi *</label>
-                <textarea id="teslimatAdres" name="teslimatAdres" rows="2" required placeholder="Fatura ile aynıysa otomatik doldurulur"></textarea>
-              </div>
+              <fieldset class="address-group" data-address="teslimat" id="shippingAddressGroup" hidden>
+                <legend>Teslimat adresi</legend>
+                <div class="form-row">
+                  <div class="field">
+                    <label for="teslimatIl">İl *</label>
+                    <select id="teslimatIl" name="teslimatIl" autocomplete="shipping address-level1" aria-describedby="teslimatIl-error">
+                      <option value="">Seçin</option>
+                      <option value="Adana">Adana</option>
+                      <option value="Adıyaman">Adıyaman</option>
+                      <option value="Afyonkarahisar">Afyonkarahisar</option>
+                      <option value="Ağrı">Ağrı</option>
+                      <option value="Aksaray">Aksaray</option>
+                      <option value="Amasya">Amasya</option>
+                      <option value="Ankara">Ankara</option>
+                      <option value="Antalya">Antalya</option>
+                      <option value="Ardahan">Ardahan</option>
+                      <option value="Artvin">Artvin</option>
+                      <option value="Aydın">Aydın</option>
+                      <option value="Balıkesir">Balıkesir</option>
+                      <option value="Bartın">Bartın</option>
+                      <option value="Batman">Batman</option>
+                      <option value="Bayburt">Bayburt</option>
+                      <option value="Bilecik">Bilecik</option>
+                      <option value="Bingöl">Bingöl</option>
+                      <option value="Bitlis">Bitlis</option>
+                      <option value="Bolu">Bolu</option>
+                      <option value="Burdur">Burdur</option>
+                      <option value="Bursa">Bursa</option>
+                      <option value="Çanakkale">Çanakkale</option>
+                      <option value="Çankırı">Çankırı</option>
+                      <option value="Çorum">Çorum</option>
+                      <option value="Denizli">Denizli</option>
+                      <option value="Diyarbakır">Diyarbakır</option>
+                      <option value="Düzce">Düzce</option>
+                      <option value="Edirne">Edirne</option>
+                      <option value="Elazığ">Elazığ</option>
+                      <option value="Erzincan">Erzincan</option>
+                      <option value="Erzurum">Erzurum</option>
+                      <option value="Eskişehir">Eskişehir</option>
+                      <option value="Gaziantep">Gaziantep</option>
+                      <option value="Giresun">Giresun</option>
+                      <option value="Gümüşhane">Gümüşhane</option>
+                      <option value="Hakkari">Hakkari</option>
+                      <option value="Hatay">Hatay</option>
+                      <option value="Iğdır">Iğdır</option>
+                      <option value="Isparta">Isparta</option>
+                      <option value="İstanbul">İstanbul</option>
+                      <option value="İzmir">İzmir</option>
+                      <option value="Kahramanmaraş">Kahramanmaraş</option>
+                      <option value="Karabük">Karabük</option>
+                      <option value="Karaman">Karaman</option>
+                      <option value="Kars">Kars</option>
+                      <option value="Kastamonu">Kastamonu</option>
+                      <option value="Kayseri">Kayseri</option>
+                      <option value="Kırıkkale">Kırıkkale</option>
+                      <option value="Kırklareli">Kırklareli</option>
+                      <option value="Kırşehir">Kırşehir</option>
+                      <option value="Kilis">Kilis</option>
+                      <option value="Kocaeli">Kocaeli</option>
+                      <option value="Konya">Konya</option>
+                      <option value="Kütahya">Kütahya</option>
+                      <option value="Malatya">Malatya</option>
+                      <option value="Manisa">Manisa</option>
+                      <option value="Mardin">Mardin</option>
+                      <option value="Mersin">Mersin</option>
+                      <option value="Muğla">Muğla</option>
+                      <option value="Muş">Muş</option>
+                      <option value="Nevşehir">Nevşehir</option>
+                      <option value="Niğde">Niğde</option>
+                      <option value="Ordu">Ordu</option>
+                      <option value="Osmaniye">Osmaniye</option>
+                      <option value="Rize">Rize</option>
+                      <option value="Sakarya">Sakarya</option>
+                      <option value="Samsun">Samsun</option>
+                      <option value="Siirt">Siirt</option>
+                      <option value="Sinop">Sinop</option>
+                      <option value="Sivas">Sivas</option>
+                      <option value="Şanlıurfa">Şanlıurfa</option>
+                      <option value="Şırnak">Şırnak</option>
+                      <option value="Tekirdağ">Tekirdağ</option>
+                      <option value="Tokat">Tokat</option>
+                      <option value="Trabzon">Trabzon</option>
+                      <option value="Tunceli">Tunceli</option>
+                      <option value="Uşak">Uşak</option>
+                      <option value="Van">Van</option>
+                      <option value="Yalova">Yalova</option>
+                      <option value="Yozgat">Yozgat</option>
+                      <option value="Zonguldak">Zonguldak</option>
+                    </select>
+                    <p class="field-error" id="teslimatIl-error" hidden></p>
+                  </div>
+                  <div class="field">
+                    <label for="teslimatIlce">İlçe *</label>
+                    <input type="text" id="teslimatIlce" name="teslimatIlce" maxlength="60" autocomplete="shipping address-level2" aria-describedby="teslimatIlce-error" />
+                    <p class="field-error" id="teslimatIlce-error" hidden></p>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="teslimatAdres">Açık adres *</label>
+                  <textarea id="teslimatAdres" name="teslimatAdres" rows="2" maxlength="300" autocomplete="shipping street-address" placeholder="Mahalle, cadde/sokak, bina no, daire" aria-describedby="teslimatAdres-error"></textarea>
+                  <p class="field-error" id="teslimatAdres-error" hidden></p>
+                </div>
+                <div class="field field-short">
+                  <label for="teslimatPosta">Posta kodu (opsiyonel)</label>
+                  <input type="text" id="teslimatPosta" name="teslimatPosta" inputmode="numeric" maxlength="5" autocomplete="shipping postal-code" aria-describedby="teslimatPosta-error" />
+                  <p class="field-error" id="teslimatPosta-error" hidden></p>
+                </div>
+              </fieldset>
               <div class="check-inline">
                 <input type="checkbox" id="onaySozlesmeler" name="onaySozlesmeler" required />
                 <label for="onaySozlesmeler"><a href="/on-bilgilendirme-formu" target="_blank" rel="noopener" style="color:var(--brand)">Ön Bilgilendirme Formu</a>’nu, <a href="/mesafeli-satis-sozlesmesi" target="_blank" rel="noopener" style="color:var(--brand)">Mesafeli Satış Sözleşmesi</a>’ni, <a href="/iade-ve-cayma" target="_blank" rel="noopener" style="color:var(--brand)">İade ve Cayma Hakkı</a> koşullarını ve <a href="/kvkk" target="_blank" rel="noopener" style="color:var(--brand)">KVKK Aydınlatma Metni</a>’ni okudum; sözleşmeleri kabul ediyorum. *</label>
@@ -122,7 +352,7 @@
             <div class="pos-box" id="posBox">
               Ödeme Akbank SecurePay (3D Pay Hosting) ile alınır. Kart bilgileriniz yalnızca bankanın güvenli sayfasında girilir.
             </div>
-            <p class="checkout-order-id">Sipariş no: <strong id="orderIdPreview">—</strong></p>
+            <p class="checkout-order-id" id="orderIdRow" hidden>Sipariş no: <strong id="orderIdPreview">—</strong></p>
           </aside>
         </div>
 
@@ -197,10 +427,10 @@
 
   <script defer src="/assets/js/shipping.js?v=storefront-ship-4"></script>
   <script defer src="/assets/js/cart.js"></script>
-  <script defer src="/assets/js/catalog.js?v=storefront-ship-2"></script>
+  <script defer src="/assets/js/catalog.js?v=storefront-p5"></script>
   <script defer src="/assets/js/nav.js?v=nav-1023-1"></script>
-  <script defer src="/assets/js/main.js?v=storefront-p4"></script>
-  <script defer src="/assets/js/customer-identity.js?v=identity-1"></script>
-  <script defer src="/assets/js/checkout.js?v=one-consent-1"></script>
+  <script defer src="/assets/js/main.js?v=storefront-p5"></script>
+  <script defer src="/assets/js/customer-identity.js?v=checkout-p5"></script>
+  <script defer src="/assets/js/checkout.js?v=checkout-p5"></script>
 </body>
 </html>
