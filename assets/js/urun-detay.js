@@ -352,6 +352,74 @@
     return box;
   }
 
+  let stickyObserver = null;
+
+  function bindStickyBuyBar(product, actions, add) {
+    let bar = document.getElementById("detailStickyBar");
+    if (!bar) {
+      bar = el("div", "detail-sticky-bar");
+      bar.id = "detailStickyBar";
+      bar.hidden = true;
+      bar.innerHTML =
+        '<div class="detail-sticky-price"><strong></strong><span>KDV dahil</span></div>' +
+        '<button type="button" class="btn btn-primary detail-sticky-add">Sepete Ekle</button>';
+      document.body.appendChild(bar);
+    }
+    bar.querySelector("strong").textContent = window.PatygoCatalog.formatPrice(
+      window.PatygoCatalog.priceInclVat(product)
+    );
+    const button = bar.querySelector(".detail-sticky-add");
+    button.onclick = () => {
+      add.click();
+      button.textContent = "Sepete eklendi";
+      window.setTimeout(() => {
+        button.textContent = "Sepete Ekle";
+      }, 1800);
+    };
+    if (stickyObserver) stickyObserver.disconnect();
+    if (!("IntersectionObserver" in window)) return;
+    stickyObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      const scrolledPast = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+      bar.hidden = !scrolledPast;
+      document.body.classList.toggle("has-detail-bar", scrolledPast);
+    });
+    stickyObserver.observe(actions);
+  }
+
+  function bindSwipe(target, step) {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    target.addEventListener(
+      "touchstart",
+      (ev) => {
+        if (ev.touches.length !== 1) return;
+        startX = ev.touches[0].clientX;
+        startY = ev.touches[0].clientY;
+        tracking = true;
+      },
+      { passive: true }
+    );
+    target.addEventListener(
+      "touchend",
+      (ev) => {
+        if (!tracking) return;
+        tracking = false;
+        const touch = ev.changedTouches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        target.dataset.swiped = "1";
+        window.setTimeout(() => {
+          target.dataset.swiped = "";
+        }, 400);
+        step(dx < 0 ? 1 : -1);
+      },
+      { passive: true }
+    );
+  }
+
   function render(product, categories) {
     root.textContent = "";
     if (!product) {
@@ -401,9 +469,22 @@
       zoom.className = "detail-zoom";
       zoom.setAttribute("aria-label", "Görseli büyüt");
       zoom.appendChild(mainImage);
-      zoom.addEventListener("click", () => ensureLightbox().open(images, activeIndex, product.name));
+      zoom.addEventListener("click", () => {
+        if (zoom.dataset.swiped === "1") return;
+        ensureLightbox().open(images, activeIndex, product.name);
+      });
       media.appendChild(zoom);
       gallery.appendChild(media);
+      const showImage = (index) => {
+        activeIndex = (index + images.length) % images.length;
+        mainImage.src = images[activeIndex];
+        gallery.querySelectorAll(".detail-thumb").forEach((item, i) => {
+          item.classList.toggle("active", i === activeIndex);
+        });
+      };
+      if (images.length > 1) {
+        bindSwipe(zoom, (dir) => showImage(activeIndex + dir));
+      }
 
       if (images.length > 1) {
         const thumbs = document.createElement("div");
@@ -419,13 +500,7 @@
           thumb.referrerPolicy = "no-referrer";
           protectMedia(thumb);
           button.appendChild(thumb);
-          button.addEventListener("click", () => {
-            mainImage.src = url;
-            activeIndex = index;
-            thumbs.querySelectorAll(".detail-thumb").forEach((item) => {
-              item.classList.toggle("active", item === button);
-            });
-          });
+          button.addEventListener("click", () => showImage(index));
           thumbs.appendChild(button);
         });
         gallery.appendChild(thumbs);
@@ -540,6 +615,7 @@
     root.appendChild(crumb);
     root.appendChild(grid);
     root.appendChild(buildDetailTabs(product));
+    bindStickyBuyBar(product, actions, add);
 
     upsertProductJsonLd(product, trail);
   }

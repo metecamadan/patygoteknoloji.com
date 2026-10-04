@@ -48,15 +48,24 @@ test("responsive UX: scroll padding, detail gallery cap, detail price, card acti
   assert.match(css, /\.breadcrumb\s*\{[^}]*flex-wrap:\s*wrap/s);
 });
 
-test("mobile catalog: single column grid, static facets, no quote rail overlap", () => {
+test("mobile catalog: two column grid, bottom-sheet facets, no quote rail overlap", () => {
   assert.match(
     css,
     /@media \(max-width:\s*900px\)\s*\{[\s\S]*?\.catalog-facets\s*\{[^}]*position:\s*static/s
   );
   assert.match(
     css,
-    /@media \(max-width:\s*900px\)\s*\{[\s\S]*?\.catalog-layout\.has-facets \.product-grid\s*\{[^}]*grid-template-columns:\s*1fr/s
+    /@media \(max-width:\s*900px\)\s*\{[\s\S]*?\.catalog-layout\.has-facets \.product-grid\s*\{[^}]*repeat\(2, minmax\(0, 1fr\)\)/s
   );
+  assert.match(
+    css,
+    /@media \(max-width:\s*620px\)\s*\{[\s\S]*?\.product-grid,\s*\.catalog-layout\.has-facets \.product-grid\s*\{[^}]*repeat\(2, minmax\(0, 1fr\)\)/s
+  );
+  assert.match(
+    css,
+    /\.catalog-facets\.is-open \.catalog-facets-body\s*\{[^}]*position:\s*fixed[^}]*bottom:\s*0/s
+  );
+  assert.match(css, /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.quote-rail\s*\{\s*display:\s*none/s);
   assert.match(
     css,
     /@media \(max-width:\s*860px\)\s*\{[\s\S]*?\.products-page \.quote-rail\s*\{\s*display:\s*none/s

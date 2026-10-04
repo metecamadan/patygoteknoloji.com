@@ -132,6 +132,13 @@
 
       const list = document.createElement("ul");
       list.className = "nav-mega-list";
+      const allLi = document.createElement("li");
+      allLi.className = "nav-mega-all";
+      const allLink = document.createElement("a");
+      allLink.href = categoryHref(category.slug, child.slug, "");
+      allLink.textContent = "Tüm " + child.name;
+      allLi.appendChild(allLink);
+      list.appendChild(allLi);
       leaves.forEach((leaf) => {
         const leafLi = document.createElement("li");
         const a = document.createElement("a");
@@ -192,6 +199,11 @@
 
     const groups = document.createElement("div");
     groups.className = "nav-mega-groups";
+    const allParent = document.createElement("a");
+    allParent.className = "nav-mega-all-parent";
+    allParent.href = categoryHref(category.slug);
+    allParent.textContent = "Tümünü gör: " + category.name;
+    groups.appendChild(allParent);
     (category.children || []).forEach((child) => {
       groups.appendChild(buildMegaGroup(category, child));
     });
@@ -264,7 +276,25 @@
     root.textContent = "";
     const published = publishedCategories(categories);
     published.forEach((cat) => root.appendChild(buildMegaItem(cat)));
+    root.appendChild(buildMobileNavExtras());
     renderHeroOrbit(published);
+  }
+
+  function buildMobileNavExtras() {
+    const li = document.createElement("li");
+    li.className = "nav-mobile-extras";
+    li.innerHTML =
+      '<div class="nav-mobile-pages">' +
+      '<a href="/markalar">Markalar</a>' +
+      '<a href="/kurumsal">Kurumsal</a>' +
+      '<a href="/hizmetler">Kurumsal tedarik</a>' +
+      '<a href="/iletisim">İletişim</a>' +
+      "</div>" +
+      '<div class="nav-mobile-contact">' +
+      '<a href="tel:+905555070724">0555 507 07 24</a>' +
+      '<a href="https://wa.me/905555070724" target="_blank" rel="noopener noreferrer">WhatsApp</a>' +
+      "</div>";
+    return li;
   }
 
   const HERO_ICON_SVG = {

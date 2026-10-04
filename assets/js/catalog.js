@@ -765,7 +765,34 @@
       body.appendChild(clear);
     }
 
+    const closeFacets = () => {
+      if (root.classList.contains("is-open")) toggle.click();
+    };
+    const sheetHead = document.createElement("div");
+    sheetHead.className = "catalog-facets-sheet-head";
+    const sheetTitle = document.createElement("strong");
+    sheetTitle.textContent = "Filtreler";
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "catalog-facets-close";
+    closeBtn.setAttribute("aria-label", "Filtreleri kapat");
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", closeFacets);
+    sheetHead.appendChild(sheetTitle);
+    sheetHead.appendChild(closeBtn);
+    body.insertBefore(sheetHead, body.firstChild);
+    const done = document.createElement("button");
+    done.type = "button";
+    done.className = "btn btn-primary btn-block catalog-facets-done";
+    done.textContent = "Sonuçları göster";
+    done.addEventListener("click", closeFacets);
+    body.appendChild(done);
+    const backdrop = document.createElement("div");
+    backdrop.className = "catalog-facets-backdrop";
+    backdrop.addEventListener("click", closeFacets);
+
     root.appendChild(body);
+    root.appendChild(backdrop);
   }
 
   function resolveCategoryLabels(categories, query) {

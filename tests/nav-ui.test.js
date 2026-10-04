@@ -7,11 +7,13 @@ const root = path.resolve(__dirname, "..");
 const navJs = fs.readFileSync(path.join(root, "assets", "js", "nav.js"), "utf8");
 const navCss = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
 
-test("category mega menu does not render Tümü parent link", () => {
+test("category mega menu does not render Tümü parent link on desktop; 'Tümünü gör' is mobile-only", () => {
   assert.doesNotMatch(navJs, /Tümü:/);
   assert.doesNotMatch(navJs, /nav-mega-parent/);
-  assert.doesNotMatch(navJs, /Tüm " \+ child\.name/);
   assert.doesNotMatch(navJs, /nav-mega-list-browse/);
+  assert.match(navJs, /"Tüm " \+ child\.name/);
+  assert.match(navCss, /\.nav-mega-all,\s*\.nav-mega-all-parent,[\s\S]*?\{\s*display:\s*none;\s*\}/);
+  assert.match(navCss, /@media \(max-width: 1023px\)\s*\{\s*\.nav-mega-all \{ display: block; \}/);
 });
 
 test("mega menu keeps hover bridge for submenu access", () => {
