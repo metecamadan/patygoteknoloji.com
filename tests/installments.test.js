@@ -156,6 +156,11 @@ test("checkout and product page render installments from /api/installments and s
   assert.match(detailHtml, /installments\.js\?v=/);
 });
 
+test("pre-information form and distance sales contract disclose vade farkı", () => {
+  assert.match(read("on-bilgilendirme-formu.html"), /vade farkı genel toplama eklenir/);
+  assert.match(read("mesafeli-satis-sozlesmesi.html"), /Vade farkı satış bedeline eklenir/);
+});
+
 test("admin panel edits installment rates on the delivery page", () => {
   const html = read("admin.html");
   const panel = read("assets/js/admin-panel.js");

@@ -33,6 +33,8 @@ test("legal pages include company identity and substantive sections", () => {
     assert.match(text, /info@patygoteknoloji\.com/);
     if (file === "cerez.html") {
       assert.match(text, /Son güncelleme:\s*16 Ağustos 2026/);
+    } else if (file === "on-bilgilendirme-formu.html" || file === "mesafeli-satis-sozlesmesi.html") {
+      assert.match(text, /Son güncelleme:\s*4 Ekim 2026/);
     } else {
       assert.match(text, /Son güncelleme:\s*29 Temmuz 2026/);
     }
