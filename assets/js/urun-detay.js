@@ -440,15 +440,16 @@
     );
   }
 
+  const SIMILAR_SLIDER_SIZE = 10;
   let similarLoadedFor = "";
   function loadSimilar(product) {
     const section = document.getElementById("similarProducts");
     const grid = document.getElementById("similarGrid");
     const id = product && product.id ? String(product.id) : "";
     if (!section || !grid || !id || similarLoadedFor === id) return;
-    if (typeof window.PatygoCatalog.makeCard !== "function") return;
+    if (typeof window.PatygoCatalog.makeCard !== "function" || typeof window.PatygoCatalog.mountProductSlider !== "function") return;
     similarLoadedFor = id;
-    fetch("/api/products/similar?id=" + encodeURIComponent(id) + "&limit=8", { cache: "default" })
+    fetch("/api/products/similar?id=" + encodeURIComponent(id) + "&limit=" + SIMILAR_SLIDER_SIZE, { cache: "default" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (similarLoadedFor !== id) return;
@@ -460,6 +461,7 @@
           grid.appendChild(window.PatygoCatalog.makeCard(item, index, { compactListing: true }));
         });
         section.hidden = items.length === 0;
+        if (items.length) window.PatygoCatalog.mountProductSlider(grid);
       })
       .catch(() => {
         if (similarLoadedFor === id) similarLoadedFor = "";

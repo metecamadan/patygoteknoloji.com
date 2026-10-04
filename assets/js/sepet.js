@@ -129,13 +129,20 @@
     return blocked;
   }
 
+  const SUGGESTION_SLIDER_SIZE = 10;
+  const SUGGESTION_FETCH_MAX = 20;
   let suggestionsKey = "";
 
   // Similar products of the priciest cart line, minus what is already in the cart.
   function renderSuggestions(totals) {
     const section = document.getElementById("cartSuggestions");
     const grid = document.getElementById("cartSuggestionsGrid");
-    if (!section || !grid || typeof window.PatygoCatalog.makeCard !== "function") return;
+    if (
+      !section ||
+      !grid ||
+      typeof window.PatygoCatalog.makeCard !== "function" ||
+      typeof window.PatygoCatalog.mountProductSlider !== "function"
+    ) return;
     const lines = totals.lines || [];
     if (!lines.length) {
       suggestionsKey = "";
@@ -149,13 +156,14 @@
     const key = String(anchor.product.id) + "|" + Array.from(inCart).sort().join(",");
     if (key === suggestionsKey) return;
     suggestionsKey = key;
-    fetch("/api/products/similar?id=" + encodeURIComponent(anchor.product.id) + "&limit=12", { cache: "default" })
+    const limit = Math.min(SUGGESTION_FETCH_MAX, SUGGESTION_SLIDER_SIZE + inCart.size);
+    fetch("/api/products/similar?id=" + encodeURIComponent(anchor.product.id) + "&limit=" + limit, { cache: "default" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (suggestionsKey !== key) return;
         const items = (data && Array.isArray(data.products) ? data.products : [])
           .filter((item) => !inCart.has(String(item.id)))
-          .slice(0, 4);
+          .slice(0, SUGGESTION_SLIDER_SIZE);
         grid.textContent = "";
         items.forEach((item, index) => {
           window.PatygoCatalog.byId = window.PatygoCatalog.byId || {};
@@ -163,6 +171,7 @@
           grid.appendChild(window.PatygoCatalog.makeCard(item, index, { compactListing: true }));
         });
         section.hidden = items.length === 0;
+        if (items.length) window.PatygoCatalog.mountProductSlider(grid);
       })
       .catch(() => {
         if (suggestionsKey === key) suggestionsKey = "";

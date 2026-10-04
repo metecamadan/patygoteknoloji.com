@@ -1342,6 +1342,69 @@ h1, h2, h3, h4 {
   font-size: clamp(1.15rem, 2.4vw, 1.4rem);
   font-weight: 800;
 }
+.product-slider {
+  --slider-cols: 5;
+  --slider-gap: 14px;
+  position: relative;
+}
+.product-slider .product-slider-track.product-grid {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - (var(--slider-cols) - 1) * var(--slider-gap)) / var(--slider-cols));
+  gap: var(--slider-gap);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0 16px;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.product-slider-track::-webkit-scrollbar { display: none; }
+/* Kaydırma alanı taşan gölgeyi keser: gölge alt dolguya (16px) sığacak kadar küçük tutulur. */
+.product-slider-track > .product-card {
+  min-width: 0;
+  scroll-snap-align: start;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.07);
+}
+.product-slider-track > .product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.12);
+}
+.product-slider-btn {
+  position: absolute;
+  top: 38%;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0 0 3px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  font-size: 1.7rem;
+  line-height: 1;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.14);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.product-slider.is-scrollable .product-slider-btn { display: inline-flex; }
+.product-slider-btn--prev { left: -16px; }
+.product-slider-btn--next { right: -16px; }
+.product-slider-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.product-slider-btn:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.45); outline-offset: 2px; }
+.product-slider-btn:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+@media (max-width: 1100px) { .product-slider { --slider-cols: 4; } }
+@media (max-width: 860px) { .product-slider { --slider-cols: 3; } }
+@media (max-width: 640px) {
+  .product-slider { --slider-cols: 2.2; --slider-gap: 10px; }
+  .product-slider-btn--prev { left: 4px; }
+  .product-slider-btn--next { right: 4px; }
+  .product-slider-btn:disabled { visibility: hidden; }
+}
 .product-card .price { flex-wrap: wrap; }
 .price-before {
   flex-basis: 100%;

@@ -2326,7 +2326,52 @@
     } catch (_) {}
   }
 
+  const sliderSyncs = new WeakMap();
+
+  function sliderButton(dir, label, glyph) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "product-slider-btn product-slider-btn--" + dir;
+    btn.setAttribute("aria-label", label);
+    btn.textContent = glyph;
+    return btn;
+  }
+
+  /** Ürün ızgarasını yatay kaydırıcıya çevirir; oklar görünen sayfa kadar kaydırır. Tekrar çağrı başa sarar. */
+  function mountProductSlider(track) {
+    if (!track || !track.parentNode) return;
+    const existing = sliderSyncs.get(track);
+    if (existing) {
+      track.scrollLeft = 0;
+      existing();
+      return;
+    }
+    track.classList.add("product-slider-track");
+    const wrap = document.createElement("div");
+    wrap.className = "product-slider";
+    track.parentNode.insertBefore(wrap, track);
+    const prev = sliderButton("prev", "Önceki ürünler", "‹");
+    const next = sliderButton("next", "Sonraki ürünler", "›");
+    wrap.append(prev, track, next);
+    const sync = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      const scrollable = max > 2;
+      wrap.classList.toggle("is-scrollable", scrollable);
+      prev.disabled = !scrollable || track.scrollLeft <= 2;
+      next.disabled = !scrollable || track.scrollLeft >= max - 2;
+    };
+    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const page = (dir) => track.scrollBy({ left: dir * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
+    prev.addEventListener("click", () => page(-1));
+    next.addEventListener("click", () => page(1));
+    track.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    sliderSyncs.set(track, sync);
+    sync();
+  }
+
   window.PatygoCatalog.reload = reloadCatalog;
+  window.PatygoCatalog.mountProductSlider = mountProductSlider;
   window.PatygoCatalog.fetchProductPage = fetchProductPage;
   window.PatygoCatalog.loadCategories = loadCategories;
   window.PatygoCatalog.createQtyStepper = createQtyStepper;

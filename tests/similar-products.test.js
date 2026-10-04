@@ -70,3 +70,36 @@ test("product detail renders similar products with the shared card", () => {
   assert.match(html, /id="similarProducts"[^>]*hidden/);
   assert.match(html, /id="similarGrid"/);
 });
+
+test("similar products on detail and cart are a 10-item slider showing 5 at a time", () => {
+  const detail = read("assets/js/urun-detay.js");
+  const cart = read("assets/js/sepet.js");
+  const catalog = read("assets/js/catalog.js");
+  const css = read("assets/css/style.css");
+  assert.match(detail, /const SIMILAR_SLIDER_SIZE = 10;/);
+  assert.match(detail, /"&limit=" \+ SIMILAR_SLIDER_SIZE/);
+  assert.match(detail, /window\.PatygoCatalog\.mountProductSlider\(grid\)/);
+  assert.match(cart, /const SUGGESTION_SLIDER_SIZE = 10;/);
+  assert.match(cart, /\.slice\(0, SUGGESTION_SLIDER_SIZE\)/);
+  assert.match(cart, /SUGGESTION_SLIDER_SIZE \+ inCart\.size/);
+  assert.match(cart, /window\.PatygoCatalog\.mountProductSlider\(grid\)/);
+  assert.match(catalog, /window\.PatygoCatalog\.mountProductSlider = mountProductSlider;/);
+  assert.match(catalog, /aria-label", label/);
+  assert.match(catalog, /"Önceki ürünler"/);
+  assert.match(catalog, /"Sonraki ürünler"/);
+  assert.match(catalog, /left: dir \* track\.clientWidth/);
+  assert.match(css, /\.product-slider \{\s*--slider-cols: 5;/);
+  assert.match(css, /grid-auto-flow: column;/);
+  assert.match(css, /scroll-snap-type: x mandatory;/);
+  assert.match(css, /\.product-slider\.is-scrollable \.product-slider-btn \{ display: inline-flex; \}/);
+  assert.match(css, /@media \(max-width: 640px\) \{\s*\.product-slider \{ --slider-cols: 2\.2;/);
+  assert.match(css, /\.product-slider-btn:disabled \{ visibility: hidden; \}/);
+  assert.match(css, /\.product-slider-track > \.product-card \{[^}]*box-shadow: 0 4px 10px/);
+});
+
+test("similar endpoint allows enough items for a 10-card cart slider after removing cart lines", () => {
+  const items = [{ id: "base", category: "pc", mid: "notebook", alt: "office", price: 100 }];
+  for (let i = 0; i < 25; i += 1) items.push({ id: "s" + i, category: "pc", mid: "notebook", alt: "office", price: 100 + i });
+  assert.equal(similarProductsIndexed(indexOf(items), "base", 20).length, 20);
+  assert.equal(similarProductsIndexed(indexOf(items), "base", 50).length, 20);
+});
