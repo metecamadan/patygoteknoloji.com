@@ -666,12 +666,9 @@
       if (fresh) {
         rememberProduct(fresh);
         product = fresh;
-        if (
-          fresh.urlPath &&
-          detailRoute.mode === "id" &&
-          location.pathname.indexOf(fresh.urlPath) !== 0
-        ) {
-          history.replaceState(null, "", fresh.urlPath);
+        // ?id= links and pre-fix slugs (…-i-slemci) settle on the canonical product URL.
+        if (fresh.urlPath && location.pathname.replace(/\/+$/, "") !== fresh.urlPath) {
+          history.replaceState(null, "", fresh.urlPath + (detailRoute.mode === "id" ? "" : location.search));
         }
         render(fresh, cats);
         if (won.full) {

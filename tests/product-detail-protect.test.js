@@ -41,6 +41,7 @@ test("product detail keeps add-to-cart only without buy-now shortcut", () => {
 
 test("product detail paints cached card then races api with listing snapshot", () => {
   assert.match(script, /detailRoute\.mode === "id"/);
+  assert.match(script, /location\.pathname\.replace\(\/\\\/\+\$\/, ""\) !== fresh\.urlPath/);
   assert.match(script, /if \(cached\) render\(cached, cats\)/);
   assert.match(script, /\/api\/products\?path=/);
   assert.match(script, /\/api\/products\?id=/);

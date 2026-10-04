@@ -219,17 +219,56 @@ test("buildSpecRows never repeats a label (Turkish case-insensitive)", () => {
   }
 });
 
-test("buildSpecRows pads sparse titles to minimum content rows", () => {
+test("sparse titles get a short honest table, never filler rows", () => {
   const rows = buildSpecRows({
     brand: "Patygo",
     name: "Patygo USB-C Kablo 1 Metre",
   });
-  const meta = new Set(["barkod", "marka", "üretici kodu", "model"]);
-  const contentCount = rows.filter(
-    (row) => !meta.has(row.label.toLocaleLowerCase("tr-TR"))
-  ).length;
-  assert.ok(contentCount >= 4, "expected at least 4 content rows");
   assert.ok(rows.some((row) => row.label === "Ürün tipi"));
+  assert.equal(
+    rows.some((row) => /^(Vitrin özeti|Katalog notu|Ek bilgi)/.test(row.label)),
+    false
+  );
+});
+
+test("stored filler rows and sourcing note are removed on enrich", () => {
+  const enriched = enrichProductCopy({
+    brand: "PATYGO",
+    name: "Patygo USB-C Kablo 1 Metre",
+    description:
+      "Patygo kablo. Öne çıkan: USB-C. Teknik satırlar ürün adı ve katalog bilgisinden derlenmiştir.",
+    details:
+      "__SPEC_TABLE__\nÜrün tipi|Kablo\nVitrin özeti|USB-C Kablo 1 Metre\nKatalog notu|Özellikler vitrin başlığı ve kategori şablonundan genişletilmiştir.\nEk bilgi 1|USB-C Kablo\nMarka|Patygo",
+  });
+  assert.doesNotMatch(enriched.description, /katalog bilgisinden/i);
+  assert.doesNotMatch(enriched.details, /Vitrin özeti|Katalog notu|Ek bilgi/);
+
+  const manual = enrichProductCopy(
+    {
+      brand: "PATYGO",
+      name: "Patygo USB-C Kablo 1 Metre",
+      description: "Elle yazıldı. Teknik satırlar ürün adı ve katalog bilgisinden derlenmiştir.",
+      details: "__SPEC_TABLE__\nUzunluk|1 m\nKatalog notu|x\nMarka|Patygo",
+    },
+    { skipDescription: true, skipDetails: true }
+  );
+  assert.equal(manual.description, "Elle yazıldı.");
+  assert.equal(manual.details, "__SPEC_TABLE__\nUzunluk|1 m\nMarka|Patygo");
+});
+
+test("CPU copy names the processor model, not the iGPU token", () => {
+  const product = {
+    brand: "INTEL",
+    name: "Intel Core i3-10100 Soket 1200 3.6GHz 6MB Önbellek 4 Çekirdek UHD630 İşlemci",
+    siteChild: "intel-islemciler",
+  };
+  const rows = buildSpecRows(product);
+  assert.ok(rows.some((row) => row.label === "İşlemci" && row.value === "Core i3-10100"));
+  const description = buildGeneratedDescription(product);
+  assert.match(description, /Intel işlemci \(Core i3-10100\)/);
+  assert.doesNotMatch(description, /\(UHD630\)/);
+  const ryzen = buildSpecRows({ brand: "AMD", name: "AMD Ryzen 5 5600X 3.7GHz 32MB AM4 İşlemci" });
+  assert.ok(ryzen.some((row) => row.label === "İşlemci" && row.value === "Ryzen 5 5600X"));
 });
 
 test("sparse products get expanded spec table on enrich", () => {
@@ -255,14 +294,15 @@ test("verify-all-product-specs content row counter treats meta labels separately
   assert.equal(content, 2);
 });
 
-test("generated copy uses spec table prefix and honest sourcing note", () => {
+test("generated copy uses spec table prefix without internal sourcing note", () => {
   const product = {
     brand: "HP",
     name: "HP ProBook 450 G10 Intel Core i5 16GB 512GB SSD 15.6 FreeDOS Notebook",
   };
   const description = buildGeneratedDescription(product);
   const details = buildGeneratedDetails(product);
-  assert.match(description, /ürün adı ve katalog bilgisinden/i);
+  assert.match(description, /^HP notebook/);
+  assert.doesNotMatch(description, /katalog bilgisinden/i);
   assert.match(details, /^__SPEC_TABLE__/);
   assert.ok(details.includes("Bellek|16 GB RAM") || details.includes("Bellek|16GB"));
 });
@@ -309,7 +349,7 @@ test("enrichProductCopy replaces title-duplicate XML details with spec table", (
     details: title,
   });
   assert.match(enriched.details, /^__SPEC_TABLE__/);
-  assert.match(enriched.description, /katalog bilgisinden/i);
+  assert.match(enriched.description, /^Intel işlemci \(Core i3-10100\)/);
 });
 
 test("formatSpecTable renders pipe rows", () => {

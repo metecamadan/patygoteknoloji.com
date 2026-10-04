@@ -15,7 +15,7 @@ Vitrindeki tüm ürünlerde Lenovo V15 örneğindeki gibi:
 | **XML metni** | Tedarikçi feed | Ad ile aynı değilse ve anlamlıysa olduğu gibi kullanılır. |
 | **Otomatik üretim** | `lib/product-description.js` | Yalnızca boş veya ad ile aynı metinlerde devreye girer. Özellikler **ürün adı + katalog alanlarından** parse edilir; uydurma PSREF satırı yok. |
 
-Otomatik kısa açıklama sonuna şu cümle eklenir: *"Teknik satırlar ürün adı ve katalog bilgisinden derlenmiştir."*  
+Otomatik metin müşteriye iç kaynak notu göstermez; eski sürümlerin eklediği *"Teknik satırlar … derlenmiştir."* cümlesi ve "Vitrin özeti / Katalog notu / Ek bilgi" dolgu satırları okunurken temizlenir. Başlıktan az özellik çıkıyorsa tablo kısa kalır, satır uydurulmaz.  
 `(Upg)` / yükseltme geçen başlıklarda RAM-depolama montajı uyarısı eklenir.
 
 ## Kategori algılama
