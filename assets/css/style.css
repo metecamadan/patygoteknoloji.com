@@ -1579,7 +1579,8 @@ h1, h2, h3, h4 {
   gap: 12px;
   margin-bottom: 0;
 }
-.qty-row[hidden] {
+.qty-row[hidden],
+.checkout-sum[hidden] {
   display: none !important;
 }
 .qty-row label { font-weight: 600; font-size: 0.9rem; }

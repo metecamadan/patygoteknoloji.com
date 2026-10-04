@@ -30,6 +30,16 @@ test("cart and checkout steps share the wide container and the same column split
   assert.equal(cols(".checkout-wrap"), cols(".cart-layout"));
 });
 
+test("checkout shows the unit price for a single-product cart and hides the row for mixed carts", () => {
+  const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
+  assert.match(html, /class="checkout-sum" id="unitPriceRow"/);
+  assert.doesNotMatch(checkoutJs, /unitPrice\.textContent = "—"/);
+  assert.match(checkoutJs, /const singleProduct = t\.lines\.length === 1 \? t\.lines\[0\]\.product : null;/);
+  assert.match(checkoutJs, /formatTRY\(priceIncl\(singleProduct\)\)/);
+  assert.match(checkoutJs, /els\.unitPriceRow\.hidden = !singleProduct/);
+  assert.match(css, /\.checkout-sum\[hidden\]\s*\{\s*display:\s*none !important;/);
+});
+
 test("checkout funnel hides catalog nav and extra exits", () => {
   assert.doesNotMatch(html, /Sipariş notu/);
   assert.doesNotMatch(html, /id="not"/);

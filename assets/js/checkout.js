@@ -30,6 +30,7 @@
     brandLabel: document.getElementById("orderBrandLabel"),
     name: document.getElementById("orderName"),
     unitPrice: document.getElementById("unitPrice"),
+    unitPriceRow: document.getElementById("unitPriceRow"),
     qtyLabel: document.getElementById("qtyLabel"),
     subtotal: document.getElementById("subtotal"),
     vatAmount: document.getElementById("vatAmount"),
@@ -319,6 +320,7 @@
         lines = [{ product, qty, line: sub, lineVat: vat, lineIncl: merchandiseTotal }];
         if (els.qtyLabel) els.qtyLabel.textContent = String(qty);
         if (els.unitPrice) els.unitPrice.textContent = formatTRY(priceIncl(product));
+        if (els.unitPriceRow) els.unitPriceRow.hidden = false;
         if (els.subtotal) els.subtotal.textContent = formatTRY(sub);
         if (els.vatAmount) els.vatAmount.textContent = formatTRY(vat);
         if (els.grandTotal) els.grandTotal.textContent = formatTRY(total);
@@ -332,7 +334,10 @@
       if (els.qtyLabel) {
         els.qtyLabel.textContent = String(t.lines.reduce((n, l) => n + l.qty, 0));
       }
-      if (els.unitPrice) els.unitPrice.textContent = "—";
+      // Farklı ürünlerden oluşan sepette tek bir birim fiyat yoktur; satır gizlenir.
+      const singleProduct = t.lines.length === 1 ? t.lines[0].product : null;
+      if (els.unitPrice) els.unitPrice.textContent = singleProduct ? formatTRY(priceIncl(singleProduct)) : "";
+      if (els.unitPriceRow) els.unitPriceRow.hidden = !singleProduct;
       if (els.subtotal) els.subtotal.textContent = formatTRY(t.sub);
       if (els.vatAmount) els.vatAmount.textContent = formatTRY(t.vat);
       if (els.grandTotal) els.grandTotal.textContent = formatTRY(t.total);
