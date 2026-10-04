@@ -635,6 +635,27 @@
       }, 1800);
     });
     actions.appendChild(add);
+    let shortlist = null;
+    if (window.PatygoFavorites) {
+      shortlist = document.createElement("div");
+      shortlist.className = "detail-shortlist";
+      const fav = window.PatygoFavorites.createFavButton(product.id);
+      fav.classList.add("fav-toggle--inline");
+      const favLabel = document.createElement("span");
+      favLabel.textContent = "Favori";
+      fav.appendChild(favLabel);
+      shortlist.appendChild(fav);
+      shortlist.appendChild(window.PatygoFavorites.createCompareButton(product.id, "btn btn-outline btn-sm compare-toggle"));
+      const compareLink = document.createElement("a");
+      compareLink.href = "/favoriler#karsilastir";
+      compareLink.className = "detail-compare-link";
+      compareLink.innerHTML = 'Karşılaştırma listesi <span data-compare-count hidden>0</span>';
+      const compareCount = window.PatygoFavorites.compare.count();
+      const countEl = compareLink.querySelector("[data-compare-count]");
+      countEl.textContent = String(compareCount);
+      countEl.hidden = compareCount <= 0;
+      shortlist.appendChild(compareLink);
+    }
 
     const trust = document.createElement("ul");
     trust.className = "detail-trust";
@@ -655,6 +676,7 @@
     const installmentTable = buildInstallmentTable(window.PatygoCatalog.priceInclVat(product));
     if (installmentTable) info.appendChild(installmentTable);
     info.appendChild(actions);
+    if (shortlist) info.appendChild(shortlist);
     info.appendChild(trust);
     const hub = buildHighlights(product);
     if (hub) info.appendChild(hub);

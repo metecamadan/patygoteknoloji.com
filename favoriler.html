@@ -3,34 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ürünler | Patygo Teknoloji — Online Elektronik Mağaza</title>
-  <meta name="description" content="Patygo Teknoloji online mağaza kataloğu: kategorilere göre ürünler, sepete ekleme ve güvenli online ödeme." />
-  <link rel="canonical" href="https://patygoteknoloji.com/urunler" />
+  <title>Favorilerim ve Karşılaştırma | Patygo Teknoloji</title>
+  <meta name="robots" content="noindex,follow" />
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg" />
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
   <link rel="manifest" href="/assets/manifest.json" />
   <meta name="theme-color" content="#0875e1" />
-  <meta property="og:site_name" content="Patygo Teknoloji" />
-  <meta property="og:locale" content="tr_TR" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Ürünler | Patygo Teknoloji — Online Elektronik Mağaza" />
-  <meta property="og:description" content="Patygo Teknoloji online mağaza kataloğu: kategorilere göre ürünler, sepete ekleme ve güvenli online ödeme." />
-  <meta property="og:url" content="https://patygoteknoloji.com/urunler" />
-  <meta property="og:image" content="https://patygoteknoloji.com/assets/img/og-default.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p13" />
-  <script src="/assets/js/catalog-pending.js?v=1"></script>
 </head>
-<body class="products-page">
+<body class="favorites-page">
   <header class="site-header">
     <div class="container">
       <nav class="nav" aria-label="Ana menü">
-        <a class="brand" href="/" aria-label="Patygo Teknoloji ana sayfa"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" width="120" height="38" /></a>
+        <a class="brand" href="/" aria-label="Patygo Teknoloji"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" /></a>
         <ul class="nav-links" id="navLinks" data-site-nav></ul>
         <div class="nav-actions">
           <form class="nav-search" action="/urunler" method="get" role="search">
@@ -39,55 +27,35 @@
           </form>
           <a href="/favoriler" class="fav-link" aria-label="Favorilerim"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.5 1.1 4.3 2.4.8-1.3 2.2-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg><span data-fav-count hidden>0</span></a>
           <a href="/sepet" class="btn btn-outline cart-link">Sepet <span data-cart-count hidden>0</span></a>
-          <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks">
-            <span></span><span></span><span></span>
-          </button>
+          <button class="nav-toggle" id="navToggle" aria-label="Menü" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
         </div>
       </nav>
     </div>
   </header>
 
   <main>
-    <section class="page-hero products-hero">
+    <section class="page-hero fav-hero">
       <div class="container">
-        <div class="breadcrumb reveal"><a href="/">Ana Sayfa</a> <span>/</span> <span data-catalog-crumb>Ürün kataloğu</span></div>
-        <h1 class="reveal" data-catalog-title>Ürün kataloğu</h1>
-        <p class="reveal d1" data-catalog-lead>Kategorilere göre ürünleri keşfedin; sepete ekleyin ve güvenle online ödeme yapın.</p>
+        <h1 class="reveal">Favorilerim</h1>
+        <p class="reveal d1">Favori ve karşılaştırma listeniz yalnızca bu tarayıcıda saklanır; üyelik gerekmez.</p>
       </div>
     </section>
 
-    <section class="section section-soft catalog-section" id="liste">
-        <div class="container catalog-layout">
-          <aside class="catalog-facets" data-catalog-facets hidden></aside>
-          <div class="catalog-results">
-            <p class="catalog-result-meta" data-catalog-meta hidden></p>
-            <p class="catalog-page-link" data-catalog-prev hidden><a href="/urunler">← Önceki ürünler</a></p>
-            <div class="product-grid" data-catalog="all" aria-live="polite" aria-busy="true">
-              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
-              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
-              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
-              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
-              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
-              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
-            </div>
-            <div class="catalog-infinite" data-catalog-infinite hidden>
-              <div data-catalog-load-sentinel aria-hidden="true"></div>
-              <p class="catalog-load-status" data-catalog-load-status hidden aria-live="polite"></p>
-              <p class="catalog-page-link" data-catalog-next hidden><a href="/urunler">Sonraki ürünler →</a></p>
-            </div>
-          </div>
-        </div>
+    <section class="section fav-section" aria-labelledby="favTitle">
+      <div class="container">
+        <h2 class="fav-title" id="favTitle">Favori ürünler</h2>
+        <p class="fav-note" id="favNote" role="status" hidden></p>
+        <p class="fav-empty" id="favEmpty" hidden>Henüz favori ürününüz yok. Ürün kartlarındaki kalp simgesiyle ekleyebilirsiniz. <a href="/urunler">Ürünlere göz atın</a></p>
+        <div class="product-grid fav-grid" id="favGrid" aria-live="polite"></div>
+      </div>
     </section>
 
-    <section class="section">
+    <section class="section compare-section" id="karsilastir" aria-labelledby="compareTitle">
       <div class="container">
-        <div class="cta-block reveal">
-          <h2>Aradığınız ürün listede yok mu?</h2>
-          <p>Yeni ürünler kataloğumuza düzenli eklenir. Destek ekibimizden bilgi alabilirsiniz.</p>
-          <div class="hero-cta">
-            <a href="/iletisim" class="btn btn-primary btn-lg">İletişim</a>
-            <a href="https://wa.me/905555070724" class="btn btn-whatsapp btn-lg" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-          </div>
+        <h2 class="fav-title" id="compareTitle">Karşılaştırma</h2>
+        <p class="fav-empty" id="compareEmpty" hidden>Karşılaştırmak için ürün sayfasında veya favorilerinizde “Karşılaştır”a basın (en fazla 4 ürün).</p>
+        <div class="compare-scroll">
+          <table class="compare-table" id="compareTable" hidden></table>
         </div>
       </div>
     </section>
@@ -151,10 +119,11 @@
   </div>
 
   <script defer src="/assets/js/cart.js"></script>
-  <script defer src="/assets/js/shipping.js?v=storefront-ship-5"></script>
   <script defer src="/assets/js/favorites.js?v=fav-1"></script>
   <script defer src="/assets/js/catalog.js?v=storefront-p13"></script>
   <script defer src="/assets/js/nav.js?v=nav-d43-1"></script>
   <script defer src="/assets/js/main.js?v=main-csp-1"></script>
+  <script defer src="/assets/js/detail-specs.js?v=detail-spec-hb-1"></script>
+  <script defer src="/assets/js/favoriler.js?v=fav-1"></script>
 </body>
 </html>

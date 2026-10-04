@@ -1176,6 +1176,9 @@
     visualWrap.appendChild(visual);
     article.appendChild(visualWrap);
     article.appendChild(body);
+    if (window.PatygoFavorites && product.id) {
+      article.appendChild(window.PatygoFavorites.createFavButton(product.id));
+    }
     return article;
   }
 
