@@ -20,6 +20,20 @@ test("homepage keeps teklif form and e-commerce hero", () => {
   assert.match(indexHtml, /<strong>Hızlı<\/strong><span>Teslimat<\/span>/);
 });
 
+test("brand strip shows sized logos that exist on disk", () => {
+  const track = indexHtml.match(/<div class="partners-track">([\s\S]*?)<\/div>/);
+  assert.ok(track);
+  const logos = [...track[1].matchAll(/<img src="\/assets\/img\/brand-logos\/([a-z]+)\.svg" alt="([^"]*)" width="(\d+)" height="(\d+)"/g)];
+  const visible = logos.filter((m) => m[2]);
+  assert.equal(visible.length, 14);
+  assert.equal(logos.length, visible.length * 2);
+  for (const [, slug, , width, height] of logos) {
+    assert.ok(fs.existsSync(path.join(root, "assets", "img", "brand-logos", slug + ".svg")), slug);
+    assert.ok(Number(height) <= 34 && Number(width) <= 100, slug);
+  }
+  assert.doesNotMatch(track[1], /Everest|<span/);
+});
+
 test("catalog product cards use cart flow without quote button", () => {
   assert.doesNotMatch(catalogJs, /btn-quote/);
   assert.doesNotMatch(catalogJs, /Teklif Al/);
@@ -53,7 +67,7 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.match(urunler, /data-catalog-infinite/);
   assert.match(urunler, /data-catalog-load-sentinel/);
   assert.doesNotMatch(urunler, /data-catalog-pager/);
-  assert.match(urunler, /storefront-p18/);
+  assert.match(urunler, /storefront-p21/);
   assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
   // 5 sütun yalnızca 1440px düzende (>=1400px); daha dar ekranda kartlar sıkışmasın diye 4 sütun.
   const fiveColumnRules = css.match(/repeat\(5, minmax\(0, 1fr\)\)/g) || [];
@@ -126,8 +140,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /Promise\.race/);
   assert.match(catalogJs, /function listingSnapshotFileName\s*\(\s*query\s*\)/);
   assert.match(catalogJs, /listingSnapshotFileName/);
-  assert.match(indexHtml, /storefront-p18/);
-  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /storefront-p18/);
+  assert.match(indexHtml, /storefront-p21/);
+  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /storefront-p21/);
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);

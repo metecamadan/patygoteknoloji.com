@@ -1,9 +1,26 @@
 /** Emits brand category HTML fragments for markalar.html */
+const fs = require("fs");
+const path = require("path");
+
+const logoDir = path.join(__dirname, "..", "assets", "img", "brand-logos");
+
+function logoTag(file, alt) {
+  const base = file.replace(/-(print|scan)$/, "");
+  const logoPath = path.join(logoDir, base + ".svg");
+  if (fs.existsSync(logoPath)) {
+    const head = fs.readFileSync(logoPath, "utf8").match(/<svg\b[^>]*>/)[0];
+    const width = head.match(/\swidth="(\d+)"/)[1];
+    const height = head.match(/\sheight="(\d+)"/)[1];
+    return `<img src="/assets/img/brand-logos/${base}.svg" alt="${alt}" width="${width}" height="${height}" loading="lazy" />`;
+  }
+  return `<img src="/assets/img/brands/${file}.svg" alt="${alt}" width="170" height="48" loading="lazy" />`;
+}
+
 const tiles = (items) =>
   items
     .map(
       ([file, alt, desc]) =>
-        `            <article class="brand-tile"><div class="logo"><img src="assets/img/brands/${file}.svg" alt="${alt}" width="170" height="48" loading="lazy" /></div><p>${desc}</p></article>`
+        `            <article class="brand-tile"><div class="logo">${logoTag(file, alt)}</div><strong class="brand-tile-name" aria-hidden="true">${alt}</strong><p>${desc}</p></article>`
     )
     .join("\n");
 
@@ -135,8 +152,6 @@ const out = [
   section("Yazıcı &amp; Çevre Birimleri", "Ofis ekipmanları", print),
 ].join("\n\n");
 
-const fs = require("fs");
-const path = require("path");
 fs.writeFileSync(path.join(__dirname, "markalar-brands.fragment.html"), out);
 console.log("pc", pc.length, "mobile", mobile.length, "home", home.length, "print", print.length);
 console.log("fragment written");

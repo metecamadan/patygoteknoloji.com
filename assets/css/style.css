@@ -842,19 +842,17 @@ h1, h2, h3, h4 {
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 .partners-track {
-  --partners-shift: 24px;
+  --partners-shift: 28px;
   display: flex;
-  gap: 48px;
+  align-items: center;
+  gap: 56px;
+  min-height: 36px;
   width: max-content;
   animation: partners-scroll 32s linear infinite;
   will-change: transform;
 }
-.partners-track span {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #cbd5e1;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
+.partners-track img {
+  display: block;
   flex-shrink: 0;
 }
 @keyframes partners-scroll {
@@ -2355,6 +2353,20 @@ h1, h2, h3, h4 {
   font-size: 1.4rem;
   font-weight: 700;
   margin-bottom: 8px;
+}
+.brand-credits {
+  text-align: center;
+  color: var(--muted-2);
+  font-size: 0.75rem;
+  margin-top: 12px;
+}
+.brand-credits a { color: inherit; text-decoration: underline; }
+.brand-tile-name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
 }
 .brand-tile p {
   color: var(--muted);
