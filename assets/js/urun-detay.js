@@ -796,7 +796,11 @@
         add.disabled = false;
       }, 1800);
     });
-    actions.appendChild(add);
+    const buyRow = document.createElement("div");
+    buyRow.className = "detail-buy-row";
+    buyRow.appendChild(add);
+    buyRow.appendChild(buildPriceAlert(product));
+    actions.appendChild(buyRow);
 
     const trust = document.createElement("ul");
     trust.className = "detail-trust";
@@ -818,7 +822,6 @@
     const installmentTable = buildInstallmentTable(window.PatygoCatalog.priceInclVat(product));
     if (installmentTable) info.appendChild(installmentTable);
     info.appendChild(actions);
-    info.appendChild(buildPriceAlert(product));
     info.appendChild(trust);
     const hub = buildHighlights(product);
     if (hub) info.appendChild(hub);

@@ -117,7 +117,7 @@ test("product page offers the alert form with consent; KVKK lists purpose and re
   const detail = read("assets/js/urun-detay.js");
   const main = read("assets/js/main.js");
   const kvkk = read("kvkk.html");
-  assert.match(detail, /info\.appendChild\(buildPriceAlert\(product\)\)/);
+  assert.match(detail, /buyRow\.appendChild\(buildPriceAlert\(product\)\)/);
   assert.match(detail, /fetch\("\/api\/price-alerts"/);
   assert.match(detail, /consent: true/);
   assert.match(detail, /name="consent" required/);

@@ -45,7 +45,9 @@ test("product detail mobile adds qty stepper and trust copy", () => {
   assert.ok(actions, "detail actions rule");
   assert.match(actions[1], /flex-direction:\s*column/, "Sepete Ekle sits below the qty stepper");
   assert.doesNotMatch(css, /\.detail-info \.actions \{[^}]*flex-direction:\s*row/);
-  assert.match(css, /\.detail-info \.actions \.btn-buy \{[^}]*width:\s*50%/);
+  assert.match(css, /\.detail-info \.actions \.btn-buy \{[^}]*flex:\s*0 0 calc\(50% - 5px\)/, "Sepete Ekle takes half the row");
+  assert.match(detailJs, /buyRow\.appendChild\(add\);\s*buyRow\.appendChild\(buildPriceAlert\(product\)\);/, "price alert sits next to Sepete Ekle");
+  assert.match(css, /\.detail-buy-row \.price-alert\[open\] \{ flex-basis: 100%; \}/, "opened alert form drops to full width");
   assert.match(css, /\.detail-thumbs[\s\S]*?display:\s*flex/);
   assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*?\.product-detail \.breadcrumb[\s\S]*?overflow-x:\s*auto/);
 });
