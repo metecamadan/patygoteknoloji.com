@@ -121,6 +121,7 @@ const {
   computeShippingFee,
   minimumOrderError,
 } = require("./lib/shipping-settings");
+const { createInstallmentSettingsStore, resolveInstallment } = require("./lib/installment-settings");
 
 const ROOT = path.resolve(__dirname);
 const DATA_ROOT = process.env.PATYGO_DATA_ROOT
@@ -227,6 +228,7 @@ const analyticsStore = createAnalyticsStore(DATA_ROOT, {
 });
 const orderStore = createOrderStore(DATA_ROOT);
 const shippingSettingsStore = createShippingSettingsStore(DATA_ROOT);
+const installmentSettingsStore = createInstallmentSettingsStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
 setCategoryListLoader(() => categoryStore.list(), () => categoryStore.stamp());
@@ -427,7 +429,13 @@ function buildCheckoutOrder(body) {
   const minimumError = minimumOrderError(merchandiseTotal, shippingSettings);
   if (minimumError) throw new Error(minimumError);
   const shippingFee = computeShippingFee(merchandiseTotal, shippingSettings);
-  const total = Math.round((merchandiseTotal + shippingFee) * 100) / 100;
+  const baseTotal = Math.round((merchandiseTotal + shippingFee) * 100) / 100;
+  const installment = resolveInstallment(
+    baseTotal,
+    body && body.installCount,
+    installmentSettingsStore.getSettings()
+  );
+  const total = installment ? installment.total : baseTotal;
   const customer = (body && body.customer) || {};
   const nameCheck = validateCustomerName(customer.name);
   if (!nameCheck.ok) throw new Error(nameCheck.error);
@@ -479,6 +487,7 @@ function buildCheckoutOrder(body) {
     vat,
     merchandiseTotal,
     shippingFee,
+    installment,
     total,
     currency: "TRY",
     customer: {
@@ -1420,6 +1429,10 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, shippingSettingsStore.getPublic());
   }
 
+  if (req.method === "GET" && urlPath === "/api/installments") {
+    return json(res, 200, Object.assign({ posReady: akbankConfig.enabled }, installmentSettingsStore.getPublic()));
+  }
+
   if (req.method === "POST" && urlPath === "/api/contact") {
     try {
       const ip = clientIp(req);
@@ -1526,6 +1539,7 @@ async function handleApi(req, res, urlPath) {
         orderId: order.id,
         amount: order.total,
         currency: order.currency,
+        installCount: order.installment ? order.installment.count : 1,
         okUrl: callbackUrl,
         failUrl: callbackUrl,
         emailAddress: order.customer.email,
@@ -1627,6 +1641,7 @@ async function handleApi(req, res, urlPath) {
         id: order.id,
         total: order.total,
         shippingFee: order.shippingFee || 0,
+        installment: order.installment || null,
         merchandiseTotal: order.merchandiseTotal || order.subtotal + order.vat,
         currency: order.currency,
         paymentStatus: order.paymentStatus,
@@ -2040,6 +2055,24 @@ async function handleApi(req, res, urlPath) {
       return json(res, 200, { ok: true, settings });
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Kargo ayarları kaydedilemedi." });
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/installments/settings") {
+    return json(res, 200, { ok: true, settings: installmentSettingsStore.getSettings() });
+  }
+
+  if (req.method === "PUT" && urlPath === "/api/admin/installments/settings") {
+    try {
+      const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
+      const settings = installmentSettingsStore.setSettings({
+        enabled: body.enabled,
+        minAmount: body.minAmount,
+        options: body.options,
+      });
+      return json(res, 200, { ok: true, settings });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Taksit ayarları kaydedilemedi." });
     }
   }
 

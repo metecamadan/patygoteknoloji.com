@@ -321,6 +321,37 @@
     return section;
   }
 
+  function buildInstallmentTable(gross) {
+    const api = window.PatygoInstallments;
+    const rows = api && typeof api.quote === "function" ? api.quote(gross) : [];
+    if (!rows.length) return null;
+    const box = el("details", "detail-installments");
+    const maxCount = rows.reduce((n, row) => Math.max(n, row.count), 0);
+    box.appendChild(el("summary", "", maxCount + " aya varan taksit seçenekleri"));
+    const table = el("table", "detail-installment-table");
+    const head = el("thead");
+    head.innerHTML = "<tr><th scope=\"col\">Taksit</th><th scope=\"col\">Aylık</th><th scope=\"col\">Toplam</th></tr>";
+    const body = el("tbody");
+    rows.forEach((row) => {
+      const tr = el("tr");
+      tr.appendChild(el("td", "", row.count + " taksit"));
+      tr.appendChild(el("td", "", window.PatygoCatalog.formatPrice(row.monthly)));
+      tr.appendChild(el("td", "", window.PatygoCatalog.formatPrice(row.total)));
+      body.appendChild(tr);
+    });
+    table.appendChild(head);
+    table.appendChild(body);
+    box.appendChild(table);
+    box.appendChild(
+      el(
+        "p",
+        "detail-installment-note",
+        "Tutarlar kargo hariç tek ürün içindir. Taksit imkânı kartınızın bankasına ve kart tipine bağlıdır."
+      )
+    );
+    return box;
+  }
+
   function render(product, categories) {
     root.textContent = "";
     if (!product) {
@@ -497,6 +528,8 @@
     info.appendChild(h1);
     info.appendChild(price);
     if (shippingLine) info.appendChild(shippingLine);
+    const installmentTable = buildInstallmentTable(window.PatygoCatalog.priceInclVat(product));
+    if (installmentTable) info.appendChild(installmentTable);
     info.appendChild(actions);
     info.appendChild(trust);
     const hub = buildHighlights(product);
@@ -701,6 +734,10 @@
       window.PatygoShipping && typeof window.PatygoShipping.load === "function"
         ? window.PatygoShipping.load().catch(() => null)
         : Promise.resolve(null);
+    const installmentsReady =
+      window.PatygoInstallments && typeof window.PatygoInstallments.load === "function"
+        ? window.PatygoInstallments.load().catch(() => null)
+        : Promise.resolve(null);
     if (detailRoute.mode === "none") {
       render(null, []);
       return;
@@ -761,6 +798,9 @@
 
     shippingReady.then((settings) => {
       if (settings && product) render(product, renderedCats);
+    });
+    installmentsReady.then((settings) => {
+      if (settings && settings.enabled && product) render(product, renderedCats);
     });
   }
 

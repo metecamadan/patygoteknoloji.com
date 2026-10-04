@@ -819,6 +819,23 @@ html.admin-theme-dark .admin-order-block.is-open {
   font-size: 0.9rem;
 }
 .admin-form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.admin-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.admin-installment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+.admin-installment-grid label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
 .admin-field-help {
   color: var(--muted);
   font-size: 0.78rem;

@@ -781,7 +781,10 @@
     if (tab === "overview") loadDigitalDashboard().catch(() => {});
     if (tab === "orders") loadAdminOrders().catch(() => {});
     if (tab === "leads") loadAdminLeads().catch(() => {});
-    if (tab === "shipping") loadAdminShippingSettings().catch(() => {});
+    if (tab === "shipping") {
+      loadAdminShippingSettings().catch(() => {});
+      loadAdminInstallmentSettings().catch(() => {});
+    }
     if (tab === "calendar") loadCalendarMonth().catch(() => {});
     if (tab === "categories") loadCategoryTree().catch(() => {});
     if (tab === "users") loadAdminUsers().catch(() => {});
@@ -818,7 +821,7 @@
       orders: ["Siparişler", "Ödeme durumu, müşteri ve kalemleri yönetin."],
       leads: ["Talepler", "İletişim formundan gelen teklif / talep kayıtları."],
       users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
-      shipping: ["Kargo", "Ücretsiz kargo eşiği ve kargo bedelini yönetin."],
+      shipping: ["Kargo ve taksit", "Kargo bedeli, ücretsiz kargo eşiği ve taksit oranlarını yönetin."],
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
@@ -871,7 +874,10 @@
     }
     if (name === "users" && token) loadAdminUsers().catch(() => {});
     if (name === "leads" && token) loadAdminLeads().catch(() => {});
-    if (name === "shipping" && token) loadAdminShippingSettings().catch(() => {});
+    if (name === "shipping" && token) {
+      loadAdminShippingSettings().catch(() => {});
+      loadAdminInstallmentSettings().catch(() => {});
+    }
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
     if (name === "unlisted" && token) loadUnlistedProducts().catch(() => {});
@@ -4296,6 +4302,15 @@
       "<div><dt>Toplam</dt><dd>" +
       moneyTr(order.total) +
       "</dd></div>" +
+      (order.installment && order.installment.count > 1
+        ? "<div><dt>Taksit</dt><dd>" +
+          escapeHtml(String(order.installment.count)) +
+          " taksit · vade farkı " +
+          moneyTr(order.installment.surcharge) +
+          " (%" +
+          escapeHtml(String(order.installment.ratePercent)) +
+          ")</dd></div>"
+        : "") +
       (order.anonymizedAt
         ? "<div><dt>Anonimleştirme</dt><dd>" +
           escapeHtml(formatOrderDate(order.anonymizedAt)) +
@@ -5255,6 +5270,120 @@
         note(adminShippingNote, "ok", "Kargo ayarları kaydedildi. Akakçe XML bir sonraki istekte güncellenir.");
       } catch (err) {
         note(adminShippingNote, "err", err.message || "Kaydedilemedi");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const adminInstallmentForm = document.getElementById("adminInstallmentForm");
+  const installmentEnabled = document.getElementById("installmentEnabled");
+  const installmentMinAmount = document.getElementById("installmentMinAmount");
+  const installmentRateGrid = document.getElementById("installmentRateGrid");
+  const installmentPreview = document.getElementById("installmentPreview");
+  const adminInstallmentNote = document.getElementById("adminInstallmentNote");
+  const INSTALLMENT_COUNTS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  if (installmentRateGrid && !installmentRateGrid.children.length) {
+    INSTALLMENT_COUNTS.forEach((count) => {
+      const label = document.createElement("label");
+      label.textContent = count + " taksit";
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.max = "100";
+      input.step = "0.01";
+      input.inputMode = "decimal";
+      input.placeholder = "Kapalı";
+      input.dataset.count = String(count);
+      input.addEventListener("input", renderInstallmentPreview);
+      label.appendChild(input);
+      installmentRateGrid.appendChild(label);
+    });
+  }
+
+  function readInstallmentForm() {
+    const options = [];
+    if (installmentRateGrid) {
+      installmentRateGrid.querySelectorAll("input[data-count]").forEach((input) => {
+        const raw = String(input.value || "").trim().replace(",", ".");
+        if (raw === "") return;
+        options.push({ count: Number(input.dataset.count), ratePercent: Number(raw) });
+      });
+    }
+    return {
+      enabled: Boolean(installmentEnabled && installmentEnabled.checked),
+      minAmount: Math.max(0, Number(installmentMinAmount && installmentMinAmount.value) || 0),
+      options,
+    };
+  }
+
+  function fillInstallmentForm(settings) {
+    const cfg = settings || {};
+    if (installmentEnabled) installmentEnabled.checked = Boolean(cfg.enabled);
+    if (installmentMinAmount) {
+      installmentMinAmount.value = Number(cfg.minAmount) > 0 ? String(cfg.minAmount) : "";
+    }
+    const rates = new Map((Array.isArray(cfg.options) ? cfg.options : []).map((o) => [Number(o.count), o.ratePercent]));
+    if (installmentRateGrid) {
+      installmentRateGrid.querySelectorAll("input[data-count]").forEach((input) => {
+        const rate = rates.get(Number(input.dataset.count));
+        input.value = rate == null ? "" : String(rate);
+      });
+    }
+    renderInstallmentPreview();
+  }
+
+  function renderInstallmentPreview() {
+    if (!installmentPreview) return;
+    const values = readInstallmentForm();
+    if (!values.options.length) {
+      installmentPreview.textContent = "Oran girilmediği için müşteriye yalnızca tek çekim sunulur.";
+      return;
+    }
+    const sample = 10000;
+    const parts = values.options.map((o) => {
+      const total = Math.round(sample * (1 + (Number(o.ratePercent) || 0) / 100) * 100) / 100;
+      return o.count + " taksit: " + formatMoney(total);
+    });
+    installmentPreview.textContent =
+      (values.enabled ? "" : "Taksit kapalı (kaydedilen oranlar saklanır). ") +
+      formatMoney(sample) + " sepet için toplam: " + parts.join(" · ");
+  }
+
+  async function loadAdminInstallmentSettings() {
+    if (!adminInstallmentForm || !token) return;
+    const data = await api("/api/admin/installments/settings");
+    fillInstallmentForm((data && data.settings) || {});
+    note(adminInstallmentNote, "", "");
+  }
+
+  if (installmentEnabled) installmentEnabled.addEventListener("change", renderInstallmentPreview);
+
+  if (adminInstallmentForm) {
+    adminInstallmentForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const submitBtn = adminInstallmentForm.querySelector('button[type="submit"]');
+      const values = readInstallmentForm();
+      if (values.enabled && !values.options.length) {
+        note(adminInstallmentNote, "err", "Taksiti açmak için en az bir taksit oranı girin.");
+        return;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const saved = await api("/api/admin/installments/settings", {
+          method: "PUT",
+          timeout: 20000,
+          body: JSON.stringify(values),
+        });
+        fillInstallmentForm((saved && saved.settings) || values);
+        note(
+          adminInstallmentNote,
+          "ok",
+          values.enabled ? "Taksit seçenekleri kaydedildi ve müşteriye gösteriliyor." : "Kaydedildi. Taksit müşteriye gösterilmiyor."
+        );
+      } catch (err) {
+        note(adminInstallmentNote, "err", err.message || "Kaydedilemedi");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }

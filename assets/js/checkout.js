@@ -51,7 +51,14 @@
     successSummary: document.getElementById("successSummary"),
     qtyRow: document.querySelector(".qty-row"),
     payBtn: document.getElementById("payBtn"),
+    installmentFieldset: document.getElementById("installmentFieldset"),
+    installmentOptions: document.getElementById("installmentOptions"),
+    installmentRow: document.getElementById("installmentRow"),
+    installmentLabel: document.getElementById("installmentLabel"),
+    installmentAmount: document.getElementById("installmentAmount"),
   };
+
+  let selectedInstallCount = 1;
 
   let posStatus = { enabled: false, testMode: true, provider: "akbank" };
 
@@ -105,6 +112,69 @@
       hintEl.textContent = hintText;
       hintEl.hidden = !hintText;
     }
+  }
+
+  function installmentQuotes(baseTotal) {
+    const api = window.PatygoInstallments;
+    return api && typeof api.quote === "function" ? api.quote(baseTotal) : [];
+  }
+
+  function renderInstallmentOptions(quotes, baseTotal) {
+    const box = els.installmentOptions;
+    if (!box) return;
+    const key = baseTotal + "|" + quotes.map((q) => q.count + ":" + q.total).join(",");
+    if (box.dataset.key === key) return;
+    box.dataset.key = key;
+    box.textContent = "";
+    const rows = [{ count: 1, total: baseTotal, monthly: baseTotal }].concat(quotes);
+    rows.forEach((row) => {
+      const label = document.createElement("label");
+      label.className = "installment-option";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "installCount";
+      input.value = String(row.count);
+      input.checked = row.count === selectedInstallCount;
+      input.addEventListener("change", () => {
+        selectedInstallCount = row.count;
+        if (calcFn) calcFn();
+      });
+      const title = document.createElement("span");
+      title.textContent = row.count === 1 ? "Tek çekim" : row.count + " taksit";
+      const detail = document.createElement("small");
+      detail.textContent =
+        row.count === 1
+          ? formatTRY(row.total)
+          : "Aylık " + formatTRY(row.monthly) + " · Toplam " + formatTRY(row.total);
+      label.appendChild(input);
+      label.appendChild(title);
+      label.appendChild(detail);
+      box.appendChild(label);
+    });
+  }
+
+  // Server recomputes the surcharge from admin rates; this only previews it.
+  function applyInstallment(summary) {
+    const baseTotal = summary.total;
+    const quotes = summary.lines && summary.lines.length ? installmentQuotes(baseTotal) : [];
+    const chosen = quotes.find((q) => q.count === selectedInstallCount) || null;
+    if (!chosen) selectedInstallCount = 1;
+    if (els.installmentFieldset) els.installmentFieldset.hidden = !quotes.length;
+    if (quotes.length) renderInstallmentOptions(quotes, baseTotal);
+    const surcharge = chosen ? Math.round((chosen.total - baseTotal) * 100) / 100 : 0;
+    if (els.installmentRow) els.installmentRow.hidden = !chosen;
+    if (chosen) {
+      if (els.installmentLabel) {
+        els.installmentLabel.textContent =
+          "Vade farkı (" + chosen.count + " taksit, %" + String(chosen.ratePercent).replace(".", ",") + ")";
+      }
+      if (els.installmentAmount) els.installmentAmount.textContent = formatTRY(surcharge);
+    }
+    summary.baseTotal = baseTotal;
+    summary.installCount = chosen ? chosen.count : 1;
+    summary.total = chosen ? chosen.total : baseTotal;
+    if (els.grandTotal) els.grandTotal.textContent = formatTRY(summary.total);
+    return summary;
   }
 
   function updateMinimumHint(totals) {
@@ -447,7 +517,7 @@
         const summary = { qty, sub, vat, merchandiseTotal, shipping, total, lines };
         updateShippingRow(summary);
         summary.minimumError = updateMinimumHint(summary);
-        return summary;
+        return applyInstallment(summary);
       }
       const t = window.PatygoCart.totals(window.PatygoCatalog.byId || catalogById || {});
       lines = t.lines;
@@ -462,7 +532,7 @@
       if (els.vatAmount) els.vatAmount.textContent = formatTRY(t.vat);
       if (els.grandTotal) els.grandTotal.textContent = formatTRY(t.total);
       updateShippingRow(t);
-      return {
+      return applyInstallment({
         qty: t.lines.reduce((n, l) => n + l.qty, 0),
         sub: t.sub,
         vat: t.vat,
@@ -471,7 +541,7 @@
         total: t.total,
         lines: t.lines,
         minimumError: updateMinimumHint(t),
-      };
+      });
     }
     calcFn = calc;
 
@@ -632,6 +702,7 @@
               },
               contractsAccepted: true,
               kvkkAccepted: true,
+              installCount: totals.installCount || 1,
             }),
           });
           const data = await res.json();
@@ -679,6 +750,9 @@
       try {
         await window.PatygoShipping.load();
       } catch (_) {}
+    }
+    if (window.PatygoInstallments) {
+      window.PatygoInstallments.load().then(() => calcFn && calcFn()).catch(() => {});
     }
 
     // Sepet anlık görüntüsüyle hemen dene; katalog gelince yeniden dene

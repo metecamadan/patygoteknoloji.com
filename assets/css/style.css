@@ -1511,6 +1511,41 @@ h1, h2, h3, h4 {
   margin: 0 0 14px;
   font-size: 0.9375rem;
 }
+.detail-installments {
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+.detail-installments summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-weight: 600;
+  color: var(--brand);
+  cursor: pointer;
+}
+.detail-installment-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.detail-installment-table th,
+.detail-installment-table td {
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.detail-installment-table th {
+  font-weight: 600;
+  color: var(--muted-2);
+}
+.detail-installment-note {
+  margin: 0;
+  padding: 8px 14px 12px;
+  font-size: 0.8125rem;
+  color: var(--muted-2);
+}
 .shipping-hint {
   margin: -0.25rem 0 0.65rem;
   font-size: 0.8125rem;
@@ -1912,6 +1947,51 @@ h1, h2, h3, h4 {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--ink);
+}
+.checkout-installments {
+  margin: 4px 0 12px;
+  padding: 0;
+  border: 0;
+}
+.checkout-installments legend {
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.installment-options {
+  display: grid;
+  gap: 8px;
+}
+.installment-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.installment-option small {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--muted-2);
+  text-align: right;
+}
+.installment-option:has(input:checked) {
+  border-color: var(--brand);
+  background: rgba(37, 99, 235, 0.06);
+  color: var(--brand);
+}
+.installment-option:has(input:focus-visible) {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+.checkout-installments .field-hint {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted-2);
 }
 .check-inline {
   display: flex;
