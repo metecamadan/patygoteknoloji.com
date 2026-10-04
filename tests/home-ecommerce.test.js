@@ -53,7 +53,7 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.match(urunler, /data-catalog-infinite/);
   assert.match(urunler, /data-catalog-load-sentinel/);
   assert.doesNotMatch(urunler, /data-catalog-pager/);
-  assert.match(urunler, /storefront-p6/);
+  assert.match(urunler, /storefront-p7/);
   assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
   // 5 sütun yalnızca 1440px düzende (>=1400px); daha dar ekranda kartlar sıkışmasın diye 4 sütun.
   const fiveColumnRules = css.match(/repeat\(5, minmax\(0, 1fr\)\)/g) || [];
@@ -94,7 +94,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(indexHtml, /href="\/urunler\/yapi-gerecleri"/);
   const featuredTabs = indexHtml.match(/<nav class="product-tabs[\s\S]*?<\/nav>/);
   assert.ok(featuredTabs, "featured product tabs nav");
-  assert.doesNotMatch(featuredTabs[0], /ofis-urunleri/);
+  assert.match(featuredTabs[0], /href="\/urunler\/ofis-urunleri" data-filter="ofis-urunleri"/);
+  assert.match(catalogJs, /"yapi-gerecleri",\s*"ofis-urunleri",\s*\];/);
   assert.match(indexHtml, /<nav class="product-tabs/);
   assert.doesNotMatch(indexHtml, /<div class="product-tabs/);
   assert.match(indexHtml, /data-filter="bilgisayar-tablet"/);
@@ -102,7 +103,7 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(indexHtml, /data-filter="kartus-toner"/);
   assert.match(indexHtml, /data-filter="baski-cozumleri"/);
   assert.match(indexHtml, /data-filter="yapi-gerecleri"/);
-  assert.doesNotMatch(indexHtml, /data-filter="ofis-urunleri"/);
+  assert.match(indexHtml, /data-filter="ofis-urunleri"/);
   assert.doesNotMatch(indexHtml, /data-filter="bilgisayar"/);
   assert.doesNotMatch(indexHtml, /data-filter="kucuk-ev"/);
   assert.doesNotMatch(indexHtml, /data-filter="kisisel-bilgisayarlar"/);
@@ -125,8 +126,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /Promise\.race/);
   assert.match(catalogJs, /function listingSnapshotFileName\s*\(\s*query\s*\)/);
   assert.match(catalogJs, /listingSnapshotFileName/);
-  assert.match(indexHtml, /storefront-p6/);
-  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /storefront-p6/);
+  assert.match(indexHtml, /storefront-p7/);
+  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /storefront-p7/);
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);

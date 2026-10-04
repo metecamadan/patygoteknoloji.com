@@ -2940,7 +2940,14 @@ h1, h2, h3, h4 {
 .home .product-tabs {
   margin-bottom: 24px;
   flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.home .product-tabs::-webkit-scrollbar { display: none; }
+.home .product-tabs a { flex-shrink: 0; }
+.home .product-tabs a:first-child { margin-left: auto; }
+.home .product-tabs a:last-child { margin-right: auto; }
 .home .product-tabs a {
   padding: 9px 14px;
   font-size: 0.84rem;

@@ -39,20 +39,21 @@ test("every storefront page header links to the cart", () => {
   assert.match(notFound, /href="\/sepet"/);
 });
 
-test("home popular mix skips office/food rows and prefers orderable prices", () => {
+test("home popular mix covers tabbed parents only and prefers orderable prices", () => {
   const products = [
-    product("tea", "ofis-urunleri", 200, { name: "Çaykur Rize Turist Çay" }),
+    product("paper", "ofis-urunleri", 1200, { name: "A4 Fotokopi Kağıdı 5'li Koli" }),
+    product("misc", "diger", 5000),
     product("cheap-cable", "bilgisayar-bilesenleri", 50),
     product("ssd", "bilgisayar-bilesenleri", 1500),
     product("notebook", "bilgisayar-tablet", 25000),
     product("toner", "kartus-toner", 900),
   ];
-  const home = homeFeaturedCatalog(products, { limit: 3, minPriceInclVat: 750 });
+  const home = homeFeaturedCatalog(products, { limit: 4, minPriceInclVat: 750 });
   const ids = home.products.map((row) => row.id);
-  assert.equal(ids.includes("tea"), false);
+  assert.equal(ids.includes("misc"), false);
   assert.equal(ids.includes("cheap-cable"), false);
-  assert.deepEqual(ids.slice().sort(), ["notebook", "ssd", "toner"]);
-  assert.deepEqual(home.byParent["ofis-urunleri"].map((row) => row.id), ["tea"]);
+  assert.deepEqual(ids.slice().sort(), ["notebook", "paper", "ssd", "toner"]);
+  assert.deepEqual(home.byParent["ofis-urunleri"].map((row) => row.id), ["paper"]);
 });
 
 test("brand counts and marka filter treat casing and dotted İ as the same brand", () => {

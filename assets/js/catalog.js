@@ -1470,6 +1470,7 @@
     "kartus-toner",
     "baski-cozumleri",
     "yapi-gerecleri",
+    "ofis-urunleri",
   ];
 
   function mixFeatured(byParent, limit) {
