@@ -99,7 +99,7 @@ test("toPublicProduct strips supplier internals and cost", () => {
     featured: false,
     active: true,
     highlights: [
-      { label: "Stok Durumu", value: "Son 5 adet" },
+      { label: "Stok Durumu", value: "5 adet" },
       { label: "Marka", value: "Tedarikçi" },
     ],
   });

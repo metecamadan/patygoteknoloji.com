@@ -12,15 +12,17 @@ const { toPublicProduct } = require("../lib/catalog");
 
 const root = path.resolve(__dirname, "..");
 
-test("stock level is a bucket, never the exact supplier count above 5", () => {
-  assert.equal(stockLevelLabel(1), "Son 1 adet");
-  assert.equal(stockLevelLabel(5), "Son 5 adet");
-  assert.equal(stockLevelLabel(6), "10 adetten az");
-  assert.equal(stockLevelLabel(9), "10 adetten az");
-  assert.equal(stockLevelLabel(10), "50 adetten az");
-  assert.equal(stockLevelLabel(49), "50 adetten az");
-  assert.equal(stockLevelLabel(50), "50+ adet");
-  assert.equal(stockLevelLabel(4200), "50+ adet");
+test("stock level is exact below 10, then only an upward floor (10+ … 90+, capped at 100+)", () => {
+  assert.equal(stockLevelLabel(1), "1 adet");
+  assert.equal(stockLevelLabel(7), "7 adet");
+  assert.equal(stockLevelLabel(9), "9 adet");
+  assert.equal(stockLevelLabel(10), "10+ adet");
+  assert.equal(stockLevelLabel(19), "10+ adet");
+  assert.equal(stockLevelLabel(27), "20+ adet");
+  assert.equal(stockLevelLabel(99), "90+ adet");
+  assert.equal(stockLevelLabel(100), "100+ adet");
+  assert.equal(stockLevelLabel(4200), "100+ adet");
+  assert.doesNotMatch(stockLevelLabel(45), /az/);
   assert.equal(stockLevelLabel(0), "");
   assert.equal(stockLevelLabel(null), "");
   assert.equal(stockLevelLabel(undefined), "");
@@ -60,7 +62,7 @@ test("notebook highlights: two spec rows, warranty, stock bucket", () => {
     { label: "Ekran boyutu", value: '15.6"' },
     { label: "Bellek", value: "40 GB RAM" },
     { label: "Garanti Süresi", value: "24 Ay" },
-    { label: "Stok Durumu", value: "Son 3 adet" },
+    { label: "Stok Durumu", value: "3 adet" },
   ]);
 });
 
@@ -78,7 +80,7 @@ test("codes and filler rows never become tiles; brand fills a thin card", () => 
   );
   assert.deepEqual(items, [
     { label: "Garanti Süresi", value: "24 Ay" },
-    { label: "Stok Durumu", value: "50+ adet" },
+    { label: "Stok Durumu", value: "100+ adet" },
     { label: "Marka", value: "Almera" },
   ]);
   const text = JSON.stringify(items);
@@ -123,7 +125,7 @@ test("public detail product carries highlights; compact list rows do not", () =>
   const full = toPublicProduct(product);
   assert.ok(Array.isArray(full.highlights));
   assert.ok(full.highlights.some((item) => item.label === "Garanti Süresi" && item.value === "24 Ay"));
-  assert.ok(full.highlights.some((item) => item.label === "Stok Durumu" && item.value === "10 adetten az"));
+  assert.ok(full.highlights.some((item) => item.label === "Stok Durumu" && item.value === "7 adet"));
   assert.doesNotMatch(JSON.stringify(full), /100\.10\.10\.0008/);
   assert.equal(Object.prototype.hasOwnProperty.call(full, "stockQty"), false);
   const compact = toPublicProduct(product, { compact: true });
