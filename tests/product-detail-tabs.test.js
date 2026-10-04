@@ -37,8 +37,29 @@ test("product detail tabs and spec chips are rendered in JS", () => {
   assert.match(script, /buildSpecTableFromRows/);
   assert.doesNotMatch(script, /detail-empty/);
   assert.match(script, /İade ve Cayma/);
-  assert.match(script, /trust\.innerHTML =\s*"<li>Stokta · KDV dahil fiyat<\/li><li>3D Secure güvenli ödeme<\/li>";/);
+  assert.doesNotMatch(script, /<li>Faturalı satış<\/li>/);
+  assert.match(script, /<li>2 iş gününde kargoda<\/li>/);
+  assert.match(script, /<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz<\/li>/);
+  assert.match(script, /href="https:\/\/wa\.me\/905555070724"[^>]*>WhatsApp<\/a> · <a href="tel:\+905555070724">0555 507 07 24<\/a>/);
+  assert.match(script, /if \(isOriginalProduct\(product\)\) trustItems\.push\("<li>Orijinal ürün<\/li>"\);/);
+  assert.match(script, /"Siparişiniz 2 iş gününde kargoya verilir\."/);
+  assert.doesNotMatch(script, /Teslimat süresi sipariş onayından sonra size bildirilir/);
   assert.match(css, /\.detail-spec-grid/);
   assert.match(css, /\.detail-spec-value\.is-highlight/);
+  assert.match(css, /\.detail-trust a \{/);
   assert.match(html, /detail-specs\.js/);
+});
+
+test("'Orijinal ürün' is withheld from muadil / compatible consumables", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const script = fs.readFileSync(path.resolve(__dirname, "..", "assets", "js", "urun-detay.js"), "utf8");
+  const src = script.match(/function isOriginalProduct\(product\) \{[\s\S]*?\n  \}/);
+  assert.ok(src, "isOriginalProduct bulunamadı");
+  const isOriginalProduct = new Function(src[0] + "\nreturn isOriginalProduct;")();
+  assert.equal(isOriginalProduct({ mid: "yazici-tuketim-urunleri-orj", name: "HP 85A Orijinal Toner" }), true);
+  assert.equal(isOriginalProduct({ mid: "yazici-tuketim-urunleri-muadil", name: "HP 85A Toner" }), false);
+  assert.equal(isOriginalProduct({ mid: "fotokopi-tuketim", name: "Canon C-EXV33 Muadil Toner" }), false);
+  assert.equal(isOriginalProduct({ mid: "fotokopi-tuketim", name: "Samsung MLT-D111S Uyumlu Toner" }), false);
+  assert.equal(isOriginalProduct({ mid: "tasinabilir-bilgisayarlar", name: "Lenovo V15 Notebook" }), true);
 });

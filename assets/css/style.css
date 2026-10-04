@@ -3264,6 +3264,10 @@ h1, h2, h3, h4 {
   color: var(--brand);
   font-weight: 800;
 }
+.detail-trust a {
+  color: var(--brand);
+  font-weight: 600;
+}
 .detail-hub {
   margin: 18px 0 0;
   padding: 14px 16px 16px;

@@ -123,6 +123,13 @@
     });
   }
 
+  /** Muadil/uyumlu sarf malzemesi orijinal değildir; "Orijinal ürün" yalnızca diğerlerinde. */
+  function isOriginalProduct(product) {
+    const mid = String(product.mid || "");
+    if (/muadil/i.test(mid)) return false;
+    return !/\b(muadil|uyumlu|compatible)\b/i.test(String(product.name || ""));
+  }
+
   function buildHighlights(product) {
     const items = Array.isArray(product.highlights)
       ? product.highlights.filter((item) => item && item.label && item.value)
@@ -197,7 +204,7 @@
       "Fiyatlar KDV dahil gösterilir.",
       "Ödeme Akbank 3D Secure ile kartınızdan alınır.",
       "Sipariş sonrası faturalı satış yapılır.",
-      "Teslimat süresi sipariş onayından sonra size bildirilir.",
+      "Siparişiniz 2 iş gününde kargoya verilir.",
     ];
     const gross = window.PatygoCatalog.priceInclVat(product);
     const shipInfo =
@@ -416,8 +423,14 @@
 
     const trust = document.createElement("ul");
     trust.className = "detail-trust";
-    trust.innerHTML =
-      "<li>Stokta · KDV dahil fiyat</li><li>3D Secure güvenli ödeme</li>";
+    const trustItems = ["<li>Stokta · KDV dahil fiyat</li>"];
+    if (isOriginalProduct(product)) trustItems.push("<li>Orijinal ürün</li>");
+    trustItems.push(
+      "<li>2 iş gününde kargoda</li>",
+      "<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz</li>",
+      '<li>Sorunuz mu var? <a href="https://wa.me/905555070724" target="_blank" rel="noopener noreferrer">WhatsApp</a> · <a href="tel:+905555070724">0555 507 07 24</a></li>'
+    );
+    trust.innerHTML = trustItems.join("");
 
     if (leaf) info.appendChild(cat);
     info.appendChild(tag);
