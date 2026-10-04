@@ -179,6 +179,10 @@ h1, h2, h3, h4 {
   display: block;
   border-radius: 0;
 }
+/* 861–1023px arasında iki satırlı menü başlıkları zaten dar; büyük logo yalnızca 1024px üstünde. */
+@media (min-width: 1024px) {
+  .brand img { height: 56px; }
+}
 .nav-links {
   display: flex;
   align-items: stretch;
