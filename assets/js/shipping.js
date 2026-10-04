@@ -13,7 +13,51 @@
       shippingFee: Math.max(0, Number(s.shippingFee) || 0),
       minOrderAmount: Math.max(0, Number(s.minOrderAmount) || 0),
       enabled: Boolean(s.enabled) || Number(s.shippingFee) > 0,
+      dispatchBusinessDays: Math.min(10, Math.max(1, Math.round(Number(s.dispatchBusinessDays) || 2))),
+      closedDays: Array.isArray(s.closedDays) ? s.closedDays.map(String) : [],
     };
+  }
+
+  // Sabit resmî tatiller; dinî bayramlar her yıl değiştiği için panelden "kapalı gün" olarak girilir.
+  const FIXED_HOLIDAYS = ["01-01", "04-23", "05-01", "05-19", "07-15", "08-30", "10-29"];
+  const ISTANBUL_OFFSET_MS = 3 * 3600000;
+  const DAY_MS = 86400000;
+
+  function isBusinessDay(date, closedDays) {
+    const weekday = date.getUTCDay();
+    if (weekday === 0 || weekday === 6) return false;
+    const iso = date.toISOString().slice(0, 10);
+    if (FIXED_HOLIDAYS.indexOf(iso.slice(5)) !== -1) return false;
+    return closedDays.indexOf(iso) === -1;
+  }
+
+  /** Counts business days from the next day in Europe/Istanbul (UTC+3); returns a UTC-midnight Date. */
+  function estimateDispatchDate(nowMs, settings) {
+    const cfg = normalize(settings || cached || {});
+    const local = new Date((Number(nowMs) || Date.now()) + ISTANBUL_OFFSET_MS);
+    let cursor = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+    let remaining = cfg.dispatchBusinessDays;
+    for (let guard = 0; guard < 60 && remaining > 0; guard += 1) {
+      cursor += DAY_MS;
+      if (isBusinessDay(new Date(cursor), cfg.closedDays)) remaining -= 1;
+    }
+    return new Date(cursor);
+  }
+
+  function formatDispatchDate(date) {
+    return date.toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "long",
+      weekday: "long",
+      timeZone: "UTC",
+    });
+  }
+
+  function createDispatchEl(settings) {
+    const el = document.createElement("p");
+    el.className = "product-dispatch";
+    el.textContent = "Tahmini kargoya veriliş: " + formatDispatchDate(estimateDispatchDate(Date.now(), settings));
+    return el;
   }
 
   function round2(n) {
@@ -160,6 +204,12 @@
     cartShippingInfo,
     minimumOrderInfo,
     createProductShippingEl,
+    estimateDispatchDate,
+    formatDispatchDate,
+    createDispatchEl,
+    get dispatchBusinessDays() {
+      return normalize(cached || {}).dispatchBusinessDays;
+    },
     formatMoney,
     normalize,
   };

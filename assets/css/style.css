@@ -1563,6 +1563,17 @@ h1, h2, h3, h4 {
   margin: 0 0 14px;
   font-size: 0.9375rem;
 }
+.detail-shipping + .product-dispatch { margin-top: -8px; }
+.product-dispatch,
+.cart-dispatch {
+  margin: 0 0 14px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f766e;
+  line-height: 1.4;
+}
+.cart-dispatch { margin: 0.5rem 0 0.75rem; font-size: 0.875rem; }
+.cart-dispatch[hidden] { display: none; }
 .detail-installments {
   margin: 0 0 14px;
   border: 1px solid var(--line);

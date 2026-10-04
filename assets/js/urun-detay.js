@@ -184,6 +184,12 @@
   }
 
   /** Muadil/uyumlu sarf malzemesi orijinal değildir; "Orijinal ürün" yalnızca diğerlerinde. */
+  function dispatchDaysLabel() {
+    const days =
+      (window.PatygoShipping && Number(window.PatygoShipping.dispatchBusinessDays)) || 2;
+    return days + " iş gününde";
+  }
+
   function isOriginalProduct(product) {
     const mid = String(product.mid || "");
     if (/muadil/i.test(mid)) return false;
@@ -264,7 +270,7 @@
       "Fiyatlar KDV dahil gösterilir.",
       "Ödeme Akbank 3D Secure ile kartınızdan alınır.",
       "Sipariş sonrası faturalı satış yapılır.",
-      "Siparişiniz 2 iş gününde kargoya verilir.",
+      "Siparişiniz " + dispatchDaysLabel() + " kargoya verilir.",
     ];
     const gross = window.PatygoCatalog.priceInclVat(product);
     const shipInfo =
@@ -569,6 +575,10 @@
     if (shippingLine) {
       shippingLine.classList.add("detail-shipping");
     }
+    const dispatchLine =
+      window.PatygoShipping && typeof window.PatygoShipping.createDispatchEl === "function"
+        ? window.PatygoShipping.createDispatchEl()
+        : null;
     const actions = document.createElement("div");
     actions.className = "actions";
     let addQty = 1;
@@ -604,7 +614,7 @@
     const trustItems = ["<li>Stokta · KDV dahil fiyat</li>"];
     if (isOriginalProduct(product)) trustItems.push("<li>Orijinal ürün</li>");
     trustItems.push(
-      "<li>2 iş gününde kargoda</li>",
+      "<li>" + dispatchDaysLabel() + " kargoda</li>",
       "<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz</li>",
       '<li>Sorunuz mu var? <a href="https://wa.me/905555070724" target="_blank" rel="noopener noreferrer">WhatsApp</a> · <a href="tel:+905555070724">0555 507 07 24</a></li>'
     );
@@ -614,6 +624,7 @@
     info.appendChild(h1);
     info.appendChild(price);
     if (shippingLine) info.appendChild(shippingLine);
+    if (dispatchLine) info.appendChild(dispatchLine);
     const installmentTable = buildInstallmentTable(window.PatygoCatalog.priceInclVat(product));
     if (installmentTable) info.appendChild(installmentTable);
     info.appendChild(actions);

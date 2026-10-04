@@ -2092,6 +2092,8 @@ async function handleApi(req, res, urlPath) {
         freeShippingThreshold: body.freeShippingThreshold,
         shippingFee: body.shippingFee,
         minOrderAmount: body.minOrderAmount,
+        dispatchBusinessDays: body.dispatchBusinessDays,
+        closedDays: body.closedDays,
       });
       akakceXmlMemo = null;
       return json(res, 200, { ok: true, settings });

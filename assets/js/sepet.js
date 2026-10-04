@@ -99,6 +99,20 @@
     }
   }
 
+  function renderDispatchEstimate(totals) {
+    const el = document.getElementById("cartDispatch");
+    const api = window.PatygoShipping;
+    if (!el) return;
+    if (!totals.lines.length || !api || typeof api.estimateDispatchDate !== "function") {
+      el.hidden = true;
+      return;
+    }
+    el.textContent =
+      "Bugün sipariş verirseniz tahmini kargoya veriliş: " +
+      api.formatDispatchDate(api.estimateDispatchDate(Date.now()));
+    el.hidden = false;
+  }
+
   function minimumOrderShortfall(totals) {
     const hint = document.getElementById("cartMinimumHint");
     const info =
@@ -122,6 +136,7 @@
     document.getElementById("cartVat").textContent = money(totals.vat);
     document.getElementById("cartTotal").textContent = money(totals.total);
     renderShippingSummary(totals);
+    renderDispatchEstimate(totals);
     const belowMinimum = minimumOrderShortfall(totals);
     renderMobileBar(totals, belowMinimum);
 

@@ -5103,6 +5103,8 @@
   const shippingFreeThreshold = document.getElementById("shippingFreeThreshold");
   const shippingFeeAmount = document.getElementById("shippingFeeAmount");
   const shippingMinOrder = document.getElementById("shippingMinOrder");
+  const shippingDispatchDays = document.getElementById("shippingDispatchDays");
+  const shippingClosedDays = document.getElementById("shippingClosedDays");
   const shippingPreview = document.getElementById("shippingPreview");
   const adminShippingNote = document.getElementById("adminShippingNote");
   let shippingSettingsSaved = null;
@@ -5124,6 +5126,7 @@
     const fee = Math.max(0, Number(settings && settings.shippingFee) || 0);
     const threshold = Math.max(0, Number(settings && settings.freeShippingThreshold) || 0);
     const minOrder = Math.max(0, Number(settings && settings.minOrderAmount) || 0);
+    const closedDays = settings && Array.isArray(settings.closedDays) ? settings.closedDays : [];
     shippingSettingsSummary.innerHTML =
       "<div><dt>Kargo bedeli (KDV dahil)</dt><dd>" +
       (fee > 0 ? formatMoney(fee) : "Tanımlı değil") +
@@ -5133,6 +5136,12 @@
       "</dd></div>" +
       "<div><dt>Minimum sepet tutarı</dt><dd>" +
       (minOrder > 0 ? formatMoney(minOrder) + " (KDV dahil, kargo hariç)" : "Yok") +
+      "</dd></div>" +
+      "<div><dt>Kargoya veriliş</dt><dd>" +
+      escapeHtml(String((settings && settings.dispatchBusinessDays) || 2)) +
+      " iş günü</dd></div>" +
+      "<div><dt>Kapalı günler</dt><dd>" +
+      (closedDays.length ? escapeHtml(closedDays.join(", ")) : "Yok") +
       "</dd></div>" +
       (settings && settings.updatedAt
         ? "<div><dt>Son güncelleme</dt><dd>" + escapeHtml(formatDate(settings.updatedAt)) + "</dd></div>"
@@ -5160,6 +5169,13 @@
       freeShippingThreshold: Math.max(0, Number(shippingFreeThreshold && shippingFreeThreshold.value) || 0),
       shippingFee: Math.max(0, Number(shippingFeeAmount && shippingFeeAmount.value) || 0),
       minOrderAmount: Math.max(0, Number(shippingMinOrder && shippingMinOrder.value) || 0),
+      dispatchBusinessDays: Math.min(
+        10,
+        Math.max(1, Math.round(Number(shippingDispatchDays && shippingDispatchDays.value) || 2))
+      ),
+      closedDays: String((shippingClosedDays && shippingClosedDays.value) || "")
+        .split(/[\s,;]+/)
+        .filter(Boolean),
     };
   }
 
@@ -5184,6 +5200,10 @@
     }
     if (shippingMinOrder) {
       shippingMinOrder.value = Number(cfg.minOrderAmount) > 0 ? String(cfg.minOrderAmount) : "";
+    }
+    if (shippingDispatchDays) shippingDispatchDays.value = String(cfg.dispatchBusinessDays || 2);
+    if (shippingClosedDays) {
+      shippingClosedDays.value = Array.isArray(cfg.closedDays) ? cfg.closedDays.join("\n") : "";
     }
     renderShippingPreview();
   }
@@ -5261,6 +5281,8 @@
             freeShippingThreshold: values.freeShippingThreshold,
             shippingFee: values.shippingFee,
             minOrderAmount: values.minOrderAmount,
+            dispatchBusinessDays: values.dispatchBusinessDays,
+            closedDays: values.closedDays,
           }),
         });
         const settings = (saved && saved.settings) || values;

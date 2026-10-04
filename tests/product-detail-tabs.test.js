@@ -38,11 +38,12 @@ test("product detail tabs and spec chips are rendered in JS", () => {
   assert.doesNotMatch(script, /detail-empty/);
   assert.match(script, /İade ve Cayma/);
   assert.doesNotMatch(script, /<li>Faturalı satış<\/li>/);
-  assert.match(script, /<li>2 iş gününde kargoda<\/li>/);
+  assert.match(script, /"<li>" \+ dispatchDaysLabel\(\) \+ " kargoda<\/li>"/);
+  assert.match(script, /\|\| 2;\s*return days \+ " iş gününde";/);
   assert.match(script, /<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz<\/li>/);
   assert.match(script, /href="https:\/\/wa\.me\/905555070724"[^>]*>WhatsApp<\/a> · <a href="tel:\+905555070724">0555 507 07 24<\/a>/);
   assert.match(script, /if \(isOriginalProduct\(product\)\) trustItems\.push\("<li>Orijinal ürün<\/li>"\);/);
-  assert.match(script, /"Siparişiniz 2 iş gününde kargoya verilir\."/);
+  assert.match(script, /"Siparişiniz " \+ dispatchDaysLabel\(\) \+ " kargoya verilir\."/);
   assert.doesNotMatch(script, /Teslimat süresi sipariş onayından sonra size bildirilir/);
   assert.match(css, /\.detail-spec-grid/);
   assert.match(css, /\.detail-spec-value\.is-highlight/);
