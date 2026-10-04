@@ -10,7 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=search-sort-1" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p3" />
+  <script src="/assets/js/catalog-pending.js?v=1"></script>
 </head>
 <body class="products-page">
   <header class="site-header">
@@ -46,7 +47,14 @@
           <aside class="catalog-facets" data-catalog-facets hidden></aside>
           <div class="catalog-results">
             <p class="catalog-result-meta" data-catalog-meta hidden></p>
-            <div class="product-grid" data-catalog="all" aria-live="polite"></div>
+            <div class="product-grid" data-catalog="all" aria-live="polite" aria-busy="true">
+              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
+              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
+              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
+              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
+              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
+              <article class="product-card product-card--skeleton" aria-hidden="true"></article>
+            </div>
             <div class="catalog-infinite" data-catalog-infinite hidden>
               <div data-catalog-load-sentinel aria-hidden="true"></div>
               <p class="catalog-load-status" data-catalog-load-status hidden aria-live="polite"></p>
@@ -127,8 +135,8 @@
   </div>
 
   <script defer src="/assets/js/cart.js"></script>
-  <script defer src="/assets/js/shipping.js?v=storefront-ship-3"></script>
-  <script defer src="/assets/js/catalog.js?v=search-sort-1"></script>
+  <script defer src="/assets/js/shipping.js?v=storefront-ship-4"></script>
+  <script defer src="/assets/js/catalog.js?v=storefront-p3"></script>
   <script defer src="/assets/js/nav.js?v=nav-1023-1"></script>
   <script defer src="/assets/js/main.js?v=nav-1023-1"></script>
 </body>

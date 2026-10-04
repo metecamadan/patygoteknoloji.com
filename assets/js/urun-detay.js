@@ -41,6 +41,66 @@
     img.addEventListener("dragstart", (ev) => ev.preventDefault());
   }
 
+  let lightbox = null;
+
+  function ensureLightbox() {
+    if (lightbox) return lightbox;
+    const dialog = document.createElement("dialog");
+    dialog.className = "detail-lightbox";
+    dialog.setAttribute("aria-label", "Ürün görseli");
+    const img = document.createElement("img");
+    img.referrerPolicy = "no-referrer";
+    protectMedia(img);
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "detail-lightbox-close";
+    close.setAttribute("aria-label", "Kapat");
+    close.textContent = "×";
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "detail-lightbox-nav detail-lightbox-prev";
+    prev.setAttribute("aria-label", "Önceki görsel");
+    prev.textContent = "‹";
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "detail-lightbox-nav detail-lightbox-next";
+    next.setAttribute("aria-label", "Sonraki görsel");
+    next.textContent = "›";
+    const counter = document.createElement("p");
+    counter.className = "detail-lightbox-counter";
+    dialog.append(img, close, prev, next, counter);
+    document.body.appendChild(dialog);
+
+    const state = { images: [], index: 0 };
+    const show = (index) => {
+      const count = state.images.length;
+      state.index = (index + count) % count;
+      img.src = state.images[state.index];
+      counter.textContent = count > 1 ? state.index + 1 + " / " + count : "";
+      prev.hidden = next.hidden = count < 2;
+    };
+    close.addEventListener("click", () => dialog.close());
+    prev.addEventListener("click", () => show(state.index - 1));
+    next.addEventListener("click", () => show(state.index + 1));
+    dialog.addEventListener("click", (ev) => {
+      if (ev.target === dialog) dialog.close();
+    });
+    dialog.addEventListener("keydown", (ev) => {
+      if (ev.key === "ArrowLeft") show(state.index - 1);
+      else if (ev.key === "ArrowRight") show(state.index + 1);
+    });
+    lightbox = {
+      open(images, index, alt) {
+        state.images = images;
+        img.alt = alt || "";
+        show(index);
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else window.open(state.images[state.index], "_blank", "noopener");
+      },
+    };
+    return lightbox;
+  }
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -304,7 +364,14 @@
         if (next) mainImage.src = next;
       });
       protectMedia(mainImage);
-      media.appendChild(mainImage);
+      let activeIndex = 0;
+      const zoom = document.createElement("button");
+      zoom.type = "button";
+      zoom.className = "detail-zoom";
+      zoom.setAttribute("aria-label", "Görseli büyüt");
+      zoom.appendChild(mainImage);
+      zoom.addEventListener("click", () => ensureLightbox().open(images, activeIndex, product.name));
+      media.appendChild(zoom);
       gallery.appendChild(media);
 
       if (images.length > 1) {
@@ -323,6 +390,7 @@
           button.appendChild(thumb);
           button.addEventListener("click", () => {
             mainImage.src = url;
+            activeIndex = index;
             thumbs.querySelectorAll(".detail-thumb").forEach((item) => {
               item.classList.toggle("active", item === button);
             });
@@ -362,21 +430,14 @@
 
     const tag = document.createElement("span");
     tag.className = "brand-tag";
-    tag.textContent = product.brand;
+    tag.textContent =
+      typeof window.PatygoCatalog.prettyBrandName === "function"
+        ? window.PatygoCatalog.prettyBrandName(product.brand)
+        : product.brand;
 
     const h1 = document.createElement("h1");
     h1.textContent = product.name;
     h1.setAttribute("aria-current", "page");
-
-    const leaf = trail.length ? trail[trail.length - 1] : null;
-    const cat = document.createElement("p");
-    cat.className = "detail-cat";
-    if (leaf) {
-      const catLink = document.createElement("a");
-      catLink.href = leaf.href;
-      catLink.textContent = leaf.text;
-      cat.appendChild(catLink);
-    }
 
     const price = document.createElement("div");
     price.className = "price";
@@ -432,7 +493,6 @@
     );
     trust.innerHTML = trustItems.join("");
 
-    if (leaf) info.appendChild(cat);
     info.appendChild(tag);
     info.appendChild(h1);
     info.appendChild(price);

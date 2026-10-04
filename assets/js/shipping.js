@@ -104,12 +104,14 @@
     };
   }
 
-  function createProductShippingEl(grossInclVat) {
+  /** Listing cards show the free-shipping threshold instead of repeating the flat fee on every card. */
+  function createProductShippingEl(grossInclVat, options) {
     const info = productShippingInfo(grossInclVat);
     if (!info) return null;
     const el = document.createElement("p");
     el.className = "product-shipping" + (info.free ? " product-shipping--free" : "");
-    el.textContent = info.text;
+    el.textContent =
+      options && options.card && !info.free && info.thresholdHint ? info.thresholdHint : info.text;
     return el;
   }
 

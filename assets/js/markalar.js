@@ -39,4 +39,45 @@
       category.classList.toggle("is-collapsed", isOpen);
     });
   });
+
+  function foldBrand(value) {
+    return String(value || "")
+      .toLocaleLowerCase("tr-TR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/ı/g, "i")
+      .replace(/[^a-z0-9]+/g, "");
+  }
+
+  /** Only brands with live products become links; the rest stay as plain showcase tiles. */
+  function linkBrandTiles(brands) {
+    const byKey = new Map();
+    brands.forEach((row) => {
+      if (row && row.name && row.count > 0) byKey.set(foldBrand(row.name), row);
+    });
+    document.querySelectorAll(".brand-tile").forEach((tile) => {
+      if (tile.querySelector("a")) return;
+      const img = tile.querySelector("img");
+      const word = tile.querySelector(".logo-word");
+      const label = (img && img.getAttribute("alt")) || (word && word.textContent) || "";
+      const row = byKey.get(foldBrand(label));
+      if (!row) return;
+      const link = document.createElement("a");
+      link.className = "brand-tile-link";
+      link.href = "/urunler?marka=" + encodeURIComponent(row.name);
+      link.setAttribute("aria-label", row.name + " ürünleri (" + row.count + ")");
+      while (tile.firstChild) link.appendChild(tile.firstChild);
+      const count = document.createElement("span");
+      count.className = "brand-tile-count";
+      count.textContent = row.count + " ürün";
+      link.appendChild(count);
+      tile.appendChild(link);
+      tile.classList.add("brand-tile--linked");
+    });
+  }
+
+  fetch("/api/brands", { cache: "default" })
+    .then((res) => (res.ok ? res.json() : { brands: [] }))
+    .then((data) => linkBrandTiles(Array.isArray(data.brands) ? data.brands : []))
+    .catch(() => {});
 })();

@@ -24,6 +24,7 @@ const {
   mergeCatalogProducts,
   queryPublicCatalog,
   queryPublicCatalogIndexed,
+  buildBrandCounts,
   buildStorefrontIndex,
   buildStorefrontLeafKeys,
   homeFeaturedCatalog,
@@ -887,6 +888,7 @@ function writeCatalogBootstrapSnapshots() {
   try {
     const featured = homeFeaturedCatalog(mergedProducts(false), {
       popularity: popularProductScores(),
+      minPriceInclVat: shippingSettingsStore.getSettings().minOrderAmount,
       limit: 12,
     }, { routeIndex: index.routeIndex, ...catalogImageContext() });
     atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "home-featured.json"), {
@@ -1580,6 +1582,15 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  if (req.method === "GET" && urlPath === "/api/brands") {
+    return json(
+      res,
+      200,
+      { brands: buildBrandCounts(storefrontIndex(false).compactAll) },
+      { "Cache-Control": "public, max-age=300, stale-while-revalidate=900" }
+    );
+  }
+
   if (req.method === "GET" && urlPath === "/api/products") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const updatedAt = fs.existsSync(PRODUCTS_FILE)
@@ -1594,6 +1605,7 @@ async function handleApi(req, res, urlPath) {
       }
       const featured = homeFeaturedCatalog(mergedProducts(false), {
         popularity: popularProductScores(),
+        minPriceInclVat: shippingSettingsStore.getSettings().minOrderAmount,
         limit: requestUrl.searchParams.get("limit") || 12,
       }, { routeIndex: storefrontIndex(false).routeIndex, ...catalogImageContext() });
       const payload = {

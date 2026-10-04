@@ -500,7 +500,7 @@
     const presets = Array.isArray(data.pricePresets) ? data.pricePresets : [];
     const price = data.price || { min: 0, max: 0 };
     const selected = new Set(
-      ((applied && applied.brands) || []).map((name) => String(name).toLocaleUpperCase("tr-TR"))
+      ((applied && applied.brands) || []).map((name) => foldText(name))
     );
     const hasPanel = brands.length > 0 || price.max > 0;
     root.hidden = !hasPanel;
@@ -566,7 +566,7 @@
         const input = document.createElement("input");
         input.type = "checkbox";
         input.value = row.name;
-        input.checked = selected.has(String(row.name).toLocaleUpperCase("tr-TR"));
+        input.checked = selected.has(foldText(row.name));
         input.addEventListener("change", () => {
           const next = Array.from(list.querySelectorAll("input:checked")).map((el) => el.value);
           writeFacetQuery({
@@ -696,6 +696,11 @@
     if (title) title.textContent = "“" + q + "” için arama sonuçları";
     if (lead) lead.hidden = true;
     document.title = "“" + q + "” araması | Patygo Teknoloji";
+    settleCatalogHeading();
+  }
+
+  function settleCatalogHeading() {
+    document.documentElement.classList.remove("catalog-heading-pending");
   }
 
   function resetCatalogHeading() {
@@ -731,6 +736,7 @@
       lead.hidden = false;
     }
     document.title = "Ürünler | Patygo Teknoloji — Online Elektronik Mağaza";
+    settleCatalogHeading();
   }
 
   function applyCategoryHeading(resolved) {
@@ -794,6 +800,7 @@
         ) || "/urunler";
       canon.setAttribute("href", "https://patygoteknoloji.com" + path);
     }
+    settleCatalogHeading();
   }
 
   const prefetchingIds = new Set();
@@ -842,7 +849,7 @@
     article.dataset.cat = product.category || "";
     if (product.id) article.dataset.id = String(product.id);
 
-    const brand = String(product.brand || "").toUpperCase();
+    const brand = window.PatygoCatalog.prettyBrandName(product.brand).toUpperCase();
     const primaryImage =
       (Array.isArray(product.images) && product.images.find(Boolean)) ||
       product.image ||
@@ -926,7 +933,9 @@
 
     const shippingEl =
       window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"
-        ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product))
+        ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product), {
+            card: true,
+          })
         : null;
 
     const actions = document.createElement("div");

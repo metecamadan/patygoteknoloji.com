@@ -53,7 +53,7 @@ test("category listing uses four-column cards with qty stepper and infinite scro
   assert.match(urunler, /data-catalog-infinite/);
   assert.match(urunler, /data-catalog-load-sentinel/);
   assert.doesNotMatch(urunler, /data-catalog-pager/);
-  assert.match(urunler, /search-sort-1/);
+  assert.match(urunler, /storefront-p3/);
   assert.match(css, /\.catalog-layout\.has-facets \.product-grid[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
   // 5 sütun yalnızca 1440px düzende (>=1400px); daha dar ekranda kartlar sıkışmasın diye 4 sütun.
   const fiveColumnRules = css.match(/repeat\(5, minmax\(0, 1fr\)\)/g) || [];
@@ -125,8 +125,8 @@ test("homepage featured tabs are crawlable category links", () => {
   assert.match(catalogJs, /Promise\.race/);
   assert.match(catalogJs, /function listingSnapshotFileName\s*\(\s*query\s*\)/);
   assert.match(catalogJs, /listingSnapshotFileName/);
-  assert.match(indexHtml, /search-sort-1/);
-  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /search-sort-1/);
+  assert.match(indexHtml, /storefront-p3/);
+  assert.match(fs.readFileSync(path.join(root, "urunler.html"), "utf8"), /storefront-p3/);
   assert.match(catalogJs, /listingReloadToken/);
   assert.match(catalogJs, /readCatalogBootstrap/);
   assert.match(catalogJs, /function bindFeaturedTabs/);

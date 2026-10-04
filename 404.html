@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=search-sort-1" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p3" />
 </head>
 <body>
   <section class="section" style="min-height:100vh;display:grid;place-items:center;text-align:center">
@@ -17,9 +17,15 @@
       <a class="brand" href="/" style="justify-content:center;margin-bottom:28px"><img src="/assets/img/patygo-logo.png" alt="Patygo Teknoloji" style="height:44px" /></a>
       <div style="font-size:clamp(4rem,14vw,7rem);font-weight:800;letter-spacing:-.04em;color:var(--brand);line-height:1">404</div>
       <h1 style="margin:8px 0 12px">Aradığınız sayfa bulunamadı</h1>
-      <p style="color:var(--gray);margin-bottom:28px">Sayfa taşınmış veya kaldırılmış olabilir. Ana sayfaya dönebilir ya da bizimle iletişime geçebilirsiniz.</p>
+      <p style="color:var(--gray);margin-bottom:20px">Sayfa taşınmış veya kaldırılmış olabilir. Aradığınız ürünü arayabilir, kataloğa göz atabilir ya da bizimle iletişime geçebilirsiniz.</p>
+      <form class="nav-search not-found-search" action="/urunler" method="get" role="search">
+        <input type="search" name="q" placeholder="Ürün ara…" autocomplete="off" aria-label="Ürün ara" />
+        <button type="submit" aria-label="Ara"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+      </form>
       <div class="hero-cta" style="justify-content:center">
-        <a href="/" class="btn btn-primary btn-lg">Ana Sayfaya Dön</a>
+        <a href="/urunler" class="btn btn-primary btn-lg">Ürün kataloğu</a>
+        <a href="/" class="btn btn-ghost btn-lg">Ana Sayfa</a>
+        <a href="/sepet" class="btn btn-ghost btn-lg">Sepet</a>
         <a href="/iletisim" class="btn btn-ghost btn-lg">İletişim</a>
       </div>
     </div>

@@ -334,6 +334,17 @@ test("product search q parameter filters by text", async (t) => {
   const multiData = await multi.json();
   assert.equal(multiData.total, 1);
   assert.match(multiData.products[0].name, /Kingston/i);
+
+  const folded = await (await fetch(baseUrl + "/api/products?q=KİNGSTON")).json();
+  assert.equal(folded.total, 1);
+
+  const brands = await fetch(baseUrl + "/api/brands");
+  assert.equal(brands.status, 200);
+  const brandData = await brands.json();
+  assert.deepEqual(
+    brandData.brands.map((row) => [row.name, row.count]).sort(),
+    [["HP", 1], ["Kingston", 1]]
+  );
 });
 
 test("POST /admin serves login HTML instead of 405", async (t) => {
