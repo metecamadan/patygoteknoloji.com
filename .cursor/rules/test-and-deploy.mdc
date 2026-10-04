@@ -38,3 +38,9 @@ alwaysApply: true
 
 - Kullanıcı açıkça istemedikçe force push / `--no-verify` kullanma.
 - `.env`, private key ve secret değerlerini sohbete veya commit’e yazma.
+
+## VPS SSH erişimi (4 Eki 2026)
+
+- Root SSH yalnızca anahtarla; parolayla giriş kapalı. Yetkili iki anahtar: GitHub `DEPLOY_SSH_KEY` (`github-actions-patygo-deploy`) ve yönetim PC’si (`~/.ssh/patygo_vps`, `patygo-admin-pc`).
+- Yerel bakım scriptleri `scripts/vps_ssh.py` üzerinden bağlanır; root parola dosyası kullanılmaz.
+- Kullanıcının kararı: **yalnızca bu bilgisayar yetkili.** Başka bir cihaz, bulut agent veya Cursor ortamı VPS’e erişemiyorsa anahtar ekleme, parolayı açma, deploy’a anahtar ekleyen adım koyma — önce kullanıcıya sor.
