@@ -60,7 +60,6 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /fetch_has "http:\/\/127\.0\.0\.1:\$\{APP_PORT\}\/sitemap" 'urunler\/'/);
   assert.match(workflow, /ensure-sitemap-nginx\.sh/);
   assert.match(workflow, /ensure-product-shell-nginx\.sh/);
-  assert.match(workflow, /ensure-agent-ssh-key\.sh/);
   assert.match(workflow, /\/bilgisayar-tablet/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
@@ -81,15 +80,14 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(ensureProductShell, /systemctl reload nginx/);
   assert.match(ensureProductShell, /inserted before location \//);
   assert.doesNotMatch(ensureProductShell, /proxy_pass/);
-  const ensureAgentKey = fs.readFileSync(
-    path.join(root, "scripts", "ensure-agent-ssh-key.sh"),
-    "utf8"
-  );
-  assert.match(ensureAgentKey, /agent-laptop\.pub/);
-  assert.match(ensureAgentKey, /authorized_keys/);
-  assert.match(ensureAgentKey, /idempotent|already in authorized_keys/);
-  const agentPub = fs.readFileSync(path.join(root, "deploy", "agent-laptop.pub"), "utf8").trim();
-  assert.match(agentPub, /^ssh-ed25519\s+[A-Za-z0-9+/=]+/);
+});
+
+test("deploy does not install extra SSH keys on the VPS", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci-deploy.yml"), "utf8");
+  assert.doesNotMatch(workflow, /ensure-agent-ssh-key|agent-laptop/);
+  assert.doesNotMatch(workflow, />>\s*\S*authorized_keys/);
+  assert.equal(fs.existsSync(path.join(root, "scripts", "ensure-agent-ssh-key.sh")), false);
+  assert.equal(fs.existsSync(path.join(root, "deploy", "agent-laptop.pub")), false);
 });
 
 test("nginx serves checkout HTML from disk when Node is busy", () => {

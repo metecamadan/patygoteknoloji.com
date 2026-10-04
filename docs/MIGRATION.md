@@ -80,4 +80,5 @@ rsync -az root@8.229.158.154:/var/www/patygo/.runtime/ /var/www/patygoteknoloji.
 
 - Root şifresini taşıma sonrası değiştirin
 - `Desktop\_migrate_pass.local` dosyasını silin
+- Root SSH yalnızca anahtarla: GitHub deploy anahtarı + yönetim PC'si (`~/.ssh/patygo_vps`, `scripts/vps_ssh.py`). Parolayla giriş kapalı; yeni cihaz eklemek bilinçli bir karardır, deploy anahtar eklemez.
 - Eski GCP VM’yi 1 hafta sonra kapatın (yedek alındıktan sonra)
