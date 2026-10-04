@@ -151,9 +151,57 @@ test("checkout and product page render installments from /api/installments and s
   assert.match(checkout, /installCount: totals\.installCount \|\| 1/);
   assert.match(checkout, /return applyInstallment\(applyCoupon\(summary\)\)/);
   assert.match(checkout, /Vade farkı \(/);
-  assert.match(detail, /buildInstallmentTable\(window\.PatygoCatalog\.priceInclVat\(product\)\)/);
+  assert.match(detail, /\{ id: "returns", label: "İade ve Cayma" \},\s*\{ id: "installments", label: "Taksit Seçenekleri" \},\s*\];/, "Taksit Seçenekleri is the last detail tab");
+  assert.match(detail, /instPanel\.appendChild\(buildInstallmentTable\(gross\)\);/);
+  assert.doesNotMatch(detail, /info\.appendChild\(installmentTable\)/, "installments live only in the tab");
+  assert.match(detail, /label: "Tek çekim", monthly: gross, total: gross/);
   assert.match(detail, /kartınızın bankasına ve kart tipine bağlıdır/);
+  assert.match(detail, /Şu anda yalnızca tek çekim ödeme sunulmaktadır\./);
   assert.match(detailHtml, /installments\.js\?v=/);
+});
+
+function renderInstallmentTab(settings, quoteRows, gross) {
+  const detail = read("assets/js/urun-detay.js");
+  const src = detail.match(/function buildInstallmentTable\(gross\) \{[\s\S]*?\n  \}/);
+  assert.ok(src, "buildInstallmentTable bulunamadı");
+  const node = (tag) => ({
+    tag,
+    className: "",
+    textContent: "",
+    innerHTML: "",
+    children: [],
+    appendChild(child) {
+      this.children.push(child);
+      return child;
+    },
+  });
+  const el = (tag, className, text) => Object.assign(node(tag), { className: className || "", textContent: text || "" });
+  const window = {
+    PatygoInstallments: { settings, quote: () => quoteRows },
+    PatygoCatalog: { formatPrice: (n) => "₺" + Number(n).toFixed(2) },
+  };
+  const build = new Function("el", "window", src[0] + "\nreturn buildInstallmentTable;")(el, window);
+  const box = build(gross);
+  const table = box.children[0].children[0];
+  const rows = table.children[1].children.map((tr) => tr.children.map((td) => td.textContent));
+  return { rows, note: box.children[1].textContent };
+}
+
+test("Taksit Seçenekleri tab: single payment row always, installment rows and honest note", () => {
+  const off = renderInstallmentTab({ enabled: false, minAmount: 0 }, [], 1200);
+  assert.deepEqual(off.rows, [["Tek çekim", "₺1200.00", "₺1200.00"]]);
+  assert.match(off.note, /Şu anda yalnızca tek çekim ödeme sunulmaktadır\./);
+
+  const on = renderInstallmentTab({ enabled: true, minAmount: 0 }, [{ count: 3, ratePercent: 5, total: 1260, monthly: 420 }], 1200);
+  assert.deepEqual(on.rows, [
+    ["Tek çekim", "₺1200.00", "₺1200.00"],
+    ["3 taksit", "₺420.00", "₺1260.00"],
+  ]);
+  assert.match(on.note, /kartınızın bankasına ve kart tipine bağlıdır/);
+
+  const belowMin = renderInstallmentTab({ enabled: true, minAmount: 2000 }, [], 1200);
+  assert.equal(belowMin.rows.length, 1);
+  assert.match(belowMin.note, /Taksit seçenekleri ₺2000\.00 ve üzeri tutarlarda sunulur\./);
 });
 
 test("pre-information form and distance sales contract disclose vade farkı", () => {

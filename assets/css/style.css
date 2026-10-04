@@ -1578,40 +1578,34 @@ h1, h2, h3, h4 {
 }
 .cart-dispatch { margin: 0.5rem 0 0.75rem; font-size: 0.875rem; }
 .cart-dispatch[hidden] { display: none; }
-.detail-installments {
-  margin: 0 0 14px;
+.detail-installments { font-size: 0.9375rem; }
+.detail-installment-scroll {
+  overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 0.9rem;
-}
-.detail-installments summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  font-weight: 600;
-  color: var(--brand);
-  cursor: pointer;
+  border-radius: 12px;
 }
 .detail-installment-table {
   width: 100%;
+  min-width: 360px;
   border-collapse: collapse;
 }
 .detail-installment-table th,
 .detail-installment-table td {
-  padding: 8px 14px;
+  padding: 10px 14px;
   border-top: 1px solid var(--line);
   text-align: left;
 }
-.detail-installment-table th {
-  font-weight: 600;
-  color: var(--muted-2);
+.detail-installment-table thead th {
+  border-top: 0;
+  background: var(--bg-soft);
+  font-weight: 700;
+  color: var(--muted);
 }
+.detail-installment-table td + td { font-variant-numeric: tabular-nums; }
 .detail-installment-note {
-  margin: 0;
-  padding: 8px 14px 12px;
+  margin: 10px 0 0;
   font-size: 0.8125rem;
-  color: var(--muted-2);
+  color: var(--muted);
 }
 .shipping-hint {
   margin: -0.25rem 0 0.65rem;

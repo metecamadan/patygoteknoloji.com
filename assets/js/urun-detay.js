@@ -227,6 +227,7 @@
       { id: "desc", label: "Ürün Açıklaması" },
       { id: "payment", label: "Ödeme ve Teslimat" },
       { id: "returns", label: "İade ve Cayma" },
+      { id: "installments", label: "Taksit Seçenekleri" },
     ];
     defs.forEach((def, index) => {
       const tab = el("button", "detail-tab" + (index === 0 ? " is-active" : ""));
@@ -318,9 +319,16 @@
       '<li><a href="/mesafeli-satis-sozlesmesi">Mesafeli satış sözleşmesi</a></li>';
     retPanel.appendChild(retList);
 
+    const instPanel = el("div", "detail-tabpanel");
+    instPanel.hidden = true;
+    instPanel.setAttribute("role", "tabpanel");
+    instPanel.setAttribute("data-tab", "installments");
+    instPanel.appendChild(buildInstallmentTable(gross));
+
     panels.appendChild(descPanel);
     panels.appendChild(payPanel);
     panels.appendChild(retPanel);
+    panels.appendChild(instPanel);
     section.appendChild(tablist);
     section.appendChild(panels);
     wireDetailTabs(section);
@@ -330,31 +338,37 @@
   function buildInstallmentTable(gross) {
     const api = window.PatygoInstallments;
     const rows = api && typeof api.quote === "function" ? api.quote(gross) : [];
-    if (!rows.length) return null;
-    const box = el("details", "detail-installments");
-    const maxCount = rows.reduce((n, row) => Math.max(n, row.count), 0);
-    box.appendChild(el("summary", "", maxCount + " aya varan taksit seçenekleri"));
+    const settings = (api && api.settings) || {};
+    const formatPrice = window.PatygoCatalog.formatPrice;
+    const box = el("div", "detail-installments");
     const table = el("table", "detail-installment-table");
     const head = el("thead");
-    head.innerHTML = "<tr><th scope=\"col\">Taksit</th><th scope=\"col\">Aylık</th><th scope=\"col\">Toplam</th></tr>";
+    head.innerHTML =
+      '<tr><th scope="col">Taksit</th><th scope="col">Aylık ödeme</th><th scope="col">Toplam</th></tr>';
     const body = el("tbody");
-    rows.forEach((row) => {
-      const tr = el("tr");
-      tr.appendChild(el("td", "", row.count + " taksit"));
-      tr.appendChild(el("td", "", window.PatygoCatalog.formatPrice(row.monthly)));
-      tr.appendChild(el("td", "", window.PatygoCatalog.formatPrice(row.total)));
-      body.appendChild(tr);
-    });
+    [{ label: "Tek çekim", monthly: gross, total: gross }]
+      .concat(rows.map((row) => ({ label: row.count + " taksit", monthly: row.monthly, total: row.total })))
+      .forEach((row) => {
+        const tr = el("tr");
+        tr.appendChild(el("td", "", row.label));
+        tr.appendChild(el("td", "", formatPrice(row.monthly)));
+        tr.appendChild(el("td", "", formatPrice(row.total)));
+        body.appendChild(tr);
+      });
     table.appendChild(head);
     table.appendChild(body);
-    box.appendChild(table);
-    box.appendChild(
-      el(
-        "p",
-        "detail-installment-note",
-        "Tutarlar kargo hariç tek ürün içindir. Taksit imkânı kartınızın bankasına ve kart tipine bağlıdır."
-      )
-    );
+    const scroll = el("div", "detail-installment-scroll");
+    scroll.appendChild(table);
+    box.appendChild(scroll);
+    let note = "Tutarlar kargo hariç tek ürün içindir. ";
+    if (rows.length) {
+      note += "Taksit imkânı kartınızın bankasına ve kart tipine bağlıdır.";
+    } else if (settings.enabled && Number(settings.minAmount) > gross) {
+      note += "Taksit seçenekleri " + formatPrice(Number(settings.minAmount)) + " ve üzeri tutarlarda sunulur.";
+    } else {
+      note += "Şu anda yalnızca tek çekim ödeme sunulmaktadır.";
+    }
+    box.appendChild(el("p", "detail-installment-note", note));
     return box;
   }
 
@@ -819,8 +833,6 @@
     info.appendChild(price);
     if (shippingLine) info.appendChild(shippingLine);
     if (dispatchLine) info.appendChild(dispatchLine);
-    const installmentTable = buildInstallmentTable(window.PatygoCatalog.priceInclVat(product));
-    if (installmentTable) info.appendChild(installmentTable);
     info.appendChild(actions);
     info.appendChild(trust);
     const hub = buildHighlights(product);
