@@ -550,6 +550,17 @@
     price.innerHTML =
       window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
       " <small>KDV dahil</small>";
+    const discount = window.PatygoCatalog.discountInfo(product);
+    if (discount) {
+      const before = document.createElement("p");
+      before.className = "detail-price-before";
+      before.innerHTML =
+        "<s></s> <span class=\"discount-badge discount-badge--inline\"></span>" +
+        "<small>Son 30 günün en düşük fiyatına göre</small>";
+      before.querySelector("s").textContent = window.PatygoCatalog.formatPrice(discount.before);
+      before.querySelector(".discount-badge").textContent = "%" + discount.percent + " indirim";
+      price.prepend(before);
+    }
 
     const shippingLine =
       window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"

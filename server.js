@@ -71,6 +71,8 @@ const {
   publicBankReversalStatus,
 } = require("./lib/akbank-reversal");
 const { createOrderStore, ORDER_STATUSES, ADMIN_FULFILLMENT_STATUSES } = require("./lib/orders");
+const { getDb } = require("./lib/db");
+const { createPriceHistory } = require("./lib/price-history");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createConsentStore } = require("./lib/consent");
@@ -234,6 +236,31 @@ const analyticsStore = createAnalyticsStore(DATA_ROOT, {
   },
 });
 const orderStore = createOrderStore(DATA_ROOT);
+let priceHistory = null;
+try {
+  priceHistory = createPriceHistory(getDb(DATA_ROOT));
+} catch (err) {
+  console.error("[price-history] devre dışı:", err && err.message);
+}
+
+function recordPriceHistory(products) {
+  if (!priceHistory) return;
+  try {
+    priceHistory.record(products);
+  } catch (err) {
+    console.error("[price-history] kayıt hatası:", err && err.message);
+  }
+}
+
+function priceReferenceFor(id, price) {
+  if (!priceHistory) return 0;
+  try {
+    return priceHistory.referenceFor(id, price);
+  } catch (err) {
+    console.error("[price-history] okuma hatası:", err && err.message);
+    return 0;
+  }
+}
 const shippingSettingsStore = createShippingSettingsStore(DATA_ROOT);
 const installmentSettingsStore = createInstallmentSettingsStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
@@ -741,6 +768,7 @@ function catalogImageContext() {
     siteBaseUrl: SITE_BASE_URL,
     dataRoot: DATA_ROOT,
     placeholderMirrorFiles: getCachedPlaceholderMirrorFileSet(DATA_ROOT, mirrorIndex),
+    priceReference: priceReferenceFor,
   };
 }
 
@@ -781,7 +809,13 @@ function storefrontIndex(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
   const products = mergedProducts(includeInactiveManual);
   const memo = storefrontCatalogMemo[key];
-  if (!memo.index) memo.index = buildStorefrontIndex(products, catalogImageContext());
+  // compareAtPrice depends on the calendar day (30-day window), so the index is rebuilt daily.
+  const day = new Date().toISOString().slice(0, 10);
+  if (!memo.index || memo.day !== day) {
+    if (!includeInactiveManual) recordPriceHistory(products);
+    memo.index = buildStorefrontIndex(products, catalogImageContext());
+    memo.day = day;
+  }
   return memo.index;
 }
 

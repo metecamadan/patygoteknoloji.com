@@ -83,6 +83,16 @@
       }
       return Math.round(net * (1 + vat / 100) * 100) / 100;
     },
+    /** Server sends compareAtPrice only for a real drop vs the lowest price of the prior 30 days. */
+    discountInfo(product) {
+      const compareNet = Number(product && product.compareAtPrice) || 0;
+      if (!(compareNet > 0)) return null;
+      const now = this.priceInclVat(product);
+      const before = this.priceInclVat(compareNet, product.vatPercent);
+      if (!(before > now) || !(now > 0)) return null;
+      const percent = Math.floor(((before - now) / before) * 100);
+      return percent >= 5 ? { before, percent } : null;
+    },
     formatPrice(amount) {
       const n = Number(amount);
       const value = Number.isFinite(n) ? n : 0;
@@ -1058,6 +1068,19 @@
 
     const price = document.createElement("div");
     price.className = "price";
+    const discount = window.PatygoCatalog.discountInfo(product);
+    if (discount) {
+      const badge = document.createElement("span");
+      badge.className = "discount-badge";
+      badge.textContent = "%" + discount.percent;
+      badge.setAttribute("aria-label", "%" + discount.percent + " indirim");
+      visual.appendChild(badge);
+      const before = document.createElement("s");
+      before.className = "price-before";
+      before.textContent = window.PatygoCatalog.formatPrice(discount.before);
+      before.title = "Son 30 günün en düşük fiyatı";
+      price.appendChild(before);
+    }
     const amount = document.createElement("span");
     amount.className = "price-amount";
     amount.textContent = window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product));

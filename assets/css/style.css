@@ -1324,6 +1324,40 @@ h1, h2, h3, h4 {
   color: var(--brand);
 }
 .catalog-page-link[hidden] { display: none; }
+.discount-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.discount-badge--inline { position: static; display: inline-block; }
+.product-card .price { flex-wrap: wrap; }
+.price-before {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.detail-info .price { flex-wrap: wrap; }
+.detail-price-before {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.detail-price-before small { flex-basis: 100%; font-weight: 500; }
 .detail-ssr { padding: 8px 0 24px; }
 .detail-ssr h1 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 8px 0; }
 .detail-ssr .price { font-size: 1.5rem; font-weight: 800; margin: 8px 0; }
