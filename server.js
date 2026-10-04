@@ -114,6 +114,7 @@ const {
 const {
   createShippingSettingsStore,
   computeShippingFee,
+  minimumOrderError,
 } = require("./lib/shipping-settings");
 
 const ROOT = path.resolve(__dirname);
@@ -417,7 +418,10 @@ function buildCheckoutOrder(body) {
   subtotal = Math.round(subtotal * 100) / 100;
   vat = Math.round(vat * 100) / 100;
   const merchandiseTotal = Math.round((subtotal + vat) * 100) / 100;
-  const shippingFee = computeShippingFee(merchandiseTotal, shippingSettingsStore.getSettings());
+  const shippingSettings = shippingSettingsStore.getSettings();
+  const minimumError = minimumOrderError(merchandiseTotal, shippingSettings);
+  if (minimumError) throw new Error(minimumError);
+  const shippingFee = computeShippingFee(merchandiseTotal, shippingSettings);
   const total = Math.round((merchandiseTotal + shippingFee) * 100) / 100;
   const customer = (body && body.customer) || {};
   const nameCheck = validateCustomerName(customer.name);
@@ -1901,6 +1905,7 @@ async function handleApi(req, res, urlPath) {
       const settings = shippingSettingsStore.setSettings({
         freeShippingThreshold: body.freeShippingThreshold,
         shippingFee: body.shippingFee,
+        minOrderAmount: body.minOrderAmount,
       });
       akakceXmlMemo = null;
       return json(res, 200, { ok: true, settings });

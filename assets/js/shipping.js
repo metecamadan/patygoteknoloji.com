@@ -11,6 +11,7 @@
     return {
       freeShippingThreshold: Math.max(0, Number(s.freeShippingThreshold) || 0),
       shippingFee: Math.max(0, Number(s.shippingFee) || 0),
+      minOrderAmount: Math.max(0, Number(s.minOrderAmount) || 0),
       enabled: Boolean(s.enabled) || Number(s.shippingFee) > 0,
     };
   }
@@ -83,6 +84,26 @@
     };
   }
 
+  /** Kargo hariç, KDV dahil ürün tutarı; sunucu aynı kuralla siparişi reddeder. */
+  function minimumOrderInfo(merchandiseTotal, settings) {
+    const cfg = normalize(settings || cached || {});
+    if (cfg.minOrderAmount <= 0) return null;
+    const shortfall = Math.max(0, round2(cfg.minOrderAmount - round2(merchandiseTotal)));
+    return {
+      met: shortfall <= 0,
+      minimum: cfg.minOrderAmount,
+      shortfall,
+      message:
+        shortfall > 0
+          ? "Minimum sepet tutarı " +
+            formatMoney(cfg.minOrderAmount) +
+            " (KDV dahil, kargo hariç). Ödemeye geçmek için " +
+            formatMoney(shortfall) +
+            " daha ürün ekleyin."
+          : "",
+    };
+  }
+
   function createProductShippingEl(grossInclVat) {
     const info = productShippingInfo(grossInclVat);
     if (!info) return null;
@@ -135,6 +156,7 @@
     feeForMerchandise,
     productShippingInfo,
     cartShippingInfo,
+    minimumOrderInfo,
     createProductShippingEl,
     formatMoney,
     normalize,

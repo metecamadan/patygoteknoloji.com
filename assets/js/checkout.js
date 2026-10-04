@@ -106,6 +106,30 @@
     }
   }
 
+  function updateMinimumHint(totals) {
+    const hasLines = totals && Array.isArray(totals.lines) && totals.lines.length;
+    const info =
+      hasLines &&
+      window.PatygoShipping &&
+      typeof window.PatygoShipping.minimumOrderInfo === "function"
+        ? window.PatygoShipping.minimumOrderInfo(totals.merchandiseTotal)
+        : null;
+    let hint = document.getElementById("checkoutMinimumHint");
+    if (!hint && els.payBtn && els.payBtn.parentNode) {
+      hint = document.createElement("p");
+      hint.id = "checkoutMinimumHint";
+      hint.className = "minimum-order-hint";
+      hint.setAttribute("role", "status");
+      els.payBtn.parentNode.insertBefore(hint, els.payBtn);
+    }
+    const message = info && !info.met ? info.message : "";
+    if (hint) {
+      hint.textContent = message;
+      hint.hidden = !message;
+    }
+    return message;
+  }
+
   function makeOrderId() {
     const d = new Date();
     const stamp =
@@ -300,6 +324,7 @@
         if (els.grandTotal) els.grandTotal.textContent = formatTRY(total);
         const summary = { qty, sub, vat, merchandiseTotal, shipping, total, lines };
         updateShippingRow(summary);
+        summary.minimumError = updateMinimumHint(summary);
         return summary;
       }
       const t = window.PatygoCart.totals(window.PatygoCatalog.byId || catalogById || {});
@@ -320,6 +345,7 @@
         shipping: t.shipping,
         total: t.total,
         lines: t.lines,
+        minimumError: updateMinimumHint(t),
       };
     }
     calcFn = calc;
@@ -494,6 +520,12 @@
         if (!totals.lines.length) {
           els.note.classList.add("err");
           els.note.textContent = "Sepet boş.";
+          return;
+        }
+        if (totals.minimumError) {
+          els.note.classList.remove("ok");
+          els.note.classList.add("err");
+          els.note.textContent = totals.minimumError;
           return;
         }
 

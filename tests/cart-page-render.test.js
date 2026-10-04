@@ -6,6 +6,7 @@ const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
 const cartJs = fs.readFileSync(path.join(root, "assets", "js", "cart.js"), "utf8");
+const shippingJs = fs.readFileSync(path.join(root, "assets", "js", "shipping.js"), "utf8");
 const sepetJs = fs.readFileSync(path.join(root, "assets", "js", "sepet.js"), "utf8");
 
 function makeEl(tag) {
@@ -70,10 +71,11 @@ function memoryStorage(store) {
   };
 }
 
-function bootCartPage(cartItems) {
+function bootCartPage(cartItems, shippingSettings = {}) {
   const summary = makeEl("div");
   const ids = {};
   for (const id of [
+    "cartMinimumHint",
     "cartLines",
     "cartNote",
     "cartCheckout",
@@ -95,10 +97,6 @@ function bootCartPage(cartItems) {
     },
     dispatchEvent(evt) {
       (listeners[evt.type] || []).forEach((fn) => fn(evt));
-    },
-    PatygoShipping: {
-      settings: { enabled: false },
-      load: () => Promise.resolve({ enabled: false }),
     },
     PatygoCatalog: {
       byId: {},
@@ -122,11 +120,15 @@ function bootCartPage(cartItems) {
       this.type = type;
     },
     confirm: () => true,
+    AbortSignal,
+    setTimeout,
+    fetch: async () => ({ ok: true, json: async () => shippingSettings }),
   };
   vm.createContext(context);
   vm.runInContext(cartJs, context);
+  vm.runInContext(shippingJs, context);
   vm.runInContext(sepetJs, context);
-  return { window, lines: ids.cartLines, catalogReady };
+  return { window, ids, lines: ids.cartLines, catalogReady };
 }
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
@@ -151,6 +153,30 @@ test("cart repaints with catalog images once the catalog arrives after shipping"
   const imgs = findAll(page.lines, "IMG");
   assert.equal(imgs.length, 1);
   assert.equal(imgs[0].src, "https://patygoteknoloji.com/media/catalog/acer.webp");
+});
+
+test("cart below the minimum order blocks checkout and says how much is missing", async () => {
+  const page = bootCartPage(
+    [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 500, vatPercent: 20 }],
+    { shippingFee: 199, freeShippingThreshold: 1500, minOrderAmount: 750, enabled: true }
+  );
+  page.catalogReady.resolve([]);
+  await settle();
+  await settle();
+
+  const hint = page.ids.cartMinimumHint;
+  const checkout = page.ids.cartCheckout;
+  assert.equal(hint.hidden, false);
+  assert.match(hint.textContent, /Minimum sepet tutarı ₺?750/);
+  assert.match(hint.textContent, /150 daha ürün ekleyin/);
+  assert.equal(checkout.attrs["aria-disabled"], "true");
+
+  page.window.PatygoCart.setQty("sup-1", 2);
+  await settle();
+  await settle();
+  assert.equal(hint.hidden, true);
+  assert.equal(checkout.attrs["aria-disabled"], undefined);
+  assert.equal(checkout.href, "/odeme");
 });
 
 test("cart repaints when the quantity changes", async () => {

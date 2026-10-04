@@ -4,6 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   computeShippingFee,
+  minimumOrderShortfall,
+  minimumOrderError,
   normalizeShippingSettings,
   createShippingSettingsStore,
 } = require("../lib/shipping-settings");
@@ -42,6 +44,28 @@ test("shipping settings store persists admin values", () => {
   assert.equal(saved.freeShippingThreshold, 3000);
   assert.equal(saved.shippingFee, 99);
   assert.equal(store.getPublic().enabled, true);
+});
+
+test("minimum order: shortfall below the floor, none at or above it, off when unset", () => {
+  const settings = normalizeShippingSettings({ minOrderAmount: 750, shippingFee: 199 });
+  assert.equal(minimumOrderShortfall(500, settings), 250);
+  assert.equal(minimumOrderShortfall(750, settings), 0);
+  assert.equal(minimumOrderShortfall(1200, settings), 0);
+  assert.equal(minimumOrderError(750, settings), null);
+  assert.match(minimumOrderError(500, settings), /Minimum sepet tutarı ₺750,00/);
+  assert.match(minimumOrderError(500, settings), /₺250,00 daha/);
+  assert.equal(minimumOrderShortfall(10, normalizeShippingSettings({ shippingFee: 199 })), 0);
+});
+
+test("saving shipping settings without minOrderAmount keeps the stored minimum", () => {
+  const root = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "patygo-ship-min-"));
+  const store = createShippingSettingsStore(root);
+  store.setSettings({ freeShippingThreshold: 1500, shippingFee: 199, minOrderAmount: 750 });
+  const saved = store.setSettings({ freeShippingThreshold: 1500, shippingFee: 179 });
+  assert.equal(saved.minOrderAmount, 750);
+  assert.equal(saved.shippingFee, 179);
+  assert.equal(store.getPublic().minOrderAmount, 750);
+  assert.equal(store.setSettings({ minOrderAmount: 0 }).minOrderAmount, 0);
 });
 
 test("resolveAkakceShipPrice uses panel shipping rules per product gross price", () => {
@@ -184,4 +208,48 @@ test("admin shipping API and payment total include kargo bedeli", async (t) => {
   assert.equal(feed.status, 200);
   const feedXml = await feed.text();
   assert.match(feedXml, /<shipPrice>75\.00<\/shipPrice>/);
+
+  const putMin = await fetch(baseUrl + "/api/admin/shipping/settings", {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ minOrderAmount: 500 }),
+  });
+  assert.equal(putMin.status, 200);
+  const minSettings = (await putMin.json()).settings;
+  assert.equal(minSettings.minOrderAmount, 500);
+  assert.equal(minSettings.shippingFee, 75, "omitted fields keep their saved values");
+  assert.equal((await (await fetch(baseUrl + "/api/shipping")).json()).minOrderAmount, 500);
+
+  const checkoutBody = (qty) =>
+    JSON.stringify({
+      items: [{ productId: "ship-test-item", qty }],
+      customer: {
+        name: "Kargo Test",
+        email: "ship@example.com",
+        phone: "05555555555",
+        billingAddress: "Test Mah. No:1 İstanbul",
+        shippingAddress: "Test Mah. No:1 İstanbul",
+      },
+      contractsAccepted: true,
+      kvkkAccepted: true,
+    });
+  const below = await fetch(baseUrl + "/api/payment/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: checkoutBody(1),
+  });
+  assert.equal(below.status, 422);
+  const belowBody = await below.json();
+  assert.equal(belowBody.ok, false);
+  assert.match(belowBody.error, /Minimum sepet tutarı ₺500,00/);
+  assert.match(belowBody.error, /₺380,00 daha/);
+
+  const above = await fetch(baseUrl + "/api/payment/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: checkoutBody(5),
+  });
+  assert.equal(above.status, 200);
+  // 5 × 120 KDV dahil = 600 + 75 kargo
+  assert.equal(Number((await above.json()).fields.amount), 675);
 });

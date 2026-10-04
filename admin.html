@@ -514,6 +514,11 @@
                   <input id="shippingFeeAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ör. 149" />
                   <p class="admin-field-help">Eşik altındaki siparişlere eklenir ve ödeme tutarına dahil edilir.</p>
                 </div>
+                <div class="field">
+                  <label for="shippingMinOrder">Minimum sepet tutarı (KDV dahil, kargo hariç, TL)</label>
+                  <input id="shippingMinOrder" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ör. 750" />
+                  <p class="admin-field-help">Ürün toplamı bu tutarın altındaki sepetler ödemeye geçemez. Boş bırakılırsa minimum uygulanmaz.</p>
+                </div>
                 <p class="admin-field-help" id="shippingPreview" aria-live="polite"></p>
                 <div class="admin-form-actions">
                   <button type="submit" class="btn btn-primary">Kaydet</button>
@@ -1063,6 +1068,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=unlisted-menu-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=min-order-1"></script>
 </body>
 </html>

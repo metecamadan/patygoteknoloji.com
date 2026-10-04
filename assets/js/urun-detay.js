@@ -197,6 +197,17 @@
         );
       }
     }
+    const minimumInfo =
+      window.PatygoShipping && typeof window.PatygoShipping.minimumOrderInfo === "function"
+        ? window.PatygoShipping.minimumOrderInfo(gross)
+        : null;
+    if (minimumInfo) {
+      payItems.push(
+        "Minimum sepet tutarı " +
+          window.PatygoShipping.formatMoney(minimumInfo.minimum) +
+          " (KDV dahil, kargo hariç)."
+      );
+    }
     payList.innerHTML = payItems.filter(Boolean).map((line) => "<li>" + line + "</li>").join("");
     payPanel.appendChild(payList);
 
@@ -351,6 +362,19 @@
     if (shippingLine) {
       shippingLine.classList.add("detail-shipping");
     }
+    const minimumInfo =
+      window.PatygoShipping && typeof window.PatygoShipping.minimumOrderInfo === "function"
+        ? window.PatygoShipping.minimumOrderInfo(window.PatygoCatalog.priceInclVat(product))
+        : null;
+    let minimumLine = null;
+    if (minimumInfo && !minimumInfo.met) {
+      minimumLine = document.createElement("p");
+      minimumLine.className = "detail-minimum-order";
+      minimumLine.textContent =
+        "Minimum sepet tutarı " +
+        window.PatygoShipping.formatMoney(minimumInfo.minimum) +
+        " (kargo hariç). Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz.";
+    }
 
     const actions = document.createElement("div");
     actions.className = "actions";
@@ -392,6 +416,7 @@
     info.appendChild(h1);
     info.appendChild(price);
     if (shippingLine) info.appendChild(shippingLine);
+    if (minimumLine) info.appendChild(minimumLine);
     info.appendChild(actions);
     info.appendChild(trust);
 
@@ -589,9 +614,10 @@
 
   async function loadDetail() {
     // Kargo metni ürünü bloklamasın; arka planda gelsin.
-    if (window.PatygoShipping && typeof window.PatygoShipping.load === "function") {
-      window.PatygoShipping.load().catch(() => {});
-    }
+    const shippingReady =
+      window.PatygoShipping && typeof window.PatygoShipping.load === "function"
+        ? window.PatygoShipping.load().catch(() => null)
+        : Promise.resolve(null);
     if (detailRoute.mode === "none") {
       render(null, []);
       return;
@@ -606,6 +632,7 @@
         ? window.PatygoNav.categories
         : []) ||
       [];
+    let renderedCats = cats;
     const cached = cachedProductForRoute();
     if (cached) render(cached, cats);
 
@@ -635,11 +662,16 @@
       window.PatygoCatalog.loadCategories()
         .then((categories) => {
           if (Array.isArray(categories) && categories.length && product) {
+            renderedCats = categories;
             render(product, categories);
           }
         })
         .catch(() => {});
     }
+
+    shippingReady.then((settings) => {
+      if (settings && product) render(product, renderedCats);
+    });
   }
 
   loadDetail();

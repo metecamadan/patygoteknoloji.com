@@ -49,6 +49,22 @@
     }
   }
 
+  function minimumOrderShortfall(totals) {
+    const hint = document.getElementById("cartMinimumHint");
+    const info =
+      totals.lines.length &&
+      window.PatygoShipping &&
+      typeof window.PatygoShipping.minimumOrderInfo === "function"
+        ? window.PatygoShipping.minimumOrderInfo(totals.merchandiseTotal)
+        : null;
+    const blocked = Boolean(info && !info.met);
+    if (hint) {
+      hint.textContent = blocked ? info.message : "";
+      hint.hidden = !blocked;
+    }
+    return blocked;
+  }
+
   function render() {
     const byId = window.PatygoCatalog.byId || {};
     const totals = window.PatygoCart.totals(byId);
@@ -56,6 +72,7 @@
     document.getElementById("cartVat").textContent = money(totals.vat);
     document.getElementById("cartTotal").textContent = money(totals.total);
     renderShippingSummary(totals);
+    const belowMinimum = minimumOrderShortfall(totals);
 
     linesEl.textContent = "";
     if (!totals.lines.length) {
@@ -78,9 +95,15 @@
       return;
     }
 
-    checkoutBtn.classList.remove("disabled");
-    checkoutBtn.removeAttribute("aria-disabled");
-    checkoutBtn.href = "/odeme";
+    if (belowMinimum) {
+      checkoutBtn.classList.add("disabled");
+      checkoutBtn.setAttribute("aria-disabled", "true");
+      checkoutBtn.removeAttribute("href");
+    } else {
+      checkoutBtn.classList.remove("disabled");
+      checkoutBtn.removeAttribute("aria-disabled");
+      checkoutBtn.href = "/odeme";
+    }
     checkoutBtn.textContent = "Ödemeye geç";
     if (continueBtn) continueBtn.hidden = false;
     note.textContent =

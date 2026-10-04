@@ -2884,6 +2884,25 @@ h1, h2, h3, h4 {
 }
 .cart-continue { margin-top: 8px; color: var(--brand); border-color: transparent; }
 .cart-continue[hidden] { display: none !important; }
+.minimum-order-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.minimum-order-hint[hidden] { display: none !important; }
+.detail-minimum-order {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #9a3412;
+  line-height: 1.45;
+}
 .cart-note {
   margin-top: 14px;
   padding: 12px;

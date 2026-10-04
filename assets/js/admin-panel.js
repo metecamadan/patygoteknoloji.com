@@ -5074,6 +5074,7 @@
   const shippingCancelBtn = document.getElementById("shippingCancelBtn");
   const shippingFreeThreshold = document.getElementById("shippingFreeThreshold");
   const shippingFeeAmount = document.getElementById("shippingFeeAmount");
+  const shippingMinOrder = document.getElementById("shippingMinOrder");
   const shippingPreview = document.getElementById("shippingPreview");
   const adminShippingNote = document.getElementById("adminShippingNote");
   let shippingSettingsSaved = null;
@@ -5094,12 +5095,16 @@
     shippingSettingsSaved = settings || null;
     const fee = Math.max(0, Number(settings && settings.shippingFee) || 0);
     const threshold = Math.max(0, Number(settings && settings.freeShippingThreshold) || 0);
+    const minOrder = Math.max(0, Number(settings && settings.minOrderAmount) || 0);
     shippingSettingsSummary.innerHTML =
       "<div><dt>Kargo bedeli (KDV dahil)</dt><dd>" +
       (fee > 0 ? formatMoney(fee) : "Tanımlı değil") +
       "</dd></div>" +
       "<div><dt>Ücretsiz kargo eşiği</dt><dd>" +
       (threshold > 0 ? formatMoney(threshold) + " ve üzeri" : "Yok (her siparişe kargo uygulanır)") +
+      "</dd></div>" +
+      "<div><dt>Minimum sepet tutarı</dt><dd>" +
+      (minOrder > 0 ? formatMoney(minOrder) + " (KDV dahil, kargo hariç)" : "Yok") +
       "</dd></div>" +
       (settings && settings.updatedAt
         ? "<div><dt>Son güncelleme</dt><dd>" + escapeHtml(formatDate(settings.updatedAt)) + "</dd></div>"
@@ -5126,6 +5131,7 @@
     return {
       freeShippingThreshold: Math.max(0, Number(shippingFreeThreshold && shippingFreeThreshold.value) || 0),
       shippingFee: Math.max(0, Number(shippingFeeAmount && shippingFeeAmount.value) || 0),
+      minOrderAmount: Math.max(0, Number(shippingMinOrder && shippingMinOrder.value) || 0),
     };
   }
 
@@ -5147,6 +5153,9 @@
     }
     if (shippingFeeAmount) {
       shippingFeeAmount.value = Number(cfg.shippingFee) > 0 ? String(cfg.shippingFee) : "";
+    }
+    if (shippingMinOrder) {
+      shippingMinOrder.value = Number(cfg.minOrderAmount) > 0 ? String(cfg.minOrderAmount) : "";
     }
     renderShippingPreview();
   }
@@ -5223,6 +5232,7 @@
           body: JSON.stringify({
             freeShippingThreshold: values.freeShippingThreshold,
             shippingFee: values.shippingFee,
+            minOrderAmount: values.minOrderAmount,
           }),
         });
         const settings = (saved && saved.settings) || values;
