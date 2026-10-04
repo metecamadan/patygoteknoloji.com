@@ -408,7 +408,6 @@ h1, h2, h3, h4 {
 }
 @media (min-width: 1400px) {
   .nav-links > .nav-mega { flex: 1 1 auto; }
-  .nav-mega-label { flex-direction: row; gap: 0.3em; }
   .nav-mega-toggle { font-size: 0.76rem; padding: 6px 4px; }
   .nav-search input[type="search"] { width: 220px; }
 }
