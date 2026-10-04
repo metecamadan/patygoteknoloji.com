@@ -20,6 +20,46 @@
     "tuketici-elektronigi": "bilgisayar-bilesenleri",
     "kurumsal-ag-urunleri": "bilgisayar-tablet",
   };
+  const BRAND_DISPLAY_OVERRIDES = {
+    hp: "HP",
+    msi: "MSI",
+    amd: "AMD",
+    lg: "LG",
+    aoc: "AOC",
+    apc: "APC",
+    jbl: "JBL",
+    wd: "WD",
+    ibm: "IBM",
+    nzxt: "NZXT",
+    xpg: "XPG",
+    benq: "BenQ",
+    "tp-link": "TP-Link",
+    tplink: "TP-Link",
+    "d-link": "D-Link",
+    dlink: "D-Link",
+    "s-link": "S-Link",
+    "g.skill": "G.Skill",
+    "g-skill": "G.Skill",
+    zyxel: "ZyXEL",
+    ezviz: "EZVIZ",
+  };
+  const BRAND_LETTER = /[A-Za-zİıĞğÜüŞşÖöÇç]/g;
+
+  function foldText(value) {
+    return String(value || "")
+      .toLocaleLowerCase("tr-TR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/ı/g, "i");
+  }
+
+  const SORT_OPTIONS = [
+    { value: "", label: "Önerilen", api: "" },
+    { value: "fiyat-artan", label: "Fiyat: Düşükten yükseğe", api: "price-asc" },
+    { value: "fiyat-azalan", label: "Fiyat: Yüksekten düşüğe", api: "price-desc" },
+    { value: "isim", label: "İsim (A–Z)", api: "name" },
+  ];
+  const POPULAR_SEARCHES = ["notebook", "monitör", "ssd", "toner", "klavye", "yazıcı"];
 
   window.PatygoCatalog = {
     list: [],
@@ -121,11 +161,34 @@
         })
         .join("");
     },
+    /** Mirrors lib/brand-name.js formatBrandName (KINGSTON → Kingston, HP → HP, ARÇELİK → Arçelik). */
     prettyBrandName(name) {
-      const text = String(name || "").trim();
+      const text = String(name || "")
+        .replace(/i\u0307/g, "i")
+        .replace(/\s+/g, " ")
+        .trim();
       if (!text) return "";
-      const lower = text.toLocaleLowerCase("tr-TR");
-      return lower.charAt(0).toLocaleUpperCase("tr-TR") + lower.slice(1);
+      const override = BRAND_DISPLAY_OVERRIDES[foldText(text)];
+      if (override) return override;
+      const letters = text.match(BRAND_LETTER) || [];
+      if (letters.length <= 3) return text.replace(/[ıİ]/g, "I").toUpperCase();
+      const upperCount = (text.match(/[A-ZİĞÜŞÖÇ]/g) || []).length;
+      if (/[a-zğüşıöç]/.test(text) && upperCount && upperCount / letters.length < 0.6) return text;
+      return text
+        .split(/([\s\-/.&+]+)/)
+        .map((part) => {
+          if (/^[\s\-/.&+]+$/.test(part)) return part;
+          const wordLetters = part.match(BRAND_LETTER) || [];
+          if (!wordLetters.length) return part;
+          if (wordLetters.length <= 2) return part.replace(/[ıİ]/g, "I").toUpperCase();
+          if (/[ĞÜŞÖÇğüşöç]/.test(part)) {
+            const lower = part.toLocaleLowerCase("tr-TR");
+            return lower.charAt(0).toLocaleUpperCase("tr-TR") + lower.slice(1);
+          }
+          const latin = part.replace(/İ/g, "I").replace(/ı/g, "i");
+          return latin.charAt(0).toUpperCase() + latin.slice(1).toLowerCase();
+        })
+        .join("");
     },
     resolveProductCategoryTrail(product, categories) {
       const parentSlug = String((product && product.category) || "").trim();
@@ -250,6 +313,61 @@
     return String(new URLSearchParams(location.search || "").get("q") || "").trim();
   }
 
+  function readSortQuery() {
+    const value = String(new URLSearchParams(location.search || "").get("sirala") || "").trim();
+    return SORT_OPTIONS.some((row) => row.value && row.value === value) ? value : "";
+  }
+
+  function apiSortParam() {
+    const row = SORT_OPTIONS.find((item) => item.value === readSortQuery());
+    return (row && row.api) || "";
+  }
+
+  function writeSortQuery(value) {
+    const url = new URL(location.href);
+    if (value) url.searchParams.set("sirala", value);
+    else url.searchParams.delete("sirala");
+    url.searchParams.delete("sayfa");
+    history.pushState({}, "", url.pathname + url.search);
+    reloadCatalog();
+  }
+
+  function ensureCatalogToolbar() {
+    const results = document.querySelector(".catalog-results");
+    const meta = results && results.querySelector("[data-catalog-meta]");
+    if (!meta) return null;
+    let toolbar = results.querySelector(".catalog-toolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("div");
+      toolbar.className = "catalog-toolbar";
+      meta.parentNode.insertBefore(toolbar, meta);
+      toolbar.appendChild(meta);
+      const label = document.createElement("label");
+      label.className = "catalog-sort";
+      const caption = document.createElement("span");
+      caption.textContent = "Sırala";
+      const select = document.createElement("select");
+      select.setAttribute("data-catalog-sort", "");
+      SORT_OPTIONS.forEach((row) => {
+        const option = document.createElement("option");
+        option.value = row.value;
+        option.textContent = row.label;
+        select.appendChild(option);
+      });
+      select.addEventListener("change", () => writeSortQuery(select.value));
+      label.appendChild(caption);
+      label.appendChild(select);
+      toolbar.appendChild(label);
+    }
+    const select = toolbar.querySelector("[data-catalog-sort]");
+    if (select) {
+      select.value = readSortQuery();
+      const first = select.options[0];
+      if (first) first.textContent = readSearchQuery() ? "En alakalı" : "Önerilen";
+    }
+    return toolbar;
+  }
+
   function readFacetQuery() {
     const params = new URLSearchParams(location.search || "");
     const brands = String(params.get("marka") || "")
@@ -288,6 +406,7 @@
   function renderCatalogMeta(displayed, total, applied) {
     const meta = document.querySelector("[data-catalog-meta]");
     if (!meta) return;
+    const toolbar = ensureCatalogToolbar();
     const shown = Math.max(0, Number(displayed) || 0);
     const all = Math.max(shown, Number(total) || shown);
     const active =
@@ -295,6 +414,7 @@
       (applied && applied.minFiyat) ||
       (applied && applied.maxFiyat);
     meta.hidden = shown <= 0 && all <= 0;
+    if (toolbar) toolbar.hidden = meta.hidden;
     let text = shown + " ürün";
     if (all > shown) text = shown + " / " + all + " ürün";
     meta.textContent = text;
@@ -568,7 +688,22 @@
     return { parent, mid, child };
   }
 
+  function applySearchHeading(q) {
+    const crumb = document.querySelector("[data-catalog-crumb]");
+    const title = document.querySelector("[data-catalog-title]");
+    const lead = document.querySelector("[data-catalog-lead]");
+    if (crumb) crumb.textContent = "Arama: " + q;
+    if (title) title.textContent = "“" + q + "” için arama sonuçları";
+    if (lead) lead.hidden = true;
+    document.title = "“" + q + "” araması | Patygo Teknoloji";
+  }
+
   function resetCatalogHeading() {
+    const q = readSearchQuery();
+    if (q) {
+      applySearchHeading(q);
+      return;
+    }
     const crumb = document.querySelector("[data-catalog-crumb]");
     const title = document.querySelector("[data-catalog-title]");
     const lead = document.querySelector("[data-catalog-lead]");
@@ -705,6 +840,7 @@
     article.className =
       "product-card reveal" + delay + " in" + (compactListing ? " product-card--listing" : "");
     article.dataset.cat = product.category || "";
+    if (product.id) article.dataset.id = String(product.id);
 
     const brand = String(product.brand || "").toUpperCase();
     const primaryImage =
@@ -893,7 +1029,7 @@
 
   const FEATURED_PER_CATEGORY = 12;
   const LISTING_PAGE_SIZE = 20;
-  const LISTING_CACHE_STORE = "patygo_listing_v2";
+  const LISTING_CACHE_STORE = "patygo_listing_v3";
   const LISTING_CACHE_TTL_MS = 10 * 60 * 1000;
   const LISTING_CACHE_MAX = 30;
   const LISTING_FETCH_MS = 8000;
@@ -954,7 +1090,7 @@
   }
 
   function listingCacheKey(params) {
-    const keys = ["kategori", "ara", "alt", "marka", "minFiyat", "maxFiyat", "page", "limit", "id", "ids", "homeFeatured"];
+    const keys = ["kategori", "ara", "alt", "q", "marka", "minFiyat", "maxFiyat", "sort", "page", "limit", "id", "ids", "homeFeatured"];
     const qs = new URLSearchParams();
     keys.forEach((key) => {
       const value = params && params[key];
@@ -1085,6 +1221,7 @@
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
+      sort: apiSortParam(),
       page,
       limit: LISTING_PAGE_SIZE,
     };
@@ -1094,6 +1231,7 @@
     if (
       page > 1 &&
       !q &&
+      !params.sort &&
       !facets.brands.length &&
       !facets.minFiyat &&
       !facets.maxFiyat
@@ -1124,9 +1262,17 @@
   }
 
   function appendListingProducts(grid, products) {
-    const start = grid.querySelectorAll(".product-card:not(.product-card--skeleton)").length;
-    products.forEach((product, index) => {
-      grid.appendChild(makeCard(product, start + index, { compactListing: true }));
+    const cards = grid.querySelectorAll(".product-card:not(.product-card--skeleton)");
+    const seen = new Set();
+    cards.forEach((card) => {
+      if (card.dataset.id) seen.add(card.dataset.id);
+    });
+    let index = cards.length;
+    products.forEach((product) => {
+      const id = product && product.id ? String(product.id) : "";
+      if (id && seen.has(id)) return;
+      if (id) seen.add(id);
+      grid.appendChild(makeCard(product, index++, { compactListing: true }));
     });
   }
 
@@ -1328,6 +1474,75 @@
     });
   }
 
+  function facetFiltersActive() {
+    const facets = readFacetQuery();
+    return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat);
+  }
+
+  function renderSearchEmpty(grid, q) {
+    const wrap = document.createElement("div");
+    wrap.className = "catalog-empty catalog-empty--search";
+    const heading = document.createElement("h2");
+    heading.textContent = "“" + q + "” için sonuç bulunamadı";
+    const tips = document.createElement("ul");
+    tips.className = "catalog-empty-tips";
+    [
+      "Yazımı kontrol edin veya daha kısa bir kelime deneyin.",
+      "Marka ya da ürün tipiyle arayın (ör. “Lenovo”, “toner”).",
+    ].forEach((text) => {
+      const li = document.createElement("li");
+      li.textContent = text;
+      tips.appendChild(li);
+    });
+    const suggestTitle = document.createElement("p");
+    suggestTitle.className = "catalog-empty-suggest-title";
+    suggestTitle.textContent = "Popüler aramalar";
+    const chips = document.createElement("div");
+    chips.className = "catalog-empty-chips";
+    POPULAR_SEARCHES.forEach((term) => {
+      const link = document.createElement("a");
+      link.className = "catalog-price-chip";
+      link.href = "/urunler?q=" + encodeURIComponent(term);
+      link.textContent = term;
+      chips.appendChild(link);
+    });
+    const help = document.createElement("p");
+    help.className = "catalog-empty-help";
+    help.append("Aradığınız ürünü tedarik edebiliriz: ");
+    const wa = document.createElement("a");
+    wa.href =
+      "https://wa.me/905555070724?text=" +
+      encodeURIComponent("Merhaba, sitede bulamadığım bir ürün için bilgi almak istiyorum: " + q);
+    wa.target = "_blank";
+    wa.rel = "noopener";
+    wa.textContent = "WhatsApp’tan sorun";
+    help.appendChild(wa);
+    help.append(" veya ");
+    const contact = document.createElement("a");
+    contact.href = "/iletisim";
+    contact.textContent = "iletişim formunu";
+    help.appendChild(contact);
+    help.append(" kullanın.");
+    wrap.append(heading, tips, suggestTitle, chips, help);
+    grid.appendChild(wrap);
+  }
+
+  function renderFacetEmpty(grid) {
+    const wrap = document.createElement("div");
+    wrap.className = "catalog-empty";
+    const heading = document.createElement("h2");
+    heading.textContent = "Seçtiğiniz filtrelere uygun ürün yok";
+    const text = document.createElement("p");
+    text.textContent = "Fiyat aralığını genişletin veya marka seçimini kaldırın.";
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "btn btn-outline";
+    clear.textContent = "Filtreleri temizle";
+    clear.addEventListener("click", () => writeFacetQuery({ brands: [], minFiyat: "", maxFiyat: "" }));
+    wrap.append(heading, text, clear);
+    grid.appendChild(wrap);
+  }
+
   function renderGrid(grid, products, options) {
     const opts = options || {};
     const mode = grid.getAttribute("data-catalog") || "all";
@@ -1338,6 +1553,14 @@
     grid.textContent = "";
     if (!list.length && opts.categoryResolved) {
       renderCategoryEmpty(grid, opts.categoryResolved);
+      return;
+    }
+    if (!list.length && mode === "all" && readSearchQuery()) {
+      renderSearchEmpty(grid, readSearchQuery());
+      return;
+    }
+    if (!list.length && mode === "all" && facetFiltersActive()) {
+      renderFacetEmpty(grid);
       return;
     }
     if (!list.length) {
@@ -1513,7 +1736,9 @@
     const embedded = readCatalogBootstrap();
     if (embedded) return embedded;
     const qs = new URLSearchParams(location.search);
-    if (qs.get("marka") || qs.get("minFiyat") || qs.get("maxFiyat")) return null;
+    if (qs.get("marka") || qs.get("minFiyat") || qs.get("maxFiyat") || qs.get("q") || readSortQuery()) {
+      return null;
+    }
     const query = readCategoryQuery();
     const file = listingSnapshotFileName({
       kategori: query.parent,
@@ -1537,7 +1762,9 @@
 
   function facetQueryActive() {
     const facets = readFacetQuery();
-    return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat || readSearchQuery());
+    return Boolean(
+      facets.brands.length || facets.minFiyat || facets.maxFiyat || readSearchQuery() || readSortQuery()
+    );
   }
 
   async function fetchListingPayload(query, wantsCategory, facets, page) {
@@ -1550,6 +1777,7 @@
         marka: facets.brands.join(","),
         minFiyat: facets.minFiyat,
         maxFiyat: facets.maxFiyat,
+        sort: apiSortParam(),
         page: Math.max(1, Number(page) || 1),
         limit: LISTING_PAGE_SIZE,
       },
@@ -1646,6 +1874,7 @@
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
+      sort: apiSortParam(),
       page: Math.max(1, Number(page) || 1),
       limit: LISTING_PAGE_SIZE,
     };
@@ -1686,6 +1915,7 @@
 
     if (onProductsPage) {
       resetListingScroll();
+      if (!wantsCategory && readSearchQuery()) applySearchHeading(readSearchQuery());
       const cleanUrl = new URL(location.href);
       if (cleanUrl.searchParams.has("sayfa")) {
         cleanUrl.searchParams.delete("sayfa");

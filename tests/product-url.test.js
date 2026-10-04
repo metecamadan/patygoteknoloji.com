@@ -8,7 +8,34 @@ const {
   productPagePath,
   productPageUrl,
   resolveProductIdFromRoute,
+  resolveLegacyProductPath,
+  slugify,
 } = require("../lib/product-url");
+
+test("slugify folds Turkish İ instead of splitting it", () => {
+  assert.equal(slugify("İşlemci Soğutucu"), "islemci-sogutucu");
+  assert.equal(slugify("Yazıcı Kartuşu"), "yazici-kartusu");
+});
+
+test("İ-prefixed noise words are stripped like their ASCII form", () => {
+  const product = { id: "x-1", brand: "INTEL", name: "Intel Core i5-12400 İşlemci", siteChild: "islemciler" };
+  const slug = buildProductSlugBase(product);
+  assert.doesNotMatch(slug, /i-slemci/);
+  assert.match(slug, /^[a-z0-9-]+$/);
+});
+
+test("pre-fix i-slemci URLs resolve to the canonical path for 301", () => {
+  const product = { id: "sup-1-abcd1234", brand: "ÇAYKUR", name: "Çaykur İnce Belli Bardak İkili Set", siteChild: "gida" };
+  const index = buildProductRouteIndex([product]);
+  const canonical = index.byId[product.id];
+  const legacySlug = buildProductSlugBase(product, { legacy: true });
+  assert.notEqual("/" + canonical.split("/")[1] + "/" + legacySlug, canonical);
+  assert.match(legacySlug, /i-nce/);
+  const segment = canonical.split("/")[1];
+  assert.equal(resolveLegacyProductPath(index, segment, legacySlug), canonical);
+  assert.equal(resolveLegacyProductPath(index, segment, canonical.split("/")[2]), "");
+  assert.equal(resolveLegacyProductPath(index, segment, "yok-boyle-bir-urun"), "");
+});
 
 test("category segment maps notebooklar to notebook", () => {
   assert.equal(categoryUrlSegment({ siteChild: "notebooklar" }), "notebook");

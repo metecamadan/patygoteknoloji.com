@@ -110,6 +110,7 @@ const {
   attachProductUrlFields,
   parseProductRoutePath,
   resolveProductIdFromRoute,
+  resolveLegacyProductPath,
 } = require("./lib/product-url");
 const {
   createShippingSettingsStore,
@@ -747,7 +748,14 @@ function lookupPublicProductsByPath(pathValue) {
     return { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
   }
   const routeIndex = storefrontIndex(false).routeIndex;
-  const productId = resolveProductIdFromRoute(routeIndex, parts[0], parts[1]);
+  let productId = resolveProductIdFromRoute(routeIndex, parts[0], parts[1]);
+  if (!productId) {
+    const legacyPath = resolveLegacyProductPath(routeIndex, parts[0], parts[1]);
+    const legacyParts = legacyPath.split("/").filter(Boolean);
+    if (legacyParts.length === 2) {
+      productId = resolveProductIdFromRoute(routeIndex, legacyParts[0], legacyParts[1]);
+    }
+  }
   if (!productId) {
     return { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
   }
@@ -2848,10 +2856,18 @@ function normalizeCatalogBootstrapRequestUrl(requestUrl) {
 }
 
 function catalogBootstrapPayload(requestUrl) {
+  const params = requestUrl.searchParams;
+  if (
+    params.get("q") ||
+    params.get("sirala") ||
+    params.get("marka") ||
+    params.get("minFiyat") ||
+    params.get("maxFiyat")
+  ) {
+    return null;
+  }
   const fromDisk = readCatalogBootstrapSnapshot(requestUrl);
   if (fromDisk) return fromDisk;
-  const params = requestUrl.searchParams;
-  if (params.get("marka") || params.get("minFiyat") || params.get("maxFiyat")) return null;
   const memo = storefrontCatalogMemo.active;
   if (!memo || !memo.index) return null;
   const payload = queryPublicCatalogIndexed(memo.index, {
@@ -3136,6 +3152,18 @@ const server = http.createServer(async (req, res) => {
 
   const productRoute = parseProductRoutePath(urlPath);
   if (productRoute) {
+    // Warm index only: a cold HTML request must not wait for the catalog build.
+    const warmIndex = storefrontCatalogMemo.active && storefrontCatalogMemo.active.index;
+    if (warmIndex) {
+      const legacyTarget = resolveLegacyProductPath(
+        warmIndex.routeIndex,
+        productRoute.segment,
+        productRoute.slug
+      );
+      if (legacyTarget && legacyTarget !== urlPath) {
+        return permanentRedirect(res, legacyTarget + search);
+      }
+    }
     const htmlPath = safeJoin(ROOT, "/urun-detay.html");
     const accept = String(req.headers.accept || "");
     const wantsHtml =

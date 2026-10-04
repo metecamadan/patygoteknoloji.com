@@ -104,6 +104,39 @@ test("applyTextSearch filters products by name and brand with Turkish locale", (
   assert.equal(all.length, 4);
 });
 
+test("queryPublicCatalog sorts by price and name on request", () => {
+  const items = [
+    product("b", "HP", 3000, { name: "Beta" }),
+    product("a", "HP", 1000, { name: "Çağrı" }),
+    product("c", "HP", 2000, { name: "Alfa" }),
+  ];
+  const ids = (result) => result.products.map((row) => row.id);
+  assert.deepEqual(ids(queryPublicCatalog(items, { sort: "price-asc", limit: 48 })), ["a", "c", "b"]);
+  assert.deepEqual(ids(queryPublicCatalog(items, { sort: "price-desc", limit: 48 })), ["b", "c", "a"]);
+  assert.deepEqual(ids(queryPublicCatalog(items, { sort: "name", limit: 48 })), ["c", "b", "a"]);
+});
+
+test("queryPublicCatalog ranks search results by relevance by default", () => {
+  const items = [
+    product("stand", "Ofispc", 400, { name: "Ofispc Laptop Standı" }),
+    product("nb", "Lenovo", 25000, { name: "Lenovo IdeaPad Slim 3 Notebook" }),
+  ];
+  const result = queryPublicCatalog(items, { q: "laptop", limit: 48 });
+  assert.deepEqual(result.products.map((row) => row.id), ["nb", "stand"]);
+  const cheapFirst = queryPublicCatalog(items, { q: "laptop", sort: "price-asc", limit: 48 });
+  assert.deepEqual(cheapFirst.products.map((row) => row.id), ["stand", "nb"]);
+});
+
+test("storefront exposes sort select, search heading and empty-search help", () => {
+  const script = fs.readFileSync(path.join(root, "assets", "js", "catalog.js"), "utf8");
+  assert.match(script, /data-catalog-sort/);
+  assert.match(script, /sirala/);
+  assert.match(script, /için arama sonuçları/);
+  assert.match(script, /için sonuç bulunamadı/);
+  assert.match(script, /Popüler aramalar/);
+  assert.match(script, /"q", "marka", "minFiyat", "maxFiyat", "sort"/);
+});
+
 test("queryPublicCatalog q parameter filters products by text", () => {
   const items = [
     product("nb-1", "HP", 5000, { name: "HP ProBook 450 G10 Notebook" }),
