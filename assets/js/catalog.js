@@ -380,7 +380,39 @@
       brands,
       minFiyat: Number.isFinite(minRaw) && minRaw > 0 ? String(Math.round(minRaw)) : "",
       maxFiyat: Number.isFinite(maxRaw) && maxRaw > 0 ? String(Math.round(maxRaw)) : "",
+      specs: parseSpecParam(params.get("ozellik")),
     };
+  }
+
+  /** `ozellik=ram:16 GB|32 GB,islemci:Core i5` ↔ { ram: ["16 GB", "32 GB"], islemci: ["Core i5"] } */
+  function parseSpecParam(raw) {
+    const out = {};
+    String(raw || "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => {
+        const idx = part.indexOf(":");
+        if (idx <= 0) return;
+        const values = part
+          .slice(idx + 1)
+          .split("|")
+          .map((value) => value.trim())
+          .filter(Boolean);
+        if (values.length) out[part.slice(0, idx).trim()] = values;
+      });
+    return out;
+  }
+
+  function serializeSpecParam(specs) {
+    return Object.keys(specs || {})
+      .filter((key) => Array.isArray(specs[key]) && specs[key].length)
+      .map((key) => key + ":" + specs[key].join("|"))
+      .join(",");
+  }
+
+  function specSelectionCount(specs) {
+    return Object.keys(specs || {}).reduce((sum, key) => sum + ((specs[key] || []).length || 0), 0);
   }
 
   function writeFacetQuery(next) {
@@ -392,6 +424,11 @@
     else url.searchParams.delete("minFiyat");
     if (next.maxFiyat) url.searchParams.set("maxFiyat", String(next.maxFiyat));
     else url.searchParams.delete("maxFiyat");
+    if (next.specs !== undefined) {
+      const spec = serializeSpecParam(next.specs);
+      if (spec) url.searchParams.set("ozellik", spec);
+      else url.searchParams.delete("ozellik");
+    }
     url.searchParams.delete("sayfa");
     history.pushState({}, "", url.pathname + url.search);
     reloadCatalog();
@@ -412,7 +449,8 @@
     const active =
       (applied && applied.brands && applied.brands.length) ||
       (applied && applied.minFiyat) ||
-      (applied && applied.maxFiyat);
+      (applied && applied.maxFiyat) ||
+      specSelectionCount(applied && applied.specs);
     meta.hidden = shown <= 0 && all <= 0;
     if (toolbar) toolbar.hidden = meta.hidden;
     let text = shown + " ürün";
@@ -444,13 +482,33 @@
     const min = applied && applied.minFiyat ? Number(applied.minFiyat) : 0;
     const max = applied && applied.maxFiyat ? Number(applied.maxFiyat) : 0;
     const hasPrice = min > 0 || max > 0;
-    if (!brands.length && !hasPrice) {
+    const specs = (applied && applied.specs) || {};
+    if (!brands.length && !hasPrice && !specSelectionCount(specs)) {
       host.hidden = true;
       host.textContent = "";
       return;
     }
     host.hidden = false;
     host.textContent = "";
+    Object.keys(specs).forEach((key) => {
+      (specs[key] || []).forEach((value) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "catalog-active-filter-chip";
+        chip.textContent = value + " ×";
+        chip.addEventListener("click", () => {
+          const nextSpecs = Object.assign({}, specs);
+          nextSpecs[key] = (specs[key] || []).filter((item) => item !== value);
+          writeFacetQuery({
+            brands,
+            minFiyat: applied.minFiyat || "",
+            maxFiyat: applied.maxFiyat || "",
+            specs: nextSpecs,
+          });
+        });
+        host.appendChild(chip);
+      });
+    });
     brands.forEach((brand) => {
       const chip = document.createElement("button");
       chip.type = "button";
@@ -502,7 +560,9 @@
     const selected = new Set(
       ((applied && applied.brands) || []).map((name) => foldText(name))
     );
-    const hasPanel = brands.length > 0 || price.max > 0;
+    const specGroups = Array.isArray(data.specs) ? data.specs : [];
+    const appliedSpecs = (applied && applied.specs) || {};
+    const hasPanel = brands.length > 0 || price.max > 0 || specGroups.length > 0;
     root.hidden = !hasPanel;
     if (layout) layout.classList.toggle("has-facets", hasPanel);
     if (!hasPanel) {
@@ -520,7 +580,7 @@
     toggle.type = "button";
     toggle.className = "btn btn-outline btn-block catalog-facets-toggle";
     const activeCount =
-      selected.size + (selectedMin || selectedMax ? 1 : 0);
+      selected.size + (selectedMin || selectedMax ? 1 : 0) + specSelectionCount(appliedSpecs);
     const open = root.classList.contains("is-open");
     toggle.textContent = open
       ? "Filtreleri gizle"
@@ -531,8 +591,7 @@
     toggle.addEventListener("click", () => {
       root.classList.toggle("is-open");
       const isOpen = root.classList.contains("is-open");
-      const count =
-        selected.size + (selectedMin || selectedMax ? 1 : 0);
+      const count = activeCount;
       toggle.textContent = isOpen
         ? "Filtreleri gizle"
         : count
@@ -588,6 +647,45 @@
       group.appendChild(list);
       body.appendChild(group);
     }
+
+    specGroups.forEach((spec) => {
+      const values = Array.isArray(spec.values) ? spec.values : [];
+      if (!spec.key || !values.length) return;
+      const group = document.createElement("fieldset");
+      group.className = "catalog-facet";
+      const legend = document.createElement("legend");
+      legend.textContent = spec.label || spec.key;
+      group.appendChild(legend);
+      const list = document.createElement("div");
+      list.className = "catalog-facet-brands";
+      const chosen = new Set(appliedSpecs[spec.key] || []);
+      values.forEach((row) => {
+        const label = document.createElement("label");
+        label.className = "catalog-facet-option";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.value = row.value;
+        input.checked = chosen.has(row.value);
+        input.addEventListener("change", () => {
+          const nextSpecs = Object.assign({}, appliedSpecs);
+          nextSpecs[spec.key] = Array.from(list.querySelectorAll("input:checked")).map((el) => el.value);
+          writeFacetQuery({
+            brands: applied.brands || [],
+            minFiyat: applied.minFiyat || "",
+            maxFiyat: applied.maxFiyat || "",
+            specs: nextSpecs,
+          });
+        });
+        const name = document.createElement("span");
+        name.textContent = row.value;
+        const count = document.createElement("em");
+        count.textContent = String(row.count);
+        label.append(input, name, count);
+        list.appendChild(label);
+      });
+      group.appendChild(list);
+      body.appendChild(group);
+    });
 
     if (price.max > 0) {
       const group = document.createElement("fieldset");
@@ -662,7 +760,7 @@
       clear.className = "catalog-facets-clear";
       clear.textContent = "Filtreleri temizle";
       clear.addEventListener("click", () => {
-        writeFacetQuery({ brands: [], minFiyat: "", maxFiyat: "" });
+        writeFacetQuery({ brands: [], minFiyat: "", maxFiyat: "", specs: {} });
       });
       body.appendChild(clear);
     }
@@ -1099,7 +1197,7 @@
   }
 
   function listingCacheKey(params) {
-    const keys = ["kategori", "ara", "alt", "q", "marka", "minFiyat", "maxFiyat", "sort", "page", "limit", "id", "ids", "homeFeatured"];
+    const keys = ["kategori", "ara", "alt", "q", "marka", "minFiyat", "maxFiyat", "ozellik", "sort", "page", "limit", "id", "ids", "homeFeatured"];
     const qs = new URLSearchParams();
     keys.forEach((key) => {
       const value = params && params[key];
@@ -1230,6 +1328,7 @@
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
+      ozellik: serializeSpecParam(facets.specs),
       sort: apiSortParam(),
       page,
       limit: LISTING_PAGE_SIZE,
@@ -1241,6 +1340,7 @@
       page > 1 &&
       !q &&
       !params.sort &&
+      !params.ozellik &&
       !facets.brands.length &&
       !facets.minFiyat &&
       !facets.maxFiyat
@@ -1485,7 +1585,9 @@
 
   function facetFiltersActive() {
     const facets = readFacetQuery();
-    return Boolean(facets.brands.length || facets.minFiyat || facets.maxFiyat);
+    return Boolean(
+      facets.brands.length || facets.minFiyat || facets.maxFiyat || specSelectionCount(facets.specs)
+    );
   }
 
   function renderSearchEmpty(grid, q) {
@@ -1547,7 +1649,7 @@
     clear.type = "button";
     clear.className = "btn btn-outline";
     clear.textContent = "Filtreleri temizle";
-    clear.addEventListener("click", () => writeFacetQuery({ brands: [], minFiyat: "", maxFiyat: "" }));
+    clear.addEventListener("click", () => writeFacetQuery({ brands: [], minFiyat: "", maxFiyat: "", specs: {} }));
     wrap.append(heading, text, clear);
     grid.appendChild(wrap);
   }
@@ -1745,7 +1847,14 @@
     const embedded = readCatalogBootstrap();
     if (embedded) return embedded;
     const qs = new URLSearchParams(location.search);
-    if (qs.get("marka") || qs.get("minFiyat") || qs.get("maxFiyat") || qs.get("q") || readSortQuery()) {
+    if (
+      qs.get("marka") ||
+      qs.get("minFiyat") ||
+      qs.get("maxFiyat") ||
+      qs.get("ozellik") ||
+      qs.get("q") ||
+      readSortQuery()
+    ) {
       return null;
     }
     const query = readCategoryQuery();
@@ -1772,7 +1881,12 @@
   function facetQueryActive() {
     const facets = readFacetQuery();
     return Boolean(
-      facets.brands.length || facets.minFiyat || facets.maxFiyat || readSearchQuery() || readSortQuery()
+      facets.brands.length ||
+        facets.minFiyat ||
+        facets.maxFiyat ||
+        specSelectionCount(facets.specs) ||
+        readSearchQuery() ||
+        readSortQuery()
     );
   }
 
@@ -1786,6 +1900,7 @@
         marka: facets.brands.join(","),
         minFiyat: facets.minFiyat,
         maxFiyat: facets.maxFiyat,
+        ozellik: serializeSpecParam(facets.specs),
         sort: apiSortParam(),
         page: Math.max(1, Number(page) || 1),
         limit: LISTING_PAGE_SIZE,
@@ -1883,6 +1998,7 @@
       marka: facets.brands.join(","),
       minFiyat: facets.minFiyat,
       maxFiyat: facets.maxFiyat,
+      ozellik: serializeSpecParam(facets.specs),
       sort: apiSortParam(),
       page: Math.max(1, Number(page) || 1),
       limit: LISTING_PAGE_SIZE,

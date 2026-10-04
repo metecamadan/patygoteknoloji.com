@@ -1669,6 +1669,7 @@ async function handleApi(req, res, urlPath) {
         requestUrl.searchParams.get("marka") ||
         requestUrl.searchParams.get("minFiyat") ||
         requestUrl.searchParams.get("maxFiyat") ||
+        requestUrl.searchParams.get("ozellik") ||
         requestUrl.searchParams.get("id") ||
         requestUrl.searchParams.get("ids") ||
         requestUrl.searchParams.get("featured")
@@ -1703,6 +1704,7 @@ async function handleApi(req, res, urlPath) {
       marka: requestUrl.searchParams.get("marka") || "",
       minFiyat: requestUrl.searchParams.get("minFiyat") || "",
       maxFiyat: requestUrl.searchParams.get("maxFiyat") || "",
+      ozellik: requestUrl.searchParams.get("ozellik") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 48,
       sort,
@@ -2874,7 +2876,8 @@ function catalogBootstrapPayload(requestUrl) {
     params.get("sirala") ||
     params.get("marka") ||
     params.get("minFiyat") ||
-    params.get("maxFiyat")
+    params.get("maxFiyat") ||
+    params.get("ozellik")
   ) {
     return null;
   }

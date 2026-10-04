@@ -267,6 +267,7 @@ test("CPU copy names the processor model, not the iGPU token", () => {
   const description = buildGeneratedDescription(product);
   assert.match(description, /Intel işlemci \(Core i3-10100\)/);
   assert.doesNotMatch(description, /\(UHD630\)/);
+  assert.match(description, /4 çekirdek/);
   const ryzen = buildSpecRows({ brand: "AMD", name: "AMD Ryzen 5 5600X 3.7GHz 32MB AM4 İşlemci" });
   assert.ok(ryzen.some((row) => row.label === "İşlemci" && row.value === "Ryzen 5 5600X"));
 });

@@ -134,7 +134,7 @@ test("storefront exposes sort select, search heading and empty-search help", () 
   assert.match(script, /için arama sonuçları/);
   assert.match(script, /için sonuç bulunamadı/);
   assert.match(script, /Popüler aramalar/);
-  assert.match(script, /"q", "marka", "minFiyat", "maxFiyat", "sort"/);
+  assert.match(script, /"q", "marka", "minFiyat", "maxFiyat", "ozellik", "sort"/);
 });
 
 test("queryPublicCatalog q parameter filters products by text", () => {

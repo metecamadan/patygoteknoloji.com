@@ -324,5 +324,171 @@
     input.addEventListener("blur", () => {
       if (mobileMq.matches && !input.value.trim()) form.classList.remove("open");
     });
+    if (!form.classList.contains("not-found-search")) attachSearchSuggest(form, input);
   });
+
+  let suggestSeq = 0;
+
+  function suggestPrice(product) {
+    const net = Number(product && product.price) || 0;
+    const vat = [1, 8, 10, 20].includes(Number(product && product.vatPercent)) ? Number(product.vatPercent) : 20;
+    const gross = Math.round(net * (1 + vat / 100) * 100) / 100;
+    return "₺" + gross.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  /** Live product suggestions under the header search (combobox pattern, keyboard + screen reader). */
+  function attachSearchSuggest(form, input) {
+    const listId = "search-suggest-" + ++suggestSeq;
+    const list = document.createElement("ul");
+    list.className = "search-suggest";
+    list.id = listId;
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", "Arama önerileri");
+    list.hidden = true;
+    document.body.appendChild(list);
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", listId);
+    input.setAttribute("aria-expanded", "false");
+
+    let timer = 0;
+    let controller = null;
+    let active = -1;
+    let lastTerm = "";
+
+    const options = () => Array.from(list.querySelectorAll('[role="option"]'));
+
+    function place() {
+      const rect = form.getBoundingClientRect();
+      const width = Math.min(Math.max(rect.width, 340), window.innerWidth - 16);
+      const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+      list.style.top = Math.round(rect.bottom + 6) + "px";
+      list.style.left = Math.round(left) + "px";
+      list.style.width = Math.round(width) + "px";
+    }
+
+    function close() {
+      list.hidden = true;
+      active = -1;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+    }
+
+    function setActive(index) {
+      const items = options();
+      if (!items.length) return;
+      active = (index + items.length) % items.length;
+      items.forEach((item, i) => item.setAttribute("aria-selected", String(i === active)));
+      input.setAttribute("aria-activedescendant", items[active].id);
+      items[active].scrollIntoView({ block: "nearest" });
+    }
+
+    function addOption(href, build) {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.id = listId + "-" + list.children.length;
+      li.setAttribute("aria-selected", "false");
+      const link = document.createElement("a");
+      link.href = href;
+      link.tabIndex = -1;
+      build(link);
+      li.appendChild(link);
+      list.appendChild(li);
+    }
+
+    function render(term, products) {
+      list.textContent = "";
+      products.forEach((product) => {
+        const href = product.urlPath || "/urun-detay?id=" + encodeURIComponent(product.id);
+        addOption(href, (link) => {
+          const thumb = product.image || (Array.isArray(product.images) && product.images.find(Boolean));
+          if (thumb) {
+            const img = document.createElement("img");
+            img.src = thumb;
+            img.alt = "";
+            img.loading = "lazy";
+            img.referrerPolicy = "no-referrer";
+            link.appendChild(img);
+          }
+          const name = document.createElement("span");
+          name.className = "search-suggest-name";
+          name.textContent = product.name || "";
+          const price = document.createElement("span");
+          price.className = "search-suggest-price";
+          price.textContent = suggestPrice(product);
+          link.append(name, price);
+        });
+      });
+      addOption("/urunler?q=" + encodeURIComponent(term), (link) => {
+        link.className = "search-suggest-all";
+        link.textContent = products.length
+          ? "“" + term + "” için tüm sonuçlar"
+          : "“" + term + "” için sonuç yok — arama sayfasında öneriler";
+      });
+      place();
+      list.hidden = false;
+      active = -1;
+      input.setAttribute("aria-expanded", "true");
+    }
+
+    function fetchSuggestions(term) {
+      if (controller) controller.abort();
+      controller = typeof AbortController === "function" ? new AbortController() : null;
+      fetch("/api/products?q=" + encodeURIComponent(term) + "&limit=6", {
+        cache: "default",
+        signal: controller ? controller.signal : undefined,
+      })
+        .then((res) => (res.ok ? res.json() : { products: [] }))
+        .then((data) => {
+          if (term !== String(input.value || "").trim()) return;
+          render(term, Array.isArray(data.products) ? data.products.slice(0, 6) : []);
+        })
+        .catch(() => {});
+    }
+
+    input.addEventListener("input", () => {
+      const term = String(input.value || "").trim();
+      clearTimeout(timer);
+      if (term.length < 2) {
+        lastTerm = "";
+        close();
+        return;
+      }
+      if (term === lastTerm && !list.hidden) return;
+      lastTerm = term;
+      timer = setTimeout(() => fetchSuggestions(term), 180);
+    });
+
+    input.addEventListener("keydown", (ev) => {
+      if (list.hidden) return;
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        setActive(active + 1);
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        setActive(active - 1);
+      } else if (ev.key === "Enter" && active >= 0) {
+        const link = options()[active] && options()[active].querySelector("a");
+        if (link) {
+          ev.preventDefault();
+          location.href = link.href;
+        }
+      } else if (ev.key === "Escape") {
+        close();
+      }
+    });
+
+    input.addEventListener("blur", () => setTimeout(close, 150));
+    list.addEventListener("mousedown", (ev) => ev.preventDefault());
+    window.addEventListener("resize", () => {
+      if (!list.hidden) place();
+    });
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!list.hidden) place();
+      },
+      { passive: true }
+    );
+  }
 })();
