@@ -98,8 +98,13 @@ test("toPublicProduct strips supplier internals and cost", () => {
     images: ["https://cdn.example/a.jpg", "https://cdn.example/b.jpg"],
     featured: false,
     active: true,
+    highlights: [
+      { label: "Stok Durumu", value: "Son 5 adet" },
+      { label: "Marka", value: "Tedarikçi" },
+    ],
   });
   assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "source"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "stockQty"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "costPrice"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(publicProduct, "supplierSku"), false);
 });

@@ -3271,6 +3271,43 @@ h1, h2, h3, h4 {
   color: var(--brand);
   font-weight: 800;
 }
+.detail-hub {
+  margin: 18px 0 0;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+.detail-hub-title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.detail-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.detail-hub-item {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+.detail-hub-item dt {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.detail-hub-item dd {
+  margin: 2px 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
 @media (max-width: 900px) {
   .catalog-layout.has-facets { grid-template-columns: 1fr; }
   .catalog-facets {

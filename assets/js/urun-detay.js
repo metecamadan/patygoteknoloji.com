@@ -123,6 +123,27 @@
     });
   }
 
+  function buildHighlights(product) {
+    const items = Array.isArray(product.highlights)
+      ? product.highlights.filter((item) => item && item.label && item.value)
+      : [];
+    if (!items.length) return null;
+    const section = el("section", "detail-hub");
+    section.setAttribute("aria-labelledby", "detailHubTitle");
+    const title = el("h2", "detail-hub-title", "Ürün Bilgileri");
+    title.id = "detailHubTitle";
+    section.appendChild(title);
+    const list = el("dl", "detail-hub-grid");
+    items.slice(0, 4).forEach((item) => {
+      const tile = el("div", "detail-hub-item");
+      tile.appendChild(el("dt", "", String(item.label)));
+      tile.appendChild(el("dd", "", String(item.value)));
+      list.appendChild(tile);
+    });
+    section.appendChild(list);
+    return section;
+  }
+
   function buildDetailTabs(product) {
     const section = el("section", "detail-tabs reveal in");
     const tablist = el("div", "detail-tablist");
@@ -419,6 +440,8 @@
     if (minimumLine) info.appendChild(minimumLine);
     info.appendChild(actions);
     info.appendChild(trust);
+    const hub = buildHighlights(product);
+    if (hub) info.appendChild(hub);
 
     grid.appendChild(gallery);
     grid.appendChild(info);
@@ -607,7 +630,8 @@
     const listing = fetchJson("/listing/all.json", 8000).then((data) => {
       const product = productFromListingPayload(data, route);
       if (!product) throw new Error("listing miss");
-      return { product, source: "listing" };
+      // Listing kısa kayıttır (details/highlights yok); tam kayıt API'den gelince sayfa yenilenir.
+      return { product, source: "listing", full: api };
     });
     return Promise.any([api, listing]);
   }
@@ -651,6 +675,16 @@
           history.replaceState(null, "", fresh.urlPath);
         }
         render(fresh, cats);
+        if (won.full) {
+          won.full
+            .then((full) => {
+              if (!full || !full.product) return;
+              rememberProduct(full.product);
+              product = full.product;
+              render(full.product, renderedCats);
+            })
+            .catch(() => {});
+        }
       } else if (!cached) {
         render(null, cats);
       }

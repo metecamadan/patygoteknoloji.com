@@ -119,6 +119,50 @@ test("buildSpecRows covers RAM, storage, GPU and motherboard titles", () => {
   assert.ok(moboRows.some((row) => row.label === "Kablosuz" && /Wi-Fi/i.test(row.value)));
 });
 
+test("NON-ECC RAM is not labelled ECC", () => {
+  const nonEcc = buildSpecRows({
+    brand: "Kingston",
+    name: "Kingston 16GB 3200MHz DDR4 NON-ECC DIMM 2RX8 CL22 Pc Ram KVR32N22D8-16",
+  });
+  assert.ok(nonEcc.some((row) => row.label === "Tip" && row.value === "Non-ECC"));
+  assert.equal(nonEcc.some((row) => row.label === "Tip" && row.value === "ECC"), false);
+  const ecc = buildSpecRows({ brand: "Kingston", name: "Kingston 32GB DDR4 3200MHz ECC DIMM Server Ram" });
+  assert.ok(ecc.some((row) => row.label === "Tip" && row.value === "ECC"));
+});
+
+test("printer category beats a 'toner' word in a bundle title", () => {
+  assert.equal(
+    detectProductKind({
+      name: "Canon LBP6030BK Demo + 2 Orjınal Toner Hediyeli",
+      siteParent: "baski-cozumleri",
+      siteMid: "yazici-tarayici",
+      siteChild: "mono-laser",
+    }),
+    "printer"
+  );
+  assert.equal(
+    detectProductKind({ name: "HP 85A Orijinal Toner", siteParent: "kartus-toner", siteMid: "yazici-tuketim-urunleri-orj" }),
+    "toner"
+  );
+});
+
+test("supplier stock code standing in for a missing manufacturer code is not shown", () => {
+  const fallback = buildSpecRows({
+    brand: "Almera",
+    name: "Almera 3lü 2mt Topraklı Priz (9230102)",
+    supplierSku: "400.70.20.0097",
+    manufacturerCode: "400.70.20.0097",
+  });
+  assert.equal(fallback.some((row) => row.label === "Üretici kodu"), false);
+  const real = buildSpecRows({
+    brand: "Kingston",
+    name: "Kingston 16GB DDR4 3200MHz DIMM",
+    supplierSku: "100.10.10.0008",
+    manufacturerCode: "KVR32N22D8-16",
+  });
+  assert.ok(real.some((row) => row.label === "Üretici kodu" && row.value === "KVR32N22D8-16"));
+});
+
 test("buildSpecRows covers PSU, network, UPS and peripheral titles", () => {
   const psuRows = buildSpecRows({
     brand: "Corsair",
