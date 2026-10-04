@@ -216,16 +216,17 @@
   }
 
   function boot() {
-    const run = () => render();
-    const ready = window.PatygoShipping
-      ? window.PatygoShipping.load().then(run).catch(run)
-      : Promise.resolve().then(run);
+    const shippingReady = window.PatygoShipping
+      ? window.PatygoShipping.load().catch(() => null)
+      : Promise.resolve(null);
+    const run = () => shippingReady.then(render);
+    run();
     if (window.PatygoCatalog && window.PatygoCatalog.ready) {
-      window.PatygoCatalog.ready.then(() => ready);
+      window.PatygoCatalog.ready.then(run, run);
     } else {
-      window.addEventListener("patygo:catalog", () => ready, { once: true });
+      window.addEventListener("patygo:catalog", run, { once: true });
     }
-    window.addEventListener("patygo:cart", () => ready);
+    window.addEventListener("patygo:cart", run);
   }
 
   boot();
