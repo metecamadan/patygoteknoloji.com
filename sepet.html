@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=nav-1023-1" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=cart-bar-1" />
 </head>
 <body class="cart-page">
   <header class="site-header">
@@ -57,6 +57,11 @@
           <a href="/odeme" class="btn btn-primary btn-block btn-lg cart-checkout" id="cartCheckout">Ödemeye geç</a>
           <p class="cart-note" id="cartNote" hidden></p>
         </aside>
+      </div>
+      <div class="cart-mobile-bar" id="cartMobileBar" role="region" aria-label="Sepet toplamı" hidden>
+        <div class="cart-mobile-total"><span>Genel toplam</span><strong id="cartMobileTotal">₺0</strong></div>
+        <a href="/odeme" class="btn btn-primary cart-mobile-checkout" id="cartMobileCheckout">Ödemeye geç</a>
+        <p class="cart-mobile-hint" id="cartMobileHint" hidden></p>
       </div>
     </section>
   </main>
@@ -123,6 +128,6 @@
   <script defer src="/assets/js/catalog.js?v=storefront-ship-2"></script>
   <script defer src="/assets/js/nav.js?v=nav-1023-1"></script>
   <script defer src="/assets/js/main.js?v=nav-1023-1"></script>
-  <script defer src="/assets/js/sepet.js?v=no-continue-1"></script>
+  <script defer src="/assets/js/sepet.js?v=cart-bar-1"></script>
 </body>
 </html>

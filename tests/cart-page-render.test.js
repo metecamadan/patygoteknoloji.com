@@ -84,6 +84,10 @@ function bootCartPage(cartItems, shippingSettings = {}) {
     "cartTotal",
     "cartShippingLabel",
     "cartShipping",
+    "cartMobileBar",
+    "cartMobileTotal",
+    "cartMobileCheckout",
+    "cartMobileHint",
   ]) {
     ids[id] = makeEl("div");
   }
@@ -176,6 +180,37 @@ test("cart below the minimum order blocks checkout and says how much is missing"
   assert.equal(hint.hidden, true);
   assert.equal(checkout.attrs["aria-disabled"], undefined);
   assert.equal(checkout.href, "/odeme");
+});
+
+test("phone checkout bar mirrors the total and the minimum-order block", async () => {
+  const page = bootCartPage(
+    [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 500, vatPercent: 20 }],
+    { shippingFee: 199, freeShippingThreshold: 1500, minOrderAmount: 750, enabled: true }
+  );
+  page.catalogReady.resolve([]);
+  await settle();
+  await settle();
+
+  const bar = page.ids.cartMobileBar;
+  const barCheckout = page.ids.cartMobileCheckout;
+  assert.equal(bar.hidden, false);
+  assert.equal(page.ids.cartMobileTotal.textContent, page.ids.cartTotal.textContent);
+  assert.equal(barCheckout.attrs["aria-disabled"], "true");
+  assert.equal(page.ids.cartMobileHint.hidden, false);
+  assert.equal(page.ids.cartMobileHint.textContent, page.ids.cartMinimumHint.textContent);
+
+  page.window.PatygoCart.setQty("sup-1", 2);
+  await settle();
+  await settle();
+  assert.equal(barCheckout.attrs["aria-disabled"], undefined);
+  assert.equal(barCheckout.href, "/odeme");
+  assert.equal(page.ids.cartMobileHint.hidden, true);
+  assert.equal(page.ids.cartMobileTotal.textContent, page.ids.cartTotal.textContent);
+
+  page.window.PatygoCart.setQty("sup-1", 0);
+  await settle();
+  await settle();
+  assert.equal(bar.hidden, true, "empty cart has no checkout bar");
 });
 
 test("cart repaints when the quantity changes", async () => {

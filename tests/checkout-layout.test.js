@@ -40,6 +40,20 @@ test("cart page uses compact hero and avoids duplicate empty-state CTAs", () => 
   assert.doesNotMatch(cartJs, /Ürün kataloğuna git/);
 });
 
+test("phone cart keeps the full summary in flow and pins only a slim total + checkout bar", () => {
+  const phone = css.match(/@media \(max-width:\s*700px\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(phone, "missing 700px block");
+  assert.match(phone[1], /\.cart-summary\s*\{\s*position:\s*static;\s*\}/);
+  assert.doesNotMatch(phone[1], /\.cart-summary\s*\{[^}]*position:\s*sticky/);
+  assert.match(phone[1], /\.cart-mobile-bar:not\(\[hidden\]\)\s*\{[^}]*position:\s*fixed/);
+  assert.match(phone[1], /body\.has-cart-bar \.fab\s*\{/);
+  assert.match(css, /\n\.cart-mobile-bar\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(cartHtml, /id="cartMobileBar"[^>]*hidden/);
+  assert.match(cartHtml, /id="cartMobileTotal"/);
+  assert.match(cartHtml, /id="cartMobileCheckout"/);
+  assert.match(cartJs, /IntersectionObserver/);
+});
+
 test("cart summary has no continue-shopping link that pulls the customer back from checkout", () => {
   assert.doesNotMatch(cartHtml, /id="cartContinue"/);
   assert.doesNotMatch(cartHtml, /Ürün kataloğuna devam et/);

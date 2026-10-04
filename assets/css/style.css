@@ -2882,6 +2882,7 @@ h1, h2, h3, h4 {
   top: calc(var(--header-h) + 20px);
   padding: 24px;
 }
+.cart-mobile-bar { display: none; }
 .cart-summary h2 {
   margin-bottom: 16px;
   padding-bottom: 16px;
@@ -3321,10 +3322,40 @@ h1, h2, h3, h4 {
 @media (max-width: 700px) {
   .cart-hero { padding-bottom: 32px; }
   .cart-layout { grid-template-columns: 1fr; }
-  .cart-summary {
-    position: sticky;
-    bottom: max(12px, env(safe-area-inset-bottom, 0px));
-    z-index: 20;
+  .cart-summary { position: static; }
+  /* Tam özet ürünlerin altında akar; altta yalnızca toplam + ödeme. Özetin kendi düğmesi
+     görünürken sepet.js çubuğu gizler (çift CTA olmasın). */
+  .cart-mobile-bar:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 14px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-top: 1px solid var(--line-soft);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+  }
+  .cart-mobile-total { display: grid; gap: 1px; min-width: 0; }
+  .cart-mobile-total span { font-size: 0.74rem; color: var(--muted); }
+  .cart-mobile-total strong { font-size: 1.15rem; color: var(--brand); }
+  .cart-mobile-checkout { min-height: 46px; padding: 12px 22px; }
+  .cart-mobile-checkout.disabled,
+  .cart-mobile-checkout[aria-disabled="true"] { opacity: 0.48; pointer-events: none; }
+  .cart-mobile-hint {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+  body.has-cart-bar main { padding-bottom: 120px; }
+  body.has-cart-bar .fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  body.has-cart-bar:has(.cart-mobile-hint:not([hidden])) .fab {
+    bottom: calc(112px + env(safe-area-inset-bottom, 0px));
   }
   .cart-line {
     grid-template-columns: 80px minmax(0, 1fr);

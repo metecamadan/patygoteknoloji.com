@@ -4,9 +4,60 @@
   const linesEl = document.getElementById("cartLines");
   const note = document.getElementById("cartNote");
   const checkoutBtn = document.getElementById("cartCheckout");
+  const mobileBar = document.getElementById("cartMobileBar");
+  const mobileCheckout = document.getElementById("cartMobileCheckout");
+  let cartHasLines = false;
+  let summaryCheckoutInView = false;
 
   function money(n) {
     return window.PatygoCatalog.formatPrice(n);
+  }
+
+  function setCheckoutEnabled(btn, enabled) {
+    if (!btn) return;
+    if (enabled) {
+      btn.classList.remove("disabled");
+      btn.removeAttribute("aria-disabled");
+      btn.href = "/odeme";
+    } else {
+      btn.classList.add("disabled");
+      btn.setAttribute("aria-disabled", "true");
+      btn.removeAttribute("href");
+    }
+  }
+
+  function syncMobileBar() {
+    if (!mobileBar) return;
+    const show = cartHasLines && !summaryCheckoutInView;
+    mobileBar.hidden = !show;
+    if (document.body) document.body.classList.toggle("has-cart-bar", show);
+  }
+
+  function renderMobileBar(totals, belowMinimum) {
+    if (!mobileBar) return;
+    cartHasLines = totals.lines.length > 0;
+    const total = document.getElementById("cartMobileTotal");
+    if (total) total.textContent = money(totals.total);
+    setCheckoutEnabled(mobileCheckout, cartHasLines && !belowMinimum);
+    const hint = document.getElementById("cartMobileHint");
+    const source = document.getElementById("cartMinimumHint");
+    if (hint) {
+      hint.textContent = belowMinimum && source ? source.textContent : "";
+      hint.hidden = !hint.textContent;
+    }
+    syncMobileBar();
+  }
+
+  function watchSummaryCheckout() {
+    if (!mobileBar || !checkoutBtn || !("IntersectionObserver" in window)) return;
+    const io = new window.IntersectionObserver(
+      (entries) => {
+        summaryCheckoutInView = entries.some((e) => e.isIntersecting);
+        syncMobileBar();
+      },
+      { threshold: 0.5 }
+    );
+    io.observe(checkoutBtn);
   }
 
   function renderShippingSummary(totals) {
@@ -72,6 +123,7 @@
     document.getElementById("cartTotal").textContent = money(totals.total);
     renderShippingSummary(totals);
     const belowMinimum = minimumOrderShortfall(totals);
+    renderMobileBar(totals, belowMinimum);
 
     linesEl.textContent = "";
     if (!totals.lines.length) {
@@ -83,9 +135,7 @@
         "<p>İhtiyacınız olan ürünleri inceleyerek sepetinize ekleyebilirsiniz.</p>" +
         '<a href="/urunler" class="btn btn-primary">Ürün kataloğunu incele</a>';
       linesEl.appendChild(empty);
-      checkoutBtn.classList.add("disabled");
-      checkoutBtn.setAttribute("aria-disabled", "true");
-      checkoutBtn.removeAttribute("href");
+      setCheckoutEnabled(checkoutBtn, false);
       checkoutBtn.textContent = "Ödemeye geç";
       note.textContent =
         "Sepete ürün eklediğinizde tutarlar burada görünür ve ödeme adımına geçebilirsiniz.";
@@ -93,15 +143,7 @@
       return;
     }
 
-    if (belowMinimum) {
-      checkoutBtn.classList.add("disabled");
-      checkoutBtn.setAttribute("aria-disabled", "true");
-      checkoutBtn.removeAttribute("href");
-    } else {
-      checkoutBtn.classList.remove("disabled");
-      checkoutBtn.removeAttribute("aria-disabled");
-      checkoutBtn.href = "/odeme";
-    }
+    setCheckoutEnabled(checkoutBtn, !belowMinimum);
     checkoutBtn.textContent = "Ödemeye geç";
     note.textContent =
       "Listelenen fiyatlar KDV dahildir. Sonraki adımda bilgilerinizi girip güvenli ödeme ile satın almayı tamamlayın.";
@@ -247,6 +289,7 @@
       window.addEventListener("patygo:catalog", run, { once: true });
     }
     window.addEventListener("patygo:cart", run);
+    watchSummaryCheckout();
   }
 
   boot();
