@@ -133,13 +133,13 @@ test("storefront HTML has no inline handlers (CSP script-src 'self') and ships i
     const html = read(page);
     assert.doesNotMatch(html, /\son[a-z]+="/i, page + " has an inline event handler");
     assert.match(html, /rel="apple-touch-icon" href="\/assets\/img\/apple-touch-icon\.png"/, page);
-    assert.match(html, /rel="manifest" href="\/assets\/manifest\.webmanifest"/, page);
+    assert.match(html, /rel="manifest" href="\/assets\/manifest\.json"/, page);
   }
   for (const page of ["index.html", "urunler.html", "kurumsal.html", "iletisim.html"]) {
     assert.match(read(page), /og:image" content="https:\/\/patygoteknoloji\.com\/assets\/img\/og-default\.png"/, page);
   }
   assert.match(read("assets/js/main.js"), /querySelectorAll\("\.fab \.top"\)[\s\S]{0,120}scrollTo\(\{ top: 0/);
-  const manifest = JSON.parse(read("assets/manifest.webmanifest"));
+  const manifest = JSON.parse(read("assets/manifest.json"));
   assert.equal(manifest.lang, "tr");
   for (const icon of manifest.icons) assert.ok(fs.existsSync(path.join(root, icon.src)), icon.src);
   assert.ok(fs.existsSync(path.join(root, "favicon.ico")));
