@@ -35,9 +35,14 @@ test("checkout funnel hides catalog nav and extra exits", () => {
 test("cart page uses compact hero and avoids duplicate empty-state CTAs", () => {
   assert.match(cartHtml, /class="cart-page"/);
   assert.doesNotMatch(cartHtml, /breadcrumb/);
-  assert.match(cartHtml, /id="cartContinue"/);
   assert.match(css, /\.cart-page \.cart-hero/);
   assert.match(css, /\.cart-checkout\[aria-disabled="true"\]/);
   assert.doesNotMatch(cartJs, /Ürün kataloğuna git/);
-  assert.match(cartJs, /continueBtn\.hidden = true/);
+});
+
+test("cart summary has no continue-shopping link that pulls the customer back from checkout", () => {
+  assert.doesNotMatch(cartHtml, /id="cartContinue"/);
+  assert.doesNotMatch(cartHtml, /Ürün kataloğuna devam et/);
+  assert.doesNotMatch(cartJs, /cartContinue|continueBtn/);
+  assert.doesNotMatch(css, /\.cart-continue/);
 });

@@ -4,7 +4,6 @@
   const linesEl = document.getElementById("cartLines");
   const note = document.getElementById("cartNote");
   const checkoutBtn = document.getElementById("cartCheckout");
-  const continueBtn = document.getElementById("cartContinue");
 
   function money(n) {
     return window.PatygoCatalog.formatPrice(n);
@@ -88,7 +87,6 @@
       checkoutBtn.setAttribute("aria-disabled", "true");
       checkoutBtn.removeAttribute("href");
       checkoutBtn.textContent = "Ödemeye geç";
-      if (continueBtn) continueBtn.hidden = true;
       note.textContent =
         "Sepete ürün eklediğinizde tutarlar burada görünür ve ödeme adımına geçebilirsiniz.";
       note.hidden = false;
@@ -105,7 +103,6 @@
       checkoutBtn.href = "/odeme";
     }
     checkoutBtn.textContent = "Ödemeye geç";
-    if (continueBtn) continueBtn.hidden = false;
     note.textContent =
       "Listelenen fiyatlar KDV dahildir. Sonraki adımda bilgilerinizi girip güvenli ödeme ile satın almayı tamamlayın.";
     note.hidden = false;

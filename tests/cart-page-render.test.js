@@ -79,7 +79,6 @@ function bootCartPage(cartItems, shippingSettings = {}) {
     "cartLines",
     "cartNote",
     "cartCheckout",
-    "cartContinue",
     "cartSub",
     "cartVat",
     "cartTotal",

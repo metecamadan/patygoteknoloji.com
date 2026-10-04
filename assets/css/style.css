@@ -2882,8 +2882,6 @@ h1, h2, h3, h4 {
   pointer-events: none;
   cursor: not-allowed;
 }
-.cart-continue { margin-top: 8px; color: var(--brand); border-color: transparent; }
-.cart-continue[hidden] { display: none !important; }
 .minimum-order-hint {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -3360,8 +3358,7 @@ h1, h2, h3, h4 {
     grid-template-columns: 44px 48px 44px;
     height: 44px;
   }
-  .cart-checkout,
-  .cart-continue {
+  .cart-checkout {
     min-height: 48px;
   }
   .checkout-page .checkout-continue-link {
