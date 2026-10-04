@@ -494,6 +494,7 @@
     if (mode === "direct") {
       els.brand.textContent = "";
       const primaryImage =
+        product.thumb ||
         (Array.isArray(product.images) && product.images.find(Boolean)) ||
         product.image ||
         "";
@@ -514,7 +515,7 @@
       const first = lines[0] && lines[0].product;
       const cartImage =
         first &&
-        ((Array.isArray(first.images) && first.images.find(Boolean)) || first.image || "");
+        (first.thumb || (Array.isArray(first.images) && first.images.find(Boolean)) || first.image || "");
       els.brand.textContent = "";
       if (cartImage) {
         const img = document.createElement("img");

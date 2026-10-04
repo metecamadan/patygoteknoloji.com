@@ -952,13 +952,15 @@
       (Array.isArray(product.images) && product.images.find(Boolean)) ||
       product.image ||
       "";
-    const gallery = (
-      Array.isArray(product.images) && product.images.length
-        ? product.images
-        : primaryImage
-          ? [primaryImage]
-          : []
-    ).filter(Boolean);
+    const gallery = [product.thumb]
+      .concat(
+        Array.isArray(product.images) && product.images.length
+          ? product.images
+          : primaryImage
+            ? [primaryImage]
+            : []
+      )
+      .filter(Boolean);
     const visual = document.createElement("div");
     visual.className = "visual" + (gallery.length ? " has-image" : "");
     if (gallery.length) {
@@ -966,6 +968,7 @@
       img.src = gallery[0];
       img.alt = product.name || brand;
       img.loading = "lazy";
+      img.decoding = "async";
       img.referrerPolicy = "no-referrer";
       img.addEventListener("error", () => {
         const next = gallery.find((url) => url && url !== img.getAttribute("src"));

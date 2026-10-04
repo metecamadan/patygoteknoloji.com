@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   detectProductKind,
+  compatibleModelList,
   buildSpecRows,
   buildGeneratedDescription,
   buildGeneratedDetails,
@@ -417,3 +418,54 @@ test("supplier hydrate keeps curated Lenovo override untouched", async () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test("compatibleModelList keeps printer model lists from supplier text", () => {
+  assert.equal(compatibleModelList("M554-M555-M578", "HP 212A Siyah Toner"), "M554, M555, M578");
+  assert.equal(
+    compatibleModelList("HL-3170CDW MFC-9140CDN -MFC-9330CDW", "Brother TN-241 Toner"),
+    "HL-3170CDW, MFC-9140CDN, MFC-9330CDW"
+  );
+  assert.equal(compatibleModelList("G1420 – G2420", "Canon GI-490 Mürekkep"), "G1420, G2420");
+  assert.equal(compatibleModelList("M-180, M-182", "Pantum Toner"), "M-180, M-182");
+  assert.equal(
+    compatibleModelList("HL-1111-1211  DCP-1511  MFC-1811-1815", "Brother TN-1040 Toner"),
+    "HL-1111, HL-1211, DCP-1511, MFC-1811, MFC-1815"
+  );
+  assert.equal(compatibleModelList("MX722-725-MX822", "Lexmark Toner"), "MX722, MX725, MX822");
+  assert.equal(compatibleModelList("CANON MF732-734-735", "Canon CRG-046H Toner"), "CANON MF732, MF734, MF735");
+  assert.equal(compatibleModelList("HP 5700 6700 6701", "HP 213X Toner"), "HP 5700, 6700, 6701");
+  assert.equal(compatibleModelList("PX830,1400,1500", "Epson T079 Kartuş"), "PX830, 1400, 1500");
+});
+
+test("compatibleModelList rejects title tails, capacities and notes", () => {
+  const name = "Samsung CLT-M506L Toner";
+  assert.equal(compatibleModelList("Magenta Kırmızı Toner 14.000 Sayfa", name), "");
+  assert.equal(compatibleModelList("(1.500 syf.)", name), "");
+  assert.equal(compatibleModelList("YENİ 1510", name), "");
+  assert.equal(compatibleModelList("10.4 ML - 1100 SAYFA", name), "");
+  assert.equal(compatibleModelList("kargo müşteriye aittir", name), "");
+  assert.equal(compatibleModelList("842564", name), "");
+  assert.equal(compatibleModelList("304A-305A-312A Çipli", name), "");
+  assert.equal(compatibleModelList("111s yerine", name), "");
+  assert.equal(compatibleModelList("", name), "");
+  assert.equal(compatibleModelList(name, name), "");
+});
+
+test("toner copy lists compatible models; other kinds ignore supplier tail", () => {
+  const toner = enrichProductCopy({
+    name: "HP 212A W2121A Mavi Toner",
+    brand: "HP",
+    siteChild: "toner",
+    description: "",
+    details: "M554-M555-M578",
+  });
+  assert.equal(toner.compatibleModels, "M554, M555, M578");
+  assert.match(toner.description, /Uyumlu modeller: M554, M555, M578\./);
+  assert.match(toner.details, /^__SPEC_TABLE__/);
+  assert.match(toner.details, /Uyumlu modeller/);
+
+  const notebook = enrichProductCopy({ name: LENOVO_V15, siteChild: "notebooklar", details: "M554-M555-M578" });
+  assert.equal(notebook.compatibleModels, undefined);
+  assert.doesNotMatch(notebook.description, /Uyumlu modeller/);
+});
+

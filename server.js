@@ -20,6 +20,7 @@ const {
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
+const { generateMissingThumbnails } = require("./lib/product-thumbnails");
 const {
   mergeCatalogProducts,
   queryPublicCatalog,
@@ -1027,7 +1028,49 @@ function storefrontSitemapXml() {
 
 let akakceMirrorTimer = null;
 let akakceMirrorRunning = false;
+let thumbnailTimer = null;
+let thumbnailRunning = false;
+let thumbnailRerun = false;
 let eventLoopLagMs = 0;
+
+/** Card previews for mirrored images; storefront snapshots are rebuilt once new previews exist. */
+function scheduleThumbnailBackfill(delayMs) {
+  if (thumbnailTimer) clearTimeout(thumbnailTimer);
+  thumbnailTimer = setTimeout(() => {
+    thumbnailTimer = null;
+    if (thumbnailRunning) {
+      thumbnailRerun = true;
+      return;
+    }
+    thumbnailRunning = true;
+    const startedAt = Date.now();
+    generateMissingThumbnails(DATA_ROOT, loadMirrorIndex(DATA_ROOT), {
+      logError: (file, detail) => console.warn("Küçük görsel üretilemedi", file, detail),
+    })
+      .then((result) => {
+        if (result.unavailable) {
+          console.warn("Küçük görsel atlandı: sharp yüklü değil");
+          return;
+        }
+        if (result.created > 0) {
+          invalidateStorefrontCatalog();
+          warmStorefrontCatalog();
+        }
+        if (result.created || result.failed) {
+          console.log("Küçük görsel:", result.created, "yeni,", result.failed, "hata,", Date.now() - startedAt, "ms");
+        }
+      })
+      .catch((err) => console.warn("Küçük görsel atlandı:", err.message || err))
+      .finally(() => {
+        thumbnailRunning = false;
+        if (thumbnailRerun) {
+          thumbnailRerun = false;
+          scheduleThumbnailBackfill(5000);
+        }
+      });
+  }, Math.max(0, Number(delayMs) || 0));
+  if (typeof thumbnailTimer.unref === "function") thumbnailTimer.unref();
+}
 
 const eventLoopProbeTimer = setInterval(() => {
   const started = Date.now();
@@ -1080,6 +1123,7 @@ function scheduleAkakceImageMirror(options) {
             if (result && Number(result.mirrored) > 0) {
               invalidateStorefrontCatalog();
             }
+            scheduleThumbnailBackfill(5000);
           })
           .catch((err) => {
             console.warn("Akakçe görsel aynası atlandı:", err.message || err);
@@ -3316,6 +3360,7 @@ setImmediate(() => {
   scheduleStartupCatalogWarm();
   // Do not hammer image mirror on every process restart when the index is already fresh.
   scheduleAkakceImageMirror({ delayMs: 180000, skipIfRecent: true });
+  scheduleThumbnailBackfill(240000);
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();

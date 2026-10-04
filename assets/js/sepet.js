@@ -183,6 +183,7 @@
         : "/urun-detay?id=" + encodeURIComponent(product.id);
       media.setAttribute("aria-label", product.name + " detayını görüntüle");
       const primaryImage =
+        product.thumb ||
         (Array.isArray(product.images) && product.images.find(Boolean)) ||
         product.image ||
         "";

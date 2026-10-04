@@ -401,7 +401,8 @@
       products.forEach((product) => {
         const href = product.urlPath || "/urun-detay?id=" + encodeURIComponent(product.id);
         addOption(href, (link) => {
-          const thumb = product.image || (Array.isArray(product.images) && product.images.find(Boolean));
+          const thumb =
+            product.thumb || product.image || (Array.isArray(product.images) && product.images.find(Boolean));
           if (thumb) {
             const img = document.createElement("img");
             img.src = thumb;
