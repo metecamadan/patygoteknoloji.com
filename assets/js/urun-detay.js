@@ -226,7 +226,8 @@
       payItems.push(
         "Minimum sepet tutarı " +
           window.PatygoShipping.formatMoney(minimumInfo.minimum) +
-          " (KDV dahil, kargo hariç)."
+          " (kargo hariç)." +
+          (minimumInfo.met ? "" : " Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz.")
       );
     }
     payList.innerHTML = payItems.filter(Boolean).map((line) => "<li>" + line + "</li>").join("");
@@ -383,20 +384,6 @@
     if (shippingLine) {
       shippingLine.classList.add("detail-shipping");
     }
-    const minimumInfo =
-      window.PatygoShipping && typeof window.PatygoShipping.minimumOrderInfo === "function"
-        ? window.PatygoShipping.minimumOrderInfo(window.PatygoCatalog.priceInclVat(product))
-        : null;
-    let minimumLine = null;
-    if (minimumInfo && !minimumInfo.met) {
-      minimumLine = document.createElement("p");
-      minimumLine.className = "detail-minimum-order";
-      minimumLine.textContent =
-        "Minimum sepet tutarı " +
-        window.PatygoShipping.formatMoney(minimumInfo.minimum) +
-        " (kargo hariç). Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz.";
-    }
-
     const actions = document.createElement("div");
     actions.className = "actions";
     let addQty = 1;
@@ -437,7 +424,6 @@
     info.appendChild(h1);
     info.appendChild(price);
     if (shippingLine) info.appendChild(shippingLine);
-    if (minimumLine) info.appendChild(minimumLine);
     info.appendChild(actions);
     info.appendChild(trust);
     const hub = buildHighlights(product);

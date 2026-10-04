@@ -41,7 +41,11 @@ test("checkout and product detail surface the minimum order rule", () => {
   const admin = read("assets/js/admin-panel.js");
   assert.match(checkout, /minimumOrderInfo/);
   assert.match(checkout, /if \(totals\.minimumError\) \{/);
-  assert.match(detail, /detail-minimum-order/);
+  assert.doesNotMatch(detail, /detail-minimum-order|minimumLine/);
+  assert.match(
+    detail,
+    /payItems\.push\(\s*"Minimum sepet tutarı " \+[\s\S]*?" \(kargo hariç\)\." \+\s*\(minimumInfo\.met \? "" : " Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz\."\)/
+  );
   assert.match(detail, /shippingReady\.then\(/);
   assert.match(admin, /minOrderAmount: values\.minOrderAmount/);
   assert.match(read("admin.html"), /id="shippingMinOrder"/);
