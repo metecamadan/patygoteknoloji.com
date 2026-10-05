@@ -73,6 +73,26 @@ test("three supplier slots keep configuration, products and overrides isolated",
     const slot2 = manager.queryProducts({ slot: "supplier-2", page: 1, limit: 50 });
     assert.equal(slot2.total, 1);
     assert.equal(slot2.products[0].name, "İkinci Ürün");
+    const names = (result) => result.products.map((item) => item.name);
+    assert.deepEqual(names(manager.queryProducts({ sort: "name", dir: "asc", limit: 50 })), [
+      "Birinci Ürün",
+      "İkinci Ürün",
+      "Üçüncü Ürün",
+    ]);
+    assert.deepEqual(names(manager.queryProducts({ sort: "price", dir: "desc", page: 1, limit: 2 })), [
+      "Üçüncü Ürün",
+      "İkinci Ürün",
+    ]);
+    assert.deepEqual(
+      names(manager.queryProducts({ sort: "price", dir: "desc", page: 2, limit: 2 })),
+      ["Birinci Ürün"],
+      "sort runs over every filtered row before paging"
+    );
+    assert.deepEqual(
+      names(manager.queryProducts({ sort: "constructor", dir: "desc", limit: 50 })),
+      names(manager.queryProducts({ limit: 50 })),
+      "unknown sort keys keep the default order"
+    );
     const products = manager.listProducts();
     assert.equal(products.length, 3);
     assert.equal(new Set(products.map((item) => item.id)).size, 3);

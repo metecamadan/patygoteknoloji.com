@@ -57,6 +57,113 @@
     });
   }
 
+  const SORT_STORAGE_PREFIX = "patygo_sort_";
+  const sortCollator = new Intl.Collator("tr", { numeric: true, sensitivity: "base" });
+
+  // Header click cycles A→Z, Z→A, then back to the list's default order.
+  function setupSortableHeader(head, name, onChange) {
+    const cells = head ? Array.from(head.querySelectorAll("[data-sort-key]")) : [];
+    const keys = cells.map((cell) => cell.getAttribute("data-sort-key"));
+    const storageKey = SORT_STORAGE_PREFIX + name;
+    let state = null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved && keys.includes(saved.key)) state = { key: saved.key, dir: saved.dir === "desc" ? "desc" : "asc" };
+    } catch (_) {}
+
+    function paint() {
+      cells.forEach((cell) => {
+        const key = cell.getAttribute("data-sort-key");
+        const dir = state && state.key === key ? state.dir : "";
+        const btn = cell.querySelector(".admin-sort-btn");
+        if (cell.tagName === "TH") {
+          if (dir) cell.setAttribute("aria-sort", dir === "asc" ? "ascending" : "descending");
+          else cell.removeAttribute("aria-sort");
+        }
+        btn.setAttribute("data-dir", dir);
+        btn.querySelector(".admin-sort-state").textContent =
+          dir === "asc" ? " (artan sıralı)" : dir === "desc" ? " (azalan sıralı)" : "";
+        btn.title = dir === "asc" ? "Azalan sırala" : dir === "desc" ? "Varsayılan sıraya dön" : "Artan sırala";
+      });
+    }
+
+    cells.forEach((cell) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "admin-sort-btn";
+      while (cell.firstChild) btn.appendChild(cell.firstChild);
+      const icon = document.createElement("span");
+      icon.className = "admin-sort-icon";
+      icon.setAttribute("aria-hidden", "true");
+      const srState = document.createElement("span");
+      srState.className = "sr-only admin-sort-state";
+      btn.append(icon, srState);
+      cell.appendChild(btn);
+      btn.addEventListener("click", () => {
+        const key = cell.getAttribute("data-sort-key");
+        if (!state || state.key !== key) state = { key, dir: "asc" };
+        else if (state.dir === "asc") state = { key, dir: "desc" };
+        else state = null;
+        try {
+          if (state) localStorage.setItem(storageKey, JSON.stringify(state));
+          else localStorage.removeItem(storageKey);
+        } catch (_) {}
+        paint();
+        onChange(state);
+      });
+    });
+    paint();
+
+    return {
+      apply(params) {
+        if (state) {
+          params.set("sort", state.key);
+          params.set("dir", state.dir);
+        }
+        return params;
+      },
+      // Client-side variant for short, unpaged lists; blanks stay last in both directions.
+      sortList(list, valueOf) {
+        if (!state || !valueOf[state.key]) return list.slice();
+        const read = valueOf[state.key];
+        const sign = state.dir === "desc" ? -1 : 1;
+        const blank = (v) => v === null || v === undefined || v === "";
+        return list
+          .map((row, index) => ({ row, index, value: read(row) }))
+          .sort((x, y) => {
+            if (blank(x.value) || blank(y.value)) {
+              return blank(x.value) === blank(y.value) ? x.index - y.index : blank(x.value) ? 1 : -1;
+            }
+            const diff =
+              typeof x.value === "number" && typeof y.value === "number"
+                ? x.value - y.value
+                : sortCollator.compare(String(x.value), String(y.value));
+            return sign * diff || x.index - y.index;
+          })
+          .map((entry) => entry.row);
+      },
+    };
+  }
+
+  const supplierSort = setupSortableHeader(document.getElementById("supplierProductHead"), "supplier", () => {
+    supplierPoolPage = 1;
+    loadSupplierData().catch((err) => note(document.getElementById("supplierProductsNote"), "err", err.message));
+  });
+  const unlistedSort = setupSortableHeader(document.getElementById("adminUnlistedHead"), "unlisted", () => {
+    unlistedPage = 1;
+    loadUnlistedProducts().catch(() => {});
+  });
+  const productPoolSort = setupSortableHeader(document.getElementById("productPoolHead"), "pool", () => {
+    productPoolPage = 1;
+    loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
+  });
+  const orderSort = setupSortableHeader(document.getElementById("adminOrderListHead"), "orders", () => {
+    loadAdminOrders().catch(() => {});
+  });
+  const couponSort = setupSortableHeader(document.getElementById("couponTableHead"), "coupons", () => {
+    renderCouponTable(adminCoupons);
+  });
+
   const adminOpsHealth = document.getElementById("adminOpsHealth");
   if (adminOpsHealth) {
     adminOpsHealth.addEventListener("click", () => {
@@ -1874,6 +1981,7 @@
     if (query) qs.set("q", query);
     if (status) qs.set("status", status);
     if (slotId) qs.set("slot", slotId);
+    supplierSort.apply(qs);
     return qs.toString();
   }
 
@@ -2651,6 +2759,7 @@
         page: String(unlistedPage),
         limit: "50",
       });
+      unlistedSort.apply(qs);
       const data = await api("/api/admin/supplier/products?" + qs.toString());
       const list = Array.isArray(data.products) ? data.products : [];
       unlistedPage = Number(data.page) || 1;
@@ -4020,6 +4129,7 @@
     if (status) params.set("status", status);
     const q = currentOrderSearch();
     if (q) params.set("q", q);
+    orderSort.apply(params);
     return params.toString();
   }
 
@@ -5752,13 +5862,23 @@
     return parts.join(" · ") || "Koşulsuz";
   }
 
+  const COUPON_SORT_VALUES = {
+    code: (coupon) => coupon.code,
+    // Percent coupons first, then fixed amounts; each group by value.
+    discount: (coupon) => (coupon.type === "amount" ? 1e9 : 0) + (Number(coupon.value) || 0),
+    minOrder: (coupon) => Number(coupon.minOrder) || 0,
+    used: (coupon) => Number(coupon.usedCount) || 0,
+    active: (coupon) => (coupon.active ? 1 : 0),
+  };
+
   function renderCouponTable(coupons) {
     if (!couponTableBody) return;
     if (!coupons.length) {
       couponTableBody.innerHTML = '<tr><td colspan="6">Henüz kupon yok.</td></tr>';
       return;
     }
-    couponTableBody.innerHTML = coupons
+    couponTableBody.innerHTML = couponSort
+      .sortList(coupons, COUPON_SORT_VALUES)
       .map((coupon) => {
         const code = escapeHtml(coupon.code);
         return (
@@ -6684,6 +6804,7 @@
       page: String(productPoolPage || 1),
       limit: "50",
     });
+    productPoolSort.apply(qs);
     const data = await api("/api/admin/supplier/products?" + qs.toString());
     const rows = Array.isArray(data.products) ? data.products : [];
     body.textContent = "";

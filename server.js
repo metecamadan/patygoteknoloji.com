@@ -2523,6 +2523,8 @@ async function handleApi(req, res, urlPath) {
         to: to || undefined,
         q: q || undefined,
         limit,
+        sort: requestUrl.searchParams.get("sort") || "",
+        dir: requestUrl.searchParams.get("dir") || "",
       }),
       shippingCarriers: SHIPPING_CARRIERS,
     });
@@ -3201,6 +3203,8 @@ async function handleApi(req, res, urlPath) {
       slot: requestUrl.searchParams.get("slot") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 50,
+      sort: requestUrl.searchParams.get("sort") || "",
+      dir: requestUrl.searchParams.get("dir") || "",
     });
     return json(res, 200, {
       products: enrichSupplierProducts(queried.products),

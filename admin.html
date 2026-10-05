@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p32" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=koyu-1" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=sirala-1" />
   <script>
     (function () {
       try {
@@ -294,14 +294,14 @@
                 </div>
               </div>
               <p class="admin-hint" style="margin-top:0">Satıra tıklayınca detay ve kargo alanları açılır. Arama sipariş no, e-posta veya telefonda tüm tarihlerde bakılır.</p>
-              <div class="admin-order-list-head" aria-hidden="true">
-                <span class="admin-order-head-id">Sipariş no</span>
-                <span class="admin-order-head-date">Tarih</span>
-                <span class="admin-order-head-customer">Müşteri</span>
-                <span class="admin-order-head-payment">Ödeme</span>
-                <span class="admin-order-head-fulfillment">Sipariş durumu</span>
-                <span class="admin-order-head-total">Tutar</span>
-                <span class="admin-order-head-chevron"></span>
+              <div class="admin-order-list-head" id="adminOrderListHead">
+                <span class="admin-order-head-id" data-sort-key="id">Sipariş no</span>
+                <span class="admin-order-head-date" data-sort-key="date">Tarih</span>
+                <span class="admin-order-head-customer" data-sort-key="customer">Müşteri</span>
+                <span class="admin-order-head-payment" data-sort-key="payment">Ödeme</span>
+                <span class="admin-order-head-fulfillment" data-sort-key="status">Sipariş durumu</span>
+                <span class="admin-order-head-total" data-sort-key="total">Tutar</span>
+                <span class="admin-order-head-chevron" aria-hidden="true"></span>
               </div>
               <div id="adminOrderList" class="admin-orders-list" role="list"></div>
               <p class="admin-note" id="adminOrdersNote" role="status"></p>
@@ -418,7 +418,7 @@
               </div>
               <div class="admin-table-wrap">
                 <table class="admin-table">
-                  <thead><tr><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">Stok</th><th scope="col">Tedarikçi kategorisi</th><th scope="col">Gerekçe</th><th scope="col">İşlem</th></tr></thead>
+                  <thead id="adminUnlistedHead"><tr><th scope="col" data-sort-key="name">Ürün</th><th scope="col" data-sort-key="sku">Stok kodu</th><th scope="col" data-sort-key="stock">Stok</th><th scope="col" data-sort-key="xmlCategory">Tedarikçi kategorisi</th><th scope="col" data-sort-key="reason">Gerekçe</th><th scope="col">İşlem</th></tr></thead>
                   <tbody id="adminUnlistedRows"><tr><td colspan="6" class="admin-table-empty">Yükleniyor…</td></tr></tbody>
                 </table>
               </div>
@@ -640,7 +640,7 @@
               </div>
               <div class="admin-table-wrap">
                 <table class="admin-table admin-coupon-table">
-                  <thead><tr><th>Kod</th><th>İndirim</th><th>Koşullar</th><th>Kullanım</th><th>Durum</th><th></th></tr></thead>
+                  <thead id="couponTableHead"><tr><th scope="col" data-sort-key="code">Kod</th><th scope="col" data-sort-key="discount">İndirim</th><th scope="col" data-sort-key="minOrder">Koşullar</th><th scope="col" data-sort-key="used">Kullanım</th><th scope="col" data-sort-key="active">Durum</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead>
                   <tbody id="couponTableBody"><tr><td colspan="6">Yükleniyor…</td></tr></tbody>
                 </table>
               </div>
@@ -869,7 +869,7 @@
                 </div>
                 <div class="admin-table-wrap">
                   <table class="admin-table">
-                    <thead><tr><th scope="col" class="admin-check-col"><input type="checkbox" id="supplierSelectAll" aria-label="Bu sayfadaki ürünleri seç" /></th><th scope="col">Ürün</th><th scope="col">Stok kodu</th><th scope="col">XML Kaynağı</th><th scope="col">Tedarikçi fiyatı</th><th scope="col">Özel kâr %</th><th scope="col">Satış fiyatı</th><th scope="col">Stok (son XML)</th><th scope="col">Site kategorisi</th><th scope="col">Export</th><th scope="col">Yayın</th></tr></thead>
+                    <thead id="supplierProductHead"><tr><th scope="col" class="admin-check-col"><input type="checkbox" id="supplierSelectAll" aria-label="Bu sayfadaki ürünleri seç" /></th><th scope="col" data-sort-key="name">Ürün</th><th scope="col" data-sort-key="sku">Stok kodu</th><th scope="col" data-sort-key="source">XML Kaynağı</th><th scope="col" data-sort-key="cost">Tedarikçi fiyatı</th><th scope="col" data-sort-key="margin">Özel kâr %</th><th scope="col" data-sort-key="price">Satış fiyatı</th><th scope="col" data-sort-key="stock">Stok (son XML)</th><th scope="col" data-sort-key="siteCategory">Site kategorisi</th><th scope="col">Export</th><th scope="col" data-sort-key="active">Yayın</th></tr></thead>
                     <tbody id="supplierProductRows"><tr><td colspan="11" class="admin-table-empty">XML bağlantısını kaydedip ürünleri güncelleyin.</td></tr></tbody>
                   </table>
                 </div>
@@ -1074,11 +1074,11 @@
               </div>
               <div class="admin-table-wrap">
                 <table class="admin-table" id="productPoolTable">
-                  <thead>
+                  <thead id="productPoolHead">
                     <tr>
-                      <th scope="col">Ürün</th>
-                      <th scope="col">Stok</th>
-                      <th scope="col">XML kategori</th>
+                      <th scope="col" data-sort-key="name">Ürün</th>
+                      <th scope="col" data-sort-key="stock">Stok</th>
+                      <th scope="col" data-sort-key="xmlCategory">XML kategori</th>
                       <th scope="col">Site kategorisi</th>
                       <th scope="col">Yayın</th>
                     </tr>
@@ -1233,6 +1233,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=koyu-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=sirala-1"></script>
 </body>
 </html>

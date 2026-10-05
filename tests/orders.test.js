@@ -129,3 +129,35 @@ test("order store search matches id, email, and normalized phone", () => {
     fs.rmSync(root, { recursive: true, force: true });
   } catch (_) {}
 });
+
+test("order store sorts status columns by lifecycle, not raw codes", () => {
+  resetDbForTests();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-orders-sort-"));
+  const store = createOrderStore(root);
+  [
+    ["PTY-DEL", "delivered", "paid"],
+    ["PTY-SHIP", "shipped", "paid"],
+    ["PTY-CANCEL", "cancelled", "refunded"],
+    ["PTY-PAID", "paid", "paid"],
+    ["PTY-WAIT", "payment_pending", "pending"],
+    ["PTY-FAIL", "payment_failed", "failed"],
+  ].forEach(([id, status, paymentStatus], index) => {
+    store.save({
+      id,
+      total: 100 + index,
+      status,
+      paymentStatus,
+      customer: { name: id, email: id.toLowerCase() + "@example.com" },
+      items: [],
+      createdAt: "2026-08-1" + index + "T09:00:00.000Z",
+    });
+  });
+  const ids = (sort, dir) => store.list({ sort, dir, limit: 10 }).map((order) => order.id);
+  assert.deepEqual(ids("status", "asc"), ["PTY-FAIL", "PTY-WAIT", "PTY-PAID", "PTY-SHIP", "PTY-DEL", "PTY-CANCEL"]);
+  assert.deepEqual(ids("payment", "asc"), ["PTY-WAIT", "PTY-PAID", "PTY-SHIP", "PTY-DEL", "PTY-FAIL", "PTY-CANCEL"]);
+  assert.deepEqual(ids("payment", "desc")[0], "PTY-CANCEL");
+  resetDbForTests();
+  try {
+    fs.rmSync(root, { recursive: true, force: true });
+  } catch (_) {}
+});

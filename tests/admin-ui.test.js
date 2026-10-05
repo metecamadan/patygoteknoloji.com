@@ -120,7 +120,7 @@ test("admin categories tab manages the site category tree", () => {
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=koyu-1/);
+  assert.match(html, /admin\.css\?v=sirala-1/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -523,4 +523,35 @@ test("unlisted toolbar and table rows are styled for both themes", () => {
   assert.match(css, /html\.admin-theme-dark \.admin-toolbar input,\s*html\.admin-theme-dark \.admin-toolbar select,/);
   assert.match(css, /html\.admin-theme-dark \.admin-table tr:hover td \{ background: #16213a; \}/);
   assert.match(css, /html\.admin-theme-dark \.field input,\s*html\.admin-theme-dark \.field select,\s*html\.admin-theme-dark \.field textarea,/);
+});
+
+test("admin tables expose click-to-sort headers wired to whitelisted server sort", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "admin-panel.js"), "utf8");
+  const headKeys = (id) => {
+    const match = html.match(new RegExp('id="' + id + '"[\\s\\S]*?</(?:thead|div)>'));
+    assert.ok(match, id + " header exists");
+    return Array.from(match[0].matchAll(/data-sort-key="([^"]+)"/g), (m) => m[1]);
+  };
+  assert.deepEqual(headKeys("supplierProductHead"), ["name", "sku", "source", "cost", "margin", "price", "stock", "siteCategory", "active"]);
+  assert.deepEqual(headKeys("adminUnlistedHead"), ["name", "sku", "stock", "xmlCategory", "reason"]);
+  assert.deepEqual(headKeys("productPoolHead"), ["name", "stock", "xmlCategory"]);
+  assert.deepEqual(headKeys("adminOrderListHead"), ["id", "date", "customer", "payment", "status", "total"]);
+  assert.deepEqual(headKeys("couponTableHead"), ["code", "discount", "minOrder", "used", "active"]);
+  assert.doesNotMatch(html, /class="admin-order-list-head"[^>]*aria-hidden/, "sortable order head stays reachable");
+
+  const serverSortKeys = fs.readFileSync(path.join(__dirname, "..", "lib", "multi-supplier.js"), "utf8")
+    .match(/const PRODUCT_SORT_VALUES = \{([\s\S]*?)\n  \};/)[1];
+  new Set([...headKeys("supplierProductHead"), ...headKeys("adminUnlistedHead"), ...headKeys("productPoolHead")]).forEach((key) => {
+    assert.match(serverSortKeys, new RegExp("\\n    " + key + ":"), key + " is a server sort key");
+  });
+
+  assert.match(js, /function setupSortableHeader\(head, name, onChange\)/);
+  assert.match(js, /SORT_STORAGE_PREFIX = "patygo_sort_"/);
+  assert.match(js, /aria-sort/);
+  assert.match(js, /supplierSort\.apply\(qs\)/);
+  assert.match(js, /unlistedSort\.apply\(qs\)/);
+  assert.match(js, /productPoolSort\.apply\(qs\)/);
+  assert.match(js, /orderSort\.apply\(params\)/);
+  assert.match(js, /couponSort\s*\.sortList\(coupons, COUPON_SORT_VALUES\)/);
 });

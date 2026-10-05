@@ -1901,6 +1901,43 @@ body.admin-modal-open {
   text-align: left;
   white-space: nowrap;
 }
+.admin-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-sort-btn:hover,
+.admin-sort-btn[data-dir="asc"],
+.admin-sort-btn[data-dir="desc"] {
+  color: var(--ink);
+}
+.admin-sort-btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.admin-sort-icon::before {
+  content: "↕";
+  opacity: 0.4;
+}
+.admin-sort-btn[data-dir="asc"] .admin-sort-icon::before {
+  content: "↑";
+  opacity: 1;
+}
+.admin-sort-btn[data-dir="desc"] .admin-sort-icon::before {
+  content: "↓";
+  opacity: 1;
+}
 .admin-table td { padding: 11px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
 .admin-table tr:hover td { background: #fafcff; }
 .admin-check-col { width: 42px; text-align: center !important; }

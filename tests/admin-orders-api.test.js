@@ -288,4 +288,22 @@ test("admin orders list searches by order id, email, and phone across dates", as
     wildcardBody.orders.map((order) => order.id),
     ["PTY-SEARCH-NEW"]
   );
+
+  const sortedIds = async (query) => {
+    const res = await fetch(baseUrl + "/api/admin/orders?q=example.com&" + query, { headers });
+    assert.equal(res.status, 200, query);
+    return (await res.json()).orders.map((order) => order.id);
+  };
+  assert.deepEqual(await sortedIds(""), ["PTY-SEARCH-NEW", "PTY-SEARCH-OLD"]);
+  assert.deepEqual(await sortedIds("sort=total&dir=asc"), ["PTY-SEARCH-OLD", "PTY-SEARCH-NEW"]);
+  assert.deepEqual(await sortedIds("sort=total&dir=desc"), ["PTY-SEARCH-NEW", "PTY-SEARCH-OLD"]);
+  assert.deepEqual(await sortedIds("sort=customer&dir=asc"), ["PTY-SEARCH-OLD", "PTY-SEARCH-NEW"]);
+  assert.deepEqual(await sortedIds("sort=date&dir=asc"), ["PTY-SEARCH-OLD", "PTY-SEARCH-NEW"]);
+  assert.deepEqual(await sortedIds("sort=status&dir=asc"), ["PTY-SEARCH-OLD", "PTY-SEARCH-NEW"]);
+  assert.deepEqual(
+    await sortedIds("sort=" + encodeURIComponent("total; DROP TABLE orders") + "&dir=asc"),
+    ["PTY-SEARCH-NEW", "PTY-SEARCH-OLD"],
+    "non-whitelisted sort falls back to newest first"
+  );
+  assert.deepEqual(await sortedIds("sort=__proto__&dir=asc"), ["PTY-SEARCH-NEW", "PTY-SEARCH-OLD"]);
 });
