@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p32" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=sirala-1" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=sirala-2" />
   <script>
     (function () {
       try {
@@ -864,12 +864,12 @@
                 </div>
                 <div class="admin-product-toolbar">
                   <label class="admin-search"><span aria-hidden="true">⌕</span><input id="supplierSearch" type="search" placeholder="Stok kodu, ürün veya marka ara" /></label>
-                  <select id="supplierStatusFilter" aria-label="XML ürün durum filtresi"><option value="">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="stock">Stokta</option><option value="nocat">Kategorisiz</option></select>
+                  <select id="supplierStatusFilter" aria-label="XML ürün durum filtresi"><option value="">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="stock">Stokta</option><option value="feedmissing">Stokta · Export eksik</option><option value="nocat">Kategorisiz</option></select>
                   <select id="supplierSlotFilter" aria-label="XML kaynak filtresi"><option value="">Tüm XML kaynakları</option><option value="supplier-1">XML Kaynağı 1</option><option value="supplier-2">XML Kaynağı 2</option><option value="supplier-3">XML Kaynağı 3</option></select>
                 </div>
                 <div class="admin-table-wrap">
                   <table class="admin-table">
-                    <thead id="supplierProductHead"><tr><th scope="col" class="admin-check-col"><input type="checkbox" id="supplierSelectAll" aria-label="Bu sayfadaki ürünleri seç" /></th><th scope="col" data-sort-key="name">Ürün</th><th scope="col" data-sort-key="sku">Stok kodu</th><th scope="col" data-sort-key="source">XML Kaynağı</th><th scope="col" data-sort-key="cost">Tedarikçi fiyatı</th><th scope="col" data-sort-key="margin">Özel kâr %</th><th scope="col" data-sort-key="price">Satış fiyatı</th><th scope="col" data-sort-key="stock">Stok (son XML)</th><th scope="col" data-sort-key="siteCategory">Site kategorisi</th><th scope="col">Export</th><th scope="col" data-sort-key="active">Yayın</th></tr></thead>
+                    <thead id="supplierProductHead"><tr><th scope="col" class="admin-check-col"><input type="checkbox" id="supplierSelectAll" aria-label="Bu sayfadaki ürünleri seç" /></th><th scope="col" data-sort-key="name">Ürün</th><th scope="col" data-sort-key="sku">Stok kodu</th><th scope="col" data-sort-key="source">XML Kaynağı</th><th scope="col" data-sort-key="cost">Tedarikçi fiyatı</th><th scope="col" data-sort-key="margin">Özel kâr %</th><th scope="col" data-sort-key="price">Satış fiyatı</th><th scope="col" data-sort-key="stock">Stok (son XML)</th><th scope="col" data-sort-key="siteCategory">Site kategorisi</th><th scope="col" data-sort-key="feed">Export</th><th scope="col" data-sort-key="active">Yayın</th></tr></thead>
                     <tbody id="supplierProductRows"><tr><td colspan="11" class="admin-table-empty">XML bağlantısını kaydedip ürünleri güncelleyin.</td></tr></tbody>
                   </table>
                 </div>
@@ -1233,6 +1233,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=sirala-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=sirala-2"></script>
 </body>
 </html>

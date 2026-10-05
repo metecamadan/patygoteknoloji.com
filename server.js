@@ -50,6 +50,7 @@ const {
   parseUrunlerPathname,
   categoryQueryToPath,
   categoryHref,
+  loadCategories,
 } = require("./lib/categories");
 const { buildStorefrontSitemap } = require("./lib/sitemap");
 const {
@@ -1422,9 +1423,9 @@ function enqueueXmlCategorySync(slotId) {
   return xmlCategorySyncQueue;
 }
 
-function enrichSupplierProducts(products) {
+function enrichSupplierProducts(products, categories) {
   return (products || []).map((product) => {
-    const feedIssues = analyzeSupplierFeedIssues(product, { siteBaseUrl: SITE_BASE_URL });
+    const feedIssues = analyzeSupplierFeedIssues(product, { siteBaseUrl: SITE_BASE_URL, categories });
     return Object.assign({}, product, {
       feedIssues,
       feedReady: feedIssues.length === 0,
@@ -3196,18 +3197,29 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const slots = supplierManager.listSlots();
+    const categories = loadCategories();
+    const feedReadyOf = (item) =>
+      analyzeSupplierFeedIssues(item, { siteBaseUrl: SITE_BASE_URL, categories }).length === 0;
+    const status = requestUrl.searchParams.get("status") || "";
+    // "feedmissing" = in stock, published, Export badge "Eksik".
+    const feedMissing = status === "feedmissing";
     const queried = supplierManager.queryProducts({
       q: requestUrl.searchParams.get("q") || "",
-      status: requestUrl.searchParams.get("status") || "",
+      status: feedMissing ? "stock" : status,
+      match: feedMissing ? (item) => item.active === true && !feedReadyOf(item) : null,
       reason: requestUrl.searchParams.get("reason") || "",
       slot: requestUrl.searchParams.get("slot") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 50,
       sort: requestUrl.searchParams.get("sort") || "",
       dir: requestUrl.searchParams.get("dir") || "",
+      sortValues: {
+        // Mirrors the Export badge: Eksik (0) < "—" (1) < Hazır (2).
+        feed: (item) => (feedReadyOf(item) ? 2 : item.active ? 0 : 1),
+      },
     });
     return json(res, 200, {
-      products: enrichSupplierProducts(queried.products),
+      products: enrichSupplierProducts(queried.products, categories),
       total: queried.total,
       page: queried.page,
       limit: queried.limit,

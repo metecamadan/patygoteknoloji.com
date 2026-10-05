@@ -109,3 +109,72 @@ test("publishing XML slot 1 assigns site categories and lists products on the st
   assert.equal(cpu.mid, "islemciler");
   assert.equal(cpu.alt, "intel-islemciler");
 });
+
+test("XML products endpoint sorts by Export badge across the whole catalog", async (t) => {
+  const password = "test-admin-password";
+  const { baseUrl, dataRoot } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+  const runtime = path.join(dataRoot, ".runtime");
+  fs.mkdirSync(runtime, { recursive: true });
+  const cpu = (sku, extra) =>
+    Object.assign(
+      {
+        supplierSku: sku,
+        id: "sup-" + sku.toLowerCase(),
+        name: "Intel Core " + sku,
+        brand: "INTEL",
+        costPrice: 70,
+        stockQty: 4,
+        image: "https://cdn.example/" + sku + ".jpg",
+        barcode: "869000000000" + sku.slice(-1),
+        manufacturerCode: "I3-" + sku,
+        gtipCode: "84.73.30.00.00.00",
+        mainCategory: "OEM &amp; ÇEVRE BİRİMLERİ",
+        midCategory: "İşlemciler",
+        subCategory: "Intel İşlemciler",
+        currency: "USD",
+        vatPercent: 20,
+        unit: "ADET",
+        category: "bilgisayar",
+      },
+      extra || {}
+    );
+  fs.writeFileSync(
+    path.join(runtime, "supplier-cache.json"),
+    JSON.stringify([cpu("CPU-1"), cpu("CPU-2", { barcode: "" })])
+  );
+  fs.writeFileSync(
+    path.join(runtime, "supplier-settings.json"),
+    JSON.stringify({ globalMarginPercent: 15, lastFetchStatus: "ok", lastSuccessfulFetchAt: new Date().toISOString(), itemCount: 2 })
+  );
+  writeCachedRates(dataRoot, { USD: 40, EUR: 46, fetchedAt: new Date().toISOString(), source: "test" });
+
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  const session = await login.json();
+  const headers = { Authorization: "Bearer " + session.token, "Content-Type": "application/json" };
+  const published = await fetch(baseUrl + "/api/admin/supplier/publish", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ slotId: "supplier-1" }),
+  });
+  assert.equal(published.status, 200);
+
+  const list = async (query) => {
+    const res = await fetch(baseUrl + "/api/admin/supplier/products?limit=50" + query, { headers });
+    assert.equal(res.status, 200);
+    return (await res.json()).products.map((item) => [item.supplierSku, item.feedReady ? "Hazır" : item.active ? "Eksik" : "—"]);
+  };
+  assert.deepEqual(await list(""), [["CPU-1", "Hazır"], ["CPU-2", "Eksik"]]);
+  assert.deepEqual(await list("&sort=feed&dir=asc"), [["CPU-2", "Eksik"], ["CPU-1", "Hazır"]]);
+  assert.deepEqual(await list("&sort=feed&dir=desc"), [["CPU-1", "Hazır"], ["CPU-2", "Eksik"]]);
+  assert.deepEqual(await list("&status=stock&sort=feed&dir=asc"), [["CPU-2", "Eksik"], ["CPU-1", "Hazır"]]);
+  assert.deepEqual(await list("&status=feedmissing"), [["CPU-2", "Eksik"]], "filter keeps only in-stock Eksik rows");
+  const totals = await fetch(baseUrl + "/api/admin/supplier/products?status=feedmissing", { headers });
+  assert.equal((await totals.json()).total, 1, "pager counts only Eksik rows");
+});

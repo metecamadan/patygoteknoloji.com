@@ -120,7 +120,7 @@ test("admin categories tab manages the site category tree", () => {
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=sirala-1/);
+  assert.match(html, /admin\.css\?v=sirala-2/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -533,7 +533,7 @@ test("admin tables expose click-to-sort headers wired to whitelisted server sort
     assert.ok(match, id + " header exists");
     return Array.from(match[0].matchAll(/data-sort-key="([^"]+)"/g), (m) => m[1]);
   };
-  assert.deepEqual(headKeys("supplierProductHead"), ["name", "sku", "source", "cost", "margin", "price", "stock", "siteCategory", "active"]);
+  assert.deepEqual(headKeys("supplierProductHead"), ["name", "sku", "source", "cost", "margin", "price", "stock", "siteCategory", "feed", "active"]);
   assert.deepEqual(headKeys("adminUnlistedHead"), ["name", "sku", "stock", "xmlCategory", "reason"]);
   assert.deepEqual(headKeys("productPoolHead"), ["name", "stock", "xmlCategory"]);
   assert.deepEqual(headKeys("adminOrderListHead"), ["id", "date", "customer", "payment", "status", "total"]);
@@ -543,8 +543,12 @@ test("admin tables expose click-to-sort headers wired to whitelisted server sort
   const serverSortKeys = fs.readFileSync(path.join(__dirname, "..", "lib", "multi-supplier.js"), "utf8")
     .match(/const PRODUCT_SORT_VALUES = \{([\s\S]*?)\n  \};/)[1];
   new Set([...headKeys("supplierProductHead"), ...headKeys("adminUnlistedHead"), ...headKeys("productPoolHead")]).forEach((key) => {
+    if (key === "feed") return;
     assert.match(serverSortKeys, new RegExp("\\n    " + key + ":"), key + " is a server sort key");
   });
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /sortValues: \{[\s\S]{0,200}feed: \(item\) =>/, "Export sort key is provided by the products endpoint");
+  assert.match(html, /<option value="feedmissing">Stokta · Export eksik<\/option>/);
 
   assert.match(js, /function setupSortableHeader\(head, name, onChange\)/);
   assert.match(js, /SORT_STORAGE_PREFIX = "patygo_sort_"/);
