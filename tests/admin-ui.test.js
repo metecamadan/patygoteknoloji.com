@@ -381,7 +381,7 @@ test("admin users tab supports panel account management", () => {
   assert.doesNotMatch(html, /id="adminOrderDetailTitle"/);
   assert.match(
     html,
-    /id="overviewTab"[\s\S]*?id="ordersTab"[\s\S]*?id="leadsTab"[\s\S]*?id="productsTab"/
+    /id="overviewTab"[\s\S]*?id="ordersTab"[\s\S]*?id="productsTab"[\s\S]*?id="unlistedTab"[\s\S]*?id="categoriesTab"[\s\S]*?id="xmlTab"[\s\S]*?id="calendarTab"[\s\S]*?id="shippingTab"[\s\S]*?id="usersTab"[\s\S]*?id="reviewsTab"[\s\S]*?id="leadsTab"[\s\S]*?<\/nav>/
   );
   assert.match(html, /id="adminTabLeads"/);
   assert.match(html, /id="adminLeadList"/);
