@@ -120,7 +120,7 @@ test("admin categories tab manages the site category tree", () => {
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=genel-2/);
+  assert.match(html, /admin\.css\?v=talep-2/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -438,4 +438,24 @@ test("admin XML refresh errors mention supplier access not generic /admin path",
   assert.match(script, /XML çekimi zaman aşımına uğradı/);
   assert.match(script, /IP whitelist/);
   assert.match(script, /slot\.lastError/);
+});
+
+test("leads tab lets the admin reply with attachments and stays readable in dark theme", () => {
+  assert.doesNotMatch(html, /admin-leads-list-head/);
+  assert.match(html, /id="adminTabLeads"(?:(?!id="adminTabUnlisted")[\s\S])*id="leadReplyModal" class="admin-modal" hidden/);
+  for (const id of ["leadReplyForm", "leadReplyTo", "leadReplySubject", "leadReplyMessage", "leadReplyFiles", "leadReplyFileList", "leadReplySendBtn", "leadReplyNote", "leadReplyOriginal"]) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /accept="\.pdf,\.doc,\.docx,\.xls,\.xlsx,\.png,\.jpg,\.jpeg"/);
+  assert.match(html, /gizli kopyası info@/);
+  assert.ok((html.match(/data-close-lead-reply/g) || []).length >= 3);
+  assert.match(script, /"\/api\/admin\/leads\/" \+ encodeURIComponent\(leadReplyTarget\.id\) \+ "\/reply"/);
+  assert.match(script, /readAsDataURL/);
+  assert.match(script, /LEAD_REPLY_MAX_FILES = 5/);
+  assert.match(script, /LEAD_REPLY_MAX_BYTES = 10 \* 1024 \* 1024/);
+  assert.match(script, /data\.replyEnabled === true/);
+  assert.match(script, /Yanıt bekliyor/);
+  assert.match(script, /Yanıtlandı/);
+  assert.match(css, /html\.admin-theme-dark \.admin-item,\s*html\.admin-theme-dark \.admin-list-item/);
+  assert.match(css, /html\.admin-theme-dark \.admin-lead-badge\.is-waiting/);
 });

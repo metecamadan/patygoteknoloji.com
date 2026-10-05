@@ -5014,6 +5014,114 @@
     adminUserPassword.required = false;
   }
 
+  const LEAD_REPLY_MAX_FILES = 5;
+  const LEAD_REPLY_MAX_BYTES = 10 * 1024 * 1024;
+  const leadReplyModal = document.getElementById("leadReplyModal");
+  const leadReplyForm = document.getElementById("leadReplyForm");
+  const leadReplyFiles = document.getElementById("leadReplyFiles");
+  const leadReplyFileList = document.getElementById("leadReplyFileList");
+  const leadReplyNote = document.getElementById("leadReplyNote");
+  let leadReplyTarget = null;
+  let leadReplyAttachments = [];
+
+  function formatFileSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n >= 1024 * 1024) return (n / (1024 * 1024)).toLocaleString("tr-TR", { maximumFractionDigits: 1 }) + " MB";
+    return Math.max(1, Math.round(n / 1024)) + " KB";
+  }
+
+  function leadReplySummary(reply) {
+    const files = Array.isArray(reply.attachments) ? reply.attachments : [];
+    return (
+      formatOrderDate(reply.at) +
+      " · " +
+      (reply.subject || "Yanıt") +
+      (files.length ? " · ek: " + files.map((file) => file.filename).join(", ") : "") +
+      (reply.by ? " · " + reply.by : "")
+    );
+  }
+
+  function renderLeadRow(lead, replyEnabled) {
+    const row = document.createElement("div");
+    row.className = "admin-list-item admin-lead-row";
+    row.setAttribute("role", "listitem");
+    const main = document.createElement("div");
+    main.className = "admin-lead-main";
+
+    const head = document.createElement("div");
+    head.className = "admin-lead-head";
+    const title = document.createElement("strong");
+    title.textContent = lead.firma || "—";
+    head.appendChild(title);
+    const replies = Array.isArray(lead.replies) ? lead.replies : [];
+    const badge = document.createElement("em");
+    if (lead.spam) {
+      badge.className = "admin-lead-badge is-spam";
+      badge.textContent = "Spam";
+    } else if (replies.length) {
+      badge.className = "admin-lead-badge is-replied";
+      badge.textContent = "Yanıtlandı" + (replies.length > 1 ? " · " + replies.length : "");
+    } else {
+      badge.className = "admin-lead-badge is-waiting";
+      badge.textContent = "Yanıt bekliyor";
+    }
+    head.appendChild(badge);
+    main.appendChild(head);
+
+    const meta = document.createElement("span");
+    meta.textContent = [
+      formatOrderDate(lead.createdAt),
+      lead.email || "—",
+      lead.tel || "—",
+      lead.vkn ? "VKN " + lead.vkn : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    main.appendChild(meta);
+
+    const topic = [lead.konu, lead.urun, lead.kategori].filter(Boolean).join(" · ");
+    if (topic) {
+      const topicEl = document.createElement("span");
+      topicEl.className = "admin-lead-topic";
+      topicEl.textContent = topic;
+      main.appendChild(topicEl);
+    }
+    if (lead.mesaj) {
+      const msg = document.createElement("span");
+      msg.className = "admin-lead-message";
+      msg.textContent = String(lead.mesaj);
+      main.appendChild(msg);
+    }
+    if (replies.length) {
+      const history = document.createElement("ul");
+      history.className = "admin-lead-replies";
+      replies
+        .slice()
+        .reverse()
+        .forEach((reply) => {
+          const item = document.createElement("li");
+          item.textContent = "↩ " + leadReplySummary(reply);
+          history.appendChild(item);
+        });
+      main.appendChild(history);
+    }
+    row.appendChild(main);
+
+    if (!lead.spam && lead.id && lead.email) {
+      const replyBtn = document.createElement("button");
+      replyBtn.type = "button";
+      replyBtn.className = "btn btn-primary btn-sm admin-lead-reply-btn";
+      replyBtn.textContent = replies.length ? "Tekrar yanıtla" : "Yanıtla";
+      if (!replyEnabled) {
+        replyBtn.disabled = true;
+        replyBtn.title = "Canlı SMTP yapılandırılmadan panelden mail gönderilemez.";
+      }
+      replyBtn.addEventListener("click", () => openLeadReplyModal(lead));
+      row.appendChild(replyBtn);
+    }
+    return row;
+  }
+
   async function loadAdminLeads() {
     const listEl = document.getElementById("adminLeadList");
     const noteEl = document.getElementById("adminLeadsNote");
@@ -5030,37 +5138,153 @@
         note(noteEl, "ok", "Liste boş.");
         return;
       }
-      leads.forEach((lead) => {
-        const row = document.createElement("div");
-        row.className = "admin-list-item admin-lead-row";
-        row.setAttribute("role", "listitem");
-        const main = document.createElement("div");
-        const title = document.createElement("strong");
-        title.textContent = lead.firma || "—";
-        const meta = document.createElement("span");
-        meta.textContent =
-          formatOrderDate(lead.createdAt) +
-          " · " +
-          (lead.email || "—") +
-          " · " +
-          (lead.tel || "—") +
-          (lead.spam ? " · spam" : "");
-        main.appendChild(title);
-        main.appendChild(meta);
-        if (lead.mesaj) {
-          const msg = document.createElement("span");
-          msg.className = "admin-lead-message";
-          msg.textContent = String(lead.mesaj).slice(0, 180);
-          main.appendChild(msg);
-        }
-        row.appendChild(main);
-        listEl.appendChild(row);
-      });
-      note(noteEl, "ok", leads.length + " talep · saklama taslak politika (önerilen 2 yıl).");
+      leads.forEach((lead) => listEl.appendChild(renderLeadRow(lead, data.replyEnabled === true)));
+      const waiting = leads.filter(
+        (lead) => !lead.spam && !(Array.isArray(lead.replies) && lead.replies.length)
+      ).length;
+      note(
+        noteEl,
+        data.replyEnabled === true ? "ok" : "warn",
+        leads.length +
+          " talep · " +
+          waiting +
+          " yanıt bekliyor · saklama taslak politika (önerilen 2 yıl)." +
+          (data.replyEnabled === true ? "" : " Canlı SMTP yok; panelden yanıt gönderilemez.")
+      );
     } catch (err) {
       note(noteEl, "err", err.message || "Talepler yüklenemedi");
     }
   }
+
+  function renderLeadReplyFiles() {
+    if (!leadReplyFileList) return;
+    leadReplyFileList.textContent = "";
+    leadReplyAttachments.forEach((file, index) => {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = file.name + " · " + formatFileSize(file.size);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn btn-ghost btn-sm";
+      remove.textContent = "Kaldır";
+      remove.setAttribute("aria-label", file.name + " ekini kaldır");
+      remove.addEventListener("click", () => {
+        leadReplyAttachments.splice(index, 1);
+        renderLeadReplyFiles();
+      });
+      item.appendChild(label);
+      item.appendChild(remove);
+      leadReplyFileList.appendChild(item);
+    });
+  }
+
+  function openLeadReplyModal(lead) {
+    if (!leadReplyModal || !lead) return;
+    leadReplyTarget = lead;
+    leadReplyAttachments = [];
+    document.getElementById("leadReplyTo").value = lead.email || "";
+    document.getElementById("leadReplySubject").value =
+      "Teklif talebiniz — Patygo Teknoloji" + (lead.firma ? " / " + lead.firma : "");
+    document.getElementById("leadReplyMessage").value =
+      "Merhaba,\n\nTalebiniz için teşekkür ederiz.\n\n\nSaygılarımızla,\nPatygo Teknoloji\ninfo@patygoteknoloji.com";
+    document.getElementById("leadReplyOriginalMeta").textContent = [
+      lead.firma,
+      formatOrderDate(lead.createdAt),
+      [lead.konu, lead.urun].filter(Boolean).join(" · "),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    document.getElementById("leadReplyOriginal").textContent = lead.mesaj || "";
+    if (leadReplyFiles) leadReplyFiles.value = "";
+    renderLeadReplyFiles();
+    note(leadReplyNote, "", "");
+    leadReplyModal.hidden = false;
+    document.body.classList.add("admin-modal-open");
+    const message = document.getElementById("leadReplyMessage");
+    message.focus();
+    message.setSelectionRange(message.value.indexOf("\n\n\n") + 2, message.value.indexOf("\n\n\n") + 2);
+  }
+
+  function closeLeadReplyModal() {
+    if (!leadReplyModal || leadReplyModal.hidden) return;
+    leadReplyModal.hidden = true;
+    leadReplyTarget = null;
+    leadReplyAttachments = [];
+    if (!document.querySelector(".admin-modal:not([hidden])")) {
+      document.body.classList.remove("admin-modal-open");
+    }
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").replace(/^data:[^,]*,/, ""));
+      reader.onerror = () => reject(new Error(file.name + " okunamadı."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (leadReplyFiles) {
+    leadReplyFiles.addEventListener("change", () => {
+      const picked = Array.from(leadReplyFiles.files || []);
+      leadReplyFiles.value = "";
+      const next = leadReplyAttachments.concat(picked);
+      const total = next.reduce((sum, file) => sum + file.size, 0);
+      if (next.length > LEAD_REPLY_MAX_FILES) {
+        note(leadReplyNote, "err", "En fazla " + LEAD_REPLY_MAX_FILES + " dosya eklenebilir.");
+        return;
+      }
+      if (total > LEAD_REPLY_MAX_BYTES) {
+        note(leadReplyNote, "err", "Ekler toplamı en fazla 10 MB olabilir (şu an " + formatFileSize(total) + ").");
+        return;
+      }
+      note(leadReplyNote, "", "");
+      leadReplyAttachments = next;
+      renderLeadReplyFiles();
+    });
+  }
+
+  if (leadReplyForm) {
+    leadReplyForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      if (!leadReplyTarget) return;
+      const sendBtn = document.getElementById("leadReplySendBtn");
+      const subject = document.getElementById("leadReplySubject").value.trim();
+      const message = document.getElementById("leadReplyMessage").value.trim();
+      if (subject.length < 3 || message.length < 5) {
+        note(leadReplyNote, "err", "Konu ve mesajı doldurun.");
+        return;
+      }
+      sendBtn.disabled = true;
+      note(leadReplyNote, "", "Gönderiliyor…");
+      try {
+        const attachments = [];
+        for (const file of leadReplyAttachments) {
+          attachments.push({ filename: file.name, dataBase64: await readFileAsBase64(file) });
+        }
+        await api("/api/admin/leads/" + encodeURIComponent(leadReplyTarget.id) + "/reply", {
+          method: "POST",
+          body: JSON.stringify({ subject, message, attachments }),
+          timeout: 120000,
+        });
+        const to = leadReplyTarget.email;
+        closeLeadReplyModal();
+        await loadAdminLeads().catch(() => {});
+        note(document.getElementById("adminLeadsNote"), "ok", "Yanıt " + to + " adresine gönderildi.");
+      } catch (err) {
+        note(leadReplyNote, "err", (err && err.message) || "Yanıt gönderilemedi.");
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+  }
+
+  document.querySelectorAll("[data-close-lead-reply]").forEach((el) => {
+    el.addEventListener("click", () => closeLeadReplyModal());
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") closeLeadReplyModal();
+  });
 
   const adminLeadsRefresh = document.getElementById("adminLeadsRefresh");
   if (adminLeadsRefresh) {

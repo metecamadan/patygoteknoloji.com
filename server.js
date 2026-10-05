@@ -20,6 +20,11 @@ const {
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
 const { buildAdminCatalogSummary } = require("./lib/admin-catalog-summary");
+const {
+  MAX_REQUEST_BYTES: LEAD_REPLY_MAX_REQUEST_BYTES,
+  validateLeadReplyInput,
+  sendLeadReply,
+} = require("./lib/lead-reply");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
 const { generateMissingThumbnails } = require("./lib/product-thumbnails");
 const {
@@ -2536,12 +2541,69 @@ async function handleApi(req, res, urlPath) {
       kategori: lead.kategori || "",
       mesaj: lead.mesaj || "",
       spam: Boolean(lead.spam),
+      replies: Array.isArray(lead.replies) ? lead.replies : [],
     }));
     return json(res, 200, {
       ok: true,
       leads,
       policyNote: "taslak politika — iletişim lead saklama süresi önerilen 2 yıl",
+      replyEnabled: smtpConfigured(process.env),
     });
+  }
+
+  const adminLeadReplyMatch = /^\/api\/admin\/leads\/([^/]+)\/reply$/.exec(urlPath);
+  if (adminLeadReplyMatch && req.method === "POST") {
+    const leadId = decodeURIComponent(adminLeadReplyMatch[1]);
+    const lead = contactStore.get(leadId);
+    if (!lead) return json(res, 404, { ok: false, error: "Talep bulunamadı" });
+    let raw;
+    try {
+      raw = await readBody(req, LEAD_REPLY_MAX_REQUEST_BYTES);
+    } catch (err) {
+      return json(res, 413, { ok: false, error: "Ekler çok büyük (toplam en fazla 10 MB)." });
+    }
+    let body;
+    try {
+      body = JSON.parse(raw.toString("utf8") || "{}");
+    } catch (err) {
+      return json(res, 400, { ok: false, error: "İstek okunamadı." });
+    }
+    const input = validateLeadReplyInput(body);
+    if (!input.ok) return json(res, 400, { ok: false, error: input.error });
+    const actor = sessionUser(req);
+    try {
+      const result = await sendLeadReply(lead, input, {
+        by: actor ? actor.email || [actor.firstName, actor.lastName].filter(Boolean).join(" ") : "",
+      });
+      if (!result.ok) return json(res, result.status || 400, { ok: false, error: result.error });
+      const updated = contactStore.update(leadId, (current) =>
+        Object.assign(current, {
+          replies: (Array.isArray(current.replies) ? current.replies : []).concat(result.reply),
+        })
+      );
+      try {
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action: "lead.reply",
+          entityType: "lead",
+          entityId: leadId,
+          detail: { attachments: result.reply.attachments.length },
+          ip: clientIp(req),
+        });
+      } catch (_) {}
+      return json(res, 200, {
+        ok: true,
+        reply: result.reply,
+        replies: (updated && updated.replies) || [result.reply],
+      });
+    } catch (err) {
+      return json(res, 502, {
+        ok: false,
+        error: "Yanıt gönderilemedi: " + ((err && err.message) || "SMTP hatası"),
+      });
+    }
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/customers") {

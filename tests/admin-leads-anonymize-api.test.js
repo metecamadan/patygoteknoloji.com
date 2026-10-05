@@ -46,6 +46,39 @@ test("GET /api/admin/leads returns contact leads when authenticated", async (t) 
   assert.equal(body.leads[0].email, "teklif@acme.example");
   assert.equal(body.leads[0].tel, "0555 507 07 24");
   assert.match(String(body.policyNote || ""), /taslak/i);
+  assert.deepEqual(body.leads[0].replies, []);
+  assert.equal(body.replyEnabled, false);
+
+  const jsonHeaders = Object.assign({ "Content-Type": "application/json" }, headers);
+  const reply = (id, payload) =>
+    fetch(baseUrl + "/api/admin/leads/" + id + "/reply", {
+      method: "POST",
+      headers: jsonHeaders,
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+    });
+  const valid = { subject: "Teklif talebiniz", message: "Teklifimiz ektedir.", attachments: [] };
+
+  const anonymousReply = await fetch(baseUrl + "/api/admin/leads/LEAD-API-1/reply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(valid),
+  });
+  assert.equal(anonymousReply.status, 401);
+  assert.equal((await reply("LEAD-YOK", valid)).status, 404);
+  assert.equal((await reply("LEAD-API-1", "{bozuk")).status, 400);
+  const invalid = await reply("LEAD-API-1", { subject: "Teklif", message: "" });
+  assert.equal(invalid.status, 400);
+  assert.match((await invalid.json()).error, /Mesaj/);
+  const spoofed = await reply("LEAD-API-1", Object.assign({}, valid, {
+    attachments: [{ filename: "teklif.pdf", dataBase64: Buffer.from("MZ not a pdf").toString("base64") }],
+  }));
+  assert.equal(spoofed.status, 400);
+
+  const noSmtp = await reply("LEAD-API-1", valid);
+  assert.equal(noSmtp.status, 503);
+  assert.match((await noSmtp.json()).error, /SMTP/);
+  const after = await (await fetch(baseUrl + "/api/admin/leads", { headers })).json();
+  assert.deepEqual(after.leads[0].replies, []);
 });
 
 test("POST /api/admin/orders/:id/anonymize clears PII and audit; legal_hold blocks hard delete", async (t) => {

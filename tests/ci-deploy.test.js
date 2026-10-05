@@ -99,6 +99,26 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.doesNotMatch(ensureProductShell, /map_hash_/, "map_hash_* must precede every map in http; other sites define maps first");
 });
 
+test("deploy raises the nginx body limit only for admin API uploads and probes it", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci-deploy.yml"), "utf8");
+  assert.match(workflow, /bash "\$APP_DIR\/scripts\/ensure-admin-api-nginx\.sh" "\$APP_PORT"\r?\n/);
+  assert.doesNotMatch(workflow, /ensure-admin-api-nginx\.sh" "\$APP_PORT" \|\|/);
+  assert.match(workflow, /\/api\/admin\/leads\/probe\/reply/);
+  assert.match(workflow, /\[ "\$BODY_CODE" = "401" \]/);
+  const script = fs.readFileSync(path.join(root, "scripts", "ensure-admin-api-nginx.sh"), "utf8");
+  assert.match(script, /location \^~ \/api\/admin\/ \{/);
+  assert.match(script, /client_max_body_size 16m;/);
+  assert.match(script, /needle = "  location \^~ \/api\/ \{"/);
+  assert.match(script, /if ! nginx -t; then[\s\S]*cat "\$\{BACKUP\}" > "\$\{NGINX_CONF\}"[\s\S]*exit 1/);
+  assert.match(script, /mktemp \/root\//);
+  const nginx = fs.readFileSync(path.join(root, "deploy", "nginx-patygoteknoloji.com.conf"), "utf8");
+  const adminBlock = nginx.match(/location \^~ \/api\/admin\/ \{[\s\S]*?\n  \}/);
+  assert.ok(adminBlock, "admin API nginx block missing");
+  assert.match(adminBlock[0], /client_max_body_size 16m;/);
+  const publicApi = nginx.match(/location \^~ \/api\/ \{[\s\S]*?\n  \}/);
+  assert.doesNotMatch(publicApi[0], /client_max_body_size/);
+});
+
 test("deploy does not install extra SSH keys on the VPS", () => {
   const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci-deploy.yml"), "utf8");
   assert.doesNotMatch(workflow, /ensure-agent-ssh-key|agent-laptop/);

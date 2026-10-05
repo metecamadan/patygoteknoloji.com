@@ -126,6 +126,8 @@ jobs:
             bash "$APP_DIR/scripts/ensure-product-shell-nginx.sh" "$APP_PORT" || {
               echo "WARN: ensure-product-shell-nginx.sh failed; continuing to smoke checks"
             }
+            sed -i 's/\r$//' "$APP_DIR/scripts/ensure-admin-api-nginx.sh" || true
+            bash "$APP_DIR/scripts/ensure-admin-api-nginx.sh" "$APP_PORT"
             LOOP_JSON=""
             i=0
             while [ "$i" -lt 30 ]; do
@@ -179,6 +181,13 @@ jobs:
             SM_CODE="$(curl -sS -o /tmp/patygo-sitemap.xml -w '%{http_code}' --max-time 30 "${PUBLIC_URL}/sitemap.xml")"
             [ "$SM_CODE" = "200" ] || { echo "sitemap.xml HTTP $SM_CODE"; exit 1; }
             grep -Eq '<urlset|<sitemapindex' /tmp/patygo-sitemap.xml
+            # Admin uploads: a 3 MB body must reach Node (401 without session), not nginx's 413.
+            head -c 3145728 /dev/zero > /tmp/patygo-body-probe.bin
+            BODY_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+              -H 'Content-Type: application/json' --data-binary @/tmp/patygo-body-probe.bin \
+              "${PUBLIC_URL}/api/admin/leads/probe/reply")"
+            rm -f /tmp/patygo-body-probe.bin
+            [ "$BODY_CODE" = "401" ] || { echo "admin API body probe HTTP $BODY_CODE (expected 401)"; exit 1; }
             echo "$PUB_JSON" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' && {
               echo "public payment/status unexpectedly contains an IPv4"
               exit 1

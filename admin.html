@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p32" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=genel-2" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=talep-2" />
   <script>
     (function () {
       try {
@@ -346,15 +346,52 @@
                   <button type="button" class="btn btn-outline btn-sm" id="adminLeadsRefresh">Yenile</button>
                 </div>
               </div>
-              <div class="admin-order-list-head admin-leads-list-head" aria-hidden="true">
-                <span>Tarih</span>
-                <span>Firma</span>
-                <span>E-posta</span>
-                <span>Telefon</span>
-              </div>
               <div id="adminLeadList" class="admin-list admin-leads-list" role="list"></div>
               <p class="admin-note" id="adminLeadsNote" role="status"></p>
             </section>
+          </div>
+
+          <div id="leadReplyModal" class="admin-modal" hidden>
+            <div class="admin-modal-backdrop" data-close-lead-reply tabindex="-1"></div>
+            <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="leadReplyTitle">
+              <div class="admin-modal-head">
+                <h2 id="leadReplyTitle">Talebe yanıt</h2>
+                <button type="button" class="admin-modal-close" data-close-lead-reply aria-label="Yanıt penceresini kapat">×</button>
+              </div>
+              <form id="leadReplyForm" class="admin-form admin-modal-form" novalidate>
+                <div class="admin-lead-reply-body">
+                  <div class="admin-lead-reply-original">
+                    <span class="admin-field-label">Talep</span>
+                    <p id="leadReplyOriginalMeta" class="admin-lead-reply-meta"></p>
+                    <p id="leadReplyOriginal" class="admin-lead-reply-quote"></p>
+                  </div>
+                  <div class="field">
+                    <label for="leadReplyTo">Kime</label>
+                    <input id="leadReplyTo" type="email" readonly />
+                    <p class="admin-hint">Gönderen: info@patygoteknoloji.com · gizli kopyası info@ kutusuna da gelir. Müşterinin cevabı info@ kutusuna düşer.</p>
+                  </div>
+                  <div class="field">
+                    <label for="leadReplySubject">Konu *</label>
+                    <input id="leadReplySubject" type="text" maxlength="180" required />
+                  </div>
+                  <div class="field">
+                    <label for="leadReplyMessage">Mesaj *</label>
+                    <textarea id="leadReplyMessage" rows="8" maxlength="6000" required></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="leadReplyFiles">Ekler</label>
+                    <input id="leadReplyFiles" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+                    <p class="admin-hint">PDF, Word, Excel, PNG veya JPG · en fazla 5 dosya, toplam 10 MB. Dosyalar sunucuda saklanmaz; yalnızca adları talep geçmişine yazılır.</p>
+                    <ul id="leadReplyFileList" class="admin-lead-reply-files"></ul>
+                  </div>
+                </div>
+                <div class="admin-form-actions">
+                  <button type="submit" class="btn btn-primary" id="leadReplySendBtn">Gönder</button>
+                  <button type="button" class="btn btn-ghost" data-close-lead-reply>İptal</button>
+                </div>
+                <p class="admin-note" id="leadReplyNote" role="status"></p>
+              </form>
+            </div>
           </div>
         </section>
 
@@ -1196,6 +1233,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=genel-2"></script>
+  <script defer src="/assets/js/admin-login.js?v=talep-2"></script>
 </body>
 </html>
