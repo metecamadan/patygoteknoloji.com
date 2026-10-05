@@ -2337,7 +2337,7 @@
     return btn;
   }
 
-  /** Ürün ızgarasını yatay kaydırıcıya çevirir; oklar görünen sayfa kadar kaydırır. Tekrar çağrı başa sarar. */
+  /** Ürün ızgarasını yatay kaydırıcıya çevirir; oklar birer ürün kaydırır. Tekrar çağrı başa sarar. */
   function mountProductSlider(track) {
     if (!track || !track.parentNode) return;
     const existing = sliderSyncs.get(track);
@@ -2361,9 +2361,31 @@
       next.disabled = !scrollable || track.scrollLeft >= max - 2;
     };
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const page = (dir) => track.scrollBy({ left: dir * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
-    prev.addEventListener("click", () => page(-1));
-    next.addEventListener("click", () => page(1));
+    // Kayma sürerken gelen tıklamalar mevcut konuma değil bekleyen hedefe eklenir; hızlı iki tık iki ürün kaydırır.
+    let targetIndex = null;
+    let settleTimer = 0;
+    const stepOne = (dir) => {
+      const card = track.firstElementChild;
+      if (!card) return;
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+      const step = card.getBoundingClientRect().width + gap;
+      const maxIndex = Math.max(0, Math.round((track.scrollWidth - track.clientWidth) / step));
+      const base = targetIndex === null ? Math.round(track.scrollLeft / step) : targetIndex;
+      targetIndex = Math.min(maxIndex, Math.max(0, base + dir));
+      track.scrollTo({ left: targetIndex * step, behavior: reduceMotion ? "auto" : "smooth" });
+    };
+    prev.addEventListener("click", () => stepOne(-1));
+    next.addEventListener("click", () => stepOne(1));
+    track.addEventListener(
+      "scroll",
+      () => {
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+          targetIndex = null;
+        }, 200);
+      },
+      { passive: true }
+    );
     track.addEventListener("scroll", sync, { passive: true });
     window.addEventListener("resize", sync);
     sliderSyncs.set(track, sync);

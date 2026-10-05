@@ -87,7 +87,10 @@ test("similar products on detail and cart are a 10-item slider showing 5 at a ti
   assert.match(catalog, /aria-label", label/);
   assert.match(catalog, /"Önceki ürünler"/);
   assert.match(catalog, /"Sonraki ürünler"/);
-  assert.match(catalog, /left: dir \* track\.clientWidth/);
+  assert.match(catalog, /const step = card\.getBoundingClientRect\(\)\.width \+ gap;/);
+  assert.match(catalog, /targetIndex = Math\.min\(maxIndex, Math\.max\(0, base \+ dir\)\);/);
+  assert.match(catalog, /left: targetIndex \* step/);
+  assert.doesNotMatch(catalog, /left: dir \* track\.clientWidth/);
   assert.match(css, /\.product-slider \{\s*--slider-cols: 5;/);
   assert.match(css, /grid-auto-flow: column;/);
   assert.match(css, /scroll-snap-type: x mandatory;/);
