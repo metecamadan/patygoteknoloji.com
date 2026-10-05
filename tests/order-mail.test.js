@@ -199,3 +199,49 @@ test("same order status is mailed only once", async () => {
     fs.rmSync(root, { recursive: true, force: true });
   } catch (_) {}
 });
+
+test("refund mails explain void vs card refund with amount; each partial refund mails once", async () => {
+  const voidMail = buildOrderMail(sampleOrder, "refunded", { refund: { amount: "1250.50", method: "void" } });
+  assert.match(voidMail.subject, /bankada iptal/);
+  assert.match(voidMail.text, /limit genellikle hemen açılır/);
+  assert.match(voidMail.text, /İade tutarı: ₺1\.250,50/);
+
+  const refundMail = buildOrderMail(sampleOrder, "refunded", { refund: { amount: "1250.50", method: "refund" } });
+  assert.match(refundMail.subject, /kartınıza iade/);
+  assert.match(refundMail.text, /2–3 iş günü/);
+
+  resetDbForTests();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-refund-mail-"));
+  const store = createOrderStore(root);
+  store.save(Object.assign({}, sampleOrder, { id: "PTY-MAIL-PR", status: "delivered", paymentStatus: "paid" }));
+  const sent = [];
+  const sendImpl = async (payload) => sent.push(payload);
+  const order = store.get("PTY-MAIL-PR");
+  const a = await sendOrderStatusMail(order, "partial_refund", {
+    store,
+    sendImpl,
+    claimKey: "partial_refund:2026-10-05T10:00:00.000Z",
+    extra: { refund: { amount: "100.00", method: "refund" } },
+  });
+  const again = await sendOrderStatusMail(order, "partial_refund", {
+    store,
+    sendImpl,
+    claimKey: "partial_refund:2026-10-05T10:00:00.000Z",
+    extra: { refund: { amount: "100.00", method: "refund" } },
+  });
+  const b = await sendOrderStatusMail(order, "partial_refund", {
+    store,
+    sendImpl,
+    claimKey: "partial_refund:2026-10-06T10:00:00.000Z",
+    extra: { refund: { amount: "50.00", method: "refund" } },
+  });
+  assert.equal(a.sent, true);
+  assert.equal(again.sent, false);
+  assert.equal(b.sent, true);
+  assert.equal(sent.length, 2);
+  assert.match(sent[0].text, /İade tutarı: ₺100,00/);
+  resetDbForTests();
+  try {
+    fs.rmSync(root, { recursive: true, force: true });
+  } catch (_) {}
+});

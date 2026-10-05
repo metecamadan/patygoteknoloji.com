@@ -4169,7 +4169,9 @@
     }
     return rows
       .map(function (row) {
-        const label = orderStatusMailLabels()[row.status] || row.status;
+        const label =
+          orderStatusMailLabels()[row.status] ||
+          (String(row.status).indexOf("partial_refund") === 0 ? "Kısmi iade" : row.status);
         return (
           "<li class='admin-order-mail-log-item admin-order-mail-log-item--sent'>" +
           "<span class='admin-order-mail-badge admin-order-mail-badge--sent'>Gönderildi</span> " +
@@ -4293,57 +4295,154 @@
     );
   }
 
+  const REVERSAL_REASON_TEXT = {
+    not_paid: "Ödemesi alınmamış sipariş.",
+    missing_bank_success_evidence: "Bankadan başarılı ödeme kanıtı (VPS-0000) yok.",
+    already_reversed: "Siparişin tutarının tamamı iade edildi.",
+    reversal_pending_inquiry: "Önceki banka işleminin sonucu bilinmiyor.",
+    cancel_after_partial_refund: "Kısmi iade yapılmış; kalan tutar için ürün bazlı iade kullanın.",
+    customer_email_required: "Siparişte müşteri e-postası yok.",
+  };
+
+  function orderIsShipped(order) {
+    return order.status === "shipped" || order.status === "delivered";
+  }
+
+  function orderPaidNotRefunded(order) {
+    return (order.paymentStatus === "paid" || order.paymentTaken) && order.paymentStatus !== "refunded";
+  }
+
+  /** Sunucudaki computeItemsRefund ile aynı oranlar; kesin tutarı sunucu önizlemesi verir. */
+  function estimateItemsRefund(order, selections, includeShipping) {
+    const items = order.items || [];
+    const merchandise =
+      Number(order.merchandiseTotal) ||
+      items.reduce((sum, it) => sum + (Number(it.line) || 0) + (Number(it.lineVat) || 0), 0);
+    const discount = Number(order.coupon && order.coupon.discount) || 0;
+    const shipping = Number(order.shippingFee) || 0;
+    const base = merchandise - discount + shipping;
+    const couponFactor = merchandise > 0 ? Math.max(0, (merchandise - discount) / merchandise) : 1;
+    const instFactor = base > 0 ? (Number(order.total) || base) / base : 1;
+    let amount = 0;
+    selections.forEach((row) => {
+      const it = items[row.index];
+      if (!it || !(row.qty > 0)) return;
+      const bought = Math.max(1, Number(it.qty) || 1);
+      amount += (((Number(it.line) || 0) + (Number(it.lineVat) || 0)) / bought) * row.qty * couponFactor * instFactor;
+    });
+    if (includeShipping) amount += shipping * instFactor;
+    return Math.round(amount * 100) / 100;
+  }
+
   function renderBankReversalBlock(order) {
-    const paid = order.paymentStatus === "paid" || order.paymentTaken;
+    const paid = order.paymentStatus === "paid" || order.paymentTaken || order.paymentStatus === "refunded";
     if (!paid) return "";
     const preview = order._bankReversal || {};
     const rev = preview.reversal || {};
-    const eligible = preview.ok === true;
-    const plan = preview.plan || {};
-    let body =
-      "<p class='admin-field-help'>Ödeme iadesi/iptali banka API ile yapılır; tahsilat akışını etkilemez.</p>";
-    if (preview.reversedAmount) {
+    const shipped = orderIsShipped(order);
+    const pending = preview.pending;
+    const inquiryAvailable = order._bankInquiryAvailable === true;
+    let body = "";
+    if (Number(preview.reversedAmount) > 0) {
       body +=
-        "<p class='admin-field-help'>İade edilen: " +
-        escapeHtml(String(preview.reversedAmount)) +
-        " · Kalan: " +
-        escapeHtml(String(preview.remainingAmount || "0.00")) +
+        "<p class='admin-field-help'>Bankadan iade edilen: <strong>" +
+        moneyTr(preview.reversedAmount) +
+        "</strong> · Kalan: " +
+        moneyTr(preview.remainingAmount || 0) +
         "</p>";
     }
-    if (!rev.enabled) {
+    if (pending) {
       body +=
-        "<p class='admin-order-mail-banner admin-order-mail-banner--warn'><strong>Banka iadesi kapalı.</strong> Test için sunucuda <code>AKBANK_BANK_REVERSAL_ENABLED=true</code>; canlı için ayrıca <code>AKBANK_BANK_REVERSAL_LIVE=true</code> gerekir.</p>";
-    } else if (rev.enabled && !rev.canCallBank) {
-      body +=
-        "<p class='admin-order-mail-banner admin-order-mail-banner--warn'><strong>Canlı iade API kapalı.</strong> POS canlı modda; güvenlik için yalnızca test ortamında veya LIVE bayrağı ile açılır.</p>";
+        "<p class='admin-order-mail-banner admin-order-mail-banner--warn'><strong>Banka sonucu bilinmiyor.</strong> " +
+        escapeHtml(formatOrderDate(pending.at)) +
+        " tarihli " +
+        moneyTr(pending.amount) +
+        " işleminin cevabı alınamadı. Para iade edilmiş olabilir; tekrar denemeyin, “Bankadan sorgula” ile netleştirin.</p>";
     }
-    if (!eligible) {
+    if (!rev.canCallBank && orderPaidNotRefunded(order)) {
       body +=
-        "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
-        escapeHtml(preview.reason ? "Uygun değil: " + preview.reason : "Banka iadesi şu an uygun değil.") +
-        "</p>";
-    } else {
-      body +=
-        "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
-        "Plan: " +
-        escapeHtml(plan.tryVoid ? "void dene" : "") +
-        (plan.tryVoid && plan.tryRefund ? " → " : "") +
-        escapeHtml(plan.tryRefund ? "refund" : "") +
-        " · tutar " +
-        escapeHtml(String(plan.amount || "")) +
-        "</p>";
+        "<p class='admin-order-mail-banner admin-order-mail-banner--warn'><strong>Banka iade API kapalı.</strong> " +
+        (rev.enabled
+          ? "POS canlı modda; canlı iade için ayrıca <code>AKBANK_BANK_REVERSAL_LIVE=true</code> gerekir."
+          : "Sunucuda <code>AKBANK_BANK_REVERSAL_ENABLED</code> açık değil.") +
+        " İadeyi Akbank İnternet/Mobil’den yaptıysanız “Bankadan sorgula” ile siparişe işleyin.</p>";
     }
-    const actions =
-      eligible && rev.enabled
-        ? "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
-          "<button type='button' class='btn btn-outline' id='adminOrderBankReversalPreview'>Planı doğrula</button>" +
-          (rev.canCallBank
-            ? "<button type='button' class='btn btn-primary' id='adminOrderBankReversalExec'>Banka iadesi/iptal</button>"
-            : "") +
-          "</div><p id='adminOrderBankReversalNote' class='admin-note' hidden></p>"
-        : "";
+    let actions = "";
+    const canAct = rev.canCallBank && !pending && orderPaidNotRefunded(order);
+    if (!shipped && orderPaidNotRefunded(order)) {
+      if (preview.ok) {
+        body +=
+          "<p class='admin-field-help'>Kargoya verilmemiş sipariş: iptal edilir ve tamamı (" +
+          moneyTr(preview.plan && preview.plan.amount) +
+          ") müşterinin kartına döner. Ödeme bugün alındıysa bankada iptal edilir (kart limiti hemen açılır); değilse karta iade edilir (2–3 iş günü).</p>";
+        if (canAct) {
+          actions +=
+            "<button type='button' class='btn btn-danger' id='adminOrderCancelRefund'>İptal et ve parayı iade et</button>";
+        }
+      } else if (preview.reason && REVERSAL_REASON_TEXT[preview.reason]) {
+        body +=
+          "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
+          escapeHtml(REVERSAL_REASON_TEXT[preview.reason]) +
+          "</p>";
+      }
+    }
+    const partialAllowed =
+      orderPaidNotRefunded(order) && (shipped || Number(preview.reversedAmount) > 0) && !pending;
+    if (partialAllowed) {
+      const refundedQty = preview.refundedQty || {};
+      const rows = (order.items || [])
+        .map((it, index) => {
+          const bought = Math.max(1, Number(it.qty) || 1);
+          const left = Math.max(0, bought - (Number(refundedQty[index]) || 0));
+          return (
+            "<tr><td>" +
+            escapeHtml(it.name || it.productId || "Ürün") +
+            "</td><td>" +
+            bought +
+            (left < bought ? " (" + (bought - left) + " iade edildi)" : "") +
+            "</td><td><input type='number' class='admin-refund-qty' data-index='" +
+            index +
+            "' min='0' max='" +
+            left +
+            "' value='0' inputmode='numeric' aria-label='" +
+            escapeHtml((it.name || "Ürün") + " iade adedi") +
+            "'" +
+            (left ? "" : " disabled") +
+            "></td></tr>"
+          );
+        })
+        .join("");
+      const shippingFee = Number(order.shippingFee) || 0;
+      body +=
+        "<p class='admin-field-help'>Ürün bazlı iade: iade gelen ürünlerin adedini seçin. Tutar kupon indirimi ve taksit farkı oranında hesaplanır; para ödemede kullanılan karta döner (2–3 iş günü).</p>" +
+        "<table class='admin-table admin-refund-table'><thead><tr><th>Ürün</th><th>Adet</th><th>İade adedi</th></tr></thead><tbody>" +
+        rows +
+        "</tbody></table>" +
+        (shippingFee > 0 && !preview.shippingRefunded
+          ? "<label class='admin-checkbox'><input type='checkbox' id='adminRefundShipping'> Kargo ücretini de iade et (" +
+            moneyTr(shippingFee) +
+            ")</label>"
+          : "") +
+        "<p class='admin-field-help' id='adminRefundEstimate'>Tahmini iade: " +
+        moneyTr(0) +
+        "</p>";
+      if (canAct) {
+        actions +=
+          "<button type='button' class='btn btn-primary' id='adminOrderItemsRefund'>Seçilenleri karta iade et</button>";
+      }
+    }
+    if (inquiryAvailable) {
+      actions +=
+        "<button type='button' class='btn btn-outline' id='adminOrderBankInquiry'>Bankadan sorgula</button>";
+    }
+    if (!body && !actions) return "";
     return (
-      "<h3 class='admin-order-section-title'>Banka iadesi / iptal (Akbank)</h3>" + body + actions
+      "<h3 class='admin-order-section-title'>İptal / iade (Akbank)</h3>" +
+      body +
+      (actions
+        ? "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" + actions + "</div>"
+        : "") +
+      "<p id='adminOrderBankReversalNote' class='admin-note' hidden></p>"
     );
   }
 
@@ -4508,6 +4607,7 @@
       (order.status === "shipped" || order.status === "delivered"
         ? ["preparing", "delivered", "cancelled"]
         : ["preparing", "cancelled"])
+        .filter((s) => s !== "cancelled" || !orderPaidNotRefunded(order) || order.status === "cancelled")
         .map(
           (s) =>
             "<option value='" +
@@ -4520,7 +4620,7 @@
         )
         .join("") +
       "</select></div>" +
-      "<p class='admin-field-help'>Ödeme durumu banka callback ile gelir; iade yalnızca “Banka iadesi/iptal” ile yapılır. Kargoda durumu alttaki kargo kaydı ile güncellenir. Kargodaki sipariş müşteriye ulaşınca “Teslim edildi” seçin: müşteriye ürün değerlendirme bağlantısı gider.</p>" +
+      "<p class='admin-field-help'>Ödeme durumu banka callback ile gelir. Ödenmiş sipariş yalnızca “İptal et ve parayı iade et” ile iptal edilir; kargodaki/teslim edilen siparişte ürün bazlı iade kullanılır. Kargoda durumu alttaki kargo kaydı ile güncellenir. Kargodaki sipariş müşteriye ulaşınca “Teslim edildi” seçin: müşteriye ürün değerlendirme bağlantısı gider.</p>" +
       "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
       "<h3 class='admin-order-section-title'>KVKK / anonimleştirme</h3>" +
       "<p class='admin-field-help'>Taslak politika: kişisel verileri temizler; tutar ve kalemler kalır. legal_hold olan kayıtlar hard silinmez.</p>" +
@@ -4580,8 +4680,12 @@
     if (!order || !order.id || !adminOrderList) return;
     if (Array.isArray(statusMails)) order._statusMails = statusMails;
     const idx = ordersCache.findIndex((row) => row.id === order.id);
-    if (idx >= 0) ordersCache[idx] = Object.assign({}, ordersCache[idx], order);
-    else ordersCache.push(order);
+    const previous = idx >= 0 ? ordersCache[idx] : null;
+    const merged = previous ? Object.assign({}, previous, order) : order;
+    if (idx >= 0) ordersCache[idx] = merged;
+    else ordersCache.push(merged);
+    const statusChanged = Boolean(previous && previous._detailLoaded && previous.status !== merged.status);
+    order = merged;
     const block = adminOrderList.querySelector('[data-order-id="' + CSS.escape(order.id) + '"]');
     if (!block) return;
     const row = block.querySelector(".admin-order-row");
@@ -4593,6 +4697,11 @@
       row.setAttribute("aria-expanded", "true");
     }
     if (selectedOrderId !== order.id) return;
+    if (statusChanged) {
+      merged._detailLoaded = false;
+      expandOrderRow(order.id, { forceFetch: true });
+      return;
+    }
     const expand = block.querySelector(".admin-order-expand");
     if (!expand) return;
     expand.hidden = false;
@@ -4806,102 +4915,165 @@
       });
     }
 
-    async function postBankReversal(body, busyLabel) {
+    const bankButtons = () =>
+      ["adminOrderCancelRefund", "adminOrderItemsRefund", "adminOrderBankInquiry"]
+        .map((id) => document.getElementById(id))
+        .filter(Boolean);
+
+    function setBankNote(kind, text) {
       const brNote = document.getElementById("adminOrderBankReversalNote");
-      const previewBtn = document.getElementById("adminOrderBankReversalPreview");
-      const execBtn = document.getElementById("adminOrderBankReversalExec");
-      if (previewBtn) previewBtn.disabled = true;
-      if (execBtn) execBtn.disabled = true;
       if (brNote) {
         brNote.hidden = false;
-        brNote.className = "admin-note";
-        brNote.textContent = busyLabel || "İşleniyor…";
+        brNote.className = "admin-note" + (kind ? " " + kind : "");
+        brNote.textContent = text;
       }
+      if (kind) note(adminOrdersNote, kind, text);
+    }
+
+    async function bankCall(path, body, busyLabel) {
+      const buttons = bankButtons();
+      buttons.forEach((btn) => (btn.disabled = true));
+      setBankNote("", busyLabel);
       try {
-        const data = await api(
-          "/api/admin/orders/" + encodeURIComponent(orderId) + "/bank-reversal",
-          {
-            method: "POST",
-            body: JSON.stringify(body || {}),
-          }
-        );
-        const preview = data.preview || {};
-        const plan = preview.plan || {};
-        let msg = data.dryRun
-          ? "Plan doğrulandı: " +
-            (plan.tryVoid ? "void" : "") +
-            (plan.tryVoid && plan.tryRefund ? " → " : "") +
-            (plan.tryRefund ? "refund" : "") +
-            " · " +
-            String(plan.amount || "")
-          : "Banka iadesi/iptali tamamlandı (" +
-            String(data.method || "") +
-            ", " +
-            String(data.amount || "") +
-            ").";
-        if (data.mailSent) msg += " Müşteriye iade maili gitti.";
-        const ok = Boolean(data.ok);
-        if (brNote) {
-          brNote.className = "admin-note " + (ok ? "ok" : "warn");
-          brNote.textContent = msg;
-        }
-        note(adminOrdersNote, ok ? "ok" : "warn", msg);
-        if (data.order && !data.dryRun) {
-          await expandOrderRow(orderId, { forceFetch: true });
-        } else if (data.order) {
-          const rowOrder = ordersCache.find((row) => row.id === orderId);
-          if (rowOrder) {
-            Object.assign(rowOrder, data.order);
-            rowOrder._bankReversal = preview.ok ? preview : rowOrder._bankReversal;
-            applyOrderPatchToUi(rowOrder, rowOrder._statusMails);
-          } else {
-            await expandOrderRow(orderId, { forceFetch: true });
-          }
-        } else if (preview.ok) {
-          const rowOrder = ordersCache.find((row) => row.id === orderId);
-          if (rowOrder) rowOrder._bankReversal = preview;
-        }
-        return data;
+        return await api("/api/admin/orders/" + encodeURIComponent(orderId) + path, {
+          method: "POST",
+          body: JSON.stringify(body || {}),
+          timeout: 90000,
+        });
       } catch (err) {
-        if (brNote) {
-          brNote.hidden = false;
-          brNote.className = "admin-note err";
-          brNote.textContent = err.message || "Banka iadesi işlenemedi";
-        }
-        note(adminOrdersNote, "err", err.message || "Banka iadesi işlenemedi");
-        throw err;
+        setBankNote("err", err.message || "Banka işlemi yapılamadı");
+        return null;
       } finally {
-        if (previewBtn) previewBtn.disabled = false;
-        if (execBtn) execBtn.disabled = false;
+        buttons.forEach((btn) => (btn.disabled = false));
       }
     }
 
-    const bankReversalPreviewBtn = document.getElementById("adminOrderBankReversalPreview");
-    if (bankReversalPreviewBtn) {
-      bankReversalPreviewBtn.addEventListener("click", async (event) => {
+    function reversalResultMessage(data) {
+      if (data.unknown) {
+        return data.error || "Bankadan kesin sonuç alınamadı; “Bankadan sorgula” ile kontrol edin.";
+      }
+      let msg = data.fully
+        ? "Sipariş iptal/iade edildi: " +
+          moneyTr(data.order && data.order.total) +
+          (data.method === "void"
+            ? " bankada iptal edildi (kart limiti hemen açılır)."
+            : " müşterinin kartına iade edildi (2–3 iş günü).")
+        : moneyTr(data.amount) + " müşterinin kartına iade edildi (2–3 iş günü).";
+      if (data.couponReleased) msg += " Kupon kullanım hakkı geri verildi.";
+      msg += " " + formatOrderMailFeedback(data);
+      return msg;
+    }
+
+    async function runReversal(body, confirmText) {
+      const preview = await bankCall("/bank-reversal", Object.assign({ dryRun: true }, body), "Tutar hesaplanıyor…");
+      if (!preview || !preview.preview || !preview.preview.plan) return;
+      const plan = preview.preview.plan;
+      setBankNote("", "Onay bekleniyor…");
+      if (!window.confirm(confirmText(plan))) {
+        setBankNote("", "İşlem iptal edildi; bankaya bir şey gönderilmedi.");
+        return;
+      }
+      const data = await bankCall(
+        "/bank-reversal",
+        Object.assign({ confirm: true, amount: plan.amount }, body),
+        "Banka işleniyor… sayfayı kapatmayın."
+      );
+      if (!data) return;
+      setBankNote(data.ok ? "ok" : "warn", reversalResultMessage(data));
+      await expandOrderRow(orderId, { forceFetch: true });
+      setBankNote(data.ok ? "ok" : "warn", reversalResultMessage(data));
+    }
+
+    const cancelRefundBtn = document.getElementById("adminOrderCancelRefund");
+    if (cancelRefundBtn) {
+      cancelRefundBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (bankReversalPreviewBtn.disabled) return;
-        await postBankReversal({ dryRun: true, action: "auto" }, "Plan doğrulanıyor…");
+        if (cancelRefundBtn.disabled) return;
+        await runReversal({ mode: "cancel" }, (plan) =>
+          "Sipariş iptal edilecek ve " +
+          plan.amount +
+          " TL müşterinin kartına geri gönderilecek.\n\n" +
+          (plan.tryVoid
+            ? "Ödeme bugün alındığı için önce bankada iptal denenecek (kart limiti hemen açılır); olmazsa karta iade yapılır."
+            : "Karta iade yapılacak; tutar 2–3 iş günü içinde müşterinin kartına yansır.") +
+          "\n\nBu işlem geri alınamaz. Devam edilsin mi?"
+        );
       });
     }
-    const bankReversalExecBtn = document.getElementById("adminOrderBankReversalExec");
-    if (bankReversalExecBtn) {
-      bankReversalExecBtn.addEventListener("click", async (event) => {
+
+    function selectedRefundItems() {
+      return Array.from(document.querySelectorAll(".admin-refund-qty"))
+        .map((input) => ({
+          index: Number(input.dataset.index),
+          qty: Math.max(0, Math.min(Number(input.max) || 0, Math.floor(Number(input.value) || 0))),
+        }))
+        .filter((row) => row.qty > 0);
+    }
+
+    function refreshRefundEstimate() {
+      const estimate = document.getElementById("adminRefundEstimate");
+      const cached = ordersCache.find((row) => row.id === orderId);
+      if (!estimate || !cached) return;
+      const shippingBox = document.getElementById("adminRefundShipping");
+      estimate.textContent =
+        "Tahmini iade: " +
+        moneyTr(estimateItemsRefund(cached, selectedRefundItems(), Boolean(shippingBox && shippingBox.checked)));
+    }
+    document.querySelectorAll(".admin-refund-qty, #adminRefundShipping").forEach((input) => {
+      input.addEventListener("input", refreshRefundEstimate);
+      input.addEventListener("change", refreshRefundEstimate);
+      input.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    const itemsRefundBtn = document.getElementById("adminOrderItemsRefund");
+    if (itemsRefundBtn) {
+      itemsRefundBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (bankReversalExecBtn.disabled) return;
-        const cached = ordersCache.find((row) => row.id === orderId);
-        const amount =
-          (cached && cached._bankReversal && cached._bankReversal.plan && cached._bankReversal.plan.amount) ||
-          (cached && cached.total);
-        const ok = window.confirm(
-          "Banka iadesi/iptali geri alınamaz. Sipariş " +
-            String(amount || "") +
-            " TRY için bankaya gönderilecek. Devam?"
+        if (itemsRefundBtn.disabled) return;
+        const items = selectedRefundItems();
+        const shippingBox = document.getElementById("adminRefundShipping");
+        const includeShipping = Boolean(shippingBox && shippingBox.checked);
+        if (!items.length && !includeShipping) {
+          setBankNote("err", "İade için en az bir ürün adedi veya kargo ücreti seçin.");
+          return;
+        }
+        await runReversal({ mode: "items", items, includeShipping }, (plan) =>
+          plan.amount +
+          " TL müşterinin kartına iade edilecek (" +
+          items.reduce((sum, row) => sum + row.qty, 0) +
+          " ürün" +
+          (includeShipping ? " + kargo ücreti" : "") +
+          ").\n\nTutar 2–3 iş günü içinde karta yansır. Bu işlem geri alınamaz. Devam edilsin mi?"
         );
-        if (!ok) return;
-        await postBankReversal({ confirm: true, action: "auto" }, "Banka API çağrılıyor…");
+      });
+    }
+
+    const inquiryBtn = document.getElementById("adminOrderBankInquiry");
+    if (inquiryBtn) {
+      inquiryBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (inquiryBtn.disabled) return;
+        const data = await bankCall("/bank-inquiry", {}, "Bankaya soruluyor…");
+        if (!data) return;
+        const messages = {
+          record_success:
+            "Bankada iade/iptal bulundu ve siparişe işlendi (bankadaki toplam: " +
+            moneyTr(data.summary && data.summary.reversedAmount) +
+            ").",
+          resolve_not_performed: "Bankada yeni bir iade/iptal yok; işlem yapılmamış. Gerekirse yeniden deneyebilirsiniz.",
+          in_sync: "Kayıtlar bankayla uyumlu (bankada iade/iptal toplamı " +
+            moneyTr(data.summary && data.summary.reversedAmount) +
+            ").",
+          inconclusive:
+            "Banka cevabında bu siparişin satış kaydı görünmedi; sonuç kesinleşmedi. Akbank ile kontrol edin, tekrar iade denemeyin.",
+        };
+        const kind = data.decision === "inconclusive" ? "warn" : "ok";
+        const msg = messages[data.decision] || "Sorgulama tamamlandı.";
+        await expandOrderRow(orderId, { forceFetch: true });
+        setBankNote(kind, msg);
       });
     }
   }
@@ -4910,12 +5082,13 @@
     selectedOrderId = orderId;
     const block = adminOrderList.querySelector('[data-order-id="' + CSS.escape(orderId) + '"]');
     if (!block) return;
-    adminOrderList.querySelectorAll(".admin-order-block.is-open").forEach((el) => {
-      if (el !== block) {
-        el.classList.remove("is-open");
-        const panel = el.querySelector(".admin-order-expand");
-        if (panel) panel.hidden = true;
-      }
+    adminOrderList.querySelectorAll(".admin-order-expand").forEach((panel) => {
+      const el = panel.closest(".admin-order-block");
+      if (el === block) return;
+      if (el) el.classList.remove("is-open");
+      panel.hidden = true;
+      // Detay alanları sabit id kullanır; kapanan paneller DOM’da kalırsa düğmeler yanlış panele bağlanır.
+      panel.innerHTML = "";
     });
     const expand = block.querySelector(".admin-order-expand");
     if (!expand) return;
@@ -4924,7 +5097,7 @@
 
     const opts = options || {};
     const cached = ordersCache.find((order) => order.id === orderId);
-    if (cached && !opts.forceFetch) {
+    if (cached && cached._detailLoaded && !opts.forceFetch) {
       if (selectedOrderId !== orderId) return;
       expand.innerHTML = buildOrderDetailHtml(cached, cached._statusMails);
       bindOrderDetailActions(orderId);
@@ -4940,6 +5113,8 @@
       order._bizimhesap = data.bizimhesap || null;
       order._bizimhesapConfigured = data.bizimhesapConfigured === true;
       order._bankReversal = data.bankReversal || null;
+      order._bankInquiryAvailable = data.bankInquiryAvailable === true;
+      order._detailLoaded = true;
       const idx = ordersCache.findIndex((row) => row.id === orderId);
       if (idx >= 0) ordersCache[idx] = order;
       else ordersCache.push(order);

@@ -148,6 +148,68 @@ test("bank reversal rejects unpaid orders and shipped auto skips void", async (t
   assert.equal(unpaid.status, 400);
 });
 
+test("cancel and item refund previews; unknown result blocks; paid cancel needs refund", async (t) => {
+  const password = "reversal-admin-test";
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: password }, {
+    seed: (dataRoot) => {
+      const store = createOrderStore(dataRoot);
+      store.save(paidOrder("PTY-REV-CANCEL"));
+      store.save(
+        paidOrder("PTY-REV-ITEMS", {
+          status: "delivered",
+          items: [{ productId: "p1", name: "Ürün", qty: 3, line: 750, lineVat: 0 }],
+          merchandiseTotal: 750,
+        })
+      );
+      store.save(
+        paidOrder("PTY-REV-PENDING", {
+          paymentEvents: [
+            { kind: "bank_reversal", type: "void", amount: "750.00", success: false, unknown: true, at: new Date().toISOString() },
+          ],
+        })
+      );
+    },
+  });
+  const headers = await adminHeaders(baseUrl, password);
+  const post = (id, suffix, body) =>
+    fetch(baseUrl + "/api/admin/orders/" + id + suffix, { method: "POST", headers, body: JSON.stringify(body) });
+
+  const detail = await (await fetch(baseUrl + "/api/admin/orders/PTY-REV-CANCEL", { headers })).json();
+  assert.equal(detail.bankReversal.ok, true);
+  assert.equal(detail.bankReversal.plan.mode, "cancel");
+  assert.equal(detail.bankInquiryAvailable, false);
+
+  const cancelPreview = await (await post("PTY-REV-CANCEL", "/bank-reversal", { dryRun: true, mode: "cancel" })).json();
+  assert.equal(cancelPreview.preview.plan.amount, "750.00");
+  assert.equal(cancelPreview.preview.plan.tryVoid, true);
+
+  const shippedCancel = await post("PTY-REV-ITEMS", "/bank-reversal", { dryRun: true, mode: "cancel" });
+  assert.equal(shippedCancel.status, 400);
+  assert.equal((await shippedCancel.json()).reason, "cancel_requires_unshipped");
+
+  const itemsPreview = await (
+    await post("PTY-REV-ITEMS", "/bank-reversal", { dryRun: true, mode: "items", items: [{ index: 0, qty: 1 }] })
+  ).json();
+  assert.equal(itemsPreview.preview.plan.amount, "250.00");
+  assert.equal(itemsPreview.preview.plan.tryVoid, false);
+
+  const pending = await post("PTY-REV-PENDING", "/bank-reversal", { dryRun: true, mode: "cancel" });
+  assert.equal(pending.status, 400);
+  const pendingBody = await pending.json();
+  assert.equal(pendingBody.reason, "reversal_pending_inquiry");
+  assert.match(pendingBody.error, /Bankadan sorgula/);
+
+  const inquiry = await post("PTY-REV-PENDING", "/bank-inquiry", {});
+  assert.equal(inquiry.status, 503, "POS kimliği yokken sorgu bankaya gitmez");
+
+  const paidCancel = await fetch(baseUrl + "/api/admin/orders/PTY-REV-CANCEL", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  assert.equal(paidCancel.status, 409);
+});
+
 test("recordBankReversal updates order through store layer", () => {
   resetDbForTests();
   const os = require("node:os");
@@ -168,7 +230,7 @@ test("recordBankReversal updates order through store layer", () => {
       responseCode: "VPS-0000",
     },
   });
-  assert.equal(updated.status, "refunded");
+  assert.equal(updated.status, "cancelled");
   assert.equal(updated.paymentStatus, "refunded");
   assert.equal(updated.paymentTaken, false);
   assert.equal(updated.paymentEvents.length, 1);

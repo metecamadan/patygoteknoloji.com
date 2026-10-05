@@ -569,6 +569,34 @@
   margin: 0 0 14px;
   padding-left: 18px;
 }
+.btn.btn-danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+.btn.btn-danger:hover,
+.btn.btn-danger:focus-visible {
+  background: #991b1b;
+  border-color: #991b1b;
+}
+.admin-refund-table {
+  margin: 0 0 10px;
+}
+.admin-refund-table td,
+.admin-refund-table th {
+  padding: 6px 8px;
+}
+.admin-refund-qty {
+  width: 72px;
+  min-height: 36px;
+}
+.admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
 .admin-order-shipping-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;

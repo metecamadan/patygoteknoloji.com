@@ -80,6 +80,21 @@ test("evaluateCoupon applies percent with cap, fixed amount, limits and Istanbul
   assert.equal(evaluateCoupon(coupon({ endsAt: "2026-10-04" }), 1200, NOW + DAY / 4).ok, true);
 });
 
+test("coupon release on full refund gives usage back once and never recounts", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-coupon-rel-"));
+  resetDbForTests(dir);
+  const store = createCouponStore(getDb(dir));
+  store.save({ code: "IADE10", type: "percent", value: 10, usageLimit: 1 });
+  assert.equal(store.redeem("PTY-R1", "IADE10"), true);
+  assert.equal(store.get("IADE10").usedCount, 1);
+  assert.equal(store.release("PTY-R1"), true);
+  assert.equal(store.get("IADE10").usedCount, 0);
+  assert.equal(store.release("PTY-R1"), false, "ikinci release sayacı düşürmez");
+  assert.equal(store.redeem("PTY-R1", "IADE10"), false, "iade sonrası tekrar gelen callback yeniden saymaz");
+  assert.equal(store.get("IADE10").usedCount, 0);
+  assert.equal(store.release("PTY-YOK"), false);
+});
+
 test("coupon store upserts without resetting usage and counts each paid order once", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-coupon-"));
   resetDbForTests(dir);

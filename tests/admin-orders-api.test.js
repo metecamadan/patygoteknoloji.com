@@ -31,6 +31,16 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
         items: [{ productId: "p2", name: "Klavye", qty: 2, line: 250, lineVat: 50 }],
         createdAt: new Date().toISOString(),
       });
+      store.save({
+        id: "PTY-ADMIN-UNPAID",
+        total: 120,
+        status: "payment_pending",
+        paymentStatus: "pending",
+        paymentTaken: false,
+        customer: { name: "Ödemesiz", email: "odemesiz@example.com" },
+        items: [{ productId: "p3", name: "Mouse", qty: 1, line: 100, lineVat: 20 }],
+        createdAt: new Date().toISOString(),
+      });
     },
   });
 
@@ -66,9 +76,17 @@ test("admin orders PATCH updates status and saves shipping with carriers list", 
     headers,
     body: JSON.stringify({ status: "cancelled" }),
   });
-  assert.equal(cancelPatch.status, 200);
+  assert.equal(cancelPatch.status, 409, "ödenmiş sipariş para iade edilmeden iptal edilemez");
   const cancelBody = await cancelPatch.json();
-  assert.equal(cancelBody.order.status, "cancelled");
+  assert.match(String(cancelBody.error || ""), /iade/i);
+
+  const unpaidCancel = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-UNPAID", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  assert.equal(unpaidCancel.status, 200);
+  assert.equal((await unpaidCancel.json()).order.status, "cancelled");
 
   const manualPaid = await fetch(baseUrl + "/api/admin/orders/PTY-ADMIN-1", {
     method: "PATCH",

@@ -114,9 +114,13 @@ test("partial and cumulative reversal amounts are tracked", () => {
   assert.equal(partial.amount, "150.00");
 
   const patch = orderPatchAfterSuccessfulReversal(order, 300);
-  assert.equal(patch.status, "refunded");
+  assert.equal(patch.status, "cancelled", "kargolanmamış sipariş tam iadede iptal olur");
   assert.equal(patch.paymentStatus, "refunded");
   assert.equal(patch.paymentTaken, false);
+
+  const shippedPatch = orderPatchAfterSuccessfulReversal(Object.assign({}, order, { status: "delivered" }), 300);
+  assert.equal(shippedPatch.status, "refunded");
+  assert.deepEqual(orderPatchAfterSuccessfulReversal(order, 100), {}, "kısmi iade durumu değiştirmez");
 });
 
 test("buildReversalPreview exposes public config without secrets", () => {

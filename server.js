@@ -71,6 +71,8 @@ const {
   publicPosStatus,
   formatAmount,
   executeBankReversal,
+  queryOrderTransactions,
+  summarizeInquiry,
 } = require("./lib/akbank-pos");
 const {
   createBankReversalConfig,
@@ -78,6 +80,8 @@ const {
   buildReversalEvent,
   sanitizeReversalResponse,
   publicBankReversalStatus,
+  reconcileFromInquiry,
+  sumReversedAmount,
 } = require("./lib/akbank-reversal");
 const { createOrderStore, ORDER_STATUSES, ADMIN_FULFILLMENT_STATUSES } = require("./lib/orders");
 const { getDb } = require("./lib/db");
@@ -379,6 +383,7 @@ const auditStore = createAuditStore(DATA_ROOT);
 const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const bankReversalConfig = createBankReversalConfig(process.env, akbankConfig);
+const bankOperationLocks = new Set(); // orderId — aynı siparişe eşzamanlı banka iade/sorgu yok
 const paymentStartAttempts = new Map(); // IP -> { count, resetAt }
 const couponCheckAttempts = new Map(); // IP -> { count, resetAt }
 const priceAlertAttempts = new Map(); // IP -> { count, resetAt }
@@ -1529,8 +1534,124 @@ function reversalReasonMessage(reason) {
       "Müşteri e-posta adresi zorunlu (Akbank iade API). Siparişte e-posta yok.",
     void_only_same_day: "Void yalnızca ödeme günü (İstanbul) içinde yapılabilir.",
     void_requires_full_amount: "Void yalnızca kalan tutarın tamamı için uygulanır.",
+    reversal_pending_inquiry:
+      "Önceki banka işleminin sonucu bilinmiyor. Çift iadeyi önlemek için önce “Bankadan sorgula” ile sonucu netleştirin.",
+    cancel_requires_unshipped:
+      "Kargoya verilmiş siparişte iptal yerine ürün bazlı iade yapın.",
+    cancel_after_partial_refund:
+      "Bu siparişte kısmi iade yapılmış; kalan tutar için ürün bazlı iadeyi kullanın.",
+    invalid_item: "Geçersiz sipariş kalemi.",
+    item_qty_exceeds_remaining: "Seçilen adet, iade edilmemiş adetten fazla.",
+    no_items_selected: "İade için en az bir ürün adedi veya kargo ücreti seçin.",
   };
   return map[String(reason || "")] || "Banka iadesi/iptali şu an yapılamaz.";
+}
+
+/** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail. */
+async function afterSuccessfulReversal(before, updated, event) {
+  const fully = Boolean(updated && updated.paymentStatus === "refunded");
+  let couponReleased = false;
+  if (fully && before && before.coupon && couponStore) {
+    couponReleased = couponStore.release(before.id);
+  }
+  let mailResult = null;
+  try {
+    if (fully) {
+      mailResult = await sendOrderStatusMail(updated, "refunded", {
+        store: orderStore,
+        extra: {
+          refund: {
+            amount: formatAmount(sumReversedAmount(updated)),
+            method: event.type === "void" ? "void" : "refund",
+          },
+        },
+      });
+    } else {
+      mailResult = await sendOrderStatusMail(updated, "partial_refund", {
+        store: orderStore,
+        claimKey: "partial_refund:" + event.at,
+        extra: { refund: { amount: event.amount, method: "refund" } },
+      });
+    }
+  } catch (err) {
+    console.error("order refund mail failed:", err.message);
+  }
+  return {
+    fully,
+    couponReleased,
+    mailSent: Boolean(mailResult && mailResult.sent),
+    mailReason: mailResult && !mailResult.sent ? mailResult.reason || null : null,
+  };
+}
+
+/**
+ * Akbank işlem sorgulama (1010) ile yerel kaydı eşitler. Satış kaydı bankada görünmüyorsa
+ * cevap güvenilir sayılmaz; belirsiz işlem çözülmüş sayılmaz (çift iade riski).
+ */
+async function reconcileOrderWithBank(orderId, actorId) {
+  const order = orderStore.get(orderId);
+  if (!order) return { ok: false, status: 404, error: "Sipariş bulunamadı" };
+  const inquiry = await queryOrderTransactions(akbankConfig, orderId);
+  if (!inquiry.ok) {
+    return {
+      ok: false,
+      status: 502,
+      error: inquiry.unknown
+        ? "Bankaya ulaşılamadı; birkaç dakika sonra tekrar sorgulayın."
+        : inquiry.responseMessage || "İşlem sorgulama başarısız.",
+      responseCode: inquiry.responseCode || null,
+    };
+  }
+  const summary = summarizeInquiry(inquiry.transactions, order.total);
+  let decision = reconcileFromInquiry(order, summary);
+  if (!summary.saleFound && decision.kind !== "record_success") decision = { kind: "inconclusive" };
+  let updated = order;
+  let follow = null;
+  if (decision.kind === "record_success") {
+    const event = buildReversalEvent({
+      type: decision.type,
+      amount: decision.amount,
+      success: true,
+      dryRun: false,
+      response: { responseCode: "VPS-0000", responseMessage: "İşlem sorgulama ile doğrulandı" },
+      source: "inquiry",
+      mode: decision.mode,
+      items: decision.items,
+      shippingRefunded: decision.shippingRefunded,
+      actorId,
+    });
+    updated = orderStore.recordBankReversal(orderId, { event, success: true, dryRun: false });
+    follow = await afterSuccessfulReversal(order, updated, event);
+  } else if (decision.kind === "resolve_not_performed") {
+    const event = buildReversalEvent({
+      type: "inquiry",
+      amount: 0,
+      success: false,
+      dryRun: false,
+      response: { responseMessage: "Bankada bu siparişe ait yeni iade/iptal kaydı yok" },
+      source: "inquiry",
+      actorId,
+    });
+    updated = orderStore.recordBankReversal(orderId, { event, success: false, dryRun: false });
+  }
+  auditStore.record({
+    actorType: "admin_user",
+    actorId,
+    action: "order.bank_inquiry",
+    entityType: "order",
+    entityId: orderId,
+    detail: {
+      decision: decision.kind,
+      summary,
+      transactions: inquiry.transactions.map((tx) => ({
+        txnCode: tx.txnCode,
+        txnStatus: tx.txnStatus,
+        responseCode: tx.responseCode,
+        amount: tx.amount,
+      })),
+    },
+  });
+  return { ok: true, decision: decision.kind, summary, transactions: inquiry.transactions, order: updated, follow };
 }
 
 function passwordChangeBlocksAdmin(req, res, pathName) {
@@ -2752,6 +2873,30 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  const adminOrderInquiryMatch = /^\/api\/admin\/orders\/([^/]+)\/bank-inquiry$/.exec(urlPath);
+  if (adminOrderInquiryMatch && req.method === "POST") {
+    if (!requireOwner(req, res)) return;
+    const orderId = decodeURIComponent(adminOrderInquiryMatch[1]);
+    if (!orderStore.get(orderId)) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+    if (!akbankConfig.enabled) {
+      return json(res, 503, { ok: false, error: "Akbank POS kimlik bilgileri tanımlı değil." });
+    }
+    if (bankOperationLocks.has(orderId)) {
+      return json(res, 409, { ok: false, error: "Bu sipariş için banka işlemi sürüyor; sonucu bekleyin." });
+    }
+    bankOperationLocks.add(orderId);
+    try {
+      const session = getSession(req);
+      const out = await reconcileOrderWithBank(orderId, session && session.userId);
+      if (!out.ok) return json(res, out.status || 502, { ok: false, error: out.error, responseCode: out.responseCode });
+      return json(res, 200, out);
+    } catch (err) {
+      return json(res, 502, { ok: false, error: (err && err.message) || "İşlem sorgulama başarısız." });
+    } finally {
+      bankOperationLocks.delete(orderId);
+    }
+  }
+
   const adminOrderReversalMatch = /^\/api\/admin\/orders\/([^/]+)\/bank-reversal$/.exec(urlPath);
   if (adminOrderReversalMatch && req.method === "POST") {
     if (!requireOwner(req, res)) return;
@@ -2765,8 +2910,11 @@ async function handleApi(req, res, urlPath) {
           .split(",")[0]
           .trim() || "127.0.0.1";
       const preview = buildReversalPreview(order, bankReversalConfig, {
+        mode: body.mode,
         action: body.action || "auto",
         amount: body.amount,
+        items: body.items,
+        includeShipping: body.includeShipping === true,
         clientIp,
       });
       if (!preview.ok) {
@@ -2795,67 +2943,129 @@ async function handleApi(req, res, urlPath) {
           preview,
         });
       }
-      const session = getSession(req);
-      const result = await executeBankReversal(akbankConfig, preview.plan);
-      const successAttempt = (result.attempts || []).find((row) => row.success);
-      const sanitized = sanitizeReversalResponse(
-        (successAttempt && successAttempt.response) || (result.attempts && result.attempts[0] && result.attempts[0].response)
-      );
-      const event = buildReversalEvent({
-        type: result.method || (successAttempt && successAttempt.type) || "unknown",
-        amount: result.amount || preview.plan.amount,
-        success: Boolean(result.ok),
-        dryRun: false,
-        response: sanitized,
-        actorId: session && session.userId,
-      });
-      const updated = orderStore.recordBankReversal(orderId, {
-        event,
-        success: Boolean(result.ok),
-        dryRun: false,
-      });
-      auditStore.record({
-        actorType: "admin_user",
-        actorId: session && session.userId,
-        action: result.ok ? "order.bank_reversal_ok" : "order.bank_reversal_fail",
-        entityType: "order",
-        entityId: orderId,
-        detail: {
-          method: result.method,
-          amount: result.amount,
-          responseCode: result.responseCode || sanitized.responseCode,
-          attempts: (result.attempts || []).map((row) => ({
-            type: row.type,
-            success: row.success,
-            responseCode: row.response && row.response.responseCode,
-          })),
-        },
-      });
-      if (!result.ok) {
-        return json(res, 502, {
+      if (bankOperationLocks.has(orderId)) {
+        return json(res, 409, {
           ok: false,
-          error: result.responseMessage || "Banka iadesi/iptali reddedildi.",
-          responseCode: result.responseCode,
-          attempts: result.attempts,
-          order: updated,
-          preview,
+          error: "Bu sipariş için banka işlemi sürüyor; sonucu bekleyin.",
         });
       }
-      let mailResult = null;
+      bankOperationLocks.add(orderId);
       try {
-        mailResult = await sendOrderStatusMail(updated, "refunded", { store: orderStore });
-      } catch (err) {
-        console.error("order refunded mail failed:", err.message);
+        const session = getSession(req);
+        const actorId = session && session.userId;
+        const fresh = orderStore.get(orderId);
+        const plan = buildReversalPreview(fresh, bankReversalConfig, {
+          mode: body.mode,
+          action: body.action || "auto",
+          amount: body.amount,
+          items: body.items,
+          includeShipping: body.includeShipping === true,
+          clientIp,
+        });
+        if (!plan.ok) {
+          return json(res, 400, {
+            ok: false,
+            error: reversalReasonMessage(plan.reason),
+            reason: plan.reason,
+            preview: plan,
+          });
+        }
+        const result = await executeBankReversal(akbankConfig, plan.plan);
+        const successAttempt = (result.attempts || []).find((row) => row.success);
+        const lastAttempt = (result.attempts || [])[(result.attempts || []).length - 1];
+        const sanitized = sanitizeReversalResponse(
+          (successAttempt && successAttempt.response) || (lastAttempt && lastAttempt.response)
+        );
+        const event = buildReversalEvent({
+          type: result.method || (successAttempt && successAttempt.type) || "unknown",
+          amount: result.amount || plan.plan.amount,
+          success: Boolean(result.ok),
+          unknown: result.unknown === true,
+          dryRun: false,
+          response: sanitized,
+          mode: plan.plan.mode,
+          items: plan.plan.items,
+          shippingRefunded: plan.plan.shippingRefunded,
+          actorId,
+        });
+        let updated = orderStore.recordBankReversal(orderId, {
+          event,
+          success: Boolean(result.ok),
+          dryRun: false,
+        });
+        const publicAttempts = (result.attempts || []).map((row) => ({
+          type: row.type,
+          success: row.success,
+          unknown: row.unknown,
+          httpStatus: row.httpStatus,
+          error: row.error,
+          responseCode: row.response && row.response.responseCode,
+          responseMessage: row.response && row.response.responseMessage,
+        }));
+        auditStore.record({
+          actorType: "admin_user",
+          actorId,
+          action: result.ok
+            ? "order.bank_reversal_ok"
+            : result.unknown
+              ? "order.bank_reversal_unknown"
+              : "order.bank_reversal_fail",
+          entityType: "order",
+          entityId: orderId,
+          detail: {
+            mode: plan.plan.mode,
+            method: result.method,
+            amount: result.amount,
+            items: plan.plan.items,
+            responseCode: result.responseCode || sanitized.responseCode,
+            attempts: publicAttempts,
+          },
+        });
+        if (result.unknown) {
+          let reconcile = null;
+          try {
+            reconcile = await reconcileOrderWithBank(orderId, actorId);
+          } catch (err) {
+            reconcile = { ok: false, error: err.message };
+          }
+          const resolvedOk = reconcile && reconcile.ok && reconcile.decision === "record_success";
+          return json(res, resolvedOk ? 200 : 202, {
+            ok: resolvedOk,
+            unknown: !resolvedOk,
+            error: resolvedOk
+              ? null
+              : "Bankadan kesin sonuç alınamadı. Para iade edilmiş olabilir; tekrar denemeyin, birkaç dakika sonra “Bankadan sorgula” ile kontrol edin.",
+            inquiry: reconcile,
+            order: (reconcile && reconcile.order) || updated,
+            attempts: publicAttempts,
+          });
+        }
+        if (!result.ok) {
+          return json(res, 502, {
+            ok: false,
+            error: result.responseMessage || "Banka iadesi/iptali reddedildi.",
+            responseCode: result.responseCode,
+            attempts: publicAttempts,
+            order: updated,
+            preview: plan,
+          });
+        }
+        const follow = await afterSuccessfulReversal(fresh, updated, event);
+        updated = orderStore.get(orderId) || updated;
+        return json(res, 200, {
+          ok: true,
+          method: result.method,
+          amount: result.amount,
+          fully: follow.fully,
+          couponReleased: follow.couponReleased,
+          mailSent: follow.mailSent,
+          mailReason: follow.mailReason,
+          order: updated,
+          attempts: publicAttempts,
+        });
+      } finally {
+        bankOperationLocks.delete(orderId);
       }
-      return json(res, 200, {
-        ok: true,
-        method: result.method,
-        amount: result.amount,
-        order: updated,
-        attempts: result.attempts,
-        mailSent: Boolean(mailResult && mailResult.sent),
-        preview,
-      });
     } catch (err) {
       return json(res, 502, {
         ok: false,
@@ -2877,7 +3087,12 @@ async function handleApi(req, res, urlPath) {
         statusMails: orderStore.listStatusMails(orderId),
         bizimhesap: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
         bizimhesapConfigured: bizimhesapConfigured(process.env),
-        bankReversal: buildReversalPreview(order, bankReversalConfig, { action: "auto" }),
+        bankReversal: buildReversalPreview(
+          order,
+          bankReversalConfig,
+          order.status === "shipped" || order.status === "delivered" ? { action: "refund" } : { mode: "cancel" }
+        ),
+        bankInquiryAvailable: Boolean(akbankConfig.enabled),
       });
     }
     if (req.method === "PATCH") {
@@ -2954,6 +3169,16 @@ async function handleApi(req, res, urlPath) {
             }
             if (!ADMIN_FULFILLMENT_STATUSES.has(status)) {
               return json(res, 400, { ok: false, error: "Bu durum panelden seçilemez." });
+            }
+            const paidNotRefunded =
+              (current.paymentTaken || current.paymentStatus === "paid") &&
+              current.paymentStatus !== "refunded";
+            if (status === "cancelled" && paidNotRefunded) {
+              return json(res, 409, {
+                ok: false,
+                error:
+                  "Ödemesi alınmış sipariş, para iade edilmeden iptal edilemez. “İptal et ve parayı iade et” düğmesini kullanın.",
+              });
             }
             if (status === "delivered" && current.status !== "shipped" && current.status !== "delivered") {
               return json(res, 400, {
