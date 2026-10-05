@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p32" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=talep-2" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=talep-3" />
   <script>
     (function () {
       try {
@@ -87,7 +87,7 @@
           <button type="button" class="admin-nav-item" id="shippingTab" aria-controls="adminTabShipping" data-admin-tab="shipping"><span class="admin-nav-icon">⛟</span>Kargo</button>
           <button type="button" class="admin-nav-item" id="usersTab" aria-controls="adminTabUsers" data-admin-tab="users"><span class="admin-nav-icon">◉</span>Kullanıcılar</button>
           <button type="button" class="admin-nav-item" id="reviewsTab" aria-controls="adminTabReviews" data-admin-tab="reviews"><span class="admin-nav-icon">★</span>Yorumlar <span class="admin-nav-count" id="reviewsNavCount" hidden></span></button>
-          <button type="button" class="admin-nav-item" id="leadsTab" aria-controls="adminTabLeads" data-admin-tab="leads"><span class="admin-nav-icon">✉</span>Talepler</button>
+          <button type="button" class="admin-nav-item" id="leadsTab" aria-controls="adminTabLeads" data-admin-tab="leads"><span class="admin-nav-icon">✉</span><span class="admin-nav-label">Talepler<span class="admin-nav-alert" id="leadsNavAlert" hidden><span class="sr-only" id="leadsNavAlertText">Yanıt bekleyen talep var</span></span></span></button>
         </nav>
         <div class="admin-sidebar-foot">
           <a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a>
@@ -1233,6 +1233,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=talep-2"></script>
+  <script defer src="/assets/js/admin-login.js?v=talep-3"></script>
 </body>
 </html>

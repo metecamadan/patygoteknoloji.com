@@ -1098,6 +1098,25 @@ html.admin-theme-dark .admin-order-block.is-open {
   text-align: center;
 }
 .admin-nav-count[hidden] { display: none; }
+.admin-nav-label { position: relative; }
+.admin-nav-alert {
+  position: absolute;
+  top: -5px;
+  right: -13px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: admin-nav-alert-blink 1.1s ease-in-out infinite;
+}
+.admin-nav-alert[hidden] { display: none; }
+@keyframes admin-nav-alert-blink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  50% { opacity: 0.35; box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav-alert { animation: none; }
+}
 .admin-sidebar-foot {
   display: grid;
   gap: 8px;

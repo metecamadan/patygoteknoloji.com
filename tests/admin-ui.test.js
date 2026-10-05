@@ -120,7 +120,7 @@ test("admin categories tab manages the site category tree", () => {
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=talep-2/);
+  assert.match(html, /admin\.css\?v=talep-3/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -458,4 +458,16 @@ test("leads tab lets the admin reply with attachments and stays readable in dark
   assert.match(script, /Yanıtlandı/);
   assert.match(css, /html\.admin-theme-dark \.admin-item,\s*html\.admin-theme-dark \.admin-list-item/);
   assert.match(css, /html\.admin-theme-dark \.admin-lead-badge\.is-waiting/);
+});
+
+test("leads nav item blinks a red dot while a lead waits for a reply", () => {
+  assert.match(html, /id="leadsTab"[^>]*>[\s\S]*?Talepler<span class="admin-nav-alert" id="leadsNavAlert" hidden>[\s\S]*?class="sr-only" id="leadsNavAlertText"/);
+  assert.match(css, /\.admin-nav-alert \{[\s\S]*?background: #ef4444;[\s\S]*?animation: admin-nav-alert-blink/);
+  assert.match(css, /\.admin-nav-alert\[hidden\] \{ display: none; \}/);
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.admin-nav-alert \{ animation: none; \}/);
+  assert.match(script, /!lead\.spam && !\(Array\.isArray\(lead\.replies\) && lead\.replies\.length\)/);
+  assert.match(script, /renderLeadsNavAlert\(leads\);\s*listEl\.textContent = ""/);
+  assert.match(script, /if \(tab === "leads"\) loadAdminLeads\(\)\.catch\(\(\) => \{\}\);\s*else refreshLeadsNavAlert\(\)/);
+  assert.match(script, /refreshLeadsNavAlert\(\)\.catch\(\(\) => \{\}\);\s*\}, 60 \* 1000\)/);
+  assert.match(script, /visibilitychange/);
 });

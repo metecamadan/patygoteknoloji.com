@@ -782,6 +782,7 @@
     if (tab === "orders") loadAdminOrders().catch(() => {});
     loadAdminReviews(tab === "reviews").catch(() => {});
     if (tab === "leads") loadAdminLeads().catch(() => {});
+    else refreshLeadsNavAlert().catch(() => {});
     if (tab === "shipping") {
       loadAdminShippingSettings().catch(() => {});
       loadAdminInstallmentSettings().catch(() => {});
@@ -5122,6 +5123,36 @@
     return row;
   }
 
+  function isLeadWaiting(lead) {
+    return Boolean(lead) && !lead.spam && !(Array.isArray(lead.replies) && lead.replies.length);
+  }
+
+  function renderLeadsNavAlert(leads) {
+    const alertEl = document.getElementById("leadsNavAlert");
+    if (!alertEl) return;
+    const waiting = (Array.isArray(leads) ? leads : []).filter(isLeadWaiting).length;
+    alertEl.hidden = waiting <= 0;
+    const label = waiting + " talep yanıt bekliyor";
+    const textEl = document.getElementById("leadsNavAlertText");
+    if (textEl) textEl.textContent = label;
+    const tabBtn = document.getElementById("leadsTab");
+    if (tabBtn) tabBtn.title = waiting > 0 ? label : "";
+  }
+
+  async function refreshLeadsNavAlert() {
+    if (!token || (panelView && panelView.hidden)) return;
+    const data = await api("/api/admin/leads");
+    renderLeadsNavAlert(data && data.leads);
+  }
+
+  setInterval(() => {
+    if (document.hidden) return;
+    refreshLeadsNavAlert().catch(() => {});
+  }, 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshLeadsNavAlert().catch(() => {});
+  });
+
   async function loadAdminLeads() {
     const listEl = document.getElementById("adminLeadList");
     const noteEl = document.getElementById("adminLeadsNote");
@@ -5129,6 +5160,7 @@
     try {
       const data = await api("/api/admin/leads");
       const leads = Array.isArray(data.leads) ? data.leads : [];
+      renderLeadsNavAlert(leads);
       listEl.textContent = "";
       if (!leads.length) {
         const empty = document.createElement("div");
