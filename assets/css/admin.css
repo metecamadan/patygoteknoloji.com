@@ -1750,6 +1750,26 @@ body.admin-modal-open {
   align-items: center;
   margin-bottom: 14px;
 }
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.admin-toolbar input,
+.admin-toolbar select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.88rem;
+}
+.admin-toolbar input { flex: 1 1 260px; min-width: 0; }
+.admin-toolbar select { flex: 0 1 220px; }
 .admin-product-toolbar #newProductBtn {
   justify-self: end;
   white-space: nowrap;
@@ -2236,9 +2256,17 @@ html.admin-theme-dark .admin-period input,
 html.admin-theme-dark .admin-period-date,
 html.admin-theme-dark .admin-period-box .admin-period-presets,
 html.admin-theme-dark .admin-orders-filters select,
+html.admin-theme-dark .admin-toolbar input,
+html.admin-theme-dark .admin-toolbar select,
+html.admin-theme-dark .admin-period select,
+html.admin-theme-dark .admin-period input[type="date"],
+html.admin-theme-dark .admin-xml-status-banner,
 html.admin-theme-dark .admin-form input,
 html.admin-theme-dark .admin-form select,
 html.admin-theme-dark .admin-form textarea,
+html.admin-theme-dark .field input,
+html.admin-theme-dark .field select,
+html.admin-theme-dark .field textarea,
 html.admin-theme-dark .admin-login-card input {
   background: #121a2a;
   color: var(--ink);
@@ -2255,6 +2283,12 @@ html.admin-theme-dark .admin-nav-subitem:hover,
 html.admin-theme-dark .admin-table th,
 html.admin-theme-dark .admin-supplier-catalog > .admin-product-toolbar,
 html.admin-theme-dark .admin-preview-list,
+html.admin-theme-dark .admin-preview-item,
+html.admin-theme-dark .admin-order-mail-log-item,
+html.admin-theme-dark .admin-xml-flow div,
+html.admin-theme-dark .admin-item img,
+html.admin-theme-dark .admin-table-product img,
+html.admin-theme-dark .admin-table-product .ph,
 html.admin-theme-dark .admin-item .ph {
   background: #182234;
   color: var(--ink);
@@ -2280,6 +2314,21 @@ html.admin-theme-dark .admin-feed-box {
 }
 
 html.admin-theme-dark .admin-period-preset[aria-pressed="true"] { color: #0b1220; }
+html.admin-theme-dark .admin-nav-item,
+html.admin-theme-dark .admin-nav-subitem { color: var(--muted); }
+html.admin-theme-dark .admin-table tr:hover td { background: #16213a; }
+html.admin-theme-dark .admin-modal-close:hover { background: #1c2636; }
+html.admin-theme-dark .admin-cat-selects select:disabled { opacity: 0.55; }
+html.admin-theme-dark .admin-order-mail-badge--sent,
+html.admin-theme-dark .admin-review-status--approved { background: #14532d; color: #86efac; }
+html.admin-theme-dark .admin-review-status--pending { background: #422006; color: #fcd34d; }
+html.admin-theme-dark .admin-review-status--rejected { background: #374151; color: #d1d5db; }
+html.admin-theme-dark .admin-order-mail-banner--ok { background: #12301f; border-color: #166534; color: #86efac; }
+html.admin-theme-dark .admin-order-mail-banner--warn,
+html.admin-theme-dark .admin-xml-alert { background: #3b2a12; border-color: #b45309; color: #fcd34d; }
+html.admin-theme-dark .admin-xml-status-banner.is-error { background: #3b1515; border-color: #f87171; color: #fecaca; }
+html.admin-theme-dark .admin-field-help.err,
+html.admin-theme-dark .admin-feed-issues { color: #fca5a5; }
 html.admin-theme-dark .admin-lead-badge.is-waiting { background: #3b2a12; color: #fcd34d; }
 html.admin-theme-dark .admin-lead-badge.is-replied { background: #12301f; color: #86efac; }
 html.admin-theme-dark .admin-lead-badge.is-spam { background: #1c2636; color: var(--muted); }

@@ -120,7 +120,7 @@ test("admin categories tab manages the site category tree", () => {
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=talep-3/);
+  assert.match(html, /admin\.css\?v=koyu-1/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -470,4 +470,57 @@ test("leads nav item blinks a red dot while a lead waits for a reply", () => {
   assert.match(script, /if \(tab === "leads"\) loadAdminLeads\(\)\.catch\(\(\) => \{\}\);\s*else refreshLeadsNavAlert\(\)/);
   assert.match(script, /refreshLeadsNavAlert\(\)\.catch\(\(\) => \{\}\);\s*\}, 60 \* 1000\)/);
   assert.match(script, /visibilitychange/);
+});
+
+test("every light surface or dark text color in admin.css has a dark theme override", () => {
+  const source = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const luminance = (hex) => {
+    let h = hex.replace("#", "").toLowerCase();
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    if (h.length !== 6) return null;
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) =>
+      c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    );
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const tokens = (value) =>
+    (value.match(/#[0-9a-fA-F]{3,6}\b|\bwhite\b/g) || [])
+      .map((tok) => luminance(tok.toLowerCase() === "white" ? "#fff" : tok))
+      .filter((l) => l !== null);
+  const rules = Array.from(source.matchAll(/([^{}@;]+)\{([^{}]*)\}/g), (m) => ({
+    selector: m[1].replace(/\s+/g, " ").trim(),
+    body: m[2],
+  }));
+  const darkCovered = new Set();
+  for (const rule of rules) {
+    for (const part of rule.selector.split(",").map((p) => p.trim())) {
+      if (part.startsWith("html.admin-theme-dark ")) darkCovered.add(part.replace(/^html\.admin-theme-dark\s+/, ""));
+    }
+  }
+  // The switch knob stays white on both themes by design.
+  const allowed = new Set([".admin-switch span::after"]);
+  const missing = [];
+  for (const rule of rules) {
+    if (rule.selector.includes("admin-theme-dark")) continue;
+    const decls = rule.body.split(";").map((d) => d.split(":")).filter((d) => d.length > 1);
+    const needsDark = decls.some(([prop, ...rest]) => {
+      const name = prop.trim().toLowerCase();
+      const value = rest.join(":");
+      if (name === "background" || name === "background-color") return tokens(value).some((l) => l > 0.75);
+      if (name === "color") return tokens(value).some((l) => l < 0.12);
+      return false;
+    });
+    if (!needsDark) continue;
+    for (const part of rule.selector.split(",").map((p) => p.trim())) {
+      if (!darkCovered.has(part) && !allowed.has(part)) missing.push(part);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+test("unlisted toolbar and table rows are styled for both themes", () => {
+  assert.match(css, /\.admin-toolbar input,\s*\.admin-toolbar select \{[\s\S]*?min-height: 40px;/);
+  assert.match(css, /html\.admin-theme-dark \.admin-toolbar input,\s*html\.admin-theme-dark \.admin-toolbar select,/);
+  assert.match(css, /html\.admin-theme-dark \.admin-table tr:hover td \{ background: #16213a; \}/);
+  assert.match(css, /html\.admin-theme-dark \.field input,\s*html\.admin-theme-dark \.field select,\s*html\.admin-theme-dark \.field textarea,/);
 });
