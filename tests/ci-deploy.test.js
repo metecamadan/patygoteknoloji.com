@@ -181,3 +181,16 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(serverJs, /bootstrapSnapshotsReady/);
   assert.match(serverJs, /\/api\/catalog-bootstrap/);
 });
+
+test("deploy keeps the SSH MSS clamp so full-size packets on the Actions path do not hang SSH", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci-deploy.yml"), "utf8");
+  assert.match(workflow, /bash "\$APP_DIR\/scripts\/ensure-ssh-mss-clamp\.sh"\r?\n/);
+  assert.doesNotMatch(workflow, /bash "\$APP_DIR\/scripts\/ensure-ssh-mss-clamp\.sh" \|\|/, "clamp failure must fail the deploy, not be hidden");
+  const script = fs.readFileSync(path.join(root, "scripts", "ensure-ssh-mss-clamp.sh"), "utf8");
+  assert.match(script, /set -euo pipefail/);
+  assert.match(script, /--sport 22 --tcp-flags SYN,RST SYN -j TCPMSS --set-mss \$\{MSS\}/);
+  assert.match(script, /MSS="\$\{1:-1240\}"/);
+  assert.match(script, /systemctl enable --now ssh-mss-clamp\.service/);
+  assert.match(script, /iptables -t mangle -C \$\{RULE\} 2>\/dev\/null \|\| iptables -t mangle -A \$\{RULE\}/);
+  assert.doesNotMatch(script, /before\.rules|ufw (allow|reload|enable|deny)|--[sd]port (80|443)/, "only port 22 SYN-ACKs are touched; ufw files stay as-is");
+});

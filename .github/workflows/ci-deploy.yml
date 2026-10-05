@@ -128,6 +128,8 @@ jobs:
             }
             sed -i 's/\r$//' "$APP_DIR/scripts/ensure-admin-api-nginx.sh" || true
             bash "$APP_DIR/scripts/ensure-admin-api-nginx.sh" "$APP_PORT"
+            sed -i 's/\r$//' "$APP_DIR/scripts/ensure-ssh-mss-clamp.sh" || true
+            bash "$APP_DIR/scripts/ensure-ssh-mss-clamp.sh"
             LOOP_JSON=""
             i=0
             while [ "$i" -lt 30 ]; do
