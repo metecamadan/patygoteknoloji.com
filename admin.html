@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p32" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=yorum-1" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=genel-2" />
   <script>
     (function () {
       try {
@@ -117,40 +117,46 @@
         <section id="adminTabOverview" class="admin-tab-panel" aria-labelledby="overviewTab">
           <div class="admin-page admin-page--overview">
             <div class="admin-page-head admin-overview-head">
-              <div>
+              <div class="admin-overview-title">
                 <h2>Dijital özet</h2>
-                <p>Trafik, talepler ve siparişler.</p>
+                <p id="dashPeriodHint">Son 30 gün · trafik verisi en fazla 90 gün saklanır</p>
               </div>
-              <div class="admin-period-box">
+              <div class="admin-period-box" role="group" aria-label="Rapor dönemi">
                 <div class="admin-period-presets" role="group" aria-label="Hızlı dönem">
-                  <button type="button" class="btn btn-outline btn-sm" data-dash-days="7">7 gün</button>
-                  <button type="button" class="btn btn-outline btn-sm" data-dash-days="30">30 gün</button>
-                  <button type="button" class="btn btn-outline btn-sm" data-dash-days="90">90 gün</button>
+                  <button type="button" class="admin-period-preset" data-dash-days="7" aria-pressed="false">7 gün</button>
+                  <button type="button" class="admin-period-preset" data-dash-days="30" aria-pressed="false">30 gün</button>
+                  <button type="button" class="admin-period-preset" data-dash-days="90" aria-pressed="false">90 gün</button>
                 </div>
                 <div class="admin-period-custom">
-                  <label class="admin-period">
-                    <span>Başlangıç</span>
-                    <input type="date" id="dashFrom" />
-                  </label>
-                  <label class="admin-period">
-                    <span>Bitiş</span>
-                    <input type="date" id="dashTo" />
-                  </label>
+                  <input type="date" id="dashFrom" class="admin-period-date" aria-label="Başlangıç tarihi" />
+                  <span class="admin-period-sep" aria-hidden="true">–</span>
+                  <input type="date" id="dashTo" class="admin-period-date" aria-label="Bitiş tarihi" />
                   <button type="button" class="btn btn-primary btn-sm" id="dashApplyPeriod">Uygula</button>
                 </div>
-                <p class="admin-hint" id="dashPeriodHint">En fazla 90 gün. Trafik verisi son 90 gün saklanır.</p>
               </div>
             </div>
 
             <div class="admin-kpis admin-kpis-digital">
               <article class="admin-kpi"><span>Ziyaretçi</span><strong id="dashVisitors">0</strong><small id="dashVisitorsDelta">—</small></article>
               <article class="admin-kpi"><span>Sayfa görüntüleme</span><strong id="dashPageViews">0</strong><small id="dashPageViewsDelta">—</small></article>
-              <article class="admin-kpi"><span>Talep (form)</span><strong id="dashLeads">0</strong><small>Kaydedilen form</small></article>
+              <article class="admin-kpi" id="dashLeadsCard"><span>Talep (form)</span><strong id="dashLeads">0</strong><small id="dashLeadsNote">Sunucu kaydı · gelen kutusu ayrı</small></article>
               <article class="admin-kpi"><span>Ödenen sipariş</span><strong id="dashOrdersPaid">0</strong><small id="dashOrdersMeta">—</small></article>
               <article class="admin-kpi"><span>Gelir</span><strong id="dashRevenue">₺0</strong><small>Ödenen siparişler</small></article>
               <article class="admin-kpi"><span>AOV</span><strong id="dashAov">₺0</strong><small>Ortalama sipariş tutarı</small></article>
             </div>
-            <p class="admin-hint" id="dashLeadsNote">Talep sayısı formun başarıyla iletildiği anları gösterir.</p>
+
+            <div class="admin-overview-section-head">
+              <h2>Katalog özeti</h2>
+              <p>Anlık durum · seçili dönemden bağımsız</p>
+            </div>
+            <div class="admin-kpis admin-kpis-digital admin-kpis-catalog">
+              <article class="admin-kpi"><span>Toplam ürün</span><strong id="dashCatalogTotal">—</strong><small id="dashCatalogTotalMeta">XML + manuel</small></article>
+              <article class="admin-kpi"><span>Sitede aktif</span><strong id="dashCatalogSiteActive">—</strong><small id="dashCatalogSiteActiveMeta">Vitrinde görünen ürün</small></article>
+              <article class="admin-kpi"><span>Kritik stok altı</span><strong id="dashCatalogCritical">—</strong><small id="dashCatalogCriticalMeta">Yayında · sitede gizli</small></article>
+              <article class="admin-kpi"><span>Stokta yok</span><strong id="dashCatalogOutOfStock">—</strong><small id="dashCatalogOutOfStockMeta">Yayında · stok 0</small></article>
+              <button type="button" class="admin-kpi admin-kpi--link" data-open-admin-tab="unlisted"><span>Listelenmeyen</span><strong id="dashCatalogUnlisted">—</strong><small>Sitede ve Akakçe’de yok ›</small></button>
+              <button type="button" class="admin-kpi admin-kpi--link" data-open-admin-tab="xml" id="dashCatalogXmlCard"><span>Bağlı XML</span><strong id="dashCatalogXml">—</strong><small id="dashCatalogXmlMeta">XML Yönetimi ›</small></button>
+            </div>
 
             <div class="admin-overview-grid admin-overview-grid-3">
               <section class="admin-card">
@@ -197,12 +203,6 @@
               </section>
             </div>
 
-            <div class="admin-kpis">
-              <article class="admin-kpi"><span>Toplam ürün</span><strong id="dashboardProductCount">0</strong><small>Manuel katalog</small></article>
-              <article class="admin-kpi"><span>Yayındaki ürün</span><strong id="dashboardActiveCount">0</strong><small>Site ve Akakçe</small></article>
-              <article class="admin-kpi"><span>Tedarikçi ürünleri</span><strong id="dashboardSupplierCount">0</strong><small>Son XML senkronu</small></article>
-              <article class="admin-kpi"><span>Akakçe feed</span><strong id="dashboardFeedCount">0</strong><small>Aktif ürün</small></article>
-            </div>
             <div class="admin-overview-grid">
               <section class="admin-card">
                 <div class="admin-card-head"><div><span class="admin-eyebrow">KATALOG</span><h2>Hızlı işlemler</h2></div></div>
@@ -1196,6 +1196,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=yorum-1"></script>
+  <script defer src="/assets/js/admin-login.js?v=genel-2"></script>
 </body>
 </html>

@@ -85,6 +85,12 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.equal(typeof dash.commerce.aov, "number");
   assert.equal(typeof dash.catalog.manualCount, "number");
   assert.equal(typeof dash.catalog.manualActiveCount, "number");
+  assert.equal(typeof dash.catalogSummary.totalCount, "number");
+  assert.equal(typeof dash.catalogSummary.siteActiveCount, "number");
+  assert.equal(typeof dash.catalogSummary.criticalStockCount, "number");
+  assert.equal(typeof dash.catalogSummary.unlistedCount, "number");
+  assert.equal(dash.catalogSummary.xml.total, 3);
+  assert.ok(dash.catalogSummary.totalCount >= dash.catalogSummary.siteActiveCount);
   assert.ok(dash.process.pos);
   assert.equal(typeof dash.process.siteBaseUrl, "string");
   assert.equal(typeof dash.process.smtpConfigured, "boolean");

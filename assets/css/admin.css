@@ -1394,13 +1394,24 @@ html.admin-theme-dark .admin-order-block.is-open {
 }
 .admin-overview-head {
   display: flex;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px 16px;
   margin-bottom: 0;
 }
-.admin-overview-head h2 { margin: 0 0 4px; font-size: 1.05rem; }
-.admin-overview-head p { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.admin-overview-title { min-width: 0; }
+.admin-overview-head h2,
+.admin-overview-section-head h2 { margin: 0 0 2px; font-size: 1.05rem; }
+.admin-overview-head p,
+.admin-overview-section-head p { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.admin-overview-section-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 4px 0 -6px;
+}
 .admin-period {
   display: grid;
   gap: 4px;
@@ -1416,11 +1427,6 @@ html.admin-theme-dark .admin-order-block.is-open {
   background: #fff;
   color: var(--ink-2);
 }
-.admin-period-box {
-  display: grid;
-  gap: 8px;
-  justify-items: end;
-}
 .admin-period-presets,
 .admin-period-custom {
   display: flex;
@@ -1429,13 +1435,75 @@ html.admin-theme-dark .admin-order-block.is-open {
   align-items: flex-end;
   justify-content: flex-end;
 }
-.admin-period-box .admin-hint {
-  margin: 0;
-  text-align: right;
+.admin-period-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
 }
+.admin-period-box .admin-period-presets {
+  display: inline-flex;
+  gap: 0;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.admin-period-preset {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-period-preset:hover { background: var(--brand-soft); color: var(--brand); }
+.admin-period-preset[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.admin-period-preset:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.admin-period-box .admin-period-custom {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+}
+.admin-period-date {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0 8px;
+  background: #fff;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+}
+.admin-period-sep { color: var(--muted); }
 .admin-kpis-digital {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
+.admin-page--overview .admin-kpis { gap: 12px; }
+.admin-page--overview .admin-kpi { padding: 14px 16px; }
+.admin-page--overview .admin-kpi strong { margin: 6px 0 4px; font-size: 1.5rem; }
+.admin-page--overview .admin-kpi small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-kpi--link {
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.admin-kpi--link:hover { border-color: var(--brand); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1); }
+.admin-kpi--link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.admin-kpi--link small { color: var(--brand); }
+.admin-kpi.is-alert { border-color: #f59e0b; background: #fffbeb; }
+.admin-kpi.is-alert small { color: #b45309; }
 .admin-spark {
   display: flex;
   align-items: flex-end;
@@ -1461,12 +1529,22 @@ html.admin-theme-dark .admin-order-block.is-open {
 }
 .admin-top-pages li {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   font-size: 0.8rem;
   color: var(--ink-2);
 }
+.admin-top-pages li strong {
+  flex-shrink: 0;
+  min-width: 3ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .admin-top-pages li span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1933,7 +2011,7 @@ body.admin-modal-open {
   .admin-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 800px) {
-  .admin-shell { grid-template-columns: 1fr; }
+  .admin-shell { grid-template-columns: minmax(0, 1fr); }
   .admin-sidebar {
     position: static;
     height: auto;
@@ -2020,6 +2098,10 @@ body.admin-modal-open {
   .admin-kpi strong { font-size: 1.35rem; }
   .admin-quick-actions { grid-template-columns: 1fr; }
   .admin-page-head { align-items: flex-start; }
+  .admin-period-box { width: 100%; justify-content: flex-start; }
+  .admin-period-box .admin-period-custom { flex: 1 1 100%; }
+  .admin-page--overview .admin-kpi small { white-space: normal; }
+  .admin-period-date { flex: 1 1 0; min-width: 0; }
   .admin-product-toolbar { grid-template-columns: 1fr; }
   .admin-search { grid-column: auto; }
   .admin-supplier-catalog > .admin-product-toolbar { grid-template-columns: 1fr; }
@@ -2071,6 +2153,8 @@ html.admin-theme-dark .admin-product-toolbar select,
 html.admin-theme-dark .admin-search,
 html.admin-theme-dark .admin-feed-url-input,
 html.admin-theme-dark .admin-period input,
+html.admin-theme-dark .admin-period-date,
+html.admin-theme-dark .admin-period-box .admin-period-presets,
 html.admin-theme-dark .admin-orders-filters select,
 html.admin-theme-dark .admin-form input,
 html.admin-theme-dark .admin-form select,
@@ -2113,6 +2197,10 @@ html.admin-theme-dark .admin-feed-box {
   border-color: rgba(96, 165, 250, 0.35);
   color: var(--ink);
 }
+
+html.admin-theme-dark .admin-period-preset[aria-pressed="true"] { color: #0b1220; }
+html.admin-theme-dark .admin-kpi.is-alert { background: #3b2a12; border-color: #b45309; }
+html.admin-theme-dark .admin-kpi.is-alert small { color: #fcd34d; }
 
 html.admin-theme-dark .admin-health {
   background: #121a2a;

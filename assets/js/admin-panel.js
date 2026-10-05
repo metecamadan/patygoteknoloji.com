@@ -937,8 +937,11 @@
     if (manualView) manualView.hidden = view !== "manual";
     if (xmlView) xmlView.hidden = view !== "xml";
     const meta = viewMeta[view];
-    document.getElementById("adminPageTitle").textContent = meta[0];
-    document.getElementById("adminPageSubtitle").textContent = meta[1];
+    const productsTab = document.getElementById("productsTab");
+    if (productsTab && productsTab.classList.contains("active")) {
+      document.getElementById("adminPageTitle").textContent = meta[0];
+      document.getElementById("adminPageSubtitle").textContent = meta[1];
+    }
     const newProductBtn = document.getElementById("newProductBtn");
     if (newProductBtn) newProductBtn.hidden = view !== "manual";
     if (view === "manual" && token) ensureManualProducts().catch(() => {});
@@ -1280,6 +1283,58 @@
     return "önceki döneme göre " + sign + value + "%";
   }
 
+  function formatCount(value) {
+    return (Number(value) || 0).toLocaleString("tr-TR");
+  }
+
+  function renderCatalogSummary(summary) {
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    if (!summary) return;
+    const xml = summary.xml || {};
+    setText("dashCatalogTotal", formatCount(summary.totalCount));
+    setText(
+      "dashCatalogTotalMeta",
+      "XML " + formatCount(summary.supplierCount) + " · manuel " + formatCount(summary.manualCount)
+    );
+    setText("dashCatalogSiteActive", formatCount(summary.siteActiveCount));
+    setText(
+      "dashCatalogSiteActiveMeta",
+      "Yayına alınan XML: " + formatCount(summary.supplierPublishedCount)
+    );
+    const thresholds = Array.isArray(summary.criticalStockThresholds)
+      ? summary.criticalStockThresholds
+      : [];
+    setText("dashCatalogCritical", formatCount(summary.criticalStockCount));
+    setText(
+      "dashCatalogCriticalMeta",
+      thresholds.length
+        ? "Stok ≤ " + thresholds.join(" / ") + " adet · sitede gizli"
+        : "Kritik eşik tanımlı değil"
+    );
+    setText("dashCatalogOutOfStock", formatCount(summary.outOfStockCount));
+    setText(
+      "dashCatalogOutOfStockMeta",
+      Number(summary.staleStockCount) > 0
+        ? "+" + formatCount(summary.staleStockCount) + " ürün 7 gündür okunamadı"
+        : "Yayında · stok 0"
+    );
+    setText("dashCatalogUnlisted", formatCount(summary.unlistedCount));
+    setText("dashCatalogXml", formatCount(xml.connected) + " / " + formatCount(xml.total));
+    setText(
+      "dashCatalogXmlMeta",
+      Number(xml.failing) > 0
+        ? xml.failing + " bağlantıda hata ›"
+        : xml.lastSuccessfulFetchAt
+          ? "Son okuma " + formatDate(xml.lastSuccessfulFetchAt) + " ›"
+          : "XML Yönetimi ›"
+    );
+    const xmlCard = document.getElementById("dashCatalogXmlCard");
+    if (xmlCard) xmlCard.classList.toggle("is-alert", Number(xml.failing) > 0 || Number(xml.stale) > 0);
+  }
+
   function applySmtpMailHelp(smtpOn) {
     const configured = smtpOn === true;
     document.querySelectorAll("[data-smtp-mail-help]").forEach((el) => {
@@ -1318,17 +1373,11 @@
     setText("dashOrdersFailed", String(commerce.ordersFailed || 0));
     setText("dashOrdersPending", String(commerce.ordersPending || 0));
     setText("dashConversionRate", "%" + (analytics.conversionRate || 0));
-    if (payload.catalog) {
-      catalogCounts = {
-        manualCount: Number(payload.catalog.manualCount) || 0,
-        manualActiveCount: Number(payload.catalog.manualActiveCount) || 0,
-      };
-      updateDashboard();
-    }
+    renderCatalogSummary(payload.catalogSummary);
 
-    const noteEl = document.getElementById("dashLeadsNote");
-    if (noteEl) {
-      noteEl.textContent =
+    const leadsCard = document.getElementById("dashLeadsCard");
+    if (leadsCard) {
+      leadsCard.title =
         payload.leadsNote ||
         "Talep sayısı, iletişim formunun sunucuya kaydedildiği anları sayar.";
     }
@@ -1483,6 +1532,22 @@
     if (toEl) toEl.value = to;
   }
 
+  function displayIsoDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+    return match ? match[3] + "." + match[2] + "." + match[1] : String(value || "");
+  }
+
+  function syncPeriodPresets() {
+    const fromEl = document.getElementById("dashFrom");
+    const toEl = document.getElementById("dashTo");
+    const from = fromEl && fromEl.value;
+    const to = toEl && toEl.value;
+    document.querySelectorAll("[data-dash-days]").forEach((button) => {
+      const range = defaultPeriodRange(button.getAttribute("data-dash-days"));
+      button.setAttribute("aria-pressed", String(range.from === from && range.to === to));
+    });
+  }
+
   function currentPeriodQuery() {
     const fromEl = document.getElementById("dashFrom");
     const toEl = document.getElementById("dashTo");
@@ -1514,13 +1579,14 @@
       const hint = document.getElementById("dashPeriodHint");
       if (hint && data.analytics) {
         hint.textContent =
-          (data.analytics.from || "") +
-          " → " +
-          (data.analytics.to || "") +
-          " (" +
+          displayIsoDate(data.analytics.from) +
+          " – " +
+          displayIsoDate(data.analytics.to) +
+          " · " +
           (data.analytics.periodDays || 0) +
-          " gün). Trafik en fazla 90 gün saklanır.";
+          " gün · trafik verisi en fazla 90 gün saklanır";
       }
+      syncPeriodPresets();
       renderDigitalDashboard(data);
     } catch (err) {
       renderDigitalDashboard({
@@ -1598,13 +1664,6 @@
   }
 
   function updateDashboard() {
-    const activeManual = productsLoaded
-      ? products.filter((item) => item.active !== false).length
-      : Number(catalogCounts.manualActiveCount) || 0;
-    const activeSupplier = Number(supplierPoolMeta.activeCount) || 0;
-    const catalogCount =
-      Number(supplierPoolMeta.catalogCount) ||
-      supplierSlots.reduce((sum, slot) => sum + (Number(slot.itemCount) || 0), 0);
     const configuredSlots = supplierSlots.filter((slot) => slot.configured);
     const failedSlots = supplierSlots.filter((slot) => slot.lastFetchStatus === "error");
     const latestFetch = supplierSlots
@@ -1612,16 +1671,6 @@
       .filter(Boolean)
       .sort()
       .at(-1);
-    document.getElementById("dashboardProductCount").textContent = String(
-      productsLoaded ? products.length : Number(catalogCounts.manualCount) || 0
-    );
-    document.getElementById("dashboardActiveCount").textContent = String(
-      activeManual + activeSupplier
-    );
-    document.getElementById("dashboardSupplierCount").textContent = String(catalogCount);
-    document.getElementById("dashboardFeedCount").textContent = String(
-      feedStatus ? feedStatus.activeCount : activeManual + activeSupplier
-    );
     const staleSlots = supplierSlots.filter((slot) => slot.catalogStale);
     const badge = document.getElementById("dashboardXmlStatus");
     if (badge) {
@@ -2707,7 +2756,6 @@
   }
 
   let productsLoaded = false;
-  let catalogCounts = { manualCount: 0, manualActiveCount: 0 };
 
   async function refresh() {
     const data = await api("/api/admin/products");
@@ -3751,6 +3799,7 @@
 
   const savedPeriod = readSavedPeriod();
   syncPeriodInputs(savedPeriod.from, savedPeriod.to);
+  syncPeriodPresets();
 
   document.querySelectorAll("[data-dash-days]").forEach((button) => {
     button.addEventListener("click", () => {

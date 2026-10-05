@@ -120,7 +120,7 @@ test("admin categories tab manages the site category tree", () => {
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=yorum-1/);
+  assert.match(html, /admin\.css\?v=genel-2/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -205,6 +205,55 @@ test("admin overview exposes digital dashboard metrics", () => {
   assert.match(html, /id="dashTopPurchased"/);
   assert.match(script, /topViewedProducts/);
   assert.match(script, /topPurchasedProducts/);
+});
+
+test("admin overview shows catalog summary right under the digital KPIs", () => {
+  const overview = html.match(/id="adminTabOverview"[\s\S]*?id="adminTabOrders"/)[0];
+  const digitalAt = overview.indexOf('id="dashAov"');
+  const catalogAt = overview.indexOf("Katalog özeti");
+  const trafficAt = overview.indexOf('id="dashSpark"');
+  assert.ok(digitalAt > 0 && catalogAt > digitalAt && catalogAt < trafficAt);
+  for (const id of [
+    "dashCatalogTotal",
+    "dashCatalogSiteActive",
+    "dashCatalogCritical",
+    "dashCatalogOutOfStock",
+    "dashCatalogUnlisted",
+    "dashCatalogXml",
+  ]) {
+    assert.match(overview, new RegExp('id="' + id + '"'));
+  }
+  assert.match(overview, /data-open-admin-tab="unlisted"/);
+  assert.doesNotMatch(html, /id="dashboardProductCount"/);
+  assert.doesNotMatch(script, /dashboardProductCount|dashboardFeedCount"/);
+  assert.match(script, /function renderCatalogSummary/);
+  assert.match(script, /payload\.catalogSummary/);
+});
+
+test("admin overview header keeps period controls on one compact row", () => {
+  const head = html.match(/admin-overview-head[\s\S]*?admin-kpis-digital/)[0];
+  assert.match(head, /id="dashPeriodHint"/);
+  assert.doesNotMatch(head, /<p class="admin-hint" id="dashPeriodHint"/);
+  assert.match(head, /data-dash-days="30" aria-pressed/);
+  assert.doesNotMatch(html, /<p class="admin-hint" id="dashLeadsNote"/);
+  assert.match(html, /gelen kutusu ayrı/);
+  assert.match(css, /\.admin-overview-head\s*\{[^}]*align-items:\s*center/);
+  assert.match(css, /\.admin-period-box \.admin-period-custom\s*\{[^}]*nowrap/);
+  assert.match(script, /function syncPeriodPresets/);
+});
+
+test("admin products view does not overwrite the overview title on reload", () => {
+  const fn = script.match(/function selectProductsView\(name\) \{[\s\S]*?\n  \}/)[0];
+  assert.match(fn, /productsTab\.classList\.contains\("active"\)[\s\S]*?adminPageTitle/);
+});
+
+test("admin mobile shell does not widen the page with the scrolling nav", () => {
+  assert.match(css, /\.admin-shell \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+});
+
+test("admin top pages keep view counts aligned when paths are long", () => {
+  assert.match(css, /\.admin-top-pages li strong\s*\{[^}]*flex-shrink:\s*0/);
+  assert.match(css, /\.admin-top-pages li span:first-child\s*\{[^}]*min-width:\s*0/);
 });
 
 test("admin login does not block on supplier catalog or dashboard merge", () => {

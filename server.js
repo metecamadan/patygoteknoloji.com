@@ -19,6 +19,7 @@ const {
 } = require("./lib/supplier-site");
 const { createSupplierScheduler, getNextScheduledAt, scheduleSummary } = require("./lib/supplier-schedule");
 const { analyzeAkakceProducts, analyzeSupplierFeedIssues, buildAkakceFeedSummary, buildAkakceXml } = require("./lib/akakce");
+const { buildAdminCatalogSummary } = require("./lib/admin-catalog-summary");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
 const { generateMissingThumbnails } = require("./lib/product-thumbnails");
 const {
@@ -3027,6 +3028,12 @@ async function handleApi(req, res, urlPath) {
       leadsNote:
         "Talep sayısı, iletişim formunun sunucuya kaydedildiği anları sayar. Gelen kutusu teslimatı ayrıdır.",
       catalog: manualCatalogCounts(),
+      catalogSummary: buildAdminCatalogSummary({
+        manualProducts: loadProducts(),
+        supplierProducts: supplierManager.listProducts(),
+        storefrontCount: storefrontIndex(false).compactAll.length,
+        slots: supplierManager.listSlots(),
+      }),
     });
   }
 
