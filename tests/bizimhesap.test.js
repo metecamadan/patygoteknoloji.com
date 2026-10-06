@@ -13,6 +13,8 @@ const {
   formatMoney,
   orderAllowsBizimHesapInvoice,
   fetchInvoicePdfAttachment,
+  reconcileInvoiceAfterReversal,
+  buildInvoiceFollowupMail,
 } = require("../lib/bizimhesap");
 const { createOrderStore } = require("../lib/orders");
 const { resetDbForTests } = require("../lib/db");
@@ -239,4 +241,122 @@ test("cancelSalesInvoice posts guid to cancelinvoice", async () => {
   const body = JSON.parse(calls[0].body);
   assert.equal(body.guid, "GUID-X");
   assert.equal(body.firmId, "FIRM");
+});
+
+test("cancelSalesInvoice treats a non-zero status as not cancelled", async () => {
+  const result = await cancelSalesInvoice("GUID-X", {
+    env: { BIZIMHESAP_FIRM_ID: "FIRM", BIZIMHESAP_API_KEY: "K", BIZIMHESAP_API_TOKEN: "T" },
+    fetchImpl: async () => ({ ok: true, async text() { return JSON.stringify({ error: "", status: 1 }); } }),
+  });
+  assert.equal(result.cancelled, false);
+});
+
+test("orderAllowsBizimHesapInvoice blocks an order with a bank refund", () => {
+  const refunded = {
+    ...sampleOrder,
+    paymentEvents: [{ kind: "bank_reversal", type: "refund", success: true, amount: "100.00" }],
+  };
+  const allow = orderAllowsBizimHesapInvoice(refunded);
+  assert.equal(allow.ok, false);
+  assert.equal(allow.reason, "order_reversed");
+});
+
+const bhEnv = { BIZIMHESAP_FIRM_ID: "FIRM", BIZIMHESAP_API_KEY: "K", BIZIMHESAP_API_TOKEN: "T" };
+
+function storeWithInvoice(prefix) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  resetDbForTests(root);
+  const store = createOrderStore(root);
+  store.claimIntegration("PTY-BH-001", "bizimhesap_invoice");
+  store.saveIntegrationRef("PTY-BH-001", "bizimhesap_invoice", { guid: "GUID-1", url: "https://bizimhesap.com/x" });
+  return store;
+}
+
+test("same-day void cancels the BizimHesap invoice once", async () => {
+  const store = storeWithInvoice("patygo-bh-void-");
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return { ok: true, async text() { return JSON.stringify({ error: "", status: 0 }); } };
+  };
+  const event = { type: "void", amount: "1250.50", at: "2026-10-06T10:00:00.000Z" };
+  const first = await reconcileInvoiceAfterReversal({ store, orderId: "PTY-BH-001", event, fully: true, env: bhEnv, fetchImpl });
+  assert.equal(first.action, "cancelled");
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /\/cancelinvoice$/);
+  assert.equal(calls[0].body.guid, "GUID-1");
+  const saved = store.getIntegration("PTY-BH-001", "bizimhesap_invoice");
+  assert.equal(saved.guid, "GUID-1");
+  assert.equal(saved.url, "https://bizimhesap.com/x");
+  assert.equal(saved.payload.cancel.ok, true);
+
+  const again = await reconcileInvoiceAfterReversal({ store, orderId: "PTY-BH-001", event, fully: true, env: bhEnv, fetchImpl });
+  assert.equal(again.action, "none");
+  assert.equal(calls.length, 1);
+});
+
+test("failed invoice cancel is recorded with a readable reason", async () => {
+  const store = storeWithInvoice("patygo-bh-void-fail-");
+  const result = await reconcileInvoiceAfterReversal({
+    store,
+    orderId: "PTY-BH-001",
+    event: { type: "void", amount: "1250.50", at: "2026-10-06T10:00:00.000Z" },
+    fully: true,
+    env: {},
+  });
+  assert.equal(result.action, "cancel_failed");
+  assert.equal(result.error, "BizimHesap yapılandırılmamış");
+  assert.equal(store.getIntegration("PTY-BH-001", "bizimhesap_invoice").payload.cancel.ok, false);
+});
+
+test("card refund on an invoiced order asks for a return document, once per bank event", async () => {
+  const store = storeWithInvoice("patygo-bh-refund-");
+  let called = false;
+  const fetchImpl = async () => {
+    called = true;
+    throw new Error("BizimHesap must not be called for a refund");
+  };
+  const event = { type: "refund", amount: "300.00", at: "2026-10-07T09:00:00.000Z" };
+  const opts = { store, orderId: "PTY-BH-001", event, fully: false, env: bhEnv, fetchImpl };
+  const result = await reconcileInvoiceAfterReversal(opts);
+  assert.equal(result.action, "needs_return_document");
+  assert.equal(result.amount, 300);
+  await reconcileInvoiceAfterReversal(opts);
+  assert.equal(called, false);
+  const saved = store.getIntegration("PTY-BH-001", "bizimhesap_invoice");
+  assert.equal(saved.payload.returns.length, 1);
+  assert.equal(saved.payload.returns[0].amount, 300);
+});
+
+test("reversal without an issued invoice does nothing", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-bh-none-"));
+  resetDbForTests(root);
+  const store = createOrderStore(root);
+  const result = await reconcileInvoiceAfterReversal({
+    store,
+    orderId: "PTY-BH-001",
+    event: { type: "void", amount: "10.00" },
+    fully: true,
+    env: bhEnv,
+  });
+  assert.equal(result.action, "none");
+});
+
+test("invoice follow-up mail names the order and the action without customer data", () => {
+  const failed = buildInvoiceFollowupMail({
+    orderId: "PTY-BH-001",
+    action: "cancel_failed",
+    error: "BizimHesap HTTP 500",
+    siteBase: "https://patygoteknoloji.com",
+  });
+  assert.equal(failed.subject, "Fatura iptal edilemedi: PTY-BH-001");
+  assert.match(failed.text, /BizimHesap HTTP 500/);
+  assert.match(failed.text, /https:\/\/patygoteknoloji\.com\/admin/);
+  const refund = buildInvoiceFollowupMail({ orderId: "PTY-BH-001", action: "needs_return_document", amount: 300 });
+  assert.equal(refund.subject, "İade belgesi gerekli: PTY-BH-001");
+  assert.match(refund.text, /300,00 TL/);
+  assert.match(refund.text, /iade faturası \/ gider pusulası/);
+  [failed.text, refund.text].forEach((text) => {
+    assert.doesNotMatch(text, /Ayşe|ayse@example\.com|5320000001/);
+  });
 });

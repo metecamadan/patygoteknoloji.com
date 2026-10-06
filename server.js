@@ -107,7 +107,15 @@ const {
   sendInvoiceCustomerMail,
   itemDisplayName,
 } = require("./lib/order-mail");
-const { submitSalesInvoice, bizimhesapConfigured, pingBizimHesap, orderAllowsBizimHesapInvoice, fetchInvoicePdfAttachment } = require("./lib/bizimhesap");
+const {
+  submitSalesInvoice,
+  bizimhesapConfigured,
+  pingBizimHesap,
+  orderAllowsBizimHesapInvoice,
+  fetchInvoicePdfAttachment,
+  reconcileInvoiceAfterReversal,
+  buildInvoiceFollowupMail,
+} = require("./lib/bizimhesap");
 const {
   createContactStore,
   normalizeContactPayload,
@@ -1549,18 +1557,38 @@ function reversalReasonMessage(reason) {
   return map[String(reason || "")] || "Banka iadesi/iptali şu an yapılamaz.";
 }
 
-/** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail. */
-async function notifyReversalProblem(input) {
+async function notifyOwner(mail, label) {
   try {
-    const mail = buildReversalAlertMail(Object.assign({ siteBase: SITE_BASE_URL }, input));
     await deliverSimpleMail(mail);
     return { sent: true };
   } catch (err) {
-    console.error("bank reversal alert mail failed:", err.message);
+    console.error(label + " mail failed:", err.message);
     return { sent: false, reason: err.message === SMTP_NOT_CONFIGURED ? "smtp_not_configured" : "send_failed" };
   }
 }
 
+function notifyReversalProblem(input) {
+  return notifyOwner(buildReversalAlertMail(Object.assign({ siteBase: SITE_BASE_URL }, input)), "bank reversal alert");
+}
+
+async function followUpInvoiceAfterReversal(orderId, event, fully) {
+  let invoice;
+  try {
+    invoice = await reconcileInvoiceAfterReversal({ store: orderStore, orderId, event, fully });
+  } catch (err) {
+    console.error("invoice follow-up failed:", err.message);
+    return { action: "error", error: err.message };
+  }
+  if (invoice.action === "cancel_failed" || invoice.action === "needs_return_document") {
+    invoice.alertMail = await notifyOwner(
+      buildInvoiceFollowupMail(Object.assign({ orderId, siteBase: SITE_BASE_URL }, invoice)),
+      "invoice follow-up"
+    );
+  }
+  return invoice;
+}
+
+/** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail, fatura takibi. */
 async function afterSuccessfulReversal(before, updated, event) {
   const fully = Boolean(updated && updated.paymentStatus === "refunded");
   let couponReleased = false;
@@ -1589,11 +1617,13 @@ async function afterSuccessfulReversal(before, updated, event) {
   } catch (err) {
     console.error("order refund mail failed:", err.message);
   }
+  const invoice = await followUpInvoiceAfterReversal(updated && updated.id, event, fully);
   return {
     fully,
     couponReleased,
     mailSent: Boolean(mailResult && mailResult.sent),
     mailReason: mailResult && !mailResult.sent ? mailResult.reason || null : null,
+    invoice,
   };
 }
 
@@ -2798,6 +2828,28 @@ async function handleApi(req, res, urlPath) {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
       const order = orderStore.get(orderId);
       if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+      if (body.action === "resolve") {
+        const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+        if (!(current && current.guid)) {
+          return json(res, 400, { ok: false, error: "Bu siparişte kesilmiş fatura yok." });
+        }
+        const resolvedAt = new Date().toISOString();
+        orderStore.saveIntegrationRef(
+          orderId,
+          "bizimhesap_invoice",
+          Object.assign({}, current.payload, { guid: current.guid, url: current.url, resolvedAt })
+        );
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action: "order.invoice_followup_resolved",
+          entityType: "order",
+          entityId: orderId,
+          detail: { resolvedAt },
+        });
+        return json(res, 200, { ok: true, integration: orderStore.getIntegration(orderId, "bizimhesap_invoice") });
+      }
       if (!bizimhesapConfigured(process.env)) {
         return json(res, 503, {
           ok: false,
@@ -2809,7 +2861,9 @@ async function handleApi(req, res, urlPath) {
         const msg =
           allow.reason === "order_status_blocked"
             ? "İptal veya iade edilmiş siparişte fatura kesilemez."
-            : "Yalnızca ödemesi alınmış siparişlerde fatura kesilebilir.";
+            : allow.reason === "order_reversed"
+              ? "İade yapılmış siparişte fatura panelden kesilmez; kalan tutarla BizimHesap'ta kesin."
+              : "Yalnızca ödemesi alınmış siparişlerde fatura kesilebilir.";
         return json(res, 400, { ok: false, error: msg, reason: allow.reason });
       }
 
@@ -3098,6 +3152,7 @@ async function handleApi(req, res, urlPath) {
           couponReleased: follow.couponReleased,
           mailSent: follow.mailSent,
           mailReason: follow.mailReason,
+          invoice: follow.invoice,
           order: updated,
           attempts: publicAttempts,
         });

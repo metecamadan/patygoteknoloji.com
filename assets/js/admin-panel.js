@@ -4561,23 +4561,88 @@
     );
   }
 
-  function renderBizimHesapBlock(order) {
-    const paid = order.paymentStatus === "paid" || order.paymentTaken;
-    if (!paid) return "";
-    const status = String(order.status || "");
-    const blocked = status === "cancelled" || status === "refunded";
-    const configured = order._bizimhesapConfigured === true;
+  /** What still has to be done with an issued invoice after the bank voided or refunded the order. */
+  function invoiceFollowup(order) {
     const bh = order._bizimhesap;
+    if (!(bh && bh.guid)) return null;
+    const payload = bh.payload || {};
+    const resolvedAt = String(payload.resolvedAt || "");
+    const open = (at) => !resolvedAt || String(at || "") > resolvedAt;
+    if (payload.cancel && payload.cancel.ok) return { kind: "cancelled", at: payload.cancel.at };
+    if (payload.cancel && open(payload.cancel.at)) {
+      return { kind: "cancel_failed", error: payload.cancel.error || "" };
+    }
+    const returns = (Array.isArray(payload.returns) ? payload.returns : []).filter((row) => row && open(row.eventAt));
+    if (returns.length) {
+      return {
+        kind: "needs_return_document",
+        amount: returns.reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
+      };
+    }
+    return null;
+  }
+
+  function invoiceFollowupBanner(followup) {
+    if (followup.kind === "cancelled") {
+      return (
+        "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
+        "<strong>Fatura iptal edildi.</strong> Sipariş bankada iptal edildiği için BizimHesap faturası otomatik iptal edildi" +
+        (followup.at ? " (" + escapeHtml(formatOrderDate(followup.at)) + ")" : "") +
+        ". e-Arşiv olarak gönderildiyse GİB tarafını BizimHesap'ta kontrol edin.</p>"
+      );
+    }
+    const text =
+      followup.kind === "cancel_failed"
+        ? "<strong>Fatura otomatik iptal edilemedi.</strong> " +
+          (followup.error ? escapeHtml(followup.error) + ". " : "") +
+          "BizimHesap panelinden faturayı iptal edin."
+        : "<strong>İade belgesi gerekli.</strong> Faturası kesilmiş siparişte " +
+          escapeHtml(moneyTr(followup.amount)) +
+          " karta iade edildi. Muhasebecinizle iade faturası / gider pusulası düzenleyin.";
+    return (
+      "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
+      text +
+      "</p><div class='admin-form-actions'>" +
+      "<button type='button' class='btn btn-outline' id='adminOrderInvoiceResolve'>Hallettim, uyarıyı kapat</button>" +
+      "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>"
+    );
+  }
+
+  function renderBizimHesapBlock(order) {
+    const bh = order._bizimhesap;
+    const hasInvoice = Boolean(bh && bh.guid);
+    const paid = order.paymentStatus === "paid" || order.paymentTaken;
+    if (!paid && !hasInvoice) return "";
+    const status = String(order.status || "");
+    const reversed = orderReversalKinds(order).size > 0;
+    const blocked = status === "cancelled" || status === "refunded" || order.paymentStatus === "refunded";
+    const configured = order._bizimhesapConfigured === true;
+    const followup = invoiceFollowup(order);
+    if (followup) {
+      return (
+        "<h3 class='admin-order-section-title'>BizimHesap faturası</h3>" +
+        invoiceFollowupBanner(followup) +
+        (bh.url
+          ? "<p class='admin-field-help'><a href='" +
+            escapeAttr(bh.url) +
+            "' target='_blank' rel='noopener noreferrer'>Fatura PDF</a> · GUID: " +
+            escapeHtml(bh.guid) +
+            "</p>"
+          : "<p class='admin-field-help'>GUID: " + escapeHtml(bh.guid) + "</p>")
+      );
+    }
     let body = "";
     if (!configured) {
       body =
         "<p class='admin-field-help'>BizimHesap yapılandırılmamış (.env). Panelden fatura kesilemez.</p>";
-    } else if (blocked) {
+    } else if (blocked && !hasInvoice) {
+      body = "<p class='admin-field-help'>Sipariş iptal/iade edildi; fatura kesilmez.</p>";
+    } else if (reversed && !hasInvoice) {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
-        "<strong>İptal/iade siparişte fatura kesilmez.</strong> Fatura daha önce kesildiyse BizimHesap panelinden kontrol edin." +
+        "<strong>Kısmi iade yapıldı.</strong> Panel tüm kalemleri faturalayacağı için fatura buradan kesilmez; kalan tutarla BizimHesap'ta kesin." +
         "</p>";
-    } else if (bh && bh.guid) {
+    } else if (hasInvoice) {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
         "<strong>Satış faturası BizimHesap'ta.</strong><br>" +
@@ -4589,6 +4654,9 @@
             escapeAttr(bh.url) +
             "' target='_blank' rel='noopener noreferrer'>Fatura PDF</a>"
           : "") +
+        (bh.payload && bh.payload.resolvedAt
+          ? "<br>İade/iptal düzeltmesi yapıldı olarak işaretlendi · " + escapeHtml(formatOrderDate(bh.payload.resolvedAt))
+          : "") +
         "</p>";
     } else {
       body =
@@ -4597,8 +4665,8 @@
         "</p>";
     }
     let action = "";
-    if (configured && order.id && !blocked) {
-      if (bh && bh.guid) {
+    if (configured && order.id && !blocked && !reversed) {
+      if (hasInvoice) {
         action =
           "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
           "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapMail'>PDF mailini tekrar gönder</button>" +
@@ -4645,6 +4713,17 @@
     const preview = order._bankReversal || {};
     const status = String(order.status || "");
     const paidOpen = orderPaidNotRefunded(order);
+    const invoice = invoiceFollowup(order);
+    if (invoice && invoice.kind !== "cancelled") {
+      return {
+        tone: "warn",
+        text:
+          invoice.kind === "cancel_failed"
+            ? "Ödeme bankada iptal edildi ama fatura otomatik iptal edilemedi. Faturayı BizimHesap'ta iptal edin."
+            : "Karta iade yapıldı; kesilmiş fatura için iade belgesi düzenlenmeli.",
+        actions: [["fatura", "Faturayı gör"]],
+      };
+    }
     if (order.paymentStatus === "refunded") {
       return {
         text: orderVoidedOnly(order)
@@ -4685,7 +4764,11 @@
           : "Yeni sipariş. Hazırlayıp kargoya verin; müşteri vazgeçtiyse iptal edip parayı iade edin.";
       actions.push(["kargo", "Kargoya ver"], ["odeme", "İptal et / iade"]);
     }
-    if (order._bizimhesapConfigured === true && !(order._bizimhesap && order._bizimhesap.guid)) {
+    if (
+      order._bizimhesapConfigured === true &&
+      !(order._bizimhesap && order._bizimhesap.guid) &&
+      orderReversalKinds(order).size === 0
+    ) {
       actions.push(["fatura", "Fatura kes"]);
     }
     return { text, actions };
@@ -5266,6 +5349,33 @@
         );
       });
     }
+    const invoiceResolveBtn = document.getElementById("adminOrderInvoiceResolve");
+    if (invoiceResolveBtn) {
+      invoiceResolveBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (invoiceResolveBtn.disabled) return;
+        if (!window.confirm("Fatura düzeltmesini BizimHesap'ta / muhasebecinizle yaptınız mı? Uyarı kapanacak.")) return;
+        invoiceResolveBtn.disabled = true;
+        try {
+          const data = await api("/api/admin/orders/" + encodeURIComponent(orderId) + "/bizimhesap-invoice", {
+            method: "POST",
+            body: JSON.stringify({ action: "resolve" }),
+          });
+          note(adminOrdersNote, "ok", "Fatura uyarısı kapatıldı.");
+          const rowOrder = ordersCache.find((row) => row.id === orderId);
+          if (rowOrder) {
+            rowOrder._bizimhesap = data.integration || rowOrder._bizimhesap || null;
+            applyOrderPatchToUi(rowOrder, rowOrder._statusMails);
+          } else {
+            await expandOrderRow(orderId, { forceFetch: true });
+          }
+        } catch (err) {
+          invoiceResolveBtn.disabled = false;
+          note(adminOrdersNote, "err", err.message || "Fatura uyarısı kapatılamadı");
+        }
+      });
+    }
 
     const bankButtons = () =>
       ["adminOrderCancelRefund", "adminOrderItemsRefund", "adminOrderBankInquiry"]
@@ -5317,6 +5427,10 @@
         : moneyTr(data.amount) + " müşterinin kartına iade edildi (2–3 iş günü).";
       if (data.couponReleased) msg += " Kupon kullanım hakkı geri verildi.";
       msg += " " + formatOrderMailFeedback(data);
+      const invoice = data.invoice || {};
+      if (invoice.action === "cancelled") msg += " BizimHesap faturası iptal edildi.";
+      else if (invoice.action === "cancel_failed") msg += " Fatura otomatik iptal edilemedi; Fatura sekmesine bakın.";
+      else if (invoice.action === "needs_return_document") msg += " Fatura için iade belgesi gerekli; Fatura sekmesine bakın.";
       return msg;
     }
 

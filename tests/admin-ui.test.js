@@ -234,6 +234,73 @@ test("payment badge tells same-day cancel (void) apart from card refund and part
   assert.match(script, /\["Sipariş no \(bankada\)", order\.id\]/);
 });
 
+test("invoice tab follows bank reversals: cancelled, failed cancel, return document, refunded-before-invoice", () => {
+  const pick = (name) => {
+    const start = script.indexOf("function " + name + "(");
+    assert.ok(start > 0, name + " bulunmalı");
+    let depth = 0;
+    for (let i = script.indexOf("{", start); i < script.length; i++) {
+      if (script[i] === "{") depth++;
+      if (script[i] === "}" && --depth === 0) return script.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+  const vm = require("node:vm");
+  const ctx = {};
+  vm.runInNewContext(
+    [
+      "const escapeHtml = (s) => String(s); const escapeAttr = escapeHtml;",
+      "const formatOrderDate = (s) => String(s); const moneyTr = (n) => '₺' + Number(n).toFixed(2);",
+      pick("orderReversalKinds"),
+      pick("invoiceFollowup"),
+      pick("invoiceFollowupBanner"),
+      pick("renderBizimHesapBlock"),
+      "this.followup = (o) => JSON.stringify(invoiceFollowup(o)); this.render = renderBizimHesapBlock;",
+    ].join("\n"),
+    ctx
+  );
+  const ev = (type) => ({ kind: "bank_reversal", type, success: true, amount: "10.00" });
+  const invoice = (payload) => ({ guid: "G-1", url: "https://bizimhesap.com/x", payload: payload || {} });
+  const base = { id: "PTY-1", _bizimhesapConfigured: true };
+
+  const voided = Object.assign({}, base, {
+    paymentStatus: "refunded",
+    status: "cancelled",
+    paymentEvents: [ev("void")],
+    _bizimhesap: invoice({ cancel: { ok: true, at: "2026-10-06T10:00:00Z" } }),
+  });
+  assert.match(ctx.render(voided), /Fatura iptal edildi/);
+  assert.doesNotMatch(ctx.render(voided), /adminOrderBizimhesapSend|adminOrderInvoiceResolve/);
+
+  const cancelFailed = Object.assign({}, voided, {
+    _bizimhesap: invoice({ cancel: { ok: false, at: "2026-10-06T10:00:00Z", error: "BizimHesap HTTP 500" } }),
+  });
+  assert.match(ctx.render(cancelFailed), /otomatik iptal edilemedi\.<\/strong> BizimHesap HTTP 500/);
+  assert.match(ctx.render(cancelFailed), /id='adminOrderInvoiceResolve'/);
+
+  const refunded = Object.assign({}, base, {
+    paymentStatus: "paid",
+    status: "delivered",
+    paymentEvents: [ev("refund")],
+    _bizimhesap: invoice({ returns: [{ eventAt: "2026-10-07T09:00:00Z", amount: 300 }] }),
+  });
+  assert.match(ctx.render(refunded), /İade belgesi gerekli\.<\/strong>[\s\S]*₺300\.00/);
+  const resolved = Object.assign({}, refunded, {
+    _bizimhesap: invoice({ returns: [{ eventAt: "2026-10-07T09:00:00Z", amount: 300 }], resolvedAt: "2026-10-07T12:00:00Z" }),
+  });
+  assert.equal(ctx.followup(resolved), "null");
+  assert.match(ctx.render(resolved), /düzeltmesi yapıldı olarak işaretlendi/);
+  assert.doesNotMatch(ctx.render(resolved), /Faturayı tekrar kes/);
+
+  const partialNoInvoice = Object.assign({}, base, { paymentStatus: "paid", status: "new", paymentEvents: [ev("refund")] });
+  assert.match(ctx.render(partialNoInvoice), /Kısmi iade yapıldı/);
+  assert.doesNotMatch(ctx.render(partialNoInvoice), /adminOrderBizimhesapSend/);
+  assert.match(ctx.render(Object.assign({}, base, { paymentStatus: "paid", status: "new" })), /id='adminOrderBizimhesapSend'>Fatura kes/);
+
+  assert.match(script, /const invoice = invoiceFollowup\(order\);\s*if \(invoice && invoice\.kind !== "cancelled"\)/);
+  assert.match(script, /body: JSON\.stringify\(\{ action: "resolve" \}\)/);
+});
+
 test("fully reversed orders hide the items refund form and refetched detail repaints row badges", () => {
   assert.match(script, /const fullyReversed = Number\(preview\.reversedAmount\) > 0 && !\(Number\(preview\.remainingAmount\) > 0\)/);
   assert.match(script, /!pending &&\s*!fullyReversed;/);
@@ -244,7 +311,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-5/);
+  assert.match(html, /admin\.css\?v=siparis-6/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
