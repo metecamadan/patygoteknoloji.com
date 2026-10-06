@@ -4,6 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   TR_PROVINCES,
+  TR_DISTRICTS,
+  canonicalDistrict,
   normalizeAddress,
   normalizeInvoiceIdentity,
   isValidTckn,
@@ -21,6 +23,37 @@ test("TR_PROVINCES lists all 81 provinces once and odeme.html offers the same op
   const options = Array.from(select[0].matchAll(/<option value="([^"]+)">/g)).map((m) => m[1]);
   assert.deepEqual(options.slice().sort(), TR_PROVINCES.slice().sort());
   assert.match(html, /<select id="teslimatIl"/);
+});
+
+test("TR_DISTRICTS covers every province with 973 districts and the ilçe fields are province-bound selects", () => {
+  assert.deepEqual(Object.keys(TR_DISTRICTS).sort(), TR_PROVINCES.slice().sort());
+  const total = Object.values(TR_DISTRICTS).reduce((n, names) => n + names.length, 0);
+  assert.equal(total, 973);
+  Object.entries(TR_DISTRICTS).forEach(([city, names]) => {
+    assert.ok(names.length > 0, city + " ilçesiz olmamalı");
+    assert.equal(new Set(names).size, names.length, city + " ilçeleri tekrarsız olmalı");
+  });
+  assert.equal(TR_DISTRICTS["İstanbul"].length, 39);
+  assert.ok(TR_DISTRICTS["İstanbul"].includes("Gaziosmanpaşa"));
+
+  const html = fs.readFileSync(path.join(root, "odeme.html"), "utf8");
+  assert.match(html, /<select id="faturaIlce" name="faturaIlce" required disabled data-district-for="faturaIl"/);
+  assert.match(html, /<select id="teslimatIlce" name="teslimatIlce" disabled data-district-for="teslimatIl"/);
+  assert.doesNotMatch(html, /<input[^>]+id="(fatura|teslimat)Ilce"/);
+  const js = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
+  assert.match(js, /\/assets\/geo\/tr-districts\.json/);
+  assert.match(js, /bindDistrictSelects\(\)/);
+});
+
+test("normalizeAddress accepts only districts of the chosen province and stores the official spelling", () => {
+  const base = { line: "Mevlana Mah. 911 Sk. No:19", city: "İstanbul" };
+  assert.equal(normalizeAddress(Object.assign({}, base, { district: "gaziosmanpaşa" })).value.district, "Gaziosmanpaşa");
+  assert.equal(normalizeAddress(Object.assign({}, base, { district: "ŞİŞLİ" })).value.text, "Mevlana Mah. 911 Sk. No:19, Şişli / İstanbul");
+  assert.match(normalizeAddress(Object.assign({}, base, { district: "Çankaya" })).error, /İstanbul ilçeleri listesinden/);
+  assert.match(normalizeAddress(Object.assign({}, base, { district: "Uydurma" }), "Teslimat adresi").error, /^Teslimat adresi: ilçeyi/);
+  assert.equal(canonicalDistrict("Ankara", "Çankaya"), "Çankaya");
+  assert.equal(canonicalDistrict("Ağrı", "merkez"), "Merkez");
+  assert.equal(canonicalDistrict("Paris", "Kadıköy"), "");
 });
 
 test("normalizeAddress builds the order address line and rejects incomplete parts", () => {

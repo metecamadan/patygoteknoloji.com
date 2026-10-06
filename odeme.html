@@ -203,7 +203,9 @@
                   </div>
                   <div class="field">
                     <label for="faturaIlce">İlçe *</label>
-                    <input type="text" id="faturaIlce" name="faturaIlce" required maxlength="60" autocomplete="address-level2" aria-describedby="faturaIlce-error" />
+                    <select id="faturaIlce" name="faturaIlce" required disabled data-district-for="faturaIl" autocomplete="address-level2" aria-describedby="faturaIlce-error">
+                      <option value="">Önce il seçin</option>
+                    </select>
                     <p class="field-error" id="faturaIlce-error" hidden></p>
                   </div>
                 </div>
@@ -315,7 +317,9 @@
                   </div>
                   <div class="field">
                     <label for="teslimatIlce">İlçe *</label>
-                    <input type="text" id="teslimatIlce" name="teslimatIlce" maxlength="60" autocomplete="shipping address-level2" aria-describedby="teslimatIlce-error" />
+                    <select id="teslimatIlce" name="teslimatIlce" disabled data-district-for="teslimatIl" autocomplete="shipping address-level2" aria-describedby="teslimatIlce-error">
+                      <option value="">Önce il seçin</option>
+                    </select>
                     <p class="field-error" id="teslimatIlce-error" hidden></p>
                   </div>
                 </div>
@@ -452,6 +456,6 @@
   <script defer src="/assets/js/main.js?v=main-alarm-2"></script>
   <script defer src="/assets/js/customer-identity.js?v=checkout-p5"></script>
   <script defer src="/assets/js/installments.js?v=taksit-1"></script>
-  <script defer src="/assets/js/checkout.js?v=checkout-p8"></script>
+  <script defer src="/assets/js/checkout.js?v=checkout-p9"></script>
 </body>
 </html>

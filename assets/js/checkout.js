@@ -372,7 +372,7 @@
     };
     ["fatura", "teslimat"].forEach((prefix) => {
       rules[prefix + "Il"] = required("İl seçin.");
-      rules[prefix + "Ilce"] = required("İlçe gerekli.");
+      rules[prefix + "Ilce"] = required("İlçe seçin.");
       rules[prefix + "Adres"] = minLength(10, "Açık adresi yazın (mahalle, sokak, bina no).");
       rules[prefix + "Posta"] = (input) =>
         identity.validatePostalCode ? fromCheck(identity.validatePostalCode(input.value)) : "";
@@ -395,6 +395,69 @@
     const message = rules[name](input);
     fieldError(input, message);
     return message;
+  }
+
+  const DISTRICTS_URL = "/assets/geo/tr-districts.json?v=ilce-1";
+  let districtsPromise = null;
+
+  function loadDistricts() {
+    if (!districtsPromise) {
+      districtsPromise = fetch(DISTRICTS_URL)
+        .then((res) => {
+          if (!res.ok) throw new Error("districts " + res.status);
+          return res.json();
+        })
+        .catch(() => {
+          districtsPromise = null;
+          return null;
+        });
+    }
+    return districtsPromise;
+  }
+
+  function fillDistrictSelect(select, names, placeholder) {
+    select.textContent = "";
+    const first = document.createElement("option");
+    first.value = "";
+    first.textContent = placeholder;
+    select.appendChild(first);
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    select.disabled = !names.length;
+  }
+
+  /** İlçe <select>s list only the districts of the chosen il (assets/geo/tr-districts.json, same file the server validates against). */
+  function bindDistrictSelects() {
+    if (!els.form) return;
+    els.form.querySelectorAll("select[data-district-for]").forEach((select) => {
+      const province = els.form.elements[select.dataset.districtFor];
+      if (!province || select.dataset.bound) return;
+      select.dataset.bound = "1";
+      const sync = async () => {
+        const city = province.value;
+        fieldError(select, "");
+        if (!city) {
+          fillDistrictSelect(select, [], "Önce il seçin");
+          return;
+        }
+        fillDistrictSelect(select, [], "İlçeler yükleniyor…");
+        const all = await loadDistricts();
+        if (province.value !== city) return;
+        const names = (all && all[city]) || [];
+        if (!names.length) {
+          fillDistrictSelect(select, [], "İlçeler yüklenemedi");
+          fieldError(select, "İlçe listesi yüklenemedi; ili yeniden seçin veya sayfayı yenileyin.");
+          return;
+        }
+        fillDistrictSelect(select, names, "Seçin");
+      };
+      province.addEventListener("change", sync);
+      sync();
+    });
   }
 
   function syncInvoiceType() {
@@ -871,6 +934,7 @@
 
     // POS durumunu katalogdan bağımsız yükle
     loadPosStatus();
+    bindDistrictSelects();
     if (window.PatygoShipping) {
       try {
         await window.PatygoShipping.load();

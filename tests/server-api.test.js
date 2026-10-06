@@ -98,6 +98,10 @@ test("admin supplier APIs require authentication and return feed status", async 
   assert.equal(dash.process.uptimeSec, undefined);
   assert.ok(dash.leadsNote);
 
+  const districts = await fetch(baseUrl + "/assets/geo/tr-districts.json?v=ilce-1");
+  assert.equal(districts.status, 200);
+  assert.equal((await districts.json())["İstanbul"].length, 39);
+
   const privateData = await fetch(baseUrl + "/assets/data/products.json");
   assert.equal(privateData.status, 404);
   assert.equal(privateData.headers.get("x-frame-options"), "DENY");
