@@ -205,7 +205,14 @@ test("payment badge tells same-day cancel (void) apart from card refund and part
   const vm = require("node:vm");
   const ctx = {};
   vm.runInNewContext(
-    [pick("orderReversalKinds"), pick("orderVoidedOnly"), pick("paymentStatusKey"), pick("orderStatusLabel"), "this.key = paymentStatusKey; this.label = orderStatusLabel;"].join("\n"),
+    [
+      pick("orderReversalKinds"),
+      pick("orderVoidedOnly"),
+      pick("paymentStatusKey"),
+      pick("orderStatusLabel"),
+      pick("bankEventLabel"),
+      "this.key = paymentStatusKey; this.label = orderStatusLabel; this.eventLabel = bankEventLabel;",
+    ].join("\n"),
     ctx
   );
   const ev = (type, extra) => Object.assign({ kind: "bank_reversal", type, success: true, amount: "10.00" }, extra);
@@ -219,6 +226,12 @@ test("payment badge tells same-day cancel (void) apart from card refund and part
   assert.equal(ctx.key({ paymentStatus: "paid", paymentEvents: [ev("void", { dryRun: true })] }), "paid");
   assert.equal(ctx.key({ paymentStatus: "failed" }), "payment_failed");
   assert.match(script, /ödeme bankada iptal edildi, karttan çekim yapılmadı/);
+  assert.equal(ctx.eventLabel({ outcome: "paid", responseCode: "VPS-0000" }), "Ödeme onayı");
+  assert.equal(ctx.eventLabel(ev("void")), "Sipariş iptali");
+  assert.equal(ctx.eventLabel(ev("refund")), "İade");
+  assert.equal(ctx.eventLabel(ev("void", { success: false, unknown: true })), "Sipariş iptali — sonuç bilinmiyor");
+  assert.equal(ctx.eventLabel(ev("refund", { success: false })), "İade — reddedildi");
+  assert.match(script, /\["Sipariş no \(bankada\)", order\.id\]/);
 });
 
 test("fully reversed orders hide the items refund form and refetched detail repaints row badges", () => {
@@ -231,7 +244,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-3/);
+  assert.match(html, /admin\.css\?v=siparis-4/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

@@ -4310,12 +4310,24 @@
     return html;
   }
 
+  function bankEventLabel(ev) {
+    if (ev && ev.kind === "bank_reversal") {
+      const base = ev.type === "void" ? "Sipariş iptali" : "İade";
+      if (ev.dryRun) return base + " (deneme)";
+      if (ev.unknown) return base + " — sonuç bilinmiyor";
+      return ev.success ? base : base + " — reddedildi";
+    }
+    if (ev && ev.outcome === "paid") return "Ödeme onayı";
+    return "Banka cevabı" + (ev && ev.outcome ? " (" + ev.outcome + ")" : "");
+  }
+
   function bankPaymentBlock(order) {
     const br = order.bankResponse || null;
     const events = Array.isArray(order.paymentEvents) ? order.paymentEvents : [];
     let rows = "";
     if (br) {
       const fields = [
+        ["Sipariş no (bankada)", order.id],
         ["Sonuç kodu", br.responseCode],
         ["Mesaj", br.responseMessage],
         ["Auth / onay", br.authCode],
@@ -4342,23 +4354,27 @@
     }
     const hist =
       events.length > 0
-        ? "<p class='admin-field-help'>Kayıtlı banka callback sayısı: " +
+        ? "<p class='admin-field-help'>Banka işlem geçmişi: " +
           String(events.length) +
-          ". Son olay panelde; tüm geçmiş sunucuda saklanır.</p>" +
+          " kayıt (yeniden eskiye, en fazla 8). İptal, bankada satışın onay kodu ve RRN'i ile görünür.</p>" +
           "<ul class='admin-order-items'>" +
           events
             .slice()
             .reverse()
             .slice(0, 8)
             .map(function (ev) {
+              const amount = Number(ev.amount);
               return (
                 "<li>" +
                 escapeHtml(formatOrderDate(ev.at || "")) +
-                " · " +
-                escapeHtml(String(ev.outcome || "—")) +
+                " · <strong>" +
+                escapeHtml(bankEventLabel(ev)) +
+                "</strong>" +
+                (Number.isFinite(amount) && amount > 0 ? " · " + escapeHtml(moneyTr(amount)) : "") +
                 " · " +
                 escapeHtml(String(ev.responseCode || "—")) +
                 (ev.authCode ? " · auth " + escapeHtml(String(ev.authCode)) : "") +
+                (ev.rrn ? " · RRN " + escapeHtml(String(ev.rrn)) : "") +
                 (ev.hostRefNum || ev.hostRefNumber
                   ? " · ref " + escapeHtml(String(ev.hostRefNum || ev.hostRefNumber))
                   : "") +
