@@ -191,10 +191,17 @@ test("stale admin tabs detect a newer build and refuse bank operations", () => {
   assert.match(html, /admin-login\.js\?v=([\w-]+)"/);
 });
 
+test("fully reversed orders hide the items refund form and refetched detail repaints row badges", () => {
+  assert.match(script, /const fullyReversed = Number\(preview\.reversedAmount\) > 0 && !\(Number\(preview\.remainingAmount\) > 0\)/);
+  assert.match(script, /!pending &&\s*!fullyReversed;/);
+  const expand = script.slice(script.indexOf("async function expandOrderRow"));
+  assert.match(expand.slice(0, 2500), /paintOrderRowBadges\(block, order\);\s*expand\.innerHTML = buildOrderDetailHtml/);
+});
+
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-1/);
+  assert.match(html, /admin\.css\?v=siparis-2/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

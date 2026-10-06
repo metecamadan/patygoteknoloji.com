@@ -4450,8 +4450,12 @@
           "</p>";
       }
     }
+    const fullyReversed = Number(preview.reversedAmount) > 0 && !(Number(preview.remainingAmount) > 0);
     const partialAllowed =
-      orderPaidNotRefunded(order) && (shipped || Number(preview.reversedAmount) > 0) && !pending;
+      orderPaidNotRefunded(order) &&
+      (shipped || Number(preview.reversedAmount) > 0) &&
+      !pending &&
+      !fullyReversed;
     if (partialAllowed) {
       const refundedQty = preview.refundedQty || {};
       const rows = (order.items || [])
@@ -4964,6 +4968,16 @@
     }
   }
 
+  function paintOrderRowBadges(block, order) {
+    const row = block && block.querySelector(".admin-order-row");
+    if (!row) return;
+    const payCell = row.querySelector(".admin-order-payment-cell");
+    const fulCell = row.querySelector(".admin-order-fulfillment-cell");
+    if (payCell) payCell.innerHTML = paymentStatusBadge(order);
+    if (fulCell) fulCell.innerHTML = fulfillmentStatusBadge(order);
+    row.setAttribute("aria-expanded", "true");
+  }
+
   function applyOrderPatchToUi(order, statusMails) {
     if (!order || !order.id || !adminOrderList) return;
     if (Array.isArray(statusMails)) order._statusMails = statusMails;
@@ -4976,14 +4990,7 @@
     order = merged;
     const block = adminOrderList.querySelector('[data-order-id="' + CSS.escape(order.id) + '"]');
     if (!block) return;
-    const row = block.querySelector(".admin-order-row");
-    if (row) {
-      const payCell = row.querySelector(".admin-order-payment-cell");
-      const fulCell = row.querySelector(".admin-order-fulfillment-cell");
-      if (payCell) payCell.innerHTML = paymentStatusBadge(order);
-      if (fulCell) fulCell.innerHTML = fulfillmentStatusBadge(order);
-      row.setAttribute("aria-expanded", "true");
-    }
+    paintOrderRowBadges(block, order);
     if (selectedOrderId !== order.id) return;
     if (statusChanged) {
       merged._detailLoaded = false;
@@ -5415,6 +5422,7 @@
       const idx = ordersCache.findIndex((row) => row.id === orderId);
       if (idx >= 0) ordersCache[idx] = order;
       else ordersCache.push(order);
+      paintOrderRowBadges(block, order);
       expand.innerHTML = buildOrderDetailHtml(order, order._statusMails);
       bindOrderDetailActions(orderId);
     } catch (err) {

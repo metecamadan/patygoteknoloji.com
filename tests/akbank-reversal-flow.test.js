@@ -160,6 +160,50 @@ test("partial refund is counted once in the store; remaining stays refundable", 
   assert.equal(second.status, "cancelled");
 });
 
+test("opening a voided order in the panel never flips it back to paid", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-flow-"));
+  resetDbForTests(dir);
+  const store = createOrderStore(dir);
+  store.save(paidOrder({ bankResponse: { responseCode: "VPS-0000", hashOk: true, amountOk: true } }));
+  store.recordBankReversal("PTY-FLOW-1", {
+    success: true,
+    event: buildReversalEvent({ type: "void", amount: "750.00", success: true }),
+  });
+  const reopened = store.reconcilePaidFromBankEvidence("PTY-FLOW-1");
+  assert.equal(reopened.paymentStatus, "refunded");
+  assert.equal(reopened.paymentTaken, false);
+  assert.equal(reopened.status, "cancelled");
+});
+
+test("startup repairs fully reversed orders left as paid; partial refunds stay paid", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-flow-"));
+  resetDbForTests(dir);
+  const store = createOrderStore(dir);
+  store.save(
+    paidOrder({
+      status: "cancelled",
+      paymentEvents: [buildReversalEvent({ type: "void", amount: "750.00", success: true })],
+    })
+  );
+  store.save(
+    paidOrder({
+      id: "PTY-FLOW-2",
+      status: "delivered",
+      paymentEvents: [buildReversalEvent({ type: "refund", amount: "300.00", success: true })],
+    })
+  );
+  assert.deepEqual(store.repairFullyReversedPayments(), ["PTY-FLOW-1"]);
+  const fixed = store.get("PTY-FLOW-1");
+  assert.equal(fixed.paymentStatus, "refunded");
+  assert.equal(fixed.paymentTaken, false);
+  assert.equal(fixed.status, "cancelled");
+  assert.equal(fixed.legalHold, true, "yasal saklama kalkmaz");
+  const partial = store.get("PTY-FLOW-2");
+  assert.equal(partial.paymentStatus, "paid");
+  assert.equal(partial.status, "delivered");
+  assert.deepEqual(store.repairFullyReversedPayments(), []);
+});
+
 test("unknown bank result blocks new reversal until inquiry resolves it", () => {
   const unknownEvent = buildReversalEvent({ type: "void", amount: "750.00", success: false, unknown: true });
   const order = paidOrder({ paymentEvents: [unknownEvent] });
