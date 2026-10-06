@@ -19,6 +19,7 @@ const {
   pendingReversal,
   buildReversalEvent,
   sanitizeReversalResponse,
+  buildReversalAlertMail,
 } = require("../lib/akbank-reversal");
 const { createOrderStore, trimPaymentEvents } = require("../lib/orders");
 const { resetDbForTests } = require("../lib/db");
@@ -158,6 +159,35 @@ test("partial refund is counted once in the store; remaining stays refundable", 
   });
   assert.equal(second.paymentStatus, "refunded");
   assert.equal(second.status, "cancelled");
+});
+
+test("declined or unknown bank reversal alerts the store mailbox without customer data", () => {
+  const declined = buildReversalAlertMail({
+    orderId: "PTY-FLOW-1",
+    method: "refund",
+    amount: 13.68,
+    responseCode: "VPS-1999",
+    responseMessage: "Yetersiz bakiye",
+    siteBase: "https://patygoteknoloji.com/",
+  });
+  assert.equal(declined.subject, "Banka iadeyi reddetti: PTY-FLOW-1");
+  assert.match(declined.text, /müşteriye para dönmedi/);
+  assert.match(declined.text, /İşlem: Karta iade/);
+  assert.match(declined.text, /Tutar: 13\.68 TL/);
+  assert.match(declined.text, /Banka kodu: VPS-1999/);
+  assert.match(declined.text, /Banka mesajı: Yetersiz bakiye/);
+  assert.match(declined.text, /Panel: https:\/\/patygoteknoloji\.com\/admin/);
+
+  const unknown = buildReversalAlertMail({ orderId: "PTY-FLOW-1", unknown: true, method: "void", amount: "750" });
+  assert.equal(unknown.subject, "Banka sonucu bilinmiyor: PTY-FLOW-1");
+  assert.match(unknown.text, /Tekrar denemeyin/);
+  assert.match(unknown.text, /Sipariş iptali \(aynı gün\)/);
+  assert.doesNotMatch(unknown.text + declined.text, /@|Ali/);
+
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const route = server.slice(server.indexOf("const adminOrderReversalMatch"));
+  assert.match(route, /resolvedOk\s*\?\s*null\s*:\s*await notifyReversalProblem\(\{[\s\S]{0,80}unknown: true/);
+  assert.match(route, /if \(!result\.ok\) \{\s*const alertMail = await notifyReversalProblem\(\{[\s\S]{0,80}unknown: false/);
 });
 
 test("opening a voided order in the panel never flips it back to paid", () => {

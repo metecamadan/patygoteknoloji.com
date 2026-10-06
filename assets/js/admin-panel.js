@@ -1519,9 +1519,16 @@
       "başarısız " +
         (commerce.ordersFailed || 0) +
         " · bekleyen " +
-        (commerce.ordersPending || 0)
+        (commerce.ordersPending || 0) +
+        (commerce.ordersRefunded ? " · iade/iptal " + commerce.ordersRefunded : "")
     );
     setText("dashRevenue", formatMoney(commerce.revenue || 0));
+    setText(
+      "dashRevenueMeta",
+      commerce.refundedAmount > 0
+        ? "Ödenen siparişler · " + formatMoney(commerce.refundedAmount) + " iade/iptal düşüldü"
+        : "Ödenen siparişler, iadeler düşülmüş"
+    );
     setText("dashAov", formatMoney(commerce.aov || 0));
     setText("dashAddToCart", String(analytics.addToCart || 0));
     setText("dashCheckoutStarted", String(analytics.checkoutStarted || 0));

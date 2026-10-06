@@ -82,6 +82,7 @@ const {
   publicBankReversalStatus,
   reconcileFromInquiry,
   sumReversedAmount,
+  buildReversalAlertMail,
 } = require("./lib/akbank-reversal");
 const { createOrderStore, ORDER_STATUSES, ADMIN_FULFILLMENT_STATUSES } = require("./lib/orders");
 const { getDb } = require("./lib/db");
@@ -114,6 +115,7 @@ const {
   deliverContactMail,
   deliverSimpleMail,
   smtpConfigured,
+  SMTP_NOT_CONFIGURED,
 } = require("./lib/contact");
 const {
   anonymizeOrder,
@@ -1548,6 +1550,17 @@ function reversalReasonMessage(reason) {
 }
 
 /** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail. */
+async function notifyReversalProblem(input) {
+  try {
+    const mail = buildReversalAlertMail(Object.assign({ siteBase: SITE_BASE_URL }, input));
+    await deliverSimpleMail(mail);
+    return { sent: true };
+  } catch (err) {
+    console.error("bank reversal alert mail failed:", err.message);
+    return { sent: false, reason: err.message === SMTP_NOT_CONFIGURED ? "smtp_not_configured" : "send_failed" };
+  }
+}
+
 async function afterSuccessfulReversal(before, updated, event) {
   const fully = Boolean(updated && updated.paymentStatus === "refunded");
   let couponReleased = false;
@@ -3029,7 +3042,18 @@ async function handleApi(req, res, urlPath) {
             reconcile = { ok: false, error: err.message };
           }
           const resolvedOk = reconcile && reconcile.ok && reconcile.decision === "record_success";
+          const alertMail = resolvedOk
+            ? null
+            : await notifyReversalProblem({
+                orderId,
+                unknown: true,
+                method: result.method || (plan.plan.tryVoid ? "void" : "refund"),
+                amount: plan.plan.amount,
+                responseCode: result.responseCode || sanitized.responseCode,
+                responseMessage: result.responseMessage || sanitized.responseMessage,
+              });
           return json(res, resolvedOk ? 200 : 202, {
+            alertMail,
             ok: resolvedOk,
             unknown: !resolvedOk,
             error: resolvedOk
@@ -3041,8 +3065,17 @@ async function handleApi(req, res, urlPath) {
           });
         }
         if (!result.ok) {
+          const alertMail = await notifyReversalProblem({
+            orderId,
+            unknown: false,
+            method: result.method || (plan.plan.tryVoid ? "void" : "refund"),
+            amount: plan.plan.amount,
+            responseCode: result.responseCode || sanitized.responseCode,
+            responseMessage: result.responseMessage || sanitized.responseMessage,
+          });
           return json(res, 502, {
             ok: false,
+            alertMail,
             error: result.responseMessage || "Banka iadesi/iptali reddedildi.",
             responseCode: result.responseCode,
             attempts: publicAttempts,
