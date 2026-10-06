@@ -127,6 +127,9 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   assert.equal(orderBody.order.bankResponse.responseCode, "VPS-0000");
   assert.equal(orderBody.order.bankResponse.hashOk, true);
   assert.ok(orderBody.order.paymentEventCount >= 1);
+  assert.equal(typeof orderBody.order.mailEnabled, "boolean");
+  assert.ok("deliveryArea" in orderBody.order);
+  assert.equal(orderBody.order.customer, undefined, "başarı ekranına müşteri kişisel verisi dönmez");
 
   // Başarılı ödeme sonrası başarısız banka cevabı paid'i bozamaz
   const failAfterPay = {

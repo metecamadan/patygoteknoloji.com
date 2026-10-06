@@ -2121,6 +2121,11 @@ async function handleApi(req, res, urlPath) {
             }
           : null,
         paymentEventCount: events.length,
+        deliveryArea:
+          [order.customer && order.customer.shippingDistrict, order.customer && order.customer.shippingCity]
+            .filter(Boolean)
+            .join(" / ") || null,
+        mailEnabled: smtpConfigured(process.env),
       },
     });
   }

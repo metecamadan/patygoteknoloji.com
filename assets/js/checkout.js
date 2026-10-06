@@ -504,52 +504,142 @@
     syncShippingGroup();
   }
 
+  /** Funnel + hero reflect the outcome: every step done after payment, step 3 flagged when it failed. */
+  function markFunnelOutcome(paid) {
+    const steps = document.querySelectorAll("#checkoutFunnel li");
+    steps.forEach((li, index) => {
+      const last = index === steps.length - 1;
+      li.classList.toggle("is-done", paid || !last);
+      li.classList.toggle("is-current", !paid && last);
+      li.classList.toggle("is-error", !paid && last);
+      if (!paid && last) li.setAttribute("aria-current", "step");
+      else li.removeAttribute("aria-current");
+      const badge = li.querySelector("span");
+      if (badge) badge.textContent = paid || !last ? "✓" : "!";
+    });
+    const title = document.getElementById("checkoutHeroTitle");
+    const lead = document.getElementById("checkoutHeroLead");
+    if (title) title.textContent = paid ? "Siparişiniz tamamlandı" : "Ödeme tamamlanamadı";
+    if (lead) {
+      lead.textContent = paid
+        ? "Teşekkür ederiz. Siparişinizi hazırlamaya başlıyoruz."
+        : "Kartınızdan çekim yapılmadı. Bilgileriniz duruyor; ödemeyi tekrar deneyebilirsiniz.";
+    }
+  }
+
+  function appendRow(list, tag, label, value, className) {
+    const row = document.createElement(tag === "dl" ? "div" : "li");
+    if (className) row.className = className;
+    const a = document.createElement(tag === "dl" ? "dt" : "span");
+    a.textContent = label;
+    const b = document.createElement(tag === "dl" ? "dd" : "span");
+    b.textContent = value;
+    row.append(a, b);
+    list.appendChild(row);
+  }
+
+  function renderOrderSummary(order) {
+    const box = document.getElementById("successSummaryBox");
+    const itemsEl = document.getElementById("successItems");
+    const totalsEl = document.getElementById("successTotals");
+    if (!box || !itemsEl || !totalsEl || !order || !Array.isArray(order.items) || !order.items.length) return false;
+    itemsEl.textContent = "";
+    totalsEl.textContent = "";
+    order.items.forEach((item) => {
+      const qty = Math.max(1, Number(item.qty) || 1);
+      const lineIncl = (Number(item.line) || 0) + (Number(item.lineVat) || 0);
+      appendRow(itemsEl, "ul", (item.name || "Ürün") + " × " + qty, formatTRY(lineIncl));
+    });
+    const coupon = order.coupon && Number(order.coupon.discount) > 0 ? order.coupon : null;
+    const inst = order.installment && Number(order.installment.count) > 1 ? order.installment : null;
+    const shipping = Number(order.shippingFee) || 0;
+    appendRow(totalsEl, "dl", "Ürünler (KDV dahil)", formatTRY(order.merchandiseTotal));
+    if (coupon) appendRow(totalsEl, "dl", "Kupon (" + coupon.code + ")", "-" + formatTRY(coupon.discount), "is-discount");
+    appendRow(totalsEl, "dl", "Kargo", shipping > 0 ? formatTRY(shipping) : "Ücretsiz");
+    if (inst) appendRow(totalsEl, "dl", "Vade farkı (" + inst.count + " taksit)", formatTRY(inst.surcharge));
+    appendRow(totalsEl, "dl", "Ödenen tutar", formatTRY(order.total), "is-total");
+    appendRow(totalsEl, "dl", "Ödeme", inst ? inst.count + " taksit · Akbank" : "Tek çekim · Akbank");
+    box.hidden = false;
+    return true;
+  }
+
+  function renderNextSteps(order) {
+    const list = document.getElementById("successNext");
+    if (!list || !order) return;
+    list.textContent = "";
+    const add = (label, value) => appendRow(list, "ul", label, value);
+    const shipping = window.PatygoShipping;
+    const dispatch = () => {
+      if (shipping && typeof shipping.estimateDispatchDate === "function") {
+        const at = Date.parse(order.createdAt || "") || Date.now();
+        add("Tahmini kargoya veriliş", shipping.formatDispatchDate(shipping.estimateDispatchDate(at)));
+      }
+      if (order.deliveryArea) add("Teslimat", order.deliveryArea);
+      if (order.mailEnabled) add("Bilgilendirme", "Sipariş onayı ve kargo takip bilgisi e-postanıza gönderilir.");
+      list.hidden = !list.children.length;
+    };
+    if (shipping && typeof shipping.load === "function") shipping.load().then(dispatch, dispatch);
+    else dispatch();
+  }
+
+  function bindCopyOrderId() {
+    const btn = document.getElementById("successCopyBtn");
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async () => {
+      const id = els.successOrderId ? els.successOrderId.textContent.trim() : "";
+      if (!id || !navigator.clipboard) return;
+      try {
+        await navigator.clipboard.writeText(id);
+        btn.textContent = "Kopyalandı";
+        setTimeout(() => (btn.textContent = "Kopyala"), 2000);
+      } catch (_) {}
+    });
+  }
+
   function showResult(kind, order) {
     if (els.root) {
       els.root.hidden = true;
       els.root.style.display = "none";
     }
+    const paid = kind === "success";
     if (els.success) {
       els.success.hidden = false;
       els.success.style.display = "block";
+      els.success.classList.toggle("is-paid", paid);
+      els.success.classList.toggle("is-failed", !paid);
     }
-    const paid = kind === "success";
+    markFunnelOutcome(paid);
     if (els.successTitle) {
-      els.successTitle.textContent = paid ? "Ödemeniz alındı" : "Ödeme tamamlanamadı";
+      els.successTitle.textContent = paid ? "Siparişiniz alındı" : "Ödeme tamamlanamadı";
     }
     if (els.successLead) {
       if (paid) {
-        els.successLead.textContent =
-          "Akbank güvenli ödeme ekranından işleminiz onaylandı. Siparişiniz işleme alındı.";
+        els.successLead.textContent = "Ödemeniz Akbank güvenli ödeme ekranında onaylandı.";
       } else {
         const bankMsg =
           order &&
           order.bankResponse &&
           (order.bankResponse.responseMessage || order.bankResponse.responseCode);
         els.successLead.textContent = bankMsg
-          ? "Banka: " + bankMsg + " — Sepetten tekrar deneyebilirsiniz."
-          : "Kart işlemi tamamlanmadı veya banka reddetti. Sepetten tekrar deneyebilirsiniz.";
+          ? "Banka cevabı: " + bankMsg + ". Kartınızdan çekim yapılmadı."
+          : "Kart işlemi tamamlanmadı veya banka reddetti. Kartınızdan çekim yapılmadı.";
       }
     }
     if (els.successOrderId) els.successOrderId.textContent = (order && order.id) || returnedOrderId || "—";
+    bindCopyOrderId();
+    const hasSummary = paid && renderOrderSummary(order);
+    if (paid) renderNextSteps(order);
     if (els.successSummary) {
-      if (order && order.items) {
-        els.successSummary.textContent =
-          order.items.map((i) => i.name + " × " + i.qty).join(" · ") +
-          " — " +
-          formatTRY(order.total) +
-          (order.coupon && order.coupon.discount > 0
-            ? " · " + order.coupon.code + " kuponu ile " + formatTRY(order.coupon.discount) + " indirim"
-            : "") +
-          (paid ? " (KDV dahil) · Ödeme alındı" : " (KDV dahil)");
-      } else {
-        els.successSummary.textContent = paid
-          ? "Ödeme başarıyla alındı. Sipariş numaranızı saklayın."
-          : "Sipariş için ödeme alınmadı.";
-      }
+      els.successSummary.hidden = hasSummary;
+      els.successSummary.textContent = paid
+        ? "Ödeme başarıyla alındı. Sipariş numaranızı saklayın; destek için kullanılır."
+        : "Bu sipariş için ödeme alınmadı. Sepetiniz duruyor; dilerseniz tekrar deneyebilirsiniz.";
     }
     const retry = document.getElementById("retryPayBtn");
     if (retry) retry.hidden = paid;
+    const continueBtn = document.getElementById("continueShoppingBtn");
+    if (continueBtn) continueBtn.className = paid ? "btn btn-primary" : "btn btn-outline";
     if (paid && window.PatygoAnalytics) window.PatygoAnalytics.track("order_submitted");
     if (paid && window.PatygoCart) window.PatygoCart.clear();
     try {

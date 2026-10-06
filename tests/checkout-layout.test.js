@@ -79,3 +79,26 @@ test("cart summary has no continue-shopping link that pulls the customer back fr
   assert.doesNotMatch(cartJs, /cartContinue|continueBtn/);
   assert.doesNotMatch(css, /\.cart-continue/);
 });
+
+test("payment result is a final step: funnel completes, order summary shows, no back-and-forth buttons", () => {
+  const checkoutJs = fs.readFileSync(path.join(root, "assets", "js", "checkout.js"), "utf8");
+  const start = html.indexOf('id="orderSuccess"');
+  const card = html.slice(start, html.indexOf("order-result-help", start));
+  assert.doesNotMatch(card, /Sepete dön/);
+  assert.doesNotMatch(card, /class="btn btn-outline">İletişim/);
+  assert.match(card, /id="retryPayBtn" hidden/);
+  assert.match(card, /id="successSummaryBox" hidden/);
+  assert.match(card, /id="successItems"/);
+  assert.match(card, /id="successTotals"/);
+  assert.match(card, /id="successNext" hidden/);
+  assert.match(card, /id="successCopyBtn"/);
+  assert.match(css, /\.order-result \[hidden\] \{ display: none !important; \}/);
+  assert.match(css, /\.checkout-funnel li\.is-error/);
+  assert.match(checkoutJs, /function markFunnelOutcome\(paid\)/);
+  assert.match(checkoutJs, /li\.classList\.toggle\("is-done", paid \|\| !last\)/);
+  assert.match(checkoutJs, /"Ürünler \(KDV dahil\)", formatTRY\(order\.merchandiseTotal\)/);
+  assert.match(checkoutJs, /"Kupon \(" \+ coupon\.code \+ "\)", "-" \+ formatTRY\(coupon\.discount\)/);
+  assert.match(checkoutJs, /if \(order\.mailEnabled\) add\(/);
+  assert.match(checkoutJs, /appendRow\(totalsEl, "dl", "Ödenen tutar", formatTRY\(order\.total\), "is-total"\)/);
+  assert.doesNotMatch(checkoutJs, /\.innerHTML\s*=\s*[^;]*item\.name/, "ürün adı textContent ile yazılır");
+});
