@@ -217,7 +217,7 @@ test("checkout, cart and admin UI wire coupons and cart suggestions", () => {
   assert.match(admin, /id="couponTableBody"/);
   assert.match(panel, /api\("\/api\/admin\/coupons"\)/);
   assert.match(panel, /method: "PATCH"/);
-  assert.match(panel, /<dt>Kupon<\/dt>/);
+  assert.match(panel, /coupon \? \["Kupon", escapeHtml\(coupon\.code\)/);
   assert.match(panel, /loadAdminCoupons\(\)\.catch/);
 });
 

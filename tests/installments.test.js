@@ -219,7 +219,7 @@ test("admin panel edits installment rates on the delivery page", () => {
   assert.match(panel, /method: "PUT"[\s\S]{0,80}JSON\.stringify\(values\)/);
   assert.match(panel, /INSTALLMENT_COUNTS = \[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12\]/);
   assert.match(panel, /loadAdminInstallmentSettings\(\)\.catch/);
-  assert.match(panel, /<dt>Taksit<\/dt>/);
+  assert.match(panel, /inst\s*\?\s*\[\s*"Taksit",/);
 });
 
 test("installment API: admin rates drive payment amount and Akbank installCount", async (t) => {

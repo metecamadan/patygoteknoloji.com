@@ -117,10 +117,84 @@ test("admin categories tab manages the site category tree", () => {
   assert.match(script, /Yayına al/);
 });
 
+test("order detail is a summary strip plus tabs, keeping every action id wired", () => {
+  const start = script.indexOf("const ORDER_DETAIL_TABS");
+  const end = script.indexOf("function stashOrderMailNotice");
+  assert.ok(start > 0 && end > start, "sipariş detay bloğu bulunmalı");
+  const block = script.slice(start, end);
+  ["ozet", "kargo", "odeme", "fatura", "gecmis", "kvkk"].forEach((key) => {
+    assert.match(block, new RegExp('\\["' + key + '", "'));
+  });
+  assert.match(block, /role='tablist'/);
+  assert.match(block, /role='tabpanel'/);
+  assert.match(block, /aria-selected/);
+  assert.match(block, /ArrowRight/);
+  assert.match(block, /Sıradaki adım:/);
+  assert.match(block, /data-od-goto/);
+  assert.match(block, /Teknik banka kaydı/);
+  assert.match(block, /<details class='admin-od-tech'>/);
+  ["adminOrderStatus", "adminOrderSaveStatus", "adminOrderCarrier", "adminOrderTracking", "adminOrderSaveShipping",
+    "adminOrderResendShippingMail", "adminOrderAnonymize"].forEach((id) => {
+    assert.equal(block.split("id='" + id + "'").length - 1, 1, id + " tek kez render edilmeli");
+  });
+  assert.match(block, /renderBankReversalBlock\(order\)/);
+  assert.match(block, /renderBizimHesapBlock\(order\)/);
+  assert.match(block, /<option value='' selected>Seçin<\/option>/);
+  assert.match(script, /bindOrderDetailTabs\(orderId\);/);
+  assert.match(script, /Yeni durumu seçin\./);
+  assert.match(script, /status === "paid" && order\.paymentStatus === "paid"\) return "new"/);
+  assert.match(css, /\.admin-od-tab\[aria-selected="true"\]/);
+  assert.match(css, /\.order-status--new/);
+});
+
+test("saved order/dashboard ranges ending on the save day roll forward so new days' orders stay visible", () => {
+  const pick = (name) => {
+    const start = script.indexOf("function " + name + "(");
+    assert.ok(start > 0, name + " bulunmalı");
+    let depth = 0;
+    for (let i = script.indexOf("{", start); i < script.length; i++) {
+      if (script[i] === "{") depth++;
+      if (script[i] === "}" && --depth === 0) return script.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+  const vm = require("node:vm");
+  const ctx = {};
+  vm.runInNewContext(
+    [
+      pick("isoDate"),
+      pick("defaultPeriodRange"),
+      pick("rollSavedRange"),
+      "this.roll = (p, d) => JSON.stringify(rollSavedRange(p, d)); this.iso = isoDate;",
+    ].join("\n"),
+    ctx
+  );
+  const roll = (parsed, days) => JSON.parse(ctx.roll(parsed, days));
+  const day = (offset) => ctx.iso(new Date(Date.now() + offset * 86400000));
+  const today = day(0);
+  assert.deepEqual(roll({ from: day(-30), to: day(-1), savedOn: day(-1) }, 30), { from: day(-29), to: today });
+  assert.deepEqual(roll({ from: day(-30), to: day(-1) }, 30), { from: day(-29), to: today });
+  assert.deepEqual(roll({ from: day(-40), to: day(-20), savedOn: day(-1) }, 30), { from: day(-40), to: day(-20) });
+  assert.deepEqual(roll({ from: day(-6), to: today, savedOn: today }, 30), { from: day(-6), to: today });
+  assert.deepEqual(roll(null, 7), { from: day(-6), to: today });
+  assert.match(script, /localStorage\.setItem\(ORDER_PERIOD_KEY, storedRange\(from, to\)\)/);
+  assert.match(script, /localStorage\.setItem\(PERIOD_KEY, storedRange\(from, to\)\)/);
+});
+
+test("stale admin tabs detect a newer build and refuse bank operations", () => {
+  assert.match(script, /fetch\("\/admin", \{ cache: "no-store"/);
+  assert.match(script, /admin-login\\\.js\\\?v=/);
+  assert.match(script, /showPanelOutdatedBanner/);
+  assert.match(script, /if \(await checkPanelBuild\(\)\) \{\s*setBankNote\("err"/);
+  assert.match(script, /visibilitychange/);
+  assert.match(css, /\.admin-update-banner/);
+  assert.match(html, /admin-login\.js\?v=([\w-]+)"/);
+});
+
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=iade-3/);
+  assert.match(html, /admin\.css\?v=siparis-1/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -406,7 +480,7 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /adminOrderSaveShipping/);
   assert.match(script, /saveBtn\.disabled = true/);
   assert.match(script, /adminOrderResendShippingMail/);
-  assert.match(script, /Müşteri e-posta geçmişi/);
+  assert.match(script, /Müşteriye giden e-postalar/);
   assert.match(script, /admin-order-mail-badge--sent/);
   assert.match(script, /renderBizimHesapBlock/);
   assert.match(script, /adminOrderBizimhesapSend/);

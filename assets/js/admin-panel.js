@@ -57,6 +57,53 @@
     });
   }
 
+  /** /admin is served no-store; a different admin-login.js token there means this tab runs an older panel build. */
+  const PANEL_BUILD = (function () {
+    const el = document.querySelector('script[src*="/assets/js/admin-login.js"]');
+    const match = el && /[?&]v=([\w-]+)/.exec(el.getAttribute("src") || "");
+    return match ? match[1] : "";
+  })();
+  let panelOutdated = false;
+
+  function showPanelOutdatedBanner() {
+    if (document.getElementById("adminUpdateBanner")) return;
+    const banner = document.createElement("div");
+    banner.id = "adminUpdateBanner";
+    banner.className = "admin-update-banner";
+    banner.setAttribute("role", "alert");
+    const text = document.createElement("span");
+    text.innerHTML =
+      "<strong>Panel güncellendi.</strong> Bu sekme eski sürümde çalışıyor; banka işlemleri kapalı. Devam etmek için yenileyin.";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-primary";
+    btn.textContent = "Yenile";
+    btn.addEventListener("click", () => window.location.reload());
+    banner.appendChild(text);
+    banner.appendChild(btn);
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+
+  async function checkPanelBuild() {
+    if (panelOutdated || !PANEL_BUILD) return panelOutdated;
+    try {
+      const res = await fetch("/admin", { cache: "no-store", credentials: "same-origin" });
+      if (!res.ok) return false;
+      const match = /admin-login\.js\?v=([\w-]+)/.exec(await res.text());
+      if (match && match[1] !== PANEL_BUILD) {
+        panelOutdated = true;
+        showPanelOutdatedBanner();
+      }
+    } catch (_) {}
+    return panelOutdated;
+  }
+
+  checkPanelBuild();
+  setInterval(checkPanelBuild, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkPanelBuild();
+  });
+
   const SORT_STORAGE_PREFIX = "patygo_sort_";
   const sortCollator = new Intl.Collator("tr", { numeric: true, sensitivity: "base" });
 
@@ -1617,19 +1664,35 @@
     return { from: isoDate(from), to: isoDate(to) };
   }
 
+  /**
+   * A saved range that ended on the day it was saved rolls forward with the calendar (same length),
+   * so tomorrow's panel still shows today's orders; a range ending in the past stays as picked.
+   * Entries saved before savedOn existed are treated as rolling.
+   */
+  function rollSavedRange(parsed, fallbackDays) {
+    if (!parsed || !parsed.from || !parsed.to) return defaultPeriodRange(fallbackDays);
+    const today = isoDate(new Date());
+    const rolling = parsed.savedOn ? parsed.to === parsed.savedOn : true;
+    if (!rolling || parsed.to >= today) return { from: parsed.from, to: parsed.to };
+    const span = Math.round((Date.parse(parsed.to) - Date.parse(parsed.from)) / 86400000) + 1;
+    return defaultPeriodRange(span);
+  }
+
+  function storedRange(from, to) {
+    return JSON.stringify({ from, to, savedOn: isoDate(new Date()) });
+  }
+
   function readSavedPeriod() {
     try {
       const raw = localStorage.getItem(PERIOD_KEY);
-      if (!raw) return defaultPeriodRange(30);
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.from && parsed.to) return parsed;
+      if (raw) return rollSavedRange(JSON.parse(raw), 30);
     } catch (_) {}
     return defaultPeriodRange(30);
   }
 
   function savePeriod(from, to) {
     try {
-      localStorage.setItem(PERIOD_KEY, JSON.stringify({ from, to }));
+      localStorage.setItem(PERIOD_KEY, storedRange(from, to));
     } catch (_) {}
   }
 
@@ -3975,6 +4038,7 @@
       payment_pending: "Ödeme bekliyor",
       paid: "Ödendi",
       payment_failed: "Ödeme başarısız",
+      new: "Yeni",
       preparing: "Hazırlanıyor",
       shipped: "Kargoda",
       delivered: "Teslim edildi",
@@ -3989,6 +4053,7 @@
       payment_pending: "order-status--pending",
       paid: "order-status--success",
       payment_failed: "order-status--failed",
+      new: "order-status--new",
       preparing: "order-status--preparing",
       shipped: "order-status--shipped",
       delivered: "order-status--delivered",
@@ -4024,6 +4089,7 @@
     if (status === "preparing" || status === "shipped" || status === "delivered" || status === "cancelled") {
       return status;
     }
+    if (status === "paid" && order.paymentStatus === "paid") return "new";
     return "";
   }
 
@@ -4073,16 +4139,14 @@
   function readSavedOrderPeriod() {
     try {
       const raw = localStorage.getItem(ORDER_PERIOD_KEY);
-      if (!raw) return defaultOrderPeriod(30);
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.from && parsed.to) return parsed;
+      if (raw) return rollSavedRange(JSON.parse(raw), 30);
     } catch (_) {}
     return defaultOrderPeriod(30);
   }
 
   function saveOrderPeriod(from, to) {
     try {
-      localStorage.setItem(ORDER_PERIOD_KEY, JSON.stringify({ from, to }));
+      localStorage.setItem(ORDER_PERIOD_KEY, storedRange(from, to));
     } catch (_) {}
   }
 
@@ -4511,124 +4575,246 @@
     return parts.filter(Boolean).join(" · ") || "—";
   }
 
-  function buildOrderDetailHtml(order, statusMails) {
-    const c = order.customer || {};
-    const mails = Array.isArray(statusMails) ? statusMails : order._statusMails || [];
-    const shippedMailSent = mails.some((row) => row && row.status === "shipped");
-    const mailLines = renderOrderMailLog(order, mails);
-    const mailBanner = renderOrderMailStatusBanner(order, mails);
-    const bizimHesapBlock = renderBizimHesapBlock(order);
-    const items = (order.items || [])
-      .map(
-        (it) =>
-          "<li>" +
-          (it.qty || 1) +
-          "× " +
-          escapeHtml(it.name || it.productId) +
-          " — " +
-          moneyTr(it.line) +
-          "</li>"
-      )
-      .join("");
+  const ORDER_DETAIL_TABS = [
+    ["ozet", "Özet"],
+    ["kargo", "Kargo ve durum"],
+    ["odeme", "Ödeme ve iade"],
+    ["fatura", "Fatura"],
+    ["gecmis", "Geçmiş"],
+    ["kvkk", "KVKK"],
+  ];
+  let orderDetailTab = { orderId: "", tab: "ozet" };
+
+  function activeOrderDetailTab(orderId) {
+    return orderDetailTab.orderId === orderId ? orderDetailTab.tab : "ozet";
+  }
+
+  /** One sentence + shortcut tabs for what the operator should do next with this order. */
+  function orderNextStep(order) {
+    const preview = order._bankReversal || {};
+    const status = String(order.status || "");
+    const paidOpen = orderPaidNotRefunded(order);
+    if (order.paymentStatus === "refunded") {
+      return { text: "Sipariş kapandı: ödeme müşterinin kartına iade edildi.", actions: [["gecmis", "Geçmişi gör"]] };
+    }
+    if (preview.pending) {
+      return {
+        tone: "warn",
+        text: "Önceki banka işleminin sonucu bilinmiyor. Yeni işlem yapmadan bankadan sorgulayın.",
+        actions: [["odeme", "Bankadan sorgula"]],
+      };
+    }
+    if (status === "cancelled") return { text: "Sipariş iptal edildi.", actions: [] };
+    if (!paidOpen) {
+      return {
+        text:
+          order.paymentStatus === "failed"
+            ? "Ödeme başarısız; işlem gerekmez."
+            : "Ödeme bekleniyor; banka onayı gelmeden işlem yapılmaz.",
+        actions: [],
+      };
+    }
+    const actions = [];
+    let text;
+    if (status === "delivered") {
+      text = "Teslim edildi. İade gelirse ürünleri seçip karta iade edin.";
+      actions.push(["odeme", "Ürün iadesi"]);
+    } else if (status === "shipped") {
+      text = "Kargoda. Müşteriye ulaşınca durumu “Teslim edildi” yapın.";
+      actions.push(["kargo", "Durumu güncelle"], ["odeme", "Ürün iadesi"]);
+    } else {
+      text =
+        status === "preparing"
+          ? "Hazırlanıyor. Kargoya verince firma ve takip kodunu girin."
+          : "Yeni sipariş. Hazırlayıp kargoya verin; müşteri vazgeçtiyse iptal edip parayı iade edin.";
+      actions.push(["kargo", "Kargoya ver"], ["odeme", "İptal et / iade"]);
+    }
+    if (order._bizimhesapConfigured === true && !(order._bizimhesap && order._bizimhesap.guid)) {
+      actions.push(["fatura", "Fatura kes"]);
+    }
+    return { text, actions };
+  }
+
+  function orderDetailHeadHtml(order) {
+    const step = orderNextStep(order);
     return (
-      "<div class='admin-order-detail-grid'>" +
-      "<dl class='admin-xml-meta'>" +
-      "<div><dt>Sipariş tarihi</dt><dd>" +
-      escapeHtml(formatOrderDate(order.createdAt)) +
-      "</dd></div>" +
-      "<div><dt>Durum</dt><dd>" +
-      fulfillmentStatusBadge(order) +
-      "</dd></div>" +
-      "<div><dt>Ödeme</dt><dd>" +
+      "<div class='admin-od-head" +
+      (step.tone === "warn" ? " admin-od-head--warn" : "") +
+      "'>" +
+      "<div class='admin-od-head-status'>" +
       paymentStatusBadge(order) +
-      "</dd></div>" +
-      "<div><dt>Müşteri</dt><dd>" +
-      escapeHtml(c.name || "—") +
-      "</dd></div>" +
-      "<div><dt>E-posta</dt><dd>" +
-      escapeHtml(c.email || "—") +
-      "</dd></div>" +
-      "<div><dt>Telefon</dt><dd>" +
-      escapeHtml(c.phone || "—") +
-      "</dd></div>" +
-      "<div><dt>Fatura</dt><dd>" +
-      escapeHtml(invoiceIdentityText(c)) +
-      "</dd></div>" +
-      "<div><dt>Fatura adresi</dt><dd>" +
-      escapeHtml(c.billingAddress || "—") +
-      "</dd></div>" +
-      "<div><dt>Teslimat</dt><dd>" +
-      escapeHtml(c.shippingAddress || "—") +
-      "</dd></div>" +
-      (order.shippingCarrier
-        ? "<div><dt>Kargo</dt><dd>" +
-          escapeHtml(order.shippingCarrier) +
-          (order.trackingCode ? " · " + escapeHtml(order.trackingCode) : "") +
-          "</dd></div>"
-        : "") +
-      "<div><dt>Toplam</dt><dd>" +
+      fulfillmentStatusBadge(order) +
+      "<span class='admin-od-head-total'>" +
       moneyTr(order.total) +
-      "</dd></div>" +
-      (order.coupon && order.coupon.discount > 0
-        ? "<div><dt>Kupon</dt><dd>" +
-          escapeHtml(order.coupon.code) +
-          " · -" +
-          moneyTr(order.coupon.discount) +
-          "</dd></div>"
+      "</span>" +
+      "<span class='admin-od-head-date'>" +
+      escapeHtml(formatOrderDate(order.createdAt)) +
+      "</span></div>" +
+      "<p class='admin-od-next'><strong>Sıradaki adım:</strong> " +
+      escapeHtml(step.text) +
+      "</p>" +
+      (step.actions.length
+        ? "<div class='admin-od-head-actions'>" +
+          step.actions
+            .map(
+              (action, index) =>
+                "<button type='button' class='btn " +
+                (index === 0 ? "btn-primary" : "btn-outline") +
+                "' data-od-goto='" +
+                escapeAttr(action[0]) +
+                "'>" +
+                escapeHtml(action[1]) +
+                "</button>"
+            )
+            .join("") +
+          "</div>"
         : "") +
-      (order.installment && order.installment.count > 1
-        ? "<div><dt>Taksit</dt><dd>" +
-          escapeHtml(String(order.installment.count)) +
-          " taksit · vade farkı " +
-          moneyTr(order.installment.surcharge) +
-          " (%" +
-          escapeHtml(String(order.installment.ratePercent)) +
-          ")</dd></div>"
-        : "") +
-      (order.anonymizedAt
-        ? "<div><dt>Anonimleştirme</dt><dd>" +
-          escapeHtml(formatOrderDate(order.anonymizedAt)) +
-          (order.legalHold ? " · yasal saklama (legal_hold)" : "") +
-          "</dd></div>"
-        : order.legalHold
-          ? "<div><dt>Yasal saklama</dt><dd>legal_hold — hard silme yok</dd></div>"
-          : "") +
-      "</dl>" +
-      "<div>" +
-      mailBanner +
-      bankPaymentBlock(order) +
-      renderBankReversalBlock(order) +
-      bizimHesapBlock +
-      "<h3 class='admin-order-section-title'>Kalemler</h3><ul class='admin-order-items'>" +
+      "</div>"
+    );
+  }
+
+  function orderDetailTabsHtml(active, badges) {
+    return (
+      "<div class='admin-od-tabs' role='tablist' aria-label='Sipariş detayı'>" +
+      ORDER_DETAIL_TABS.map(function (tab) {
+        const key = tab[0];
+        const on = key === active;
+        return (
+          "<button type='button' role='tab' class='admin-od-tab' id='adminOdTab-" +
+          key +
+          "' data-od-tab='" +
+          key +
+          "' aria-controls='adminOdPanel-" +
+          key +
+          "' aria-selected='" +
+          on +
+          "' tabindex='" +
+          (on ? "0" : "-1") +
+          "'>" +
+          escapeHtml(tab[1]) +
+          (badges[key] ? "<span class='admin-od-tab-badge'>" + escapeHtml(badges[key]) + "</span>" : "") +
+          "</button>"
+        );
+      }).join("") +
+      "</div>"
+    );
+  }
+
+  function orderDetailPanelHtml(key, active, html) {
+    return (
+      "<section class='admin-od-panel' role='tabpanel' id='adminOdPanel-" +
+      key +
+      "' aria-labelledby='adminOdTab-" +
+      key +
+      "'" +
+      (key === active ? "" : " hidden") +
+      ">" +
+      html +
+      "</section>"
+    );
+  }
+
+  function metaRows(pairs) {
+    return pairs
+      .filter((pair) => pair && pair[1] != null && String(pair[1]).trim() !== "")
+      .map((pair) => "<div><dt>" + escapeHtml(pair[0]) + "</dt><dd>" + pair[1] + "</dd></div>")
+      .join("");
+  }
+
+  function orderItemsAndTotalsHtml(order) {
+    const items = (order.items || [])
+      .map(function (it) {
+        const qty = Math.max(1, Number(it.qty) || 1);
+        const lineIncl = (Number(it.line) || 0) + (Number(it.lineVat) || 0);
+        return (
+          "<li><span class='admin-od-item-name'>" +
+          escapeHtml(it.name || it.productId || "Ürün") +
+          "</span><span class='admin-od-item-qty'>" +
+          qty +
+          " adet</span><span class='admin-od-item-amount'>" +
+          moneyTr(lineIncl) +
+          "</span></li>"
+        );
+      })
+      .join("");
+    const coupon = order.coupon && order.coupon.discount > 0 ? order.coupon : null;
+    const inst = order.installment && order.installment.count > 1 ? order.installment : null;
+    const shipping = Number(order.shippingFee) || 0;
+    return (
+      "<h3 class='admin-order-section-title'>Kalemler <small>(KDV dahil)</small></h3>" +
+      "<ul class='admin-od-items'>" +
       (items || "<li>—</li>") +
       "</ul>" +
-      "<div class='field'><label for='adminOrderStatus'>Durum güncelle</label>" +
+      "<dl class='admin-xml-meta admin-od-totals'>" +
+      metaRows([
+        ["Ara toplam (KDV hariç)", order.subtotal != null ? escapeHtml(moneyTr(order.subtotal)) : null],
+        ["KDV", order.vat != null ? escapeHtml(moneyTr(order.vat)) : null],
+        coupon ? ["Kupon", escapeHtml(coupon.code) + " · -" + escapeHtml(moneyTr(coupon.discount))] : null,
+        ["Kargo", shipping > 0 ? escapeHtml(moneyTr(shipping)) : "Ücretsiz"],
+        inst
+          ? [
+              "Taksit",
+              inst.count +
+                " taksit · vade farkı %" +
+                escapeHtml(String(inst.ratePercent)) +
+                " · " +
+                escapeHtml(moneyTr(inst.surcharge)),
+            ]
+          : null,
+        ["Toplam", "<strong>" + escapeHtml(moneyTr(order.total)) + "</strong>"],
+      ]) +
+      "</dl>"
+    );
+  }
+
+  function orderCustomerHtml(order) {
+    const c = order.customer || {};
+    return (
+      "<h3 class='admin-order-section-title'>Müşteri</h3>" +
+      "<dl class='admin-xml-meta'>" +
+      metaRows([
+        ["Ad soyad", escapeHtml(c.name || "—")],
+        ["E-posta", escapeHtml(c.email || "—")],
+        ["Telefon", escapeHtml(c.phone || "—")],
+        ["Fatura", escapeHtml(invoiceIdentityText(c))],
+        ["Fatura adresi", escapeHtml(c.billingAddress || "—")],
+        ["Teslimat adresi", escapeHtml(c.shippingAddress || c.billingAddress || "—")],
+        order.shippingCarrier
+          ? ["Kargo", escapeHtml(order.shippingCarrier + (order.trackingCode ? " · " + order.trackingCode : ""))]
+          : null,
+      ]) +
+      "</dl>"
+    );
+  }
+
+  function orderStatusFormHtml(order) {
+    const options = (order.status === "shipped" || order.status === "delivered"
+      ? ["preparing", "delivered", "cancelled"]
+      : ["preparing", "cancelled"]
+    ).filter((s) => s !== "cancelled" || !orderPaidNotRefunded(order) || order.status === "cancelled");
+    const current = order.status === "shipped" ? "delivered" : order.status;
+    const hasCurrent = options.indexOf(current) >= 0;
+    return (
+      "<h3 class='admin-order-section-title'>Durum</h3>" +
+      "<div class='field'><label for='adminOrderStatus'>Yeni durum</label>" +
       "<select id='adminOrderStatus'>" +
-      (order.status === "shipped" || order.status === "delivered"
-        ? ["preparing", "delivered", "cancelled"]
-        : ["preparing", "cancelled"])
-        .filter((s) => s !== "cancelled" || !orderPaidNotRefunded(order) || order.status === "cancelled")
+      (hasCurrent ? "" : "<option value='' selected>Seçin</option>") +
+      options
         .map(
           (s) =>
-            "<option value='" +
-            s +
-            "'" +
-            (order.status === s || (order.status === "shipped" && s === "delivered") ? " selected" : "") +
-            ">" +
-            orderStatusLabel(s) +
-            "</option>"
+            "<option value='" + s + "'" + (s === current ? " selected" : "") + ">" + orderStatusLabel(s) + "</option>"
         )
         .join("") +
       "</select></div>" +
-      "<p class='admin-field-help'>Ödeme durumu banka callback ile gelir. Ödenmiş sipariş yalnızca “İptal et ve parayı iade et” ile iptal edilir; kargodaki/teslim edilen siparişte ürün bazlı iade kullanılır. Kargoda durumu alttaki kargo kaydı ile güncellenir. Kargodaki sipariş müşteriye ulaşınca “Teslim edildi” seçin: müşteriye ürün değerlendirme bağlantısı gider.</p>" +
-      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>" +
-      "<h3 class='admin-order-section-title'>KVKK / anonimleştirme</h3>" +
-      "<p class='admin-field-help'>Taslak politika: kişisel verileri temizler; tutar ve kalemler kalır. legal_hold olan kayıtlar hard silinmez.</p>" +
-      (order.anonymizedAt
-        ? "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>Bu sipariş anonimleştirilmiş.</p>"
-        : "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderAnonymize'>Anonimleştir</button></div>") +
+      "<p class='admin-field-help'>Kargoda durumu kargo kaydıyla gelir. Kargodaki sipariş müşteriye ulaşınca “Teslim edildi” seçin: müşteriye ürün değerlendirme bağlantısı gider. Ödenmiş sipariş yalnızca “Ödeme ve iade” sekmesinden, para iade edilerek iptal edilir.</p>" +
+      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveStatus'>Durumu kaydet</button></div>"
+    );
+  }
+
+  function orderShippingFormHtml(order, shippedMailSent) {
+    return (
       "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
-      "<p class='admin-field-help' data-smtp-mail-help>Hazırlanıyor ve iptal durumlarında müşteriye bilgilendirme maili gider. Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur.</p>" +
+      "<p class='admin-field-help' data-smtp-mail-help>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur ve müşteriye mail gider.</p>" +
       "<div class='admin-order-shipping-fields'>" +
       "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
       "<select id='adminOrderCarrier'>" +
@@ -4655,13 +4841,115 @@
       (shippedMailSent
         ? "<label class='admin-check'><input type='checkbox' id='adminOrderResendShippingMail'> Kargo mailini tekrar gönder</label>"
         : "") +
-      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>" +
-      "<h3 class='admin-order-section-title'>Müşteri e-posta geçmişi</h3>" +
-      "<ul class='admin-order-items admin-order-mail-log'>" +
-      mailLines +
-      "</ul>" +
-      "</div></div>"
+      "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminOrderSaveShipping'>Kargoyu kaydet ve müşteriye bildir</button></div>"
     );
+  }
+
+  function orderBankTechHtml(order) {
+    const br = order.bankResponse || {};
+    const summary = [br.responseCode, br.authCode ? "auth " + br.authCode : ""].filter(Boolean).join(" · ");
+    return (
+      "<details class='admin-od-tech'><summary>Teknik banka kaydı" +
+      (summary ? " <span>" + escapeHtml(summary) + "</span>" : "") +
+      "</summary>" +
+      bankPaymentBlock(order) +
+      "</details>"
+    );
+  }
+
+  function orderKvkkHtml(order) {
+    return (
+      "<h3 class='admin-order-section-title'>KVKK / anonimleştirme</h3>" +
+      "<p class='admin-field-help'>Kişisel verileri temizler; tutar ve kalemler kalır. Yasal saklama (legal_hold) olan kayıtlar kalıcı silinmez.</p>" +
+      (order.legalHold ? "<p class='admin-field-help'>Bu sipariş yasal saklamada (ödeme alınmış).</p>" : "") +
+      (order.anonymizedAt
+        ? "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>Bu sipariş " +
+          escapeHtml(formatOrderDate(order.anonymizedAt)) +
+          " tarihinde anonimleştirildi.</p>"
+        : "<div class='admin-form-actions'><button type='button' class='btn btn-outline' id='adminOrderAnonymize'>Anonimleştir</button></div>")
+    );
+  }
+
+  function buildOrderDetailHtml(order, statusMails) {
+    const mails = Array.isArray(statusMails) ? statusMails : order._statusMails || [];
+    const shippedMailSent = mails.some((row) => row && row.status === "shipped");
+    const active = activeOrderDetailTab(order.id);
+    const paid = order.paymentStatus === "paid" || order.paymentTaken || order.paymentStatus === "refunded";
+    const reversalBlock = renderBankReversalBlock(order);
+    const preview = order._bankReversal || {};
+    const badges = {
+      odeme: preview.pending ? "!" : "",
+      gecmis: mails.length ? String(mails.length) : "",
+    };
+    const panels = {
+      ozet:
+        "<div class='admin-od-columns'><div>" +
+        orderCustomerHtml(order) +
+        "</div><div>" +
+        orderItemsAndTotalsHtml(order) +
+        "</div></div>",
+      kargo:
+        "<div class='admin-od-columns'><div>" +
+        orderShippingFormHtml(order, shippedMailSent) +
+        "</div><div>" +
+        orderStatusFormHtml(order) +
+        "</div></div>",
+      odeme:
+        (reversalBlock ||
+          (paid ? "" : "<p class='admin-field-help'>Ödeme alınmadığı için iptal/iade işlemi yok.</p>")) +
+        orderBankTechHtml(order),
+      fatura:
+        renderBizimHesapBlock(order) ||
+        "<p class='admin-field-help'>Ödeme alınmadığı için fatura kesilmez.</p>",
+      gecmis:
+        "<h3 class='admin-order-section-title'>Müşteriye giden e-postalar</h3>" +
+        "<ul class='admin-order-items admin-order-mail-log'>" +
+        renderOrderMailLog(order, mails) +
+        "</ul>",
+      kvkk: orderKvkkHtml(order),
+    };
+    return (
+      "<div class='admin-od'>" +
+      orderDetailHeadHtml(order) +
+      renderOrderMailStatusBanner(order, mails) +
+      orderDetailTabsHtml(active, badges) +
+      ORDER_DETAIL_TABS.map((tab) => orderDetailPanelHtml(tab[0], active, panels[tab[0]])).join("") +
+      "</div>"
+    );
+  }
+
+  function bindOrderDetailTabs(orderId) {
+    const root = document.querySelector(".admin-od");
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll("[data-od-tab]"));
+    function select(key, focusTab) {
+      orderDetailTab = { orderId: orderId, tab: key };
+      tabs.forEach(function (tab) {
+        const on = tab.dataset.odTab === key;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+        if (on && focusTab) tab.focus();
+      });
+      root.querySelectorAll(".admin-od-panel").forEach(function (panel) {
+        panel.hidden = panel.id !== "adminOdPanel-" + key;
+      });
+    }
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener("click", () => select(tab.dataset.odTab, false));
+      tab.addEventListener("keydown", function (event) {
+        if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+        event.preventDefault();
+        const step = event.key === "ArrowRight" ? 1 : tabs.length - 1;
+        select(tabs[(index + step) % tabs.length].dataset.odTab, true);
+      });
+    });
+    root.querySelectorAll("[data-od-goto]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        select(btn.dataset.odGoto, false);
+        const tabList = root.querySelector(".admin-od-tabs");
+        if (tabList) tabList.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    });
   }
 
   function stashOrderMailNotice(order, result) {
@@ -4711,6 +4999,7 @@
   }
 
   function bindOrderDetailActions(orderId) {
+    bindOrderDetailTabs(orderId);
     const saveBtn = document.getElementById("adminOrderSaveStatus");
     if (saveBtn) {
       saveBtn.addEventListener("click", async (event) => {
@@ -4718,6 +5007,10 @@
         event.stopPropagation();
         if (saveBtn.disabled) return;
         const status = document.getElementById("adminOrderStatus").value;
+        if (!status) {
+          note(adminOrdersNote, "err", "Yeni durumu seçin.");
+          return;
+        }
         if (status === "shipped") {
           note(
             adminOrdersNote,
@@ -4931,6 +5224,10 @@
     }
 
     async function bankCall(path, body, busyLabel) {
+      if (await checkPanelBuild()) {
+        setBankNote("err", "Panel güncellendi; eski sürümle banka işlemi yapılmaz. Sayfayı yenileyip tekrar deneyin.");
+        return null;
+      }
       const buttons = bankButtons();
       buttons.forEach((btn) => (btn.disabled = true));
       setBankNote("", busyLabel);
