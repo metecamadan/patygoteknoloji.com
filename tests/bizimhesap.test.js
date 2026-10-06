@@ -15,6 +15,7 @@ const {
   fetchInvoicePdfAttachment,
   reconcileInvoiceAfterReversal,
   buildInvoiceFollowupMail,
+  listCashiers,
 } = require("../lib/bizimhesap");
 const { createOrderStore } = require("../lib/orders");
 const { resetDbForTests } = require("../lib/db");
@@ -85,6 +86,28 @@ test("buildSalesInvoicePayload maps paid order to BizimHesap sales invoice", () 
   assert.equal(payload.details[0].productName, "Asus Monitör 24");
   assert.equal(payload.details[1].productName, "Kargo bedeli");
   assert.equal(payload.amounts.currency, "TL");
+});
+
+test("sales invoice carries the cash account (CashId) only when configured", () => {
+  const withCash = buildSalesInvoicePayload(sampleOrder, { BIZIMHESAP_FIRM_ID: "F", BIZIMHESAP_CASH_ID: "KASA-7" });
+  assert.equal(withCash.CashId, "KASA-7");
+  assert.equal(JSON.parse(JSON.stringify(withCash)).CashId, "KASA-7");
+  const without = buildSalesInvoicePayload(sampleOrder, { BIZIMHESAP_FIRM_ID: "F" });
+  assert.equal("CashId" in JSON.parse(JSON.stringify(without)), false);
+});
+
+test("listCashiers reads the cash accounts with the account token", async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true, async text() { return JSON.stringify({ error: "", data: [{ id: "K1", title: "Akbank POS" }] }); } };
+  };
+  const result = await listCashiers({ env: bhEnv, fetchImpl });
+  assert.equal(result.ok, true);
+  assert.match(calls[0].url, /\/cashiers$/);
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(calls[0].init.headers.Token, "T");
+  assert.equal((await listCashiers({ env: {} })).reason, "not_configured");
 });
 
 test("submitSalesInvoice skips when not configured", async () => {
