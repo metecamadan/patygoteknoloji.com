@@ -4631,37 +4631,42 @@
           : "<p class='admin-field-help'>GUID: " + escapeHtml(bh.guid) + "</p>")
       );
     }
+    const invoiceMail = (order._statusMails || []).find((row) => row && row.status === "invoice");
     let body = "";
     if (!configured) {
       body =
-        "<p class='admin-field-help'>BizimHesap yapılandırılmamış (.env). Panelden fatura kesilemez.</p>";
+        "<p class='admin-field-help'>BizimHesap yapılandırılmamış (.env). Siparişler BizimHesap'a aktarılamaz.</p>";
     } else if (blocked && !hasInvoice) {
-      body = "<p class='admin-field-help'>Sipariş iptal/iade edildi; fatura kesilmez.</p>";
+      body = "<p class='admin-field-help'>Sipariş iptal/iade edildi; BizimHesap'a aktarılmaz.</p>";
     } else if (reversed && !hasInvoice) {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
-        "<strong>Kısmi iade yapıldı.</strong> Panel tüm kalemleri faturalayacağı için fatura buradan kesilmez; kalan tutarla BizimHesap'ta kesin." +
+        "<strong>Kısmi iade yapıldı.</strong> Panel tüm kalemleri aktaracağı için buradan aktarılmaz; faturayı kalan tutarla BizimHesap'ta kesin." +
         "</p>";
     } else if (hasInvoice) {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
-        "<strong>Satış faturası BizimHesap'ta.</strong><br>" +
-        "GUID: " +
-        escapeHtml(bh.guid) +
-        (bh.createdAt ? " · " + escapeHtml(formatOrderDate(bh.createdAt)) : "") +
+        "<strong>Sipariş BizimHesap'a aktarıldı.</strong>" +
+        (bh.createdAt ? " " + escapeHtml(formatOrderDate(bh.createdAt)) : "") +
         (bh.url
           ? " · <a href='" +
             escapeAttr(bh.url) +
             "' target='_blank' rel='noopener noreferrer'>Fatura PDF</a>"
           : "") +
+        "<br>" +
+        (invoiceMail
+          ? "Müşteriye fatura PDF'i gönderildi · " + escapeHtml(formatOrderDate(invoiceMail.sentAt))
+          : "Faturayı BizimHesap'ta kestikten sonra PDF'i müşteriye gönderin.") +
         (bh.payload && bh.payload.resolvedAt
           ? "<br>İade/iptal düzeltmesi yapıldı olarak işaretlendi · " + escapeHtml(formatOrderDate(bh.payload.resolvedAt))
           : "") +
-        "</p>";
+        "<br><small>BizimHesap GUID: " +
+        escapeHtml(bh.guid) +
+        "</small></p>";
     } else {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
-        "<strong>Fatura henüz kesilmedi.</strong> Ödeme sonrası otomatik kesilmez; müşteri iptal edebilsin diye yalnızca bu butonla kesilir ve PDF mail gider." +
+        "<strong>Henüz BizimHesap'a aktarılmadı.</strong> Ödeme onaylanınca otomatik aktarılır; aktarılmadıysa aşağıdan tekrar deneyin." +
         "</p>";
     }
     let action = "";
@@ -4669,13 +4674,15 @@
       if (hasInvoice) {
         action =
           "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
-          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapMail'>PDF mailini tekrar gönder</button>" +
-          "<button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>Faturayı tekrar kes</button>" +
+          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapMail'>" +
+          (invoiceMail ? "Fatura PDF'ini tekrar gönder" : "Faturayı müşteriye gönder") +
+          "</button>" +
+          "<button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>Yeniden aktar</button>" +
           "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
       } else {
         action =
           "<div class='admin-form-actions'>" +
-          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapSend'>Fatura kes</button>" +
+          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapSend'>BizimHesap'a aktar</button>" +
           "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
       }
     }
@@ -4769,7 +4776,7 @@
       !(order._bizimhesap && order._bizimhesap.guid) &&
       orderReversalKinds(order).size === 0
     ) {
-      actions.push(["fatura", "Fatura kes"]);
+      actions.push(["fatura", "BizimHesap'a aktar"]);
     }
     return { text, actions };
   }
@@ -5269,11 +5276,12 @@
         const mail = data.mail || {};
         const mode = data.mode || "";
         let msg = "";
-        if (mode === "cut" && data.result && data.result.submitted) {
-          msg = "Fatura kesildi.";
-          if (data.result.guid) msg += " GUID: " + data.result.guid;
+        if (mode === "transfer" && data.result && data.result.submitted) {
+          msg = "Sipariş BizimHesap'a aktarıldı. Faturayı orada kestikten sonra müşteriye gönderin.";
+        } else if (mode === "transfer" && data.result && data.result.reason === "already_submitted") {
+          msg = "Sipariş zaten BizimHesap'a aktarılmış.";
         } else if (mode === "mail") {
-          msg = "PDF maili işlemi tamamlandı.";
+          msg = "Fatura maili işlemi tamamlandı.";
         } else {
           msg = (data.result && data.result.reason) || "Tamamlandı.";
         }
@@ -5290,7 +5298,7 @@
         } else if (mail.reason) {
           msg += " Mail: " + mail.reason;
         }
-        const ok = mode === "cut" ? Boolean(data.result && data.result.submitted) : mail.sent !== false;
+        const ok = mode === "transfer" ? Boolean(data.result && data.result.guid) : mail.sent !== false;
         if (bhNote) {
           bhNote.className = "admin-note " + (ok || mail.sent ? "ok" : "warn");
           bhNote.textContent = msg;
@@ -5327,13 +5335,13 @@
         const hasGuid = Boolean(cached && cached._bizimhesap && cached._bizimhesap.guid);
         if (hasGuid) {
           const ok = window.confirm(
-            "Mevcut BizimHesap faturası iptal edilip yeniden kesilecek ve müşteriye tekrar mail gidecek. Devam?"
+            "BizimHesap'taki mevcut kayıt iptal edilip sipariş yeniden aktarılacak. Faturayı orada kestiyseniz önce BizimHesap'ta kontrol edin. Devam?"
           );
           if (!ok) return;
         }
         await postBizimHesapInvoice(
           hasGuid ? { force: true } : {},
-          hasGuid ? "Fatura yeniden kesiliyor…" : "Fatura kesiliyor…"
+          hasGuid ? "Yeniden aktarılıyor…" : "BizimHesap'a aktarılıyor…"
         );
       });
     }
@@ -5343,9 +5351,10 @@
         event.preventDefault();
         event.stopPropagation();
         if (bizimhesapMailBtn.disabled) return;
+        if (!window.confirm("Fatura PDF'i müşteriye gönderilsin mi? Faturayı BizimHesap'ta kestiğinizden emin olun.")) return;
         await postBizimHesapInvoice(
           { mailOnly: true, forceMail: true },
-          "PDF maili gönderiliyor…"
+          "Fatura maili gönderiliyor…"
         );
       });
     }

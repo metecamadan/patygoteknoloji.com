@@ -356,7 +356,11 @@ test("invoice follow-up mail names the order and the action without customer dat
   assert.equal(refund.subject, "İade belgesi gerekli: PTY-BH-001");
   assert.match(refund.text, /300,00 TL/);
   assert.match(refund.text, /iade faturası \/ gider pusulası/);
-  [failed.text, refund.text].forEach((text) => {
+  const transfer = buildInvoiceFollowupMail({ orderId: "PTY-BH-001", action: "transfer_failed", error: "Token geçersiz" });
+  assert.equal(transfer.subject, "BizimHesap aktarımı başarısız: PTY-BH-001");
+  assert.match(transfer.text, /Token geçersiz/);
+  assert.match(transfer.text, /BizimHesap'a aktar/);
+  [failed.text, refund.text, transfer.text].forEach((text) => {
     assert.doesNotMatch(text, /Ayşe|ayse@example\.com|5320000001/);
   });
 });

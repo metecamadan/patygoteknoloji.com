@@ -104,11 +104,7 @@ test("payment APIs start hosted form and verify callback", async (t) => {
 
   const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /setImmediate\(\(\) => \{\s*sendOrderStatusMail/);
-  assert.match(serverJs, /BizimHesap faturası otomatik kesilmez/);
-  assert.doesNotMatch(
-    serverJs,
-    /sendOrderStatusMail\(updated, "paid"[\s\S]{0,500}submitSalesInvoice\(updated/
-  );
+  assert.match(serverJs, /sendOrderStatusMail\(updated, "paid"[\s\S]{0,300}transferOrderToBizimHesap\(updated\.id, "payment"\)/);
 
   const order = await fetch(
     baseUrl +
@@ -166,6 +162,110 @@ test("payment APIs start hosted form and verify callback", async (t) => {
   assert.equal(stillPaid.order.paymentStatus, "paid");
   assert.ok(stillPaid.order.paymentEventCount >= 2);
   assert.ok(!orderBody.order.customer, "genel sipariş bakışında müşteri PII olmamalı");
+});
+
+test("paid order is transferred to BizimHesap once, without mailing the customer an invoice", async (t) => {
+  const http = require("node:http");
+  const calls = [];
+  const fake = http.createServer((req, res) => {
+    let raw = "";
+    req.on("data", (chunk) => (raw += chunk));
+    req.on("end", () => {
+      calls.push({ path: req.url, body: raw ? JSON.parse(raw) : null });
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "", guid: "BH-GUID-1", url: "http://127.0.0.1/invoice.pdf" }));
+    });
+  });
+  await new Promise((resolve) => fake.listen(0, "127.0.0.1", resolve));
+  t.after(() => fake.close());
+
+  const secret = "test-akbank-secret";
+  const { baseUrl } = await spawnTestServer(
+    t,
+    {
+      ADMIN_PASSWORD: "test-admin-password",
+      AKBANK_MERCHANT_SAFE_ID: "merchant-safe",
+      AKBANK_TERMINAL_SAFE_ID: "terminal-safe",
+      AKBANK_SECRET_KEY: secret,
+      AKBANK_TEST_MODE: "true",
+      SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+      BIZIMHESAP_FIRM_ID: "FIRM-TEST",
+      BIZIMHESAP_API_KEY: "KEY-TEST",
+      BIZIMHESAP_API_TOKEN: "TOKEN-TEST",
+      BIZIMHESAP_API_BASE: "http://127.0.0.1:" + fake.address().port,
+    },
+    {
+      products: [
+        {
+          id: "bh-test-item",
+          brand: "TEST",
+          name: "BizimHesap Test Ürünü",
+          price: 199,
+          vatPercent: 20,
+          category: "oem-cevre-birimleri",
+          featured: false,
+          active: true,
+          image: "/assets/img/products/macbook-air-m3.svg",
+          images: ["/assets/img/products/macbook-air-m3.svg"],
+          stockQty: 10,
+          currency: "TRY",
+          unit: "ADET",
+        },
+      ],
+    }
+  );
+
+  const start = await fetch(baseUrl + "/api/payment/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      items: [{ productId: "bh-test-item", qty: 1 }],
+      customer: {
+        name: "Test Musteri",
+        email: "test@example.com",
+        phone: "05555555555",
+        billingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+        shippingAddress: "Mevlana Mah. Test Sk. No:1 Gaziosmanpaşa / İstanbul",
+      },
+      contractsAccepted: true,
+      kvkkAccepted: true,
+    }),
+  });
+  const startBody = await start.json();
+  assert.equal(startBody.ok, true);
+  assert.equal(calls.length, 0, "ödeme onayından önce aktarım yok");
+
+  const payload = {
+    orderId: startBody.orderId,
+    responseCode: "VPS-0000",
+    responseMessage: "Success",
+    amount: startBody.fields.amount,
+    hashParams: "orderId+responseCode+amount",
+  };
+  payload.hash = hmacSha512Base64(payload.orderId + payload.responseCode + payload.amount, secret);
+  const post = () =>
+    fetch(baseUrl + "/api/payment/callback", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(payload).toString(),
+      redirect: "manual",
+    });
+  assert.equal((await post()).status, 303);
+  for (let i = 0; i < 50 && !calls.length; i++) await new Promise((r) => setTimeout(r, 50));
+  assert.equal((await post()).status, 303);
+  await new Promise((r) => setTimeout(r, 200));
+
+  assert.equal(calls.length, 1, "aynı sipariş bir kez aktarılır");
+  assert.equal(calls[0].path, "/addinvoice");
+  assert.equal(calls[0].body.firmId, "FIRM-TEST");
+  assert.equal(calls[0].body.invoiceNo, startBody.orderId);
+  assert.equal(calls[0].body.invoiceType, 3);
+
+  const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
+  const transferFn = serverJs.slice(serverJs.indexOf("async function transferOrderToBizimHesap"));
+  const fnEnd = transferFn.search(/\r?\n\}\r?\n/);
+  assert.ok(fnEnd > 0);
+  assert.doesNotMatch(transferFn.slice(0, fnEnd), /sendInvoiceCustomerMail/);
 });
 
 test("payment start rejects invalid customer identity", async (t) => {

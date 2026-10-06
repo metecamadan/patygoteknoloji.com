@@ -1588,6 +1588,36 @@ async function followUpInvoiceAfterReversal(orderId, event, fully) {
   return invoice;
 }
 
+/** Ödenen siparişi BizimHesap'a satış faturası taslağı olarak aktarır; müşteriye mail atmaz. */
+async function transferOrderToBizimHesap(orderId, source, actorId) {
+  if (!bizimhesapConfigured(process.env)) return { submitted: false, reason: "not_configured" };
+  const order = orderStore.get(orderId);
+  const allow = orderAllowsBizimHesapInvoice(order);
+  if (!allow.ok) return { submitted: false, reason: allow.reason };
+  try {
+    const result = await submitSalesInvoice(order, { store: orderStore });
+    if (result.submitted) {
+      auditStore.record({
+        actorType: actorId ? "admin_user" : "system",
+        actorId: actorId || null,
+        action: "order.bizimhesap_transferred",
+        entityType: "order",
+        entityId: orderId,
+        detail: { source, guid: result.guid || null },
+      });
+    }
+    return result;
+  } catch (err) {
+    const error = String((err && err.message) || err).slice(0, 300);
+    console.error("bizimhesap transfer failed:", error);
+    const alertMail = await notifyOwner(
+      buildInvoiceFollowupMail({ orderId, action: "transfer_failed", error, siteBase: SITE_BASE_URL }),
+      "bizimhesap transfer"
+    );
+    return { submitted: false, reason: "api_error", error, alertMail };
+  }
+}
+
 /** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail, fatura takibi. */
 async function afterSuccessfulReversal(before, updated, event) {
   const fully = Boolean(updated && updated.paymentStatus === "refunded");
@@ -2088,7 +2118,9 @@ async function handleApi(req, res, urlPath) {
             sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
               console.error("order paid mail failed:", err.message);
             });
-            // BizimHesap faturası otomatik kesilmez; panelden "Fatura kes" ile gönderilir.
+            transferOrderToBizimHesap(updated.id, "payment").catch((err) => {
+              console.error("bizimhesap transfer failed:", err.message);
+            });
           });
         }
       }
@@ -2860,10 +2892,10 @@ async function handleApi(req, res, urlPath) {
       if (!allow.ok) {
         const msg =
           allow.reason === "order_status_blocked"
-            ? "İptal veya iade edilmiş siparişte fatura kesilemez."
+            ? "İptal veya iade edilmiş sipariş BizimHesap'a aktarılamaz."
             : allow.reason === "order_reversed"
-              ? "İade yapılmış siparişte fatura panelden kesilmez; kalan tutarla BizimHesap'ta kesin."
-              : "Yalnızca ödemesi alınmış siparişlerde fatura kesilebilir.";
+              ? "İade yapılmış sipariş panelden aktarılmaz; faturayı kalan tutarla BizimHesap'ta kesin."
+              : "Yalnızca ödemesi alınmış siparişler BizimHesap'a aktarılabilir.";
         return json(res, 400, { ok: false, error: msg, reason: allow.reason });
       }
 
@@ -2872,12 +2904,12 @@ async function handleApi(req, res, urlPath) {
       const forceRecut = body.force === true;
 
       // GUID varsa varsayılan: yalnızca müşteriye PDF/link maili (BH'ye yeniden gitme).
-      // Yeniden kesmek için force:true gerekir.
+      // Yeniden aktarmak için force:true gerekir.
       if (mailOnly || (existing && existing.guid && !forceRecut)) {
         if (!(existing && (existing.guid || existing.url))) {
           return json(res, 400, {
             ok: false,
-            error: "Önce fatura kesilmeli. BizimHesap GUID/URL yok.",
+            error: "Önce sipariş BizimHesap'a aktarılmalı. BizimHesap GUID/URL yok.",
           });
         }
         const attachment = await fetchInvoicePdfAttachment(existing.url, {
@@ -2898,29 +2930,20 @@ async function handleApi(req, res, urlPath) {
         });
       }
 
-      const result = await submitSalesInvoice(order, {
-        store: orderStore,
-        force: forceRecut,
-      });
-      const integration =
-        orderStore.getIntegration(orderId, "bizimhesap_invoice") ||
-        (result.guid ? { guid: result.guid, url: result.url || null } : null);
-      const pdfUrl = (integration && integration.url) || result.url || "";
-      const attachment = await fetchInvoicePdfAttachment(pdfUrl, {
-        filename: "fatura-" + orderId + ".pdf",
-      });
-      const mail = await sendInvoiceCustomerMail(order, {
-        store: orderStore,
-        pdfUrl,
-        attachment,
-        force: true,
-      });
+      // Aktarım müşteriye mail atmaz: resmi e-Arşiv/e-Fatura BizimHesap'ta sonra kesilir.
+      const session = getSession(req);
+      const result = forceRecut
+        ? await submitSalesInvoice(order, { store: orderStore, force: true })
+        : await transferOrderToBizimHesap(orderId, "panel", session && session.userId);
+      if (!result.submitted && result.reason === "api_error") {
+        return json(res, 502, { ok: false, error: result.error || "BizimHesap aktarımı başarısız" });
+      }
       return json(res, 200, {
         ok: true,
-        mode: "cut",
+        mode: "transfer",
         result,
-        integration,
-        mail,
+        integration: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
+        mail: null,
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: (err && err.message) || "BizimHesap faturası gönderilemedi" });
