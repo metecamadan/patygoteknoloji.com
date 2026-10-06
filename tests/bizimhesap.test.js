@@ -88,6 +88,19 @@ test("buildSalesInvoicePayload maps paid order to BizimHesap sales invoice", () 
   assert.equal(payload.amounts.currency, "TL");
 });
 
+test("invoice line names do not repeat a brand the supplier name already starts with", () => {
+  const order = {
+    ...sampleOrder,
+    items: [
+      { ...sampleOrder.items[0], brand: "GP", name: "GP G-Tech LR6 AA Pil" },
+      { ...sampleOrder.items[0], brand: "Asus", name: "Monitör 24" },
+    ],
+  };
+  const names = buildSalesInvoicePayload(order, { BIZIMHESAP_FIRM_ID: "F" }).details.map((row) => row.productName);
+  assert.equal(names[0], "GP G-Tech LR6 AA Pil");
+  assert.equal(names[1], "Asus Monitör 24");
+});
+
 test("sales invoice carries the cash account (CashId) only when configured", () => {
   const withCash = buildSalesInvoicePayload(sampleOrder, { BIZIMHESAP_FIRM_ID: "F", BIZIMHESAP_CASH_ID: "KASA-7" });
   assert.equal(withCash.CashId, "KASA-7");
