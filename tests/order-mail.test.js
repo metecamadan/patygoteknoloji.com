@@ -55,6 +55,17 @@ test("order mail templates define paid, preparing, shipped, cancelled and refund
   assert.ok(NOTIFY_STATUSES.has("refunded"));
 });
 
+test("invoice mail calls a BizimHesap link a viewable page, not a PDF download", () => {
+  const linked = buildOrderMail(sampleOrder, "invoice", { pdfUrl: "https://uygulama.bizimhesap.com/web/ngn/doc/printout?id=x" });
+  assert.match(linked.text, /Faturayı görüntüle: https:\/\/uygulama\.bizimhesap\.com/);
+  assert.match(linked.text, /yazdırabilir veya PDF olarak kaydedebilirsiniz/);
+  assert.match(linked.html, />Faturayı görüntüle</);
+  assert.doesNotMatch(linked.text + linked.html, /PDF indir|Fatura PDF:|PDF ekte/);
+  const attached = buildOrderMail(sampleOrder, "invoice", { hasAttachment: true });
+  assert.match(attached.text, /Fatura PDF bu e-postanın ekinde/);
+  assert.match(attached.html, /PDF bu e-postanın ekinde/);
+});
+
 test("paid template includes order summary with line items", () => {
   const mail = buildOrderMail(sampleOrder, "paid");
   assert.match(mail.text, /hazırlamaya başladığımızda/i);

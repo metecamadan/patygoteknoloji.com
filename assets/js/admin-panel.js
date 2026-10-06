@@ -4625,7 +4625,7 @@
         (bh.url
           ? "<p class='admin-field-help'><a href='" +
             escapeAttr(bh.url) +
-            "' target='_blank' rel='noopener noreferrer'>Fatura PDF</a> · GUID: " +
+            "' target='_blank' rel='noopener noreferrer'>Faturayı görüntüle</a> · GUID: " +
             escapeHtml(bh.guid) +
             "</p>"
           : "<p class='admin-field-help'>GUID: " + escapeHtml(bh.guid) + "</p>")
@@ -4651,12 +4651,12 @@
         (bh.url
           ? " · <a href='" +
             escapeAttr(bh.url) +
-            "' target='_blank' rel='noopener noreferrer'>Fatura PDF</a>"
+            "' target='_blank' rel='noopener noreferrer'>Faturayı görüntüle</a>"
           : "") +
         "<br>" +
         (invoiceMail
-          ? "Müşteriye fatura PDF'i gönderildi · " + escapeHtml(formatOrderDate(invoiceMail.sentAt))
-          : "Faturayı BizimHesap'ta kestikten sonra PDF'i müşteriye gönderin.") +
+          ? "Müşteriye fatura maili gönderildi · " + escapeHtml(formatOrderDate(invoiceMail.sentAt))
+          : "Faturayı BizimHesap'ta kestikten sonra müşteriye gönderin.") +
         (bh.payload && bh.payload.resolvedAt
           ? "<br>İade/iptal düzeltmesi yapıldı olarak işaretlendi · " + escapeHtml(formatOrderDate(bh.payload.resolvedAt))
           : "") +
@@ -4675,7 +4675,7 @@
         action =
           "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
           "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapMail'>" +
-          (invoiceMail ? "Fatura PDF'ini tekrar gönder" : "Faturayı müşteriye gönder") +
+          (invoiceMail ? "Fatura mailini tekrar gönder" : "Faturayı müşteriye gönder") +
           "</button>" +
           "<button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>Yeniden aktar</button>" +
           "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
@@ -5289,10 +5289,10 @@
           msg += mail.attached
             ? " Müşteriye PDF ekli mail gitti."
             : mail.linked
-              ? " Müşteriye PDF linkli mail gitti."
+              ? " Müşteriye fatura bağlantısı maillendi."
               : " Müşteriye fatura maili gitti.";
         } else if (mail.reason === "smtp_not_configured") {
-          msg += " SMTP yok — PDF linkini elle iletin.";
+          msg += " SMTP yok — fatura bağlantısını elle iletin.";
         } else if (mail.reason === "already_notified") {
           msg += " Mail daha önce gönderilmişti (tekrar için tekrar dene).";
         } else if (mail.reason) {
@@ -5351,7 +5351,7 @@
         event.preventDefault();
         event.stopPropagation();
         if (bizimhesapMailBtn.disabled) return;
-        if (!window.confirm("Fatura PDF'i müşteriye gönderilsin mi? Faturayı BizimHesap'ta kestiğinizden emin olun.")) return;
+        if (!window.confirm("Fatura müşteriye maillensin mi? Faturayı BizimHesap'ta kestiğinizden emin olun.")) return;
         await postBizimHesapInvoice(
           { mailOnly: true, forceMail: true },
           "Fatura maili gönderiliyor…"

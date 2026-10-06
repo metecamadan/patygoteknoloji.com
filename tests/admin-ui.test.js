@@ -298,11 +298,13 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.match(ctx.render(Object.assign({}, base, { paymentStatus: "paid", status: "new" })), /id='adminOrderBizimhesapSend'>BizimHesap'a aktar/);
   const transferred = Object.assign({}, base, { paymentStatus: "paid", status: "new", _bizimhesap: invoice() });
   assert.match(ctx.render(transferred), /Sipariş BizimHesap'a aktarıldı/);
-  assert.match(ctx.render(transferred), /Faturayı BizimHesap'ta kestikten sonra PDF'i müşteriye gönderin/);
+  assert.match(ctx.render(transferred), /Faturayı BizimHesap'ta kestikten sonra müşteriye gönderin/);
+  assert.match(ctx.render(transferred), />Faturayı görüntüle</);
+  assert.doesNotMatch(ctx.render(transferred), /Fatura PDF/);
   assert.match(ctx.render(transferred), /id='adminOrderBizimhesapMail'>Faturayı müşteriye gönder/);
   const mailed = Object.assign({}, transferred, { _statusMails: [{ status: "invoice", sentAt: "2026-10-07T10:00:00Z" }] });
-  assert.match(ctx.render(mailed), /Müşteriye fatura PDF'i gönderildi · 2026-10-07T10:00:00Z/);
-  assert.match(ctx.render(mailed), />Fatura PDF'ini tekrar gönder</);
+  assert.match(ctx.render(mailed), /Müşteriye fatura maili gönderildi · 2026-10-07T10:00:00Z/);
+  assert.match(ctx.render(mailed), />Fatura mailini tekrar gönder</);
 
   assert.match(script, /const invoice = invoiceFollowup\(order\);\s*if \(invoice && invoice\.kind !== "cancelled"\)/);
   assert.match(script, /body: JSON\.stringify\(\{ action: "resolve" \}\)/);
@@ -318,7 +320,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-7/);
+  assert.match(html, /admin\.css\?v=siparis-8/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -610,7 +612,7 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /adminOrderBizimhesapSend/);
   assert.match(script, /adminOrderBizimhesapMail/);
   assert.match(script, /BizimHesap'a aktar/);
-  assert.match(script, /Fatura PDF'ini tekrar gönder/);
+  assert.match(script, /Fatura mailini tekrar gönder/);
   assert.match(script, /BizimHesap faturası/);
   assert.match(script, /\/api\/admin\/orders\/.*\/bizimhesap-invoice/);
   assert.match(script, /mailOnly:\s*true/);
