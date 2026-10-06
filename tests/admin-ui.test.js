@@ -191,6 +191,36 @@ test("stale admin tabs detect a newer build and refuse bank operations", () => {
   assert.match(html, /admin-login\.js\?v=([\w-]+)"/);
 });
 
+test("payment badge tells same-day cancel (void) apart from card refund and partial refund", () => {
+  const pick = (name) => {
+    const start = script.indexOf("function " + name + "(");
+    assert.ok(start > 0, name + " bulunmalı");
+    let depth = 0;
+    for (let i = script.indexOf("{", start); i < script.length; i++) {
+      if (script[i] === "{") depth++;
+      if (script[i] === "}" && --depth === 0) return script.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+  const vm = require("node:vm");
+  const ctx = {};
+  vm.runInNewContext(
+    [pick("orderReversalKinds"), pick("orderVoidedOnly"), pick("paymentStatusKey"), pick("orderStatusLabel"), "this.key = paymentStatusKey; this.label = orderStatusLabel;"].join("\n"),
+    ctx
+  );
+  const ev = (type, extra) => Object.assign({ kind: "bank_reversal", type, success: true, amount: "10.00" }, extra);
+  assert.equal(ctx.key({ paymentStatus: "refunded", paymentEvents: [ev("void")] }), "voided");
+  assert.equal(ctx.label("voided"), "Sipariş iptali");
+  assert.equal(ctx.key({ paymentStatus: "refunded", paymentEvents: [ev("refund")] }), "refunded");
+  assert.equal(ctx.key({ paymentStatus: "refunded", paymentEvents: [ev("refund"), ev("void")] }), "refunded");
+  assert.equal(ctx.key({ paymentStatus: "paid", paymentEvents: [ev("refund")] }), "partially_refunded");
+  assert.equal(ctx.label("partially_refunded"), "Kısmi iade");
+  assert.equal(ctx.key({ paymentStatus: "paid", paymentEvents: [ev("refund", { success: false, unknown: true })] }), "paid");
+  assert.equal(ctx.key({ paymentStatus: "paid", paymentEvents: [ev("void", { dryRun: true })] }), "paid");
+  assert.equal(ctx.key({ paymentStatus: "failed" }), "payment_failed");
+  assert.match(script, /ödeme bankada iptal edildi, karttan çekim yapılmadı/);
+});
+
 test("fully reversed orders hide the items refund form and refetched detail repaints row badges", () => {
   assert.match(script, /const fullyReversed = Number\(preview\.reversedAmount\) > 0 && !\(Number\(preview\.remainingAmount\) > 0\)/);
   assert.match(script, /!pending &&\s*!fullyReversed;/);
@@ -201,7 +231,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-2/);
+  assert.match(html, /admin\.css\?v=siparis-3/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

@@ -4044,6 +4044,8 @@
       delivered: "Teslim edildi",
       cancelled: "İptal",
       refunded: "İade",
+      voided: "Sipariş iptali",
+      partially_refunded: "Kısmi iade",
     };
     return map[status] || status || "—";
   }
@@ -4059,6 +4061,8 @@
       delivered: "order-status--delivered",
       cancelled: "order-status--cancelled",
       refunded: "order-status--refunded",
+      voided: "order-status--cancelled",
+      partially_refunded: "order-status--refunded",
     };
     return map[status] || "order-status--neutral";
   }
@@ -4073,15 +4077,32 @@
     );
   }
 
-  function paymentStatusKey(paymentStatus) {
-    if (paymentStatus === "paid") return "paid";
+  /** Aynı gün iptal (void) karttan çekim yapmaz; iade (refund) çekilen parayı geri gönderir. */
+  function orderReversalKinds(order) {
+    const kinds = new Set();
+    (Array.isArray(order && order.paymentEvents) ? order.paymentEvents : []).forEach((ev) => {
+      if (ev && ev.kind === "bank_reversal" && ev.success === true && !ev.dryRun) {
+        kinds.add(ev.type === "void" ? "void" : "refund");
+      }
+    });
+    return kinds;
+  }
+
+  function orderVoidedOnly(order) {
+    const kinds = orderReversalKinds(order);
+    return kinds.size === 1 && kinds.has("void");
+  }
+
+  function paymentStatusKey(order) {
+    const paymentStatus = order && order.paymentStatus;
+    if (paymentStatus === "refunded") return orderVoidedOnly(order) ? "voided" : "refunded";
+    if (paymentStatus === "paid") return orderReversalKinds(order).size ? "partially_refunded" : "paid";
     if (paymentStatus === "failed") return "payment_failed";
-    if (paymentStatus === "refunded") return "refunded";
     return "payment_pending";
   }
 
   function paymentStatusBadge(order) {
-    return orderStatusBadge(paymentStatusKey(order.paymentStatus));
+    return orderStatusBadge(paymentStatusKey(order));
   }
 
   function fulfillmentStatusKey(order) {
@@ -4408,8 +4429,11 @@
     const inquiryAvailable = order._bankInquiryAvailable === true;
     let body = "";
     if (Number(preview.reversedAmount) > 0) {
+      const kinds = orderReversalKinds(order);
       body +=
-        "<p class='admin-field-help'>Bankadan iade edilen: <strong>" +
+        "<p class='admin-field-help'>" +
+        (kinds.size > 1 ? "Bankada iptal/iade edilen" : kinds.has("void") ? "Bankada iptal edilen" : "Bankadan iade edilen") +
+        ": <strong>" +
         moneyTr(preview.reversedAmount) +
         "</strong> · Kalan: " +
         moneyTr(preview.remainingAmount || 0) +
@@ -4599,7 +4623,12 @@
     const status = String(order.status || "");
     const paidOpen = orderPaidNotRefunded(order);
     if (order.paymentStatus === "refunded") {
-      return { text: "Sipariş kapandı: ödeme müşterinin kartına iade edildi.", actions: [["gecmis", "Geçmişi gör"]] };
+      return {
+        text: orderVoidedOnly(order)
+          ? "Sipariş kapandı: ödeme bankada iptal edildi, karttan çekim yapılmadı."
+          : "Sipariş kapandı: ödeme müşterinin kartına iade edildi.",
+        actions: [["gecmis", "Geçmişi gör"]],
+      };
     }
     if (preview.pending) {
       return {
