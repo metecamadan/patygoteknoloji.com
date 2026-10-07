@@ -1723,6 +1723,7 @@ async function afterSuccessfulReversal(before, updated, event) {
   if (fully && before && before.coupon && couponStore) {
     couponReleased = couponStore.release(before.id);
   }
+  const wasShipped = Boolean(before && (before.status === "shipped" || before.status === "delivered"));
   let mailResult = null;
   try {
     if (fully) {
@@ -1731,7 +1732,7 @@ async function afterSuccessfulReversal(before, updated, event) {
         extra: {
           refund: {
             amount: formatAmount(sumReversedAmount(updated)),
-            method: event.type === "void" ? "void" : "refund",
+            method: event.type === "void" ? "void" : wasShipped ? "return" : "refund",
           },
         },
       });
