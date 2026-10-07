@@ -217,11 +217,12 @@ test("refund mails explain void vs card refund with amount; each partial refund 
   assert.match(refundMail.text, /2–3 iş günü/);
 
   const returnMail = buildOrderMail(sampleOrder, "refunded", { refund: { amount: "1250.50", method: "return" } });
-  assert.match(returnMail.subject, /^İadeniz tamamlandı/);
-  assert.equal(returnMail.heading, "İadeniz tamamlandı");
+  assert.equal(returnMail.subject, "Siparişinizin iade işlemi tamamlandı");
+  assert.equal(returnMail.heading, "İade işleminiz tamamlandı");
   assert.doesNotMatch(returnMail.subject + "\n" + returnMail.text + "\n" + returnMail.html, /iptal/i);
   assert.match(returnMail.text, /İşlem: Karta iade/);
-  assert.match(returnMail.text, /2–3 iş günü/);
+  assert.match(returnMail.text, /birkaç iş günü/);
+  assert.match(returnMail.text, /teşekkür ederiz/);
 
   const partialMail = buildOrderMail(sampleOrder, "partial_refund", { refund: { amount: "100.00", method: "refund" } });
   assert.doesNotMatch(partialMail.subject + "\n" + partialMail.text, /iptal/i);
