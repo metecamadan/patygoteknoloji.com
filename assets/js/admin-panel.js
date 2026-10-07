@@ -4129,6 +4129,66 @@
     return orderStatusBadge(key);
   }
 
+  function orderInvoiceSummary(order) {
+    if (order._bizimhesap === undefined) return order.invoiceSummary || null;
+    const bh = order._bizimhesap;
+    if (!(bh && bh.guid)) return null;
+    const payload = bh.payload || {};
+    return {
+      invoiceNo: payload.invoiceNo || null,
+      checkedAt: payload.invoiceCheckedAt || null,
+      cancelled: Boolean(payload.cancel && payload.cancel.ok),
+    };
+  }
+
+  function orderProgressStep(state, label, detail) {
+    const mark = state === "done" ? "✓" : state === "todo" ? "○" : "–";
+    return (
+      "<span class='admin-order-step admin-order-step--" +
+      state +
+      "' title='" +
+      escapeAttr(detail) +
+      "'><span aria-hidden='true'>" +
+      mark +
+      "</span> " +
+      label +
+      "<span class='sr-only'>: " +
+      escapeHtml(detail) +
+      "</span></span>"
+    );
+  }
+
+  /** Invoice → shipping checkpoints shown in the order list. */
+  function orderProgressHtml(order) {
+    const invoice = orderInvoiceSummary(order);
+    const status = String(order.status || "");
+    const shipped = Boolean(order.trackingCode) || status === "shipped" || status === "delivered";
+    const open = order.paymentStatus === "paid" && status !== "cancelled";
+    if (!open && !invoice && !shipped) {
+      return "<span class='admin-order-step admin-order-step--none'>—</span>";
+    }
+    let invoiceStep;
+    if (invoice && invoice.invoiceNo) {
+      invoiceStep = orderProgressStep("done", "Fatura", "Fatura kesildi, Belge No " + invoice.invoiceNo);
+    } else if (invoice && invoice.cancelled) {
+      invoiceStep = orderProgressStep("na", "Fatura", "BizimHesap kaydı iptal edildi");
+    } else if (open) {
+      invoiceStep = orderProgressStep(
+        "todo",
+        "Fatura",
+        !invoice ? "BizimHesap'a aktarılmadı" : invoice.checkedAt ? "Fatura kesilmedi" : "Fatura durumu henüz kontrol edilmedi"
+      );
+    } else {
+      invoiceStep = orderProgressStep("na", "Fatura", "Fatura yok");
+    }
+    const shippingStep = shipped
+      ? orderProgressStep("done", "Kargo", "Kargoya verildi" + (order.shippingCarrier ? ", " + order.shippingCarrier : ""))
+      : open
+        ? orderProgressStep("todo", "Kargo", "Kargoya verilmedi")
+        : orderProgressStep("na", "Kargo", "Kargo yok");
+    return invoiceStep + shippingStep;
+  }
+
   function escapeAttr(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -5127,6 +5187,8 @@
     const fulCell = row.querySelector(".admin-order-fulfillment-cell");
     if (payCell) payCell.innerHTML = paymentStatusBadge(order);
     if (fulCell) fulCell.innerHTML = fulfillmentStatusBadge(order);
+    const progressCell = row.querySelector(".admin-order-progress-cell");
+    if (progressCell) progressCell.innerHTML = orderProgressHtml(order);
     row.setAttribute("aria-expanded", "true");
   }
 
@@ -5682,6 +5744,9 @@
         "</span>" +
         "<span class='admin-order-status-cell admin-order-fulfillment-cell'>" +
         fulfillmentStatusBadge(order) +
+        "</span>" +
+        "<span class='admin-order-progress-cell'>" +
+        orderProgressHtml(order) +
         "</span>" +
         "<span class='admin-order-total'>" +
         moneyTr(order.total) +

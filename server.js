@@ -1618,6 +1618,18 @@ async function transferOrderToBizimHesap(orderId, source, actorId) {
   }
 }
 
+/** Order-list summary of the BizimHesap invoice; null when the order was never transferred. */
+function invoiceSummaryFor(orderId) {
+  const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+  if (!(current && current.guid)) return null;
+  const payload = current.payload || {};
+  return {
+    invoiceNo: payload.invoiceNo || null,
+    checkedAt: payload.invoiceCheckedAt || null,
+    cancelled: Boolean(payload.cancel && payload.cancel.ok),
+  };
+}
+
 /** Reads the issued GİB number from BizimHesap and stores it on the order's invoice integration. */
 async function syncIssuedInvoiceNumber(orderId, options) {
   const opts = options || {};
@@ -2789,9 +2801,8 @@ async function handleApi(req, res, urlPath) {
     const from = requestUrl.searchParams.get("from") || "";
     const to = requestUrl.searchParams.get("to") || "";
     const q = requestUrl.searchParams.get("q") || "";
-    return json(res, 200, {
-      ok: true,
-      orders: orderStore.list({
+    const orders = orderStore
+      .list({
         status: status || undefined,
         from: from || undefined,
         to: to || undefined,
@@ -2799,9 +2810,9 @@ async function handleApi(req, res, urlPath) {
         limit,
         sort: requestUrl.searchParams.get("sort") || "",
         dir: requestUrl.searchParams.get("dir") || "",
-      }),
-      shippingCarriers: SHIPPING_CARRIERS,
-    });
+      })
+      .map((order) => Object.assign({}, order, { invoiceSummary: invoiceSummaryFor(order.id) }));
+    return json(res, 200, { ok: true, orders, shippingCarriers: SHIPPING_CARRIERS });
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/leads") {

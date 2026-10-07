@@ -408,6 +408,10 @@
   justify-content: flex-end;
   max-width: min(100%, 960px);
 }
+.admin-card-head .admin-orders-filters {
+  flex: 0 1 auto;
+  min-width: 0;
+}
 .admin-orders-search {
   flex: 1 1 220px;
   min-width: 180px;
@@ -453,6 +457,7 @@
     minmax(120px, 1.4fr)
     118px
     118px
+    156px
     minmax(88px, auto)
     28px;
   align-items: center;
@@ -531,6 +536,36 @@
   padding: 4px 8px;
   font-size: 0.75rem;
   text-align: center;
+}
+.admin-order-progress-cell {
+  display: flex;
+  gap: 6px;
+  justify-self: start;
+}
+.admin-order-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-order-step--done {
+  background: #dcfce7;
+  color: #166534;
+}
+.admin-order-step--todo {
+  border-color: #fcd34d;
+  color: #92400e;
+}
+.admin-order-step--na,
+.admin-order-step--none {
+  background: #f3f4f6;
+  color: #9ca3af;
 }
 .admin-order-total {
   font-weight: 700;
@@ -738,6 +773,24 @@
 }
 .admin-od-tech summary span { color: var(--muted); font-weight: 500; margin-left: 6px; }
 .admin-od-tech[open] summary { border-bottom: 1px solid var(--line-soft); margin-bottom: 10px; }
+@media (min-width: 901px) and (max-width: 1360px) {
+  .admin-order-list-head,
+  .admin-order-row {
+    grid-template-columns: minmax(96px, 1fr) 118px 118px minmax(80px, auto) 24px;
+    grid-template-areas:
+      "id payment fulfillment total chevron"
+      "customer progress progress date chevron";
+    gap: 8px 12px;
+  }
+  .admin-order-head-id, .admin-order-id { grid-area: id; }
+  .admin-order-head-customer, .admin-order-customer { grid-area: customer; }
+  .admin-order-head-payment, .admin-order-payment-cell { grid-area: payment; }
+  .admin-order-head-fulfillment, .admin-order-fulfillment-cell { grid-area: fulfillment; }
+  .admin-order-head-progress, .admin-order-progress-cell { grid-area: progress; }
+  .admin-order-head-date, .admin-order-date { grid-area: date; }
+  .admin-order-head-total, .admin-order-total { grid-area: total; }
+  .admin-order-head-chevron, .admin-order-chevron { grid-area: chevron; }
+}
 @media (max-width: 900px) {
   .admin-order-list-head {
     display: none;
@@ -750,8 +803,10 @@
       "date date"
       "customer customer"
       "payment fulfillment"
+      "progress progress"
       "total total";
   }
+  .admin-order-progress-cell { grid-area: progress; }
   .admin-order-id { grid-area: id; }
   .admin-order-date { grid-area: date; justify-self: end; }
   .admin-order-customer { grid-area: customer; }
@@ -2605,6 +2660,10 @@ html.admin-theme-dark .order-status--cancelled { background: #374151; color: #d1
 html.admin-theme-dark .order-status--refunded { background: #4c1d95; color: #ddd6fe; }
 html.admin-theme-dark .order-status--neutral { background: #374151; color: #e5e7eb; }
 html.admin-theme-dark .order-status--empty { background: #1f2937; color: #6b7280; }
+html.admin-theme-dark .admin-order-step--done { background: #14532d; color: #86efac; }
+html.admin-theme-dark .admin-order-step--todo { border-color: #b45309; color: #fcd34d; }
+html.admin-theme-dark .admin-order-step--na,
+html.admin-theme-dark .admin-order-step--none { background: #1f2937; color: #6b7280; }
 html.admin-theme-dark .order-status--new { background: #422006; color: #fde68a; }
 html.admin-theme-dark .admin-od-head { background: #0f172a; border-color: #334155; border-left-color: var(--brand); }
 html.admin-theme-dark .admin-od-head--warn { border-left-color: #f59e0b; }

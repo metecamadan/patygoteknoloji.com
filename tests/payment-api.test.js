@@ -285,6 +285,15 @@ test("paid order is transferred to BizimHesap once, without mailing the customer
   assert.equal(draft.result.reason, "not_issued");
   assert.equal(draft.integration.payload.invoiceNo, undefined);
   assert.ok(draft.integration.payload.invoiceCheckedAt);
+  const listSummary = async () => {
+    const list = await (await fetch(baseUrl + "/api/admin/orders", { headers })).json();
+    return list.orders.find((o) => o.id === startBody.orderId).invoiceSummary;
+  };
+  assert.deepEqual(await listSummary(), {
+    invoiceNo: null,
+    checkedAt: draft.integration.payload.invoiceCheckedAt,
+    cancelled: false,
+  });
 
   abstractRows.push({ type: "Tahsilat", trxdate: "07.10.2026", note: startBody.orderId + " EFT2026000000051" });
   const issued = await (await postInvoice({ action: "sync" })).json();
@@ -298,6 +307,7 @@ test("paid order is transferred to BizimHesap once, without mailing the customer
   );
   const detail = await (await fetch(baseUrl + "/api/admin/orders/" + encodeURIComponent(startBody.orderId), { headers })).json();
   assert.equal(detail.bizimhesap.payload.invoiceNo, "EFT2026000000051");
+  assert.equal((await listSummary()).invoiceNo, "EFT2026000000051");
   const recut = await postInvoice({ force: true });
   assert.equal(recut.status, 409, "faturası kesilmiş sipariş yeniden aktarılmaz");
   assert.equal(calls.filter((c) => c.path === "/addinvoice").length, 1);

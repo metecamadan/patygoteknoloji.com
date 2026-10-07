@@ -327,6 +327,63 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.match(script, /body: JSON\.stringify\(\{ action: "resolve" \}\)/);
 });
 
+test("order list shows invoice then shipping checkpoints between status and total", () => {
+  const pick = (name) => {
+    const start = script.indexOf("function " + name + "(");
+    assert.ok(start > 0, name + " bulunmalı");
+    let depth = 0;
+    for (let i = script.indexOf("{", start); i < script.length; i++) {
+      if (script[i] === "{") depth++;
+      if (script[i] === "}" && --depth === 0) return script.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+  const vm = require("node:vm");
+  const ctx = {};
+  vm.runInNewContext(
+    [
+      pick("escapeAttr"),
+      pick("escapeHtml"),
+      pick("orderInvoiceSummary"),
+      pick("orderProgressStep"),
+      pick("orderProgressHtml"),
+      "this.progress = orderProgressHtml;",
+    ].join("\n"),
+    ctx
+  );
+  const steps = (order) =>
+    Array.from(ctx.progress(order).matchAll(/admin-order-step--(\w+)' title='([^']*)'>[^<]*<span aria-hidden='true'>.<\/span> (\w+)/g), (m) => m[3] + ":" + m[1] + ":" + m[2].replace(/&#39;/g, "'"));
+  const paid = { paymentStatus: "paid", status: "new" };
+
+  assert.deepEqual(steps(paid), ["Fatura:todo:BizimHesap'a aktarılmadı", "Kargo:todo:Kargoya verilmedi"]);
+  assert.deepEqual(steps(Object.assign({}, paid, { invoiceSummary: { invoiceNo: null, checkedAt: null, cancelled: false } }))[0], "Fatura:todo:Fatura durumu henüz kontrol edilmedi");
+  assert.deepEqual(steps(Object.assign({}, paid, { invoiceSummary: { invoiceNo: null, checkedAt: "2026-10-07T10:00:00Z", cancelled: false } }))[0], "Fatura:todo:Fatura kesilmedi");
+  assert.deepEqual(
+    steps(Object.assign({}, paid, { status: "shipped", trackingCode: "YK1", shippingCarrier: "Yurtiçi Kargo", invoiceSummary: { invoiceNo: "EFT2026000000051", checkedAt: "x", cancelled: false } })),
+    ["Fatura:done:Fatura kesildi, Belge No EFT2026000000051", "Kargo:done:Kargoya verildi, Yurtiçi Kargo"]
+  );
+  assert.deepEqual(
+    steps({ paymentStatus: "refunded", status: "cancelled", invoiceSummary: { invoiceNo: null, checkedAt: null, cancelled: true } }),
+    ["Fatura:na:BizimHesap kaydı iptal edildi", "Kargo:na:Kargo yok"]
+  );
+  assert.match(ctx.progress({ paymentStatus: "pending", status: "new" }), /^<span class='admin-order-step admin-order-step--none'>—<\/span>$/);
+  assert.match(ctx.progress({ paymentStatus: "failed", status: "new" }), /admin-order-step--none/);
+
+  // Expanded detail payload wins over the list summary so the row repaints after a sync.
+  const detail = Object.assign({}, paid, {
+    invoiceSummary: null,
+    _bizimhesap: { guid: "G-1", payload: { invoiceNo: "EFT2026000000052", invoiceCheckedAt: "x" } },
+  });
+  assert.equal(steps(detail)[0], "Fatura:done:Fatura kesildi, Belge No EFT2026000000052");
+  assert.equal(steps(Object.assign({}, paid, { invoiceSummary: { invoiceNo: "X" }, _bizimhesap: null }))[0], "Fatura:todo:BizimHesap'a aktarılmadı");
+
+  assert.match(html, /data-sort-key="status">Sipariş durumu<\/span>\s*<span class="admin-order-head-progress">Fatura · Kargo<\/span>\s*<span class="admin-order-head-total"/);
+  assert.match(script, /fulfillmentStatusBadge\(order\) \+\s*"<\/span>" \+\s*"<span class='admin-order-progress-cell'>" \+\s*orderProgressHtml\(order\)/);
+  assert.match(script, /progressCell\.innerHTML = orderProgressHtml\(order\)/);
+  assert.match(css, /@media \(min-width: 901px\) and \(max-width: 1360px\)[\s\S]*?"customer progress progress date chevron"/);
+  assert.match(css, /\.admin-card-head \.admin-orders-filters \{\s*flex: 0 1 auto;\s*min-width: 0;/);
+});
+
 test("fully reversed orders hide the items refund form and refetched detail repaints row badges", () => {
   assert.match(script, /const fullyReversed = Number\(preview\.reversedAmount\) > 0 && !\(Number\(preview\.remainingAmount\) > 0\)/);
   assert.match(script, /!pending &&\s*!fullyReversed;/);
@@ -337,7 +394,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-10/);
+  assert.match(html, /admin\.css\?v=siparis-11/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
