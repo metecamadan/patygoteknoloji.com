@@ -248,6 +248,62 @@ test("fetchInvoicePdfAttachment accepts PDF bytes", async () => {
   assert.equal(attachment.content.slice(0, 4).toString("utf8"), "%PDF");
 });
 
+function htmlResponse(html) {
+  return async () => ({
+    ok: true,
+    headers: { get: () => "text/html; charset=utf-8" },
+    async arrayBuffer() {
+      return Buffer.from(html, "utf8");
+    },
+  });
+}
+
+test("fetchInvoicePdfAttachment extracts the PDF embedded in the BizimHesap printout page", async () => {
+  const pdfBytes = Buffer.from("%PDF-1.4\n%fatura\n%%EOF\n");
+  const html =
+    '<html><body><form><input type="hidden" name="__VIEWSTATE" value="x" />' +
+    '<div><object data="data:application/pdf;base64,' +
+    pdfBytes.toString("base64") +
+    '" type="application/pdf"></object></div></form></body></html>';
+  const attachment = await fetchInvoicePdfAttachment("https://uygulama.bizimhesap.com/web/ngn/doc/printout?id=1", {
+    filename: "fatura-PTY-1.pdf",
+    fetchImpl: htmlResponse(html),
+  });
+  assert.ok(attachment);
+  assert.equal(attachment.filename, "fatura-PTY-1.pdf");
+  assert.equal(attachment.contentType, "application/pdf");
+  assert.deepEqual(attachment.content, pdfBytes);
+});
+
+test("fetchInvoicePdfAttachment returns null when no real PDF is present", async () => {
+  assert.equal(
+    await fetchInvoicePdfAttachment("https://example.com/doc", {
+      fetchImpl: htmlResponse("<html><body>Belge bulunamadı</body></html>"),
+    }),
+    null
+  );
+  assert.equal(
+    await fetchInvoicePdfAttachment("https://example.com/doc", {
+      fetchImpl: htmlResponse(
+        '<object data="data:application/pdf;base64,' + Buffer.from("<html>hata</html>").toString("base64") + '"></object>'
+      ),
+    }),
+    null
+  );
+  assert.equal(
+    await fetchInvoicePdfAttachment("https://example.com/f.pdf", {
+      fetchImpl: async () => ({
+        ok: true,
+        headers: { get: () => "application/pdf" },
+        async arrayBuffer() {
+          return Buffer.from("<html>login</html>");
+        },
+      }),
+    }),
+    null
+  );
+});
+
 test("pingBizimHesap calls products endpoint", async () => {
   const calls = [];
   const fetchImpl = async (url, init) => {
