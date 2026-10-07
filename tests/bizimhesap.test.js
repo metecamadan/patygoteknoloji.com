@@ -13,6 +13,7 @@ const {
   formatMoney,
   orderAllowsBizimHesapInvoice,
   normalizeInvoiceNumber,
+  findIssuedInvoiceNumber,
   reconcileInvoiceAfterReversal,
   buildInvoiceFollowupMail,
   listCashiers,
@@ -238,6 +239,61 @@ test("normalizeInvoiceNumber accepts only GİB-format document numbers", () => {
   assert.equal(normalizeInvoiceNumber("EFT202600000005"), "");
   assert.equal(normalizeInvoiceNumber("EFT1926000000051"), "");
   assert.equal(normalizeInvoiceNumber(""), "");
+});
+
+const lookupEnv = { BIZIMHESAP_FIRM_ID: "FIRM", BIZIMHESAP_API_KEY: "K", BIZIMHESAP_API_TOKEN: "T" };
+
+function abstractApi(abstractRows, calls) {
+  const customers = [
+    { id: "C-OLD", code: "eski-kod", email: "ayse@example.com" },
+    { id: "C-1", code: "Ayse@Example.com", email: "ayse@example.com" },
+  ];
+  return async (url, init) => {
+    calls.push({ url, headers: init && init.headers });
+    const body = url.endsWith("/customers")
+      ? { resultCode: 1, errorText: "", data: { customers } }
+      : url.endsWith("/abstract/C-1")
+        ? { resultCode: 1, errorText: "", data: { abstract: abstractRows } }
+        : { resultCode: 0, errorText: "Cari bulunamadı", data: null };
+    return { ok: true, status: 200, async text() { return JSON.stringify(body); } };
+  };
+}
+
+test("findIssuedInvoiceNumber reads the GİB number from the order's abstract row note", async () => {
+  const calls = [];
+  const rows = [
+    { type: "Satış", trxdate: "06.10.2026", note: "PTY-BH-001 nolu sipariş", debit: "1.250,50" },
+    { type: "Tahsilat", trxdate: "06.10.2026", note: "PTY-BH-001 EFT2026000000051 tahsilat", credit: "1.250,50" },
+    { type: "Satış", trxdate: "01.10.2026", note: "PTY-BH-000 EFT2026000000049", debit: "10,00" },
+  ];
+  const found = await findIssuedInvoiceNumber(sampleOrder, { env: lookupEnv, fetchImpl: abstractApi(rows, calls) });
+  assert.deepEqual(found, { found: true, invoiceNo: "EFT2026000000051", date: "06.10.2026" });
+  assert.equal(calls[0].url, "https://bizimhesap.com/api/b2b/customers");
+  assert.equal(calls[1].url, "https://bizimhesap.com/api/b2b/abstract/C-1");
+  assert.equal(calls[1].headers.Token, "T");
+});
+
+test("findIssuedInvoiceNumber reports not issued, missing cari and API errors honestly", async () => {
+  const draftOnly = [{ type: "Satış", trxdate: "06.10.2026", note: "PTY-BH-001 nolu sipariş" }];
+  const otherOrder = [{ type: "Tahsilat", note: "PTY-BH-002 EFT2026000000052" }];
+  assert.deepEqual(await findIssuedInvoiceNumber(sampleOrder, { env: lookupEnv, fetchImpl: abstractApi(draftOnly, []) }), {
+    found: false,
+    reason: "not_issued",
+  });
+  assert.equal(
+    (await findIssuedInvoiceNumber(sampleOrder, { env: lookupEnv, fetchImpl: abstractApi(otherOrder, []) })).reason,
+    "not_issued"
+  );
+  const stranger = Object.assign({}, sampleOrder, { customer: { email: "kimse@example.com" } });
+  assert.equal(
+    (await findIssuedInvoiceNumber(stranger, { env: lookupEnv, fetchImpl: abstractApi(draftOnly, []) })).reason,
+    "customer_not_found"
+  );
+  assert.equal((await findIssuedInvoiceNumber(sampleOrder, { env: {} })).reason, "not_configured");
+  const unauthorized = async () => ({ ok: false, status: 401, async text() { return '{"Message":"Authorization has been denied"}'; } });
+  await assert.rejects(findIssuedInvoiceNumber(sampleOrder, { env: lookupEnv, fetchImpl: unauthorized }), /HTTP 401/);
+  const errorText = async () => ({ ok: true, status: 200, async text() { return '{"resultCode":0,"errorText":"Yetkisiz","data":null}'; } });
+  await assert.rejects(findIssuedInvoiceNumber(sampleOrder, { env: lookupEnv, fetchImpl: errorText }), /Yetkisiz/);
 });
 
 test("pingBizimHesap calls products endpoint", async () => {

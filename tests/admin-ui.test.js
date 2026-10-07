@@ -297,24 +297,31 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.doesNotMatch(ctx.render(partialNoInvoice), /adminOrderBizimhesapSend/);
   assert.match(ctx.render(Object.assign({}, base, { paymentStatus: "paid", status: "new" })), /id='adminOrderBizimhesapSend'>BizimHesap'a aktar/);
   const transferred = Object.assign({}, base, { paymentStatus: "paid", status: "new", _bizimhesap: invoice() });
-  assert.match(ctx.render(transferred), /<strong>Fatura kesilmedi\.<\/strong> Sipariş BizimHesap'a aktarıldı/);
-  assert.match(ctx.render(transferred), /id='adminOrderInvoiceNo' maxlength='16'[^>]*value=''/);
-  assert.match(ctx.render(transferred), /id='adminOrderInvoiceNoSave'>Fatura kesildi olarak kaydet/);
+  assert.match(ctx.render(transferred), /<strong>Fatura durumu henüz kontrol edilmedi\.<\/strong>/);
+  assert.match(ctx.render(transferred), /id='adminOrderInvoiceSync'>BizimHesap'tan kontrol et/);
   assert.match(ctx.render(transferred), /id='adminOrderBizimhesapSend'>Yeniden aktar/);
-  assert.doesNotMatch(ctx.render(transferred), /Faturayı görüntüle|bizimhesap\.com\/x|adminOrderBizimhesapMail|müşteriye gönder<\/button>/);
-  const invoiced = Object.assign({}, transferred, {
-    _bizimhesap: invoice({ invoiceNo: "EFT2026000000051", invoicedAt: "2026-10-07T10:30:00Z" }),
+  assert.doesNotMatch(
+    ctx.render(transferred),
+    /Fatura kesilmedi|Faturayı görüntüle|bizimhesap\.com\/x|adminOrderBizimhesapMail|adminOrderInvoiceNo\b/
+  );
+  const checked = Object.assign({}, transferred, { _bizimhesap: invoice({ invoiceCheckedAt: "2026-10-07T10:15:00Z" }) });
+  assert.match(ctx.render(checked), /<strong>Fatura kesilmedi\.<\/strong> BizimHesap'ta bu siparişe kesilmiş fatura yok \(son kontrol 2026-10-07T10:15:00Z\)/);
+  const failedCheck = Object.assign({}, transferred, {
+    _bizimhesap: invoice({ invoiceCheckedAt: "2026-10-07T10:15:00Z", invoiceCheckError: "BizimHesap HTTP 401" }),
   });
-  assert.match(ctx.render(invoiced), /<strong>Fatura kesildi\.<\/strong> Belge No: EFT2026000000051 · 2026-10-07T10:30:00Z/);
-  assert.match(ctx.render(invoiced), /value='EFT2026000000051'/);
-  assert.match(ctx.render(invoiced), />Belge No'yu güncelle</);
-  assert.doesNotMatch(ctx.render(invoiced), /adminOrderBizimhesapSend/);
+  assert.match(ctx.render(failedCheck), /<strong>Fatura durumu okunamadı\.<\/strong> BizimHesap HTTP 401/);
+  const invoiced = Object.assign({}, transferred, {
+    _bizimhesap: invoice({ invoiceNo: "EFT2026000000051", invoiceDate: "06.10.2026", invoiceCheckedAt: "2026-10-07T10:30:00Z" }),
+  });
+  assert.match(ctx.render(invoiced), /<strong>Fatura kesildi\.<\/strong> Belge No: EFT2026000000051 · 06\.10\.2026/);
+  assert.match(ctx.render(invoiced), /Müşteriye fatura mailini BizimHesap gönderir/);
+  assert.doesNotMatch(ctx.render(invoiced), /adminOrderBizimhesapSend|adminOrderInvoiceSync/);
   const refundedInvoiced = Object.assign({}, refunded, {
     _bizimhesap: invoice({ invoiceNo: "EFT2026000000051", returns: [{ eventAt: "2026-10-07T09:00:00Z", amount: 300 }] }),
   });
   assert.match(ctx.render(refundedInvoiced), /Belge No: EFT2026000000051 · GUID: G-1/);
-  assert.match(ctx.render(refunded), /Fatura kesilmedi · GUID: G-1/);
-  assert.match(script, /postBizimHesapInvoice\(\{ action: "invoice_number", invoiceNo \}/);
+  assert.match(ctx.render(refunded), /Belge No henüz okunmadı · GUID: G-1/);
+  assert.match(script, /postBizimHesapInvoice\(\{ action: "sync" \}/);
 
   assert.match(script, /const invoice = invoiceFollowup\(order\);\s*if \(invoice && invoice\.kind !== "cancelled"\)/);
   assert.match(script, /body: JSON\.stringify\(\{ action: "resolve" \}\)/);
@@ -330,7 +337,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-9/);
+  assert.match(html, /admin\.css\?v=siparis-10/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -620,7 +627,7 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /admin-order-mail-badge--sent/);
   assert.match(script, /renderBizimHesapBlock/);
   assert.match(script, /adminOrderBizimhesapSend/);
-  assert.match(script, /adminOrderInvoiceNoSave/);
+  assert.match(script, /adminOrderInvoiceSync/);
   assert.match(script, /BizimHesap'a aktar/);
   assert.match(script, /BizimHesap faturası/);
   assert.match(script, /\/api\/admin\/orders\/.*\/bizimhesap-invoice/);

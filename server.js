@@ -111,7 +111,8 @@ const {
   bizimhesapConfigured,
   pingBizimHesap,
   orderAllowsBizimHesapInvoice,
-  normalizeInvoiceNumber,
+  findIssuedInvoiceNumber,
+  listBizimHesapCustomers,
   reconcileInvoiceAfterReversal,
   buildInvoiceFollowupMail,
 } = require("./lib/bizimhesap");
@@ -1617,6 +1618,78 @@ async function transferOrderToBizimHesap(orderId, source, actorId) {
   }
 }
 
+/** Reads the issued GİB number from BizimHesap and stores it on the order's invoice integration. */
+async function syncIssuedInvoiceNumber(orderId, options) {
+  const opts = options || {};
+  const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+  if (!(current && current.guid)) return { found: false, reason: "not_transferred" };
+  if (current.payload && current.payload.invoiceNo) {
+    return { found: true, invoiceNo: current.payload.invoiceNo, already: true };
+  }
+  const order = orderStore.get(orderId);
+  if (!order) return { found: false, reason: "order_not_found" };
+  let result;
+  try {
+    if (opts.listError) throw new Error(opts.listError);
+    result = await findIssuedInvoiceNumber(order, { customers: opts.customers });
+  } catch (err) {
+    result = { found: false, reason: "api_error", error: String((err && err.message) || err).slice(0, 200) };
+  }
+  const checkedAt = new Date().toISOString();
+  const payload = Object.assign({}, current.payload, { guid: current.guid, url: current.url, invoiceCheckedAt: checkedAt });
+  delete payload.invoiceCheckError;
+  if (result.found) {
+    payload.invoiceNo = result.invoiceNo;
+    payload.invoiceDate = result.date || "";
+    payload.invoiceFoundAt = checkedAt;
+  } else if (result.reason === "api_error") {
+    payload.invoiceCheckError = result.error;
+  }
+  orderStore.saveIntegrationRef(orderId, "bizimhesap_invoice", payload);
+  if (result.found) {
+    auditStore.record({
+      actorType: opts.actorId ? "admin_user" : "system",
+      actorId: opts.actorId || null,
+      action: "order.invoice_number_synced",
+      entityType: "order",
+      entityId: orderId,
+      detail: { invoiceNo: result.invoiceNo, source: opts.source || "panel" },
+    });
+  }
+  return result;
+}
+
+const INVOICE_SYNC_INTERVAL_MS = 15 * 60 * 1000;
+const INVOICE_SYNC_LOOKBACK_MS = 60 * 24 * 60 * 60 * 1000;
+let invoiceSyncRunning = false;
+
+async function syncPendingInvoiceNumbers() {
+  if (invoiceSyncRunning || !bizimhesapConfigured(process.env)) return;
+  invoiceSyncRunning = true;
+  try {
+    const since = new Date(Date.now() - INVOICE_SYNC_LOOKBACK_MS).toISOString();
+    const pending = orderStore.listIntegrationOrderIds("bizimhesap_invoice", { since, limit: 200 }).filter((id) => {
+      const payload = (orderStore.getIntegration(id, "bizimhesap_invoice") || {}).payload || {};
+      return !payload.invoiceNo && !(payload.cancel && payload.cancel.ok);
+    });
+    if (!pending.length) return;
+    let customers = null;
+    let listError = "";
+    try {
+      customers = await listBizimHesapCustomers();
+    } catch (err) {
+      listError = String((err && err.message) || err);
+    }
+    for (const id of pending) {
+      await syncIssuedInvoiceNumber(id, { customers, listError, source: "scheduler" });
+    }
+  } catch (err) {
+    console.error("bizimhesap invoice sync failed:", String((err && err.message) || err).slice(0, 200));
+  } finally {
+    invoiceSyncRunning = false;
+  }
+}
+
 /** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail, fatura takibi. */
 async function afterSuccessfulReversal(before, updated, event) {
   const fully = Boolean(updated && updated.paymentStatus === "refunded");
@@ -2881,42 +2954,23 @@ async function handleApi(req, res, urlPath) {
         });
         return json(res, 200, { ok: true, integration: orderStore.getIntegration(orderId, "bizimhesap_invoice") });
       }
-      if (body.action === "invoice_number") {
-        const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
-        if (!(current && current.guid)) {
-          return json(res, 400, { ok: false, error: "Önce sipariş BizimHesap'a aktarılmalı." });
-        }
-        const raw = String(body.invoiceNo || "").trim();
-        const invoiceNo = raw ? normalizeInvoiceNumber(raw) : "";
-        if (raw && !invoiceNo) {
-          return json(res, 400, {
-            ok: false,
-            error: "Belge No GİB biçiminde olmalı: 3 karakter seri + yıl + 9 hane (ör. EFT2026000000051).",
-          });
-        }
-        const payload = Object.assign({}, current.payload, { guid: current.guid, url: current.url });
-        delete payload.invoiceNo;
-        delete payload.invoicedAt;
-        if (invoiceNo) {
-          payload.invoiceNo = invoiceNo;
-          payload.invoicedAt = new Date().toISOString();
-        }
-        orderStore.saveIntegrationRef(orderId, "bizimhesap_invoice", payload);
-        const session = getSession(req);
-        auditStore.record({
-          actorType: "admin_user",
-          actorId: session && session.userId,
-          action: "order.invoice_number_saved",
-          entityType: "order",
-          entityId: orderId,
-          detail: { invoiceNo: invoiceNo || null },
-        });
-        return json(res, 200, { ok: true, integration: orderStore.getIntegration(orderId, "bizimhesap_invoice") });
-      }
       if (!bizimhesapConfigured(process.env)) {
         return json(res, 503, {
           ok: false,
           error: "BizimHesap yapılandırılmamış. .env içinde BIZIMHESAP_FIRM_ID, BIZIMHESAP_API_KEY ve BIZIMHESAP_API_TOKEN gerekli.",
+        });
+      }
+      if (body.action === "sync") {
+        const session = getSession(req);
+        const result = await syncIssuedInvoiceNumber(orderId, { source: "panel", actorId: session && session.userId });
+        if (result.reason === "not_transferred") {
+          return json(res, 400, { ok: false, error: "Önce sipariş BizimHesap'a aktarılmalı." });
+        }
+        return json(res, 200, {
+          ok: true,
+          mode: "sync",
+          result,
+          integration: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
         });
       }
       const allow = orderAllowsBizimHesapInvoice(order);
@@ -4303,6 +4357,15 @@ const retentionScheduler = createRetentionScheduler(DATA_ROOT, {
   intervalMs: 60 * 60 * 1000,
 });
 retentionScheduler.start();
+
+const invoiceSyncTimer = setInterval(() => {
+  syncPendingInvoiceNumbers().catch(() => {});
+}, INVOICE_SYNC_INTERVAL_MS);
+if (typeof invoiceSyncTimer.unref === "function") invoiceSyncTimer.unref();
+const invoiceSyncStartTimer = setTimeout(() => {
+  syncPendingInvoiceNumbers().catch(() => {});
+}, 90 * 1000);
+if (typeof invoiceSyncStartTimer.unref === "function") invoiceSyncStartTimer.unref();
 
 const priceAlertTimer = setInterval(() => {
   runPriceAlertCheck().catch(() => {});

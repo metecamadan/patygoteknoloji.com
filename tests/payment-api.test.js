@@ -167,12 +167,22 @@ test("payment APIs start hosted form and verify callback", async (t) => {
 test("paid order is transferred to BizimHesap once, without mailing the customer an invoice", async (t) => {
   const http = require("node:http");
   const calls = [];
+  const abstractRows = [];
   const fake = http.createServer((req, res) => {
     let raw = "";
     req.on("data", (chunk) => (raw += chunk));
     req.on("end", () => {
-      calls.push({ path: req.url, body: raw ? JSON.parse(raw) : null });
       res.setHeader("Content-Type", "application/json");
+      if (req.method === "GET") {
+        calls.push({ path: req.url, method: "GET" });
+        const data =
+          req.url === "/customers"
+            ? { customers: [{ id: "C-9", code: "test@example.com", email: "test@example.com" }] }
+            : { abstract: abstractRows };
+        res.end(JSON.stringify({ resultCode: 1, errorText: "", data }));
+        return;
+      }
+      calls.push({ path: req.url, body: raw ? JSON.parse(raw) : null });
       res.end(JSON.stringify({ error: "", guid: "BH-GUID-1", url: "http://127.0.0.1/invoice.pdf" }));
     });
   });
@@ -270,22 +280,27 @@ test("paid order is transferred to BizimHesap once, without mailing the customer
   const invoiceUrl = baseUrl + "/api/admin/orders/" + encodeURIComponent(startBody.orderId) + "/bizimhesap-invoice";
   const postInvoice = (body) => fetch(invoiceUrl, { method: "POST", headers, body: JSON.stringify(body) });
 
-  const badNo = await postInvoice({ action: "invoice_number", invoiceNo: startBody.orderId });
-  assert.equal(badNo.status, 400);
-  assert.match((await badNo.json()).error, /GİB biçiminde/);
-  const saved = await postInvoice({ action: "invoice_number", invoiceNo: " eft2026000000051 " });
-  assert.equal(saved.status, 200);
-  const savedRef = (await saved.json()).integration;
-  assert.equal(savedRef.guid, "BH-GUID-1");
-  assert.equal(savedRef.payload.invoiceNo, "EFT2026000000051");
-  assert.ok(savedRef.payload.invoicedAt);
+  abstractRows.push({ type: "Satış", trxdate: "07.10.2026", note: startBody.orderId + " nolu sipariş" });
+  const draft = await (await postInvoice({ action: "sync" })).json();
+  assert.equal(draft.result.reason, "not_issued");
+  assert.equal(draft.integration.payload.invoiceNo, undefined);
+  assert.ok(draft.integration.payload.invoiceCheckedAt);
+
+  abstractRows.push({ type: "Tahsilat", trxdate: "07.10.2026", note: startBody.orderId + " EFT2026000000051" });
+  const issued = await (await postInvoice({ action: "sync" })).json();
+  assert.equal(issued.result.found, true);
+  assert.equal(issued.integration.guid, "BH-GUID-1");
+  assert.equal(issued.integration.payload.invoiceNo, "EFT2026000000051");
+  assert.equal(issued.integration.payload.invoiceDate, "07.10.2026");
+  assert.deepEqual(
+    calls.filter((c) => c.method === "GET").map((c) => c.path),
+    ["/customers", "/abstract/C-9", "/customers", "/abstract/C-9"]
+  );
   const detail = await (await fetch(baseUrl + "/api/admin/orders/" + encodeURIComponent(startBody.orderId), { headers })).json();
   assert.equal(detail.bizimhesap.payload.invoiceNo, "EFT2026000000051");
   const recut = await postInvoice({ force: true });
   assert.equal(recut.status, 409, "faturası kesilmiş sipariş yeniden aktarılmaz");
-  assert.equal(calls.length, 1);
-  const cleared = await postInvoice({ action: "invoice_number", invoiceNo: "" });
-  assert.equal((await cleared.json()).integration.payload.invoiceNo, undefined);
+  assert.equal(calls.filter((c) => c.path === "/addinvoice").length, 1);
 
   const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
   const transferFn = serverJs.slice(serverJs.indexOf("async function transferOrderToBizimHesap"));
