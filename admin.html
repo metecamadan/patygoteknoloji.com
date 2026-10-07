@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p32" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-13" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-15" />
   <script>
     (function () {
       try {
@@ -380,8 +380,11 @@
                     <textarea id="leadReplyMessage" rows="8" maxlength="6000" required></textarea>
                   </div>
                   <div class="field">
-                    <label for="leadReplyFiles">Ekler</label>
-                    <input id="leadReplyFiles" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+                    <span class="admin-field-label">Ekler</span>
+                    <div class="admin-lead-reply-attach">
+                      <input id="leadReplyFiles" class="admin-file-input" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+                      <label for="leadReplyFiles" class="btn btn-outline btn-sm">📎 Dosya ekle</label>
+                    </div>
                     <p class="admin-hint">PDF, Word, Excel, PNG veya JPG · en fazla 5 dosya, toplam 10 MB. Dosyalar sunucuda saklanmaz; yalnızca adları talep geçmişine yazılır.</p>
                     <ul id="leadReplyFileList" class="admin-lead-reply-files"></ul>
                   </div>
@@ -1234,6 +1237,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-13"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-15"></script>
 </body>
 </html>

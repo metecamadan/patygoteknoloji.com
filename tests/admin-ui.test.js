@@ -431,7 +431,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-13/);
+  assert.match(html, /admin\.css\?v=siparis-15/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -768,6 +768,21 @@ test("leads tab lets the admin reply with attachments and stays readable in dark
   assert.match(script, /Yanıtlandı/);
   assert.match(css, /html\.admin-theme-dark \.admin-item,\s*html\.admin-theme-dark \.admin-list-item/);
   assert.match(css, /html\.admin-theme-dark \.admin-lead-badge\.is-waiting/);
+});
+
+test("long leads stay in page flow: no inner scroll box, top-aligned reply, collapsible message", () => {
+  assert.match(css, /\.admin-list\.admin-leads-list \{ max-height: none; overflow: visible; \}/);
+  assert.match(css, /\.admin-list-item\.admin-lead-row \{ align-items: flex-start; \}/);
+  assert.match(css, /\.admin-lead-message\.is-collapsed \{[\s\S]*?-webkit-line-clamp: 8;/);
+  assert.match(script, /LEAD_MESSAGE_PREVIEW_LINES = 8/);
+  assert.match(script, /text\.split\("\\n"\)\.length > LEAD_MESSAGE_PREVIEW_LINES \|\| text\.length > LEAD_MESSAGE_PREVIEW_CHARS/);
+  assert.match(script, /toggle\.textContent = open \? "Kısalt" : "Tamamını göster";/);
+  assert.match(script, /toggle\.setAttribute\("aria-expanded", String\(open\)\)/);
+  assert.match(html, /<input id="leadReplyFiles" class="admin-file-input" type="file" multiple[^>]*\/>\s*<label for="leadReplyFiles" class="btn btn-outline btn-sm">📎 Dosya ekle<\/label>/);
+  assert.match(css, /\.admin-form \.admin-file-input \{[\s\S]*?width: 1px;[\s\S]*?opacity: 0;/);
+  assert.match(css, /\.admin-file-input:focus-visible \+ label \{ outline/);
+  assert.match(css, /#leadReplyForm > \.admin-form-actions \{\s*position: sticky;/);
+  assert.match(css, /html\.admin-theme-dark #leadReplyForm > \.admin-form-actions \{ background: #121a2a; \}/);
 });
 
 test("leads nav item blinks a red dot while a lead waits for a reply", () => {

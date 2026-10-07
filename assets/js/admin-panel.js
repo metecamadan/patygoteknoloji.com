@@ -5870,6 +5870,8 @@
 
   const LEAD_REPLY_MAX_FILES = 5;
   const LEAD_REPLY_MAX_BYTES = 10 * 1024 * 1024;
+  const LEAD_MESSAGE_PREVIEW_LINES = 8;
+  const LEAD_MESSAGE_PREVIEW_CHARS = 600;
   const leadReplyModal = document.getElementById("leadReplyModal");
   const leadReplyForm = document.getElementById("leadReplyForm");
   const leadReplyFiles = document.getElementById("leadReplyFiles");
@@ -5941,10 +5943,25 @@
       main.appendChild(topicEl);
     }
     if (lead.mesaj) {
+      const text = String(lead.mesaj);
       const msg = document.createElement("span");
       msg.className = "admin-lead-message";
-      msg.textContent = String(lead.mesaj);
+      msg.textContent = text;
       main.appendChild(msg);
+      if (text.split("\n").length > LEAD_MESSAGE_PREVIEW_LINES || text.length > LEAD_MESSAGE_PREVIEW_CHARS) {
+        msg.classList.add("is-collapsed");
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "admin-lead-more";
+        toggle.textContent = "Tamamını göster";
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.addEventListener("click", () => {
+          const open = !msg.classList.toggle("is-collapsed");
+          toggle.textContent = open ? "Kısalt" : "Tamamını göster";
+          toggle.setAttribute("aria-expanded", String(open));
+        });
+        main.appendChild(toggle);
+      }
     }
     if (replies.length) {
       const history = document.createElement("ul");
