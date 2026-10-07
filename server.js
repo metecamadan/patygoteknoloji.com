@@ -1574,12 +1574,21 @@ function notifyReversalProblem(input) {
 async function followUpInvoiceAfterReversal(orderId, event, fully) {
   let invoice;
   try {
-    invoice = await reconcileInvoiceAfterReversal({ store: orderStore, orderId, event, fully });
+    let issuedCheckError = "";
+    if (event && event.type === "void" && fully && bizimhesapConfigured(process.env)) {
+      const issued = await syncIssuedInvoiceNumber(orderId, { source: "reversal" });
+      if (issued.reason === "api_error") issuedCheckError = "Fatura durumu okunamadı: " + issued.error;
+    }
+    invoice = await reconcileInvoiceAfterReversal({ store: orderStore, orderId, event, fully, issuedCheckError });
   } catch (err) {
     console.error("invoice follow-up failed:", err.message);
     return { action: "error", error: err.message };
   }
-  if (invoice.action === "cancel_failed" || invoice.action === "needs_return_document") {
+  if (
+    invoice.action === "cancel_failed" ||
+    invoice.action === "needs_return_document" ||
+    invoice.action === "issued_cancel_required"
+  ) {
     invoice.alertMail = await notifyOwner(
       buildInvoiceFollowupMail(Object.assign({ orderId, siteBase: SITE_BASE_URL }, invoice)),
       "invoice follow-up"

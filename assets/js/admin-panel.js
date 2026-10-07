@@ -4632,6 +4632,13 @@
     if (payload.cancel && open(payload.cancel.at)) {
       return { kind: "cancel_failed", error: payload.cancel.error || "" };
     }
+    if (payload.issuedCancel && open(payload.issuedCancel.at)) {
+      return {
+        kind: "issued_cancel_required",
+        invoiceNo: payload.issuedCancel.invoiceNo || "",
+        error: payload.issuedCancel.error || "",
+      };
+    }
     const returns = (Array.isArray(payload.returns) ? payload.returns : []).filter((row) => row && open(row.eventAt));
     if (returns.length) {
       return {
@@ -4652,7 +4659,13 @@
       );
     }
     const text =
-      followup.kind === "cancel_failed"
+      followup.kind === "issued_cancel_required"
+        ? "<strong>Kesilmiş faturayı BizimHesap'ta iptal edin.</strong> Sipariş bankada iptal edildi. " +
+          (followup.invoiceNo
+            ? "Belge No " + escapeHtml(followup.invoiceNo) + " kesildiği için panel otomatik iptal etmedi. "
+            : escapeHtml(followup.error) + "; panel otomatik iptal etmedi. Fatura taslaksa silin, kesildiyse iptal edin. ") +
+          "e-Fatura / e-Arşiv iptal kurallarını muhasebecinizle kontrol edin."
+        : followup.kind === "cancel_failed"
         ? "<strong>Fatura otomatik iptal edilemedi.</strong> " +
           (followup.error ? escapeHtml(followup.error) + ". " : "") +
           "BizimHesap panelinden faturayı iptal edin."
@@ -4793,7 +4806,9 @@
       return {
         tone: "warn",
         text:
-          invoice.kind === "cancel_failed"
+          invoice.kind === "issued_cancel_required"
+            ? "Ödeme bankada iptal edildi; kesilmiş faturayı BizimHesap'ta iptal edin."
+            : invoice.kind === "cancel_failed"
             ? "Ödeme bankada iptal edildi ama fatura otomatik iptal edilemedi. Faturayı BizimHesap'ta iptal edin."
             : "Karta iade yapıldı; kesilmiş fatura için iade belgesi düzenlenmeli.",
         actions: [["fatura", "Faturayı gör"]],
@@ -5499,6 +5514,7 @@
       msg += " " + formatOrderMailFeedback(data);
       const invoice = data.invoice || {};
       if (invoice.action === "cancelled") msg += " BizimHesap faturası iptal edildi.";
+      else if (invoice.action === "issued_cancel_required") msg += " Kesilmiş faturayı BizimHesap'ta iptal edin; Fatura sekmesine bakın.";
       else if (invoice.action === "cancel_failed") msg += " Fatura otomatik iptal edilemedi; Fatura sekmesine bakın.";
       else if (invoice.action === "needs_return_document") msg += " Fatura için iade belgesi gerekli; Fatura sekmesine bakın.";
       return msg;

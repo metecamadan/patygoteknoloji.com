@@ -292,6 +292,28 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.match(ctx.render(resolved), /düzeltmesi yapıldı olarak işaretlendi/);
   assert.doesNotMatch(ctx.render(resolved), /Faturayı tekrar kes/);
 
+  const issuedVoid = Object.assign({}, voided, {
+    _bizimhesap: invoice({ invoiceNo: "EFT2026000000051", issuedCancel: { at: "2026-10-07T10:00:00Z", invoiceNo: "EFT2026000000051" } }),
+  });
+  assert.equal(ctx.followup(issuedVoid), JSON.stringify({ kind: "issued_cancel_required", invoiceNo: "EFT2026000000051", error: "" }));
+  assert.match(ctx.render(issuedVoid), /<strong>Kesilmiş faturayı BizimHesap'ta iptal edin\.<\/strong>[\s\S]*Belge No EFT2026000000051 kesildiği için panel otomatik iptal etmedi/);
+  assert.match(ctx.render(issuedVoid), /id='adminOrderInvoiceResolve'/);
+  assert.doesNotMatch(ctx.render(issuedVoid), /Fatura iptal edildi/);
+  const unknownVoid = Object.assign({}, voided, {
+    _bizimhesap: invoice({ issuedCancel: { at: "2026-10-07T10:00:00Z", error: "Fatura durumu okunamadı: BizimHesap HTTP 500" } }),
+  });
+  assert.match(ctx.render(unknownVoid), /Fatura durumu okunamadı: BizimHesap HTTP 500; panel otomatik iptal etmedi\. Fatura taslaksa silin, kesildiyse iptal edin/);
+  const issuedVoidResolved = Object.assign({}, voided, {
+    _bizimhesap: invoice({
+      invoiceNo: "EFT2026000000051",
+      issuedCancel: { at: "2026-10-07T10:00:00Z", invoiceNo: "EFT2026000000051" },
+      resolvedAt: "2026-10-07T11:00:00Z",
+    }),
+  });
+  assert.equal(ctx.followup(issuedVoidResolved), "null");
+  assert.match(script, /invoice\.kind === "issued_cancel_required"\s*\? "Ödeme bankada iptal edildi; kesilmiş faturayı BizimHesap'ta iptal edin\."/);
+  assert.match(script, /invoice\.action === "issued_cancel_required"\) msg \+= " Kesilmiş faturayı BizimHesap'ta iptal edin/);
+
   const partialNoInvoice = Object.assign({}, base, { paymentStatus: "paid", status: "new", paymentEvents: [ev("refund")] });
   assert.match(ctx.render(partialNoInvoice), /Kısmi iade yapıldı/);
   assert.doesNotMatch(ctx.render(partialNoInvoice), /adminOrderBizimhesapSend/);
@@ -394,7 +416,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-11/);
+  assert.match(html, /admin\.css\?v=siparis-12/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

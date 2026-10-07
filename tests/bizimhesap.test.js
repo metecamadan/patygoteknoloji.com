@@ -393,6 +393,75 @@ test("failed invoice cancel is recorded with a readable reason", async () => {
   assert.equal(store.getIntegration("PTY-BH-001", "bizimhesap_invoice").payload.cancel.ok, false);
 });
 
+test("same-day void leaves an issued invoice for the owner and never calls cancelinvoice", async () => {
+  const store = storeWithInvoice("patygo-bh-void-issued-");
+  store.saveIntegrationRef("PTY-BH-001", "bizimhesap_invoice", {
+    guid: "GUID-1",
+    url: "https://bizimhesap.com/x",
+    invoiceNo: "EFT2026000000051",
+  });
+  let called = false;
+  const fetchImpl = async () => {
+    called = true;
+    throw new Error("issued invoice must not be auto-cancelled");
+  };
+  const opts = {
+    store,
+    orderId: "PTY-BH-001",
+    event: { type: "void", amount: "1250.50", at: "2026-10-07T10:00:00.000Z" },
+    fully: true,
+    env: bhEnv,
+    fetchImpl,
+  };
+  const result = await reconcileInvoiceAfterReversal(opts);
+  assert.equal(result.action, "issued_cancel_required");
+  assert.equal(result.invoiceNo, "EFT2026000000051");
+  assert.equal(called, false);
+  const saved = store.getIntegration("PTY-BH-001", "bizimhesap_invoice").payload;
+  assert.equal(saved.issuedCancel.invoiceNo, "EFT2026000000051");
+  assert.ok(saved.issuedCancel.at);
+  assert.equal(saved.cancel, undefined);
+  assert.equal((await reconcileInvoiceAfterReversal(opts)).action, "none", "uyarı bir kez kaydedilir");
+});
+
+test("same-day void does not auto-cancel when BizimHesap could not be read first", async () => {
+  const store = storeWithInvoice("patygo-bh-void-unknown-");
+  let called = false;
+  const result = await reconcileInvoiceAfterReversal({
+    store,
+    orderId: "PTY-BH-001",
+    event: { type: "void", amount: "1250.50", at: "2026-10-07T10:00:00.000Z" },
+    fully: true,
+    env: bhEnv,
+    fetchImpl: async () => {
+      called = true;
+      throw new Error("unverified invoice must not be auto-cancelled");
+    },
+    issuedCheckError: "Fatura durumu okunamadı: BizimHesap HTTP 500",
+  });
+  assert.equal(result.action, "issued_cancel_required");
+  assert.equal(result.invoiceNo, null);
+  assert.equal(called, false);
+  assert.equal(
+    store.getIntegration("PTY-BH-001", "bizimhesap_invoice").payload.issuedCancel.error,
+    "Fatura durumu okunamadı: BizimHesap HTTP 500"
+  );
+});
+
+test("server reads the Belge No from BizimHesap right before deciding a void", () => {
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const fn = serverJs.slice(serverJs.indexOf("async function followUpInvoiceAfterReversal"));
+  const body = fn.slice(0, fn.search(/\r?\n\}\r?\n/));
+  assert.match(body, /event\.type === "void" && fully && bizimhesapConfigured\(process\.env\)/);
+  assert.ok(
+    body.indexOf('syncIssuedInvoiceNumber(orderId, { source: "reversal" })') <
+      body.indexOf("reconcileInvoiceAfterReversal("),
+    "Belge No okuması iptal kararından önce"
+  );
+  assert.match(body, /issued\.reason === "api_error"/);
+  assert.match(body, /invoice\.action === "issued_cancel_required"/);
+});
+
 test("card refund on an invoiced order asks for a return document, once per bank event", async () => {
   const store = storeWithInvoice("patygo-bh-refund-");
   let called = false;
@@ -444,7 +513,19 @@ test("invoice follow-up mail names the order and the action without customer dat
   assert.equal(transfer.subject, "BizimHesap aktarımı başarısız: PTY-BH-001");
   assert.match(transfer.text, /Token geçersiz/);
   assert.match(transfer.text, /BizimHesap'a aktar/);
-  [failed.text, refund.text, transfer.text].forEach((text) => {
+  const issued = buildInvoiceFollowupMail({ orderId: "PTY-BH-001", action: "issued_cancel_required", invoiceNo: "EFT2026000000051" });
+  assert.equal(issued.subject, "Kesilmiş fatura iptal edilmeli: PTY-BH-001");
+  assert.match(issued.text, /Faturası kesilmiş olduğu için BizimHesap'ta otomatik iptal edilmedi/);
+  assert.match(issued.text, /Belge No: EFT2026000000051/);
+  assert.match(issued.text, /“Hallettim”/);
+  const unknown = buildInvoiceFollowupMail({
+    orderId: "PTY-BH-001",
+    action: "issued_cancel_required",
+    error: "Fatura durumu okunamadı: BizimHesap HTTP 500",
+  });
+  assert.match(unknown.text, /okunamadığı için otomatik iptal edilmedi/);
+  assert.match(unknown.text, /Hata: Fatura durumu okunamadı: BizimHesap HTTP 500/);
+  [failed.text, refund.text, transfer.text, issued.text, unknown.text].forEach((text) => {
     assert.doesNotMatch(text, /Ayşe|ayse@example\.com|5320000001/);
   });
 });
