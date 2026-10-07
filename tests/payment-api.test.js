@@ -261,11 +261,37 @@ test("paid order is transferred to BizimHesap once, without mailing the customer
   assert.equal(calls[0].body.invoiceNo, startBody.orderId);
   assert.equal(calls[0].body.invoiceType, 3);
 
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: "test-admin-password" }),
+  });
+  const headers = { Authorization: "Bearer " + (await login.json()).token, "Content-Type": "application/json" };
+  const invoiceUrl = baseUrl + "/api/admin/orders/" + encodeURIComponent(startBody.orderId) + "/bizimhesap-invoice";
+  const postInvoice = (body) => fetch(invoiceUrl, { method: "POST", headers, body: JSON.stringify(body) });
+
+  const badNo = await postInvoice({ action: "invoice_number", invoiceNo: startBody.orderId });
+  assert.equal(badNo.status, 400);
+  assert.match((await badNo.json()).error, /GİB biçiminde/);
+  const saved = await postInvoice({ action: "invoice_number", invoiceNo: " eft2026000000051 " });
+  assert.equal(saved.status, 200);
+  const savedRef = (await saved.json()).integration;
+  assert.equal(savedRef.guid, "BH-GUID-1");
+  assert.equal(savedRef.payload.invoiceNo, "EFT2026000000051");
+  assert.ok(savedRef.payload.invoicedAt);
+  const detail = await (await fetch(baseUrl + "/api/admin/orders/" + encodeURIComponent(startBody.orderId), { headers })).json();
+  assert.equal(detail.bizimhesap.payload.invoiceNo, "EFT2026000000051");
+  const recut = await postInvoice({ force: true });
+  assert.equal(recut.status, 409, "faturası kesilmiş sipariş yeniden aktarılmaz");
+  assert.equal(calls.length, 1);
+  const cleared = await postInvoice({ action: "invoice_number", invoiceNo: "" });
+  assert.equal((await cleared.json()).integration.payload.invoiceNo, undefined);
+
   const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
   const transferFn = serverJs.slice(serverJs.indexOf("async function transferOrderToBizimHesap"));
   const fnEnd = transferFn.search(/\r?\n\}\r?\n/);
   assert.ok(fnEnd > 0);
-  assert.doesNotMatch(transferFn.slice(0, fnEnd), /sendInvoiceCustomerMail/);
+  assert.doesNotMatch(transferFn.slice(0, fnEnd), /sendOrderStatusMail|deliverSimpleMail/);
 });
 
 test("payment start rejects invalid customer identity", async (t) => {

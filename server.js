@@ -104,7 +104,6 @@ const {
   SHIPPING_CARRIERS,
   NOTIFY_STATUSES,
   sendOrderStatusMail,
-  sendInvoiceCustomerMail,
   itemDisplayName,
 } = require("./lib/order-mail");
 const {
@@ -112,7 +111,7 @@ const {
   bizimhesapConfigured,
   pingBizimHesap,
   orderAllowsBizimHesapInvoice,
-  fetchInvoicePdfAttachment,
+  normalizeInvoiceNumber,
   reconcileInvoiceAfterReversal,
   buildInvoiceFollowupMail,
 } = require("./lib/bizimhesap");
@@ -2882,6 +2881,38 @@ async function handleApi(req, res, urlPath) {
         });
         return json(res, 200, { ok: true, integration: orderStore.getIntegration(orderId, "bizimhesap_invoice") });
       }
+      if (body.action === "invoice_number") {
+        const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+        if (!(current && current.guid)) {
+          return json(res, 400, { ok: false, error: "Önce sipariş BizimHesap'a aktarılmalı." });
+        }
+        const raw = String(body.invoiceNo || "").trim();
+        const invoiceNo = raw ? normalizeInvoiceNumber(raw) : "";
+        if (raw && !invoiceNo) {
+          return json(res, 400, {
+            ok: false,
+            error: "Belge No GİB biçiminde olmalı: 3 karakter seri + yıl + 9 hane (ör. EFT2026000000051).",
+          });
+        }
+        const payload = Object.assign({}, current.payload, { guid: current.guid, url: current.url });
+        delete payload.invoiceNo;
+        delete payload.invoicedAt;
+        if (invoiceNo) {
+          payload.invoiceNo = invoiceNo;
+          payload.invoicedAt = new Date().toISOString();
+        }
+        orderStore.saveIntegrationRef(orderId, "bizimhesap_invoice", payload);
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action: "order.invoice_number_saved",
+          entityType: "order",
+          entityId: orderId,
+          detail: { invoiceNo: invoiceNo || null },
+        });
+        return json(res, 200, { ok: true, integration: orderStore.getIntegration(orderId, "bizimhesap_invoice") });
+      }
       if (!bizimhesapConfigured(process.env)) {
         return json(res, 503, {
           ok: false,
@@ -2899,38 +2930,15 @@ async function handleApi(req, res, urlPath) {
         return json(res, 400, { ok: false, error: msg, reason: allow.reason });
       }
 
-      const existing = orderStore.getIntegration(orderId, "bizimhesap_invoice");
-      const mailOnly = body.mailOnly === true || body.action === "mail";
       const forceRecut = body.force === true;
-
-      // GUID varsa varsayılan: yalnızca müşteriye PDF/link maili (BH'ye yeniden gitme).
-      // Yeniden aktarmak için force:true gerekir.
-      if (mailOnly || (existing && existing.guid && !forceRecut)) {
-        if (!(existing && (existing.guid || existing.url))) {
-          return json(res, 400, {
-            ok: false,
-            error: "Önce sipariş BizimHesap'a aktarılmalı. BizimHesap GUID/URL yok.",
-          });
-        }
-        const attachment = await fetchInvoicePdfAttachment(existing.url, {
-          filename: "fatura-" + orderId + ".pdf",
-        });
-        const mail = await sendInvoiceCustomerMail(order, {
-          store: orderStore,
-          pdfUrl: existing.url || "",
-          attachment,
-          force: body.forceMail === true || mailOnly === true,
-        });
-        return json(res, 200, {
-          ok: true,
-          mode: "mail",
-          result: { submitted: false, reason: "mail_only", guid: existing.guid, url: existing.url },
-          integration: existing,
-          mail,
+      const existing = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+      if (forceRecut && existing && existing.payload && existing.payload.invoiceNo) {
+        return json(res, 409, {
+          ok: false,
+          error: "Faturası kesilmiş sipariş yeniden aktarılmaz; değişiklik gerekiyorsa BizimHesap'ta düzeltin.",
         });
       }
-
-      // Aktarım müşteriye mail atmaz: resmi e-Arşiv/e-Fatura BizimHesap'ta sonra kesilir.
+      // Müşteriye fatura mailini BizimHesap atar; aktarım müşteriye mail atmaz.
       const session = getSession(req);
       const result = forceRecut
         ? await submitSalesInvoice(order, { store: orderStore, force: true })
@@ -2943,7 +2951,6 @@ async function handleApi(req, res, urlPath) {
         mode: "transfer",
         result,
         integration: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
-        mail: null,
       });
     } catch (err) {
       return json(res, 502, { ok: false, error: (err && err.message) || "BizimHesap faturası gönderilemedi" });

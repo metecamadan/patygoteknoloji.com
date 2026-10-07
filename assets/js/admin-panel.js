@@ -4617,21 +4617,19 @@
     const reversed = orderReversalKinds(order).size > 0;
     const blocked = status === "cancelled" || status === "refunded" || order.paymentStatus === "refunded";
     const configured = order._bizimhesapConfigured === true;
+    const invoiceNo = String((bh && bh.payload && bh.payload.invoiceNo) || "");
     const followup = invoiceFollowup(order);
     if (followup) {
       return (
         "<h3 class='admin-order-section-title'>BizimHesap faturası</h3>" +
         invoiceFollowupBanner(followup) +
-        (bh.url
-          ? "<p class='admin-field-help'><a href='" +
-            escapeAttr(bh.url) +
-            "' target='_blank' rel='noopener noreferrer'>Faturayı görüntüle</a> · GUID: " +
-            escapeHtml(bh.guid) +
-            "</p>"
-          : "<p class='admin-field-help'>GUID: " + escapeHtml(bh.guid) + "</p>")
+        "<p class='admin-field-help'>" +
+        (invoiceNo ? "Belge No: " + escapeHtml(invoiceNo) : "Fatura kesilmedi") +
+        " · GUID: " +
+        escapeHtml(bh.guid) +
+        "</p>"
       );
     }
-    const invoiceMail = (order._statusMails || []).find((row) => row && row.status === "invoice");
     let body = "";
     if (!configured) {
       body =
@@ -4645,18 +4643,15 @@
         "</p>";
     } else if (hasInvoice) {
       body =
-        "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
-        "<strong>Sipariş BizimHesap'a aktarıldı.</strong>" +
-        (bh.createdAt ? " " + escapeHtml(formatOrderDate(bh.createdAt)) : "") +
-        (bh.url
-          ? " · <a href='" +
-            escapeAttr(bh.url) +
-            "' target='_blank' rel='noopener noreferrer'>Faturayı görüntüle</a>"
-          : "") +
-        "<br>" +
-        (invoiceMail
-          ? "Müşteriye fatura maili gönderildi · " + escapeHtml(formatOrderDate(invoiceMail.sentAt))
-          : "Faturayı BizimHesap'ta kestikten sonra müşteriye gönderin.") +
+        (invoiceNo
+          ? "<p class='admin-order-mail-banner admin-order-mail-banner--ok'>" +
+            "<strong>Fatura kesildi.</strong> Belge No: " +
+            escapeHtml(invoiceNo) +
+            (bh.payload.invoicedAt ? " · " + escapeHtml(formatOrderDate(bh.payload.invoicedAt)) : "")
+          : "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
+            "<strong>Fatura kesilmedi.</strong> Sipariş BizimHesap'a aktarıldı" +
+            (bh.createdAt ? " (" + escapeHtml(formatOrderDate(bh.createdAt)) + ")" : "") +
+            ". Faturayı BizimHesap'ta kesip müşteriye oradan gönderin, ardından Belge No'yu girin.") +
         (bh.payload && bh.payload.resolvedAt
           ? "<br>İade/iptal düzeltmesi yapıldı olarak işaretlendi · " + escapeHtml(formatOrderDate(bh.payload.resolvedAt))
           : "") +
@@ -4669,22 +4664,27 @@
         "<strong>Henüz BizimHesap'a aktarılmadı.</strong> Ödeme onaylanınca otomatik aktarılır; aktarılmadıysa aşağıdan tekrar deneyin." +
         "</p>";
     }
+    const canTransfer = configured && order.id && !blocked && !reversed;
     let action = "";
-    if (configured && order.id && !blocked && !reversed) {
-      if (hasInvoice) {
-        action =
-          "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
-          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapMail'>" +
-          (invoiceMail ? "Fatura mailini tekrar gönder" : "Faturayı müşteriye gönder") +
-          "</button>" +
-          "<button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>Yeniden aktar</button>" +
-          "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
-      } else {
-        action =
-          "<div class='admin-form-actions'>" +
-          "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapSend'>BizimHesap'a aktar</button>" +
-          "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
-      }
+    if (hasInvoice && order.id) {
+      action =
+        "<div class='field'><label for='adminOrderInvoiceNo'>Belge No</label>" +
+        "<input type='text' id='adminOrderInvoiceNo' maxlength='16' autocomplete='off' spellcheck='false' value='" +
+        escapeAttr(invoiceNo) +
+        "' placeholder='Örn. EFT2026000000051'></div>" +
+        "<div class='admin-form-actions' style='flex-wrap:wrap;gap:8px'>" +
+        "<button type='button' class='btn btn-primary' id='adminOrderInvoiceNoSave'>" +
+        (invoiceNo ? "Belge No'yu güncelle" : "Fatura kesildi olarak kaydet") +
+        "</button>" +
+        (canTransfer && !invoiceNo
+          ? "<button type='button' class='btn btn-outline' id='adminOrderBizimhesapSend'>Yeniden aktar</button>"
+          : "") +
+        "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
+    } else if (canTransfer) {
+      action =
+        "<div class='admin-form-actions'>" +
+        "<button type='button' class='btn btn-primary' id='adminOrderBizimhesapSend'>BizimHesap'a aktar</button>" +
+        "</div><p id='adminOrderBizimhesapNote' class='admin-note' hidden></p>";
     }
     return (
       "<h3 class='admin-order-section-title'>BizimHesap faturası</h3>" + body + action
@@ -4777,6 +4777,8 @@
       orderReversalKinds(order).size === 0
     ) {
       actions.push(["fatura", "BizimHesap'a aktar"]);
+    } else if (order._bizimhesap && order._bizimhesap.guid && !(order._bizimhesap.payload || {}).invoiceNo) {
+      actions.push(["fatura", "Fatura kesilmedi"]);
     }
     return { text, actions };
   }
@@ -5260,9 +5262,9 @@
     async function postBizimHesapInvoice(body, busyLabel) {
       const bhNote = document.getElementById("adminOrderBizimhesapNote");
       const sendBtn = document.getElementById("adminOrderBizimhesapSend");
-      const mailBtn = document.getElementById("adminOrderBizimhesapMail");
+      const saveBtn = document.getElementById("adminOrderInvoiceNoSave");
       if (sendBtn) sendBtn.disabled = true;
-      if (mailBtn) mailBtn.disabled = true;
+      if (saveBtn) saveBtn.disabled = true;
       if (bhNote) {
         bhNote.hidden = false;
         bhNote.className = "admin-note";
@@ -5273,37 +5275,24 @@
           method: "POST",
           body: JSON.stringify(body || {}),
         });
-        const mail = data.mail || {};
-        const mode = data.mode || "";
         let msg = "";
-        if (mode === "transfer" && data.result && data.result.submitted) {
-          msg = "Sipariş BizimHesap'a aktarıldı. Faturayı orada kestikten sonra müşteriye gönderin.";
-        } else if (mode === "transfer" && data.result && data.result.reason === "already_submitted") {
+        let ok = Boolean(data.result && data.result.guid);
+        if (body && body.action === "invoice_number") {
+          const saved = data.integration && data.integration.payload && data.integration.payload.invoiceNo;
+          msg = saved ? "Fatura kesildi olarak kaydedildi: " + saved : "Belge No kaldırıldı; sipariş faturası kesilmedi görünür.";
+          ok = true;
+        } else if (data.result && data.result.submitted) {
+          msg = "Sipariş BizimHesap'a aktarıldı. Faturayı orada kesip müşteriye oradan gönderin, ardından Belge No'yu girin.";
+        } else if (data.result && data.result.reason === "already_submitted") {
           msg = "Sipariş zaten BizimHesap'a aktarılmış.";
-        } else if (mode === "mail") {
-          msg = "Fatura maili işlemi tamamlandı.";
         } else {
           msg = (data.result && data.result.reason) || "Tamamlandı.";
         }
-        if (mail.sent) {
-          msg += mail.attached
-            ? " Müşteriye PDF ekli mail gitti."
-            : mail.linked
-              ? " Müşteriye fatura bağlantısı maillendi."
-              : " Müşteriye fatura maili gitti.";
-        } else if (mail.reason === "smtp_not_configured") {
-          msg += " SMTP yok — fatura bağlantısını elle iletin.";
-        } else if (mail.reason === "already_notified") {
-          msg += " Mail daha önce gönderilmişti (tekrar için tekrar dene).";
-        } else if (mail.reason) {
-          msg += " Mail: " + mail.reason;
-        }
-        const ok = mode === "transfer" ? Boolean(data.result && data.result.guid) : mail.sent !== false;
         if (bhNote) {
-          bhNote.className = "admin-note " + (ok || mail.sent ? "ok" : "warn");
+          bhNote.className = "admin-note " + (ok ? "ok" : "warn");
           bhNote.textContent = msg;
         }
-        note(adminOrdersNote, ok || mail.sent ? "ok" : "warn", msg);
+        note(adminOrdersNote, ok ? "ok" : "warn", msg);
         const rowOrder = ordersCache.find((row) => row.id === orderId);
         if (rowOrder) {
           rowOrder._bizimhesap = data.integration || rowOrder._bizimhesap || null;
@@ -5321,7 +5310,7 @@
         note(adminOrdersNote, "err", err.message || "BizimHesap işlemi başarısız");
       } finally {
         if (sendBtn) sendBtn.disabled = false;
-        if (mailBtn) mailBtn.disabled = false;
+        if (saveBtn) saveBtn.disabled = false;
       }
     }
 
@@ -5345,17 +5334,16 @@
         );
       });
     }
-    const bizimhesapMailBtn = document.getElementById("adminOrderBizimhesapMail");
-    if (bizimhesapMailBtn) {
-      bizimhesapMailBtn.addEventListener("click", async (event) => {
+    const invoiceNoSaveBtn = document.getElementById("adminOrderInvoiceNoSave");
+    if (invoiceNoSaveBtn) {
+      invoiceNoSaveBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (bizimhesapMailBtn.disabled) return;
-        if (!window.confirm("Fatura müşteriye maillensin mi? Faturayı BizimHesap'ta kestiğinizden emin olun.")) return;
-        await postBizimHesapInvoice(
-          { mailOnly: true, forceMail: true },
-          "Fatura maili gönderiliyor…"
-        );
+        if (invoiceNoSaveBtn.disabled) return;
+        const input = document.getElementById("adminOrderInvoiceNo");
+        const invoiceNo = String((input && input.value) || "").trim().toUpperCase();
+        if (!invoiceNo && !window.confirm("Belge No boş: sipariş faturası kesilmedi olarak işaretlenecek. Devam?")) return;
+        await postBizimHesapInvoice({ action: "invoice_number", invoiceNo }, "Belge No kaydediliyor…");
       });
     }
     const invoiceResolveBtn = document.getElementById("adminOrderInvoiceResolve");

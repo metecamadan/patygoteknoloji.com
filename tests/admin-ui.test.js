@@ -297,14 +297,24 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.doesNotMatch(ctx.render(partialNoInvoice), /adminOrderBizimhesapSend/);
   assert.match(ctx.render(Object.assign({}, base, { paymentStatus: "paid", status: "new" })), /id='adminOrderBizimhesapSend'>BizimHesap'a aktar/);
   const transferred = Object.assign({}, base, { paymentStatus: "paid", status: "new", _bizimhesap: invoice() });
-  assert.match(ctx.render(transferred), /Sipariş BizimHesap'a aktarıldı/);
-  assert.match(ctx.render(transferred), /Faturayı BizimHesap'ta kestikten sonra müşteriye gönderin/);
-  assert.match(ctx.render(transferred), />Faturayı görüntüle</);
-  assert.doesNotMatch(ctx.render(transferred), /Fatura PDF/);
-  assert.match(ctx.render(transferred), /id='adminOrderBizimhesapMail'>Faturayı müşteriye gönder/);
-  const mailed = Object.assign({}, transferred, { _statusMails: [{ status: "invoice", sentAt: "2026-10-07T10:00:00Z" }] });
-  assert.match(ctx.render(mailed), /Müşteriye fatura maili gönderildi · 2026-10-07T10:00:00Z/);
-  assert.match(ctx.render(mailed), />Fatura mailini tekrar gönder</);
+  assert.match(ctx.render(transferred), /<strong>Fatura kesilmedi\.<\/strong> Sipariş BizimHesap'a aktarıldı/);
+  assert.match(ctx.render(transferred), /id='adminOrderInvoiceNo' maxlength='16'[^>]*value=''/);
+  assert.match(ctx.render(transferred), /id='adminOrderInvoiceNoSave'>Fatura kesildi olarak kaydet/);
+  assert.match(ctx.render(transferred), /id='adminOrderBizimhesapSend'>Yeniden aktar/);
+  assert.doesNotMatch(ctx.render(transferred), /Faturayı görüntüle|bizimhesap\.com\/x|adminOrderBizimhesapMail|müşteriye gönder<\/button>/);
+  const invoiced = Object.assign({}, transferred, {
+    _bizimhesap: invoice({ invoiceNo: "EFT2026000000051", invoicedAt: "2026-10-07T10:30:00Z" }),
+  });
+  assert.match(ctx.render(invoiced), /<strong>Fatura kesildi\.<\/strong> Belge No: EFT2026000000051 · 2026-10-07T10:30:00Z/);
+  assert.match(ctx.render(invoiced), /value='EFT2026000000051'/);
+  assert.match(ctx.render(invoiced), />Belge No'yu güncelle</);
+  assert.doesNotMatch(ctx.render(invoiced), /adminOrderBizimhesapSend/);
+  const refundedInvoiced = Object.assign({}, refunded, {
+    _bizimhesap: invoice({ invoiceNo: "EFT2026000000051", returns: [{ eventAt: "2026-10-07T09:00:00Z", amount: 300 }] }),
+  });
+  assert.match(ctx.render(refundedInvoiced), /Belge No: EFT2026000000051 · GUID: G-1/);
+  assert.match(ctx.render(refunded), /Fatura kesilmedi · GUID: G-1/);
+  assert.match(script, /postBizimHesapInvoice\(\{ action: "invoice_number", invoiceNo \}/);
 
   assert.match(script, /const invoice = invoiceFollowup\(order\);\s*if \(invoice && invoice\.kind !== "cancelled"\)/);
   assert.match(script, /body: JSON\.stringify\(\{ action: "resolve" \}\)/);
@@ -320,7 +330,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-8/);
+  assert.match(html, /admin\.css\?v=siparis-9/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -610,12 +620,11 @@ test("admin users tab supports panel account management", () => {
   assert.match(script, /admin-order-mail-badge--sent/);
   assert.match(script, /renderBizimHesapBlock/);
   assert.match(script, /adminOrderBizimhesapSend/);
-  assert.match(script, /adminOrderBizimhesapMail/);
+  assert.match(script, /adminOrderInvoiceNoSave/);
   assert.match(script, /BizimHesap'a aktar/);
-  assert.match(script, /Fatura mailini tekrar gönder/);
   assert.match(script, /BizimHesap faturası/);
   assert.match(script, /\/api\/admin\/orders\/.*\/bizimhesap-invoice/);
-  assert.match(script, /mailOnly:\s*true/);
+  assert.doesNotMatch(script, /adminOrderBizimhesapMail|mailOnly/);
   assert.match(script, /notifyEmail/);
   assert.match(script, /\/api\/admin\/users/);
   assert.match(script, /supplier\/products\?/);
