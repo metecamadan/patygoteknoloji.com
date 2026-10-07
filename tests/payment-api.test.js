@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { hmacSha512Base64 } = require("../lib/akbank-pos");
 const { spawnTestServer } = require("./helpers/spawn-server");
+const { createOrderStore } = require("../lib/orders");
 
 test("payment APIs start hosted form and verify callback", async (t) => {
   const secret = "test-akbank-secret";
@@ -222,6 +223,21 @@ test("paid order is transferred to BizimHesap once, without mailing the customer
           unit: "ADET",
         },
       ],
+      seed: (dataRoot) =>
+        createOrderStore(dataRoot).save({
+          id: "PTY-OLD-PAID",
+          total: 249.59,
+          currency: "TRY",
+          status: "shipped",
+          paymentStatus: "paid",
+          paymentTaken: true,
+          trackingCode: "YK-OLD",
+          createdAt: "2026-08-20T08:20:00.000Z",
+          paidAt: "2026-08-20T08:21:00.000Z",
+          customer: { name: "Eski Müşteri", email: "eski@example.com", phone: "0555" },
+          items: [{ productId: "p1", name: "Ürün", qty: 1, line: 249.59, lineVat: 0 }],
+          paymentEvents: [],
+        }),
     }
   );
 
@@ -294,6 +310,13 @@ test("paid order is transferred to BizimHesap once, without mailing the customer
     checkedAt: draft.integration.payload.invoiceCheckedAt,
     cancelled: false,
   });
+  const listed = (await (await fetch(baseUrl + "/api/admin/orders", { headers })).json()).orders;
+  const oldRow = listed.find((o) => o.id === "PTY-OLD-PAID");
+  assert.equal(oldRow.invoiceSummary, null);
+  assert.equal(oldRow.invoiceUntracked, true, "ilk aktarımdan önce ödenen sipariş takip dışı");
+  assert.equal(listed.find((o) => o.id === startBody.orderId).invoiceUntracked, false);
+  const oldDetail = await (await fetch(baseUrl + "/api/admin/orders/PTY-OLD-PAID", { headers })).json();
+  assert.equal(oldDetail.invoiceUntracked, true);
 
   abstractRows.push({ type: "Tahsilat", trxdate: "07.10.2026", note: startBody.orderId + " EFT2026000000051" });
   const issued = await (await postInvoice({ action: "sync" })).json();

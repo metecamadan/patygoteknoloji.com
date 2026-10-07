@@ -4172,6 +4172,8 @@
       invoiceStep = orderProgressStep("done", "Fatura", "Fatura kesildi, Belge No " + invoice.invoiceNo);
     } else if (invoice && invoice.cancelled) {
       invoiceStep = orderProgressStep("na", "Fatura", "BizimHesap kaydı iptal edildi");
+    } else if (!invoice && order.invoiceUntracked) {
+      invoiceStep = orderProgressStep("na", "Fatura", "BizimHesap entegrasyonundan önceki sipariş; panelde fatura kaydı yok");
     } else if (open) {
       invoiceStep = orderProgressStep(
         "todo",
@@ -4747,6 +4749,10 @@
         "<br><small>BizimHesap GUID: " +
         escapeHtml(bh.guid) +
         "</small></p>";
+    } else if (order.invoiceUntracked) {
+      body =
+        "<p class='admin-field-help'>Bu sipariş BizimHesap entegrasyonundan önce ödendi; panelde fatura kaydı yok. " +
+        "Faturası başka yoldan kesildiyse işlem gerekmez. İsterseniz aşağıdan BizimHesap'a aktarabilirsiniz.</p>";
     } else {
       body =
         "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
@@ -4857,6 +4863,7 @@
     if (
       order._bizimhesapConfigured === true &&
       !(order._bizimhesap && order._bizimhesap.guid) &&
+      !order.invoiceUntracked &&
       orderReversalKinds(order).size === 0
     ) {
       actions.push(["fatura", "BizimHesap'a aktar"]);
@@ -5373,7 +5380,7 @@
                 : "BizimHesap'ta bu siparişe kesilmiş fatura yok.";
           ok = Boolean(sync.found);
         } else if (data.result && data.result.submitted) {
-          msg = "Sipariş BizimHesap'a aktarıldı. Faturayı orada kesip müşteriye oradan gönderin, ardından Belge No'yu girin.";
+          msg = "Sipariş BizimHesap'a aktarıldı. Faturayı orada kesin; Belge No panelde kendiliğinden görünür.";
         } else if (data.result && data.result.reason === "already_submitted") {
           msg = "Sipariş zaten BizimHesap'a aktarılmış.";
         } else {
@@ -5668,6 +5675,7 @@
       if (Array.isArray(data.statusMails)) order._statusMails = data.statusMails;
       order._bizimhesap = data.bizimhesap || null;
       order._bizimhesapConfigured = data.bizimhesapConfigured === true;
+      order.invoiceUntracked = data.invoiceUntracked === true;
       order._bankReversal = data.bankReversal || null;
       order._bankInquiryAvailable = data.bankInquiryAvailable === true;
       order._detailLoaded = true;

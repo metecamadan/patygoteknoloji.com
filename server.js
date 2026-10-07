@@ -1639,6 +1639,11 @@ function invoiceSummaryFor(orderId) {
   };
 }
 
+/** Paid before the first BizimHesap transfer, so the panel never tracked this order's invoice. */
+function invoiceUntrackedFor(order, transferred, trackedSince) {
+  return !transferred && Boolean(trackedSince) && String(order.paidAt || order.createdAt || "") < trackedSince;
+}
+
 /** Reads the issued GİB number from BizimHesap and stores it on the order's invoice integration. */
 async function syncIssuedInvoiceNumber(orderId, options) {
   const opts = options || {};
@@ -2810,6 +2815,7 @@ async function handleApi(req, res, urlPath) {
     const from = requestUrl.searchParams.get("from") || "";
     const to = requestUrl.searchParams.get("to") || "";
     const q = requestUrl.searchParams.get("q") || "";
+    const invoiceTrackedSince = orderStore.firstIntegrationAt("bizimhesap_invoice");
     const orders = orderStore
       .list({
         status: status || undefined,
@@ -2820,7 +2826,11 @@ async function handleApi(req, res, urlPath) {
         sort: requestUrl.searchParams.get("sort") || "",
         dir: requestUrl.searchParams.get("dir") || "",
       })
-      .map((order) => Object.assign({}, order, { invoiceSummary: invoiceSummaryFor(order.id) }));
+      .map((order) => {
+        const invoiceSummary = invoiceSummaryFor(order.id);
+        const invoiceUntracked = invoiceUntrackedFor(order, Boolean(invoiceSummary), invoiceTrackedSince);
+        return Object.assign({}, order, { invoiceSummary, invoiceUntracked });
+      });
     return json(res, 200, { ok: true, orders, shippingCarriers: SHIPPING_CARRIERS });
   }
 
@@ -3278,12 +3288,18 @@ async function handleApi(req, res, urlPath) {
       let order = orderStore.get(orderId);
       if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
       order = orderStore.reconcilePaidFromBankEvidence(orderId) || order;
+      const bizimhesap = orderStore.getIntegration(orderId, "bizimhesap_invoice");
       return json(res, 200, {
         ok: true,
         order,
         statusMails: orderStore.listStatusMails(orderId),
-        bizimhesap: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
+        bizimhesap,
         bizimhesapConfigured: bizimhesapConfigured(process.env),
+        invoiceUntracked: invoiceUntrackedFor(
+          order,
+          Boolean(bizimhesap && bizimhesap.guid),
+          orderStore.firstIntegrationAt("bizimhesap_invoice")
+        ),
         bankReversal: buildReversalPreview(
           order,
           bankReversalConfig,

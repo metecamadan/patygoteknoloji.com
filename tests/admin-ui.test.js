@@ -318,6 +318,10 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.match(ctx.render(partialNoInvoice), /Kısmi iade yapıldı/);
   assert.doesNotMatch(ctx.render(partialNoInvoice), /adminOrderBizimhesapSend/);
   assert.match(ctx.render(Object.assign({}, base, { paymentStatus: "paid", status: "new" })), /id='adminOrderBizimhesapSend'>BizimHesap'a aktar/);
+  const untracked = ctx.render(Object.assign({}, base, { paymentStatus: "paid", status: "shipped", invoiceUntracked: true }));
+  assert.match(untracked, /<p class='admin-field-help'>Bu sipariş BizimHesap entegrasyonundan önce ödendi; panelde fatura kaydı yok\./);
+  assert.doesNotMatch(untracked, /Henüz BizimHesap'a aktarılmadı/);
+  assert.match(untracked, /id='adminOrderBizimhesapSend'>BizimHesap'a aktar/);
   const transferred = Object.assign({}, base, { paymentStatus: "paid", status: "new", _bizimhesap: invoice() });
   assert.match(ctx.render(transferred), /<strong>Fatura durumu henüz kontrol edilmedi\.<\/strong>/);
   assert.match(ctx.render(transferred), /id='adminOrderInvoiceSync'>BizimHesap'tan kontrol et/);
@@ -388,6 +392,17 @@ test("order list shows invoice then shipping checkpoints between status and tota
     steps({ paymentStatus: "refunded", status: "cancelled", invoiceSummary: { invoiceNo: null, checkedAt: null, cancelled: true } }),
     ["Fatura:na:BizimHesap kaydı iptal edildi", "Kargo:na:Kargo yok"]
   );
+  assert.deepEqual(
+    steps(Object.assign({}, paid, { status: "shipped", trackingCode: "YK1", invoiceSummary: null, invoiceUntracked: true })),
+    ["Fatura:na:BizimHesap entegrasyonundan önceki sipariş; panelde fatura kaydı yok", "Kargo:done:Kargoya verildi"]
+  );
+  assert.equal(
+    steps(Object.assign({}, paid, { invoiceUntracked: true, invoiceSummary: { invoiceNo: "EFT2026000000053", checkedAt: "x", cancelled: false } }))[0],
+    "Fatura:done:Fatura kesildi, Belge No EFT2026000000053"
+  );
+  assert.match(script, /order\.invoiceUntracked = data\.invoiceUntracked === true;/);
+  assert.match(script, /!order\.invoiceUntracked &&\s*orderReversalKinds\(order\)\.size === 0\s*\) \{\s*actions\.push\(\["fatura", "BizimHesap'a aktar"\]\)/);
+  assert.doesNotMatch(script, /Belge No'yu girin/);
   assert.match(ctx.progress({ paymentStatus: "pending", status: "new" }), /^<span class='admin-order-step admin-order-step--none'>—<\/span>$/);
   assert.match(ctx.progress({ paymentStatus: "failed", status: "new" }), /admin-order-step--none/);
 
@@ -416,7 +431,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-12/);
+  assert.match(html, /admin\.css\?v=siparis-13/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
