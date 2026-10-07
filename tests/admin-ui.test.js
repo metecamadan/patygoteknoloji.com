@@ -353,6 +353,70 @@ test("invoice tab follows bank reversals: cancelled, failed cancel, return docum
   assert.match(script, /body: JSON\.stringify\(\{ action: "resolve" \}\)/);
 });
 
+test("invoice tab lists uploaded documents; head opens the uploaded invoice in a new tab", () => {
+  const pick = (name) => {
+    const start = script.indexOf("function " + name + "(");
+    assert.ok(start > 0, name + " bulunmalı");
+    let depth = 0;
+    for (let i = script.indexOf("{", start); i < script.length; i++) {
+      if (script[i] === "{") depth++;
+      if (script[i] === "}" && --depth === 0) return script.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+  const vm = require("node:vm");
+  const ctx = {};
+  vm.runInNewContext(
+    [
+      "const escapeHtml = (s) => String(s); const escapeAttr = escapeHtml; const formatOrderDate = (s) => String(s);",
+      "const ORDER_DOC_LABELS = { invoice: 'Fatura', return: 'İade belgesi' };",
+      pick("orderReversalKinds"),
+      pick("orderDocs"),
+      pick("latestOrderDoc"),
+      pick("orderDocLinkHtml"),
+      pick("orderDocLinkExpired"),
+      pick("renderOrderDocsBlock"),
+      "this.docs = renderOrderDocsBlock; this.latest = (o, k) => (latestOrderDoc(o, k) || {}).id || null;",
+      "this.link = orderDocLinkHtml; this.expired = orderDocLinkExpired;",
+    ].join("\n"),
+    ctx
+  );
+  const doc = (id, kind, filename) => ({
+    id,
+    kind,
+    filename,
+    at: "2026-10-07T18:00:00Z",
+    viewUrl: "/api/order-documents/O1/" + id + "?exp=9999999999&sig=ab",
+  });
+  assert.equal(ctx.docs({ paymentStatus: "pending" }), "", "ödemesiz siparişte belge bölümü yok");
+  const paid = ctx.docs({ paymentStatus: "paid", paymentEvents: [] });
+  assert.match(paid, /Bu siparişe henüz belge yüklenmedi/);
+  assert.match(paid, /data-order-doc-kind='invoice' \/><label for='adminOrderDoc-invoice' class='btn btn-outline btn-sm'>📎 Fatura yükle/);
+  assert.doesNotMatch(paid, /data-order-doc-kind='return'/, "iade yokken iade belgesi yükleme yok");
+  assert.match(ctx.docs({ paymentStatus: "refunded", paymentEvents: [] }), /data-order-doc-kind='return'/);
+  const returned = {
+    paymentStatus: "refunded",
+    paymentEvents: [{ kind: "bank_reversal", type: "refund", success: true, amount: "13.68" }],
+    _documents: [doc("a1", "invoice", "EFT2026000000051.pdf"), doc("b2", "return", "iade.pdf"), doc("c3", "invoice", "yeni.pdf")],
+  };
+  const html = ctx.docs(returned);
+  assert.match(html, /data-order-doc-kind='return'/);
+  assert.match(html, /<span class='admin-order-doc-kind'>İade belgesi<\/span><span class='admin-order-doc-name'>iade\.pdf<\/span>/);
+  assert.match(
+    html,
+    /<a class='btn btn-outline btn-sm' href='\/api\/order-documents\/O1\/b2\?exp=9999999999&sig=ab' target='_blank' rel='noopener noreferrer' data-od-doc-link>Aç ↗<\/a><button type='button' class='btn btn-outline btn-sm' data-od-delete-doc='b2'/
+  );
+  assert.equal(ctx.latest(returned, "invoice"), "c3", "en son yüklenen fatura açılır");
+  assert.equal(ctx.link({ viewUrl: "javascript:alert(1)" }, "btn", "Aç"), "", "yalnızca imzalı belge yolu bağlanır");
+  assert.equal(ctx.expired("/api/order-documents/O1/a1?exp=9999999999&sig=ab"), false);
+  assert.equal(ctx.expired("/api/order-documents/O1/a1?exp=1000&sig=ab"), true, "süresi dolan bağlantı yenilenir");
+
+  assert.match(script, /orderDocLinkHtml\(invoiceDoc, "btn btn-outline", "Faturayı gör ↗"\)/);
+  assert.match(script, /invoice\.kind === "needs_return_document" \? "İade belgesini yükle" : "Fatura sekmesi"/);
+  assert.doesNotMatch(script, /window\.open\(/, "yeni sekme düz bağlantıyla açılır; açılır pencere engeline takılmaz");
+  assert.match(script, /renderBizimHesapBlock\(order\) \+ renderOrderDocsBlock\(order\) \|\|/);
+});
+
 test("order list shows invoice then shipping checkpoints between status and total", () => {
   const pick = (name) => {
     const start = script.indexOf("function " + name + "(");
@@ -431,7 +495,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-15/);
+  assert.match(html, /admin\.css\?v=siparis-16/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -779,7 +843,7 @@ test("long leads stay in page flow: no inner scroll box, top-aligned reply, coll
   assert.match(script, /toggle\.textContent = open \? "Kısalt" : "Tamamını göster";/);
   assert.match(script, /toggle\.setAttribute\("aria-expanded", String\(open\)\)/);
   assert.match(html, /<input id="leadReplyFiles" class="admin-file-input" type="file" multiple[^>]*\/>\s*<label for="leadReplyFiles" class="btn btn-outline btn-sm">📎 Dosya ekle<\/label>/);
-  assert.match(css, /\.admin-form \.admin-file-input \{[\s\S]*?width: 1px;[\s\S]*?opacity: 0;/);
+  assert.match(css, /\.admin-form \.admin-file-input,\s*\.admin-od \.admin-file-input \{[\s\S]*?width: 1px;[\s\S]*?opacity: 0;/);
   assert.match(css, /\.admin-file-input:focus-visible \+ label \{ outline/);
   assert.match(css, /#leadReplyForm > \.admin-form-actions \{\s*position: sticky;/);
   assert.match(css, /html\.admin-theme-dark #leadReplyForm > \.admin-form-actions \{ background: #121a2a; \}/);

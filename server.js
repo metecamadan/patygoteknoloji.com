@@ -25,6 +25,12 @@ const {
   validateLeadReplyInput,
   sendLeadReply,
 } = require("./lib/lead-reply");
+const {
+  MAX_ORDER_DOC_REQUEST_BYTES,
+  validateOrderDocInput,
+  createOrderDocStore,
+  createDocLinkSigner,
+} = require("./lib/order-docs");
 const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
 const { generateMissingThumbnails } = require("./lib/product-thumbnails");
 const {
@@ -390,6 +396,26 @@ setCategoryListLoader(() => categoryStore.list(), () => categoryStore.stamp());
 const adminUserStore = createAdminUserStore(DATA_ROOT);
 const consentStore = createConsentStore(DATA_ROOT);
 const auditStore = createAuditStore(DATA_ROOT);
+const orderDocStore = createOrderDocStore(DATA_ROOT);
+const orderDocLinks = createDocLinkSigner();
+
+function orderDocumentsWithLinks(orderId) {
+  return orderDocStore.list(orderId).map((doc) => Object.assign({}, doc, { viewUrl: orderDocLinks.link(orderId, doc.id) }));
+}
+
+function sendOrderDocument(res, found) {
+  res.writeHead(
+    200,
+    securityHeaders({
+      "Content-Type": found.doc.contentType,
+      "Content-Length": found.content.length,
+      "Content-Disposition": "inline; filename*=UTF-8''" + encodeURIComponent(found.doc.filename),
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+    })
+  );
+  res.end(found.content);
+}
 const contactStore = createContactStore(DATA_ROOT);
 const akbankConfig = createAkbankConfig(process.env);
 const bankReversalConfig = createBankReversalConfig(process.env, akbankConfig);
@@ -1716,6 +1742,27 @@ async function syncPendingInvoiceNumbers() {
   }
 }
 
+/** Closes the open invoice follow-up; with onlyReturns, only when an unresolved return is waiting for a document. */
+function markInvoiceFollowupResolved(orderId, options) {
+  const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
+  if (!(current && current.guid)) return null;
+  const payload = current.payload || {};
+  if (options && options.onlyReturns) {
+    const since = String(payload.resolvedAt || "");
+    const open = (Array.isArray(payload.returns) ? payload.returns : []).some(
+      (row) => row && (!since || String(row.eventAt || "") > since)
+    );
+    if (!open) return null;
+  }
+  const resolvedAt = new Date().toISOString();
+  orderStore.saveIntegrationRef(
+    orderId,
+    "bizimhesap_invoice",
+    Object.assign({}, payload, { guid: current.guid, url: current.url, resolvedAt })
+  );
+  return resolvedAt;
+}
+
 /** Başarılı banka iadesi/iptali sonrası: tam iadede kupon hakkı geri, müşteriye doğru mail, fatura takibi. */
 async function afterSuccessfulReversal(before, updated, event) {
   const fully = Boolean(updated && updated.paymentStatus === "refunded");
@@ -2956,6 +3003,88 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  const adminOrderDocsMatch = /^\/api\/admin\/orders\/([^/]+)\/documents(?:\/([^/]+))?$/.exec(urlPath);
+  if (adminOrderDocsMatch) {
+    const orderId = decodeURIComponent(adminOrderDocsMatch[1]);
+    const docId = adminOrderDocsMatch[2] ? decodeURIComponent(adminOrderDocsMatch[2]) : "";
+    if (!orderStore.get(orderId)) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+    const session = getSession(req);
+    if (!docId && req.method === "POST") {
+      let raw;
+      try {
+        raw = await readBody(req, MAX_ORDER_DOC_REQUEST_BYTES);
+      } catch (_) {
+        return json(res, 413, { ok: false, error: "Dosya en fazla 10 MB olabilir." });
+      }
+      let body;
+      try {
+        body = JSON.parse(raw.toString("utf8") || "{}");
+      } catch (_) {
+        return json(res, 400, { ok: false, error: "Dosya okunamadı." });
+      }
+      const input = validateOrderDocInput(body);
+      if (!input.ok) return json(res, 400, input);
+      const saved = orderDocStore.add(orderId, input, { by: session && session.userId });
+      if (!saved.ok) return json(res, 400, saved);
+      const resolvedAt = saved.doc.kind === "return" ? markInvoiceFollowupResolved(orderId, { onlyReturns: true }) : null;
+      auditStore.record({
+        actorType: "admin_user",
+        actorId: session && session.userId,
+        action: "order.document_uploaded",
+        entityType: "order",
+        entityId: orderId,
+        detail: { docId: saved.doc.id, kind: saved.doc.kind, size: saved.doc.size, resolvedAt },
+      });
+      return json(res, 200, {
+        ok: true,
+        document: saved.doc,
+        documents: orderDocumentsWithLinks(orderId),
+        integration: orderStore.getIntegration(orderId, "bizimhesap_invoice"),
+        followupResolved: Boolean(resolvedAt),
+      });
+    }
+    if (docId && req.method === "GET") {
+      const found = orderDocStore.read(orderId, docId);
+      if (!found) return json(res, 404, { ok: false, error: "Belge bulunamadı" });
+      return sendOrderDocument(res, found);
+    }
+    if (docId && req.method === "DELETE") {
+      const removed = orderDocStore.remove(orderId, docId);
+      if (!removed) return json(res, 404, { ok: false, error: "Belge bulunamadı" });
+      auditStore.record({
+        actorType: "admin_user",
+        actorId: session && session.userId,
+        action: "order.document_deleted",
+        entityType: "order",
+        entityId: orderId,
+        detail: { docId: removed.id, kind: removed.kind },
+      });
+      return json(res, 200, { ok: true, documents: orderDocumentsWithLinks(orderId) });
+    }
+    return json(res, 405, { ok: false, error: "Desteklenmeyen işlem" });
+  }
+
+  const signedOrderDocMatch = /^\/api\/order-documents\/([^/]+)\/([^/]+)$/.exec(urlPath);
+  if (signedOrderDocMatch && req.method === "GET") {
+    const orderId = decodeURIComponent(signedOrderDocMatch[1]);
+    const docId = decodeURIComponent(signedOrderDocMatch[2]);
+    const params = new URL(req.url, "http://localhost").searchParams;
+    const found = orderDocLinks.verify(orderId, docId, params.get("exp"), params.get("sig"))
+      ? orderDocStore.read(orderId, docId)
+      : null;
+    if (!found) {
+      res.writeHead(
+        403,
+        securityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" })
+      );
+      return res.end(
+        "<!doctype html><meta charset='utf-8'><title>Belge açılamadı</title>" +
+          "<p style='font-family:sans-serif;padding:24px'>Belge bağlantısının süresi doldu veya geçersiz. Paneldeki siparişi yeniden açıp tekrar deneyin.</p>"
+      );
+    }
+    return sendOrderDocument(res, found);
+  }
+
   const adminOrderBizimhesapMatch = /^\/api\/admin\/orders\/([^/]+)\/bizimhesap-invoice$/.exec(urlPath);
   if (adminOrderBizimhesapMatch && req.method === "POST") {
     const orderId = decodeURIComponent(adminOrderBizimhesapMatch[1]);
@@ -2964,16 +3093,10 @@ async function handleApi(req, res, urlPath) {
       const order = orderStore.get(orderId);
       if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
       if (body.action === "resolve") {
-        const current = orderStore.getIntegration(orderId, "bizimhesap_invoice");
-        if (!(current && current.guid)) {
+        const resolvedAt = markInvoiceFollowupResolved(orderId);
+        if (!resolvedAt) {
           return json(res, 400, { ok: false, error: "Bu siparişte kesilmiş fatura yok." });
         }
-        const resolvedAt = new Date().toISOString();
-        orderStore.saveIntegrationRef(
-          orderId,
-          "bizimhesap_invoice",
-          Object.assign({}, current.payload, { guid: current.guid, url: current.url, resolvedAt })
-        );
         const session = getSession(req);
         auditStore.record({
           actorType: "admin_user",
@@ -3295,6 +3418,7 @@ async function handleApi(req, res, urlPath) {
         order,
         statusMails: orderStore.listStatusMails(orderId),
         bizimhesap,
+        documents: orderDocumentsWithLinks(orderId),
         bizimhesapConfigured: bizimhesapConfigured(process.env),
         invoiceUntracked: invoiceUntrackedFor(
           order,

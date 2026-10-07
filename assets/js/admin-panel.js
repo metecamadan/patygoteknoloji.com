@@ -4673,7 +4673,7 @@
           "BizimHesap panelinden faturayı iptal edin."
         : "<strong>İade belgesi gerekli.</strong> Faturası kesilmiş siparişte " +
           escapeHtml(moneyTr(followup.amount)) +
-          " karta iade edildi. Muhasebecinizle iade faturası / gider pusulası düzenleyin.";
+          " karta iade edildi. İade faturası / gider pusulası düzenleyin ve aşağıdaki Belgeler bölümünden yükleyin; yükleyince bu uyarı kendiliğinden kapanır.";
     return (
       "<p class='admin-order-mail-banner admin-order-mail-banner--warn'>" +
       text +
@@ -4778,6 +4778,86 @@
     );
   }
 
+  const ORDER_DOC_LABELS = { invoice: "Fatura", return: "İade belgesi" };
+  const ORDER_DOC_MAX_BYTES = 10 * 1024 * 1024;
+
+  function orderDocs(order, kind) {
+    return (Array.isArray(order._documents) ? order._documents : []).filter((doc) => !kind || doc.kind === kind);
+  }
+
+  function latestOrderDoc(order, kind) {
+    const docs = orderDocs(order, kind);
+    return docs.length ? docs[docs.length - 1] : null;
+  }
+
+  function renderOrderDocsBlock(order) {
+    const docs = orderDocs(order);
+    const paid = order.paymentStatus === "paid" || order.paymentTaken || order.paymentStatus === "refunded";
+    if (!paid && !docs.length) return "";
+    const canReturn =
+      order.paymentStatus === "refunded" || orderReversalKinds(order).size > 0 || orderDocs(order, "return").length > 0;
+    const rows = docs
+      .map(
+        (doc) =>
+          "<li><span class='admin-order-doc-kind'>" +
+          escapeHtml(ORDER_DOC_LABELS[doc.kind] || doc.kind) +
+          "</span><span class='admin-order-doc-name'>" +
+          escapeHtml(doc.filename) +
+          "</span><span class='admin-order-doc-date'>" +
+          escapeHtml(formatOrderDate(doc.at)) +
+          "</span>" +
+          orderDocLinkHtml(doc, "btn btn-outline btn-sm", "Aç ↗") +
+          "<button type='button' class='btn btn-outline btn-sm' data-od-delete-doc='" +
+          escapeAttr(doc.id) +
+          "' aria-label='" +
+          escapeAttr(doc.filename + " sil") +
+          "'>Sil</button></li>"
+      )
+      .join("");
+    const upload = (kind, label) =>
+      "<input id='adminOrderDoc-" +
+      kind +
+      "' class='admin-file-input' type='file' accept='.pdf,.png,.jpg,.jpeg' data-order-doc-kind='" +
+      kind +
+      "' /><label for='adminOrderDoc-" +
+      kind +
+      "' class='btn btn-outline btn-sm'>" +
+      label +
+      "</label>";
+    return (
+      "<h3 class='admin-order-section-title'>Belgeler</h3>" +
+      (rows
+        ? "<ul class='admin-order-docs'>" + rows + "</ul>"
+        : "<p class='admin-field-help'>Bu siparişe henüz belge yüklenmedi.</p>") +
+      "<div class='admin-order-doc-upload'>" +
+      upload("invoice", "📎 Fatura yükle") +
+      (canReturn ? upload("return", "📎 İade belgesi yükle") : "") +
+      "</div>" +
+      "<p class='admin-field-help'>Faturayı BizimHesap'tan PDF olarak indirip buraya yükleyin; “Faturayı gör” onu yeni sekmede açar. " +
+      "PDF, PNG veya JPG · en fazla 10 MB. Belgeler yalnızca panelden açılır.</p>" +
+      "<p id='adminOrderDocNote' class='admin-note' hidden></p>"
+    );
+  }
+
+  function orderDocLinkHtml(doc, className, label) {
+    const href = String(doc.viewUrl || "");
+    if (!href.startsWith("/api/order-documents/")) return "";
+    return (
+      "<a class='" +
+      className +
+      "' href='" +
+      escapeAttr(href) +
+      "' target='_blank' rel='noopener noreferrer' data-od-doc-link>" +
+      escapeHtml(label) +
+      "</a>"
+    );
+  }
+
+  function orderDocLinkExpired(href) {
+    const exp = Number((/[?&]exp=(\d+)/.exec(href) || [])[1]);
+    return !exp || exp * 1000 - 30000 < Date.now();
+  }
+
   function invoiceIdentityText(c) {
     if (c.customerType === "kurumsal") {
       return ["Kurumsal", c.company, c.taxOffice ? "VD: " + c.taxOffice : "", c.taxId ? "VKN: " + c.taxId : ""]
@@ -4816,8 +4896,8 @@
             ? "Ödeme bankada iptal edildi; kesilmiş faturayı BizimHesap'ta iptal edin."
             : invoice.kind === "cancel_failed"
             ? "Ödeme bankada iptal edildi ama fatura otomatik iptal edilemedi. Faturayı BizimHesap'ta iptal edin."
-            : "Karta iade yapıldı; kesilmiş fatura için iade belgesi düzenlenmeli.",
-        actions: [["fatura", "Faturayı gör"]],
+            : "Karta iade yapıldı; kesilmiş fatura için iade belgesi düzenleyip buraya yükleyin.",
+        actions: [["fatura", invoice.kind === "needs_return_document" ? "İade belgesini yükle" : "Fatura sekmesi"]],
       };
     }
     if (order.paymentStatus === "refunded") {
@@ -4875,6 +4955,8 @@
 
   function orderDetailHeadHtml(order) {
     const step = orderNextStep(order);
+    const invoiceDoc = latestOrderDoc(order, "invoice");
+    const openInvoice = invoiceDoc ? orderDocLinkHtml(invoiceDoc, "btn btn-outline", "Faturayı gör ↗") : "";
     return (
       "<div class='admin-od-head" +
       (step.tone === "warn" ? " admin-od-head--warn" : "") +
@@ -4891,7 +4973,7 @@
       "<p class='admin-od-next'><strong>Sıradaki adım:</strong> " +
       escapeHtml(step.text) +
       "</p>" +
-      (step.actions.length
+      (step.actions.length || openInvoice
         ? "<div class='admin-od-head-actions'>" +
           step.actions
             .map(
@@ -4905,6 +4987,7 @@
                 "</button>"
             )
             .join("") +
+          openInvoice +
           "</div>"
         : "") +
       "</div>"
@@ -5137,7 +5220,7 @@
           (paid ? "" : "<p class='admin-field-help'>Ödeme alınmadığı için iptal/iade işlemi yok.</p>")) +
         orderBankTechHtml(order),
       fatura:
-        renderBizimHesapBlock(order) ||
+        renderBizimHesapBlock(order) + renderOrderDocsBlock(order) ||
         "<p class='admin-field-help'>Ödeme alınmadığı için fatura kesilmez.</p>",
       gecmis:
         "<h3 class='admin-order-section-title'>Müşteriye giden e-postalar</h3>" +
@@ -5241,8 +5324,84 @@
     bindOrderDetailActions(order.id);
   }
 
+  function bindOrderDocActions(orderId) {
+    const root = document.querySelector(".admin-od");
+    if (!root) return;
+    const docNote = (kind, text) => {
+      const el = document.getElementById("adminOrderDocNote");
+      if (el) {
+        el.hidden = false;
+        el.className = "admin-note " + kind;
+        el.textContent = text;
+      }
+      note(adminOrdersNote, kind, text);
+    };
+    const refresh = (patch) => {
+      const rowOrder = ordersCache.find((row) => row.id === orderId);
+      if (!rowOrder) return expandOrderRow(orderId, { forceFetch: true });
+      Object.assign(rowOrder, patch);
+      applyOrderPatchToUi(rowOrder, rowOrder._statusMails);
+    };
+    root.querySelectorAll("[data-od-doc-link]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (!orderDocLinkExpired(link.getAttribute("href"))) return;
+        event.preventDefault();
+        note(adminOrdersNote, "warn", "Belge bağlantısı yenilendi; tekrar tıklayın.");
+        expandOrderRow(orderId, { forceFetch: true });
+      });
+    });
+    root.querySelectorAll("[data-order-doc-kind]").forEach((input) => {
+      input.addEventListener("change", async () => {
+        const file = input.files && input.files[0];
+        input.value = "";
+        if (!file) return;
+        if (file.size > ORDER_DOC_MAX_BYTES) return docNote("err", "Dosya en fazla 10 MB olabilir.");
+        const kind = input.dataset.orderDocKind;
+        root.querySelectorAll("[data-order-doc-kind]").forEach((el) => (el.disabled = true));
+        docNote("", (ORDER_DOC_LABELS[kind] || "Belge") + " yükleniyor…");
+        try {
+          const data = await api("/api/admin/orders/" + encodeURIComponent(orderId) + "/documents", {
+            method: "POST",
+            body: JSON.stringify({ kind, filename: file.name, dataBase64: await readFileAsBase64(file) }),
+            timeout: 60000,
+          });
+          const msg =
+            (ORDER_DOC_LABELS[kind] || "Belge") +
+            " yüklendi." +
+            (data.followupResolved ? " “İade belgesi gerekli” uyarısı kapandı." : "");
+          refresh({ _documents: data.documents || [], _bizimhesap: data.integration || null });
+          note(adminOrdersNote, "ok", msg);
+        } catch (err) {
+          root.querySelectorAll("[data-order-doc-kind]").forEach((el) => (el.disabled = false));
+          docNote("err", err.message || "Belge yüklenemedi");
+        }
+      });
+    });
+    root.querySelectorAll("[data-od-delete-doc]").forEach((btn) => {
+      btn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (btn.disabled || !window.confirm("Bu belge panelden silinsin mi? Geri alınamaz.")) return;
+        btn.disabled = true;
+        try {
+          const data = await api(
+            "/api/admin/orders/" + encodeURIComponent(orderId) + "/documents/" + encodeURIComponent(btn.dataset.odDeleteDoc),
+            { method: "DELETE" }
+          );
+          refresh({ _documents: data.documents || [] });
+          note(adminOrdersNote, "ok", "Belge silindi.");
+        } catch (err) {
+          btn.disabled = false;
+          docNote("err", err.message || "Belge silinemedi");
+        }
+      });
+    });
+  }
+
   function bindOrderDetailActions(orderId) {
     bindOrderDetailTabs(orderId);
+    bindOrderDocActions(orderId);
     const saveBtn = document.getElementById("adminOrderSaveStatus");
     if (saveBtn) {
       saveBtn.addEventListener("click", async (event) => {
@@ -5676,6 +5835,7 @@
       order._bizimhesap = data.bizimhesap || null;
       order._bizimhesapConfigured = data.bizimhesapConfigured === true;
       order.invoiceUntracked = data.invoiceUntracked === true;
+      order._documents = Array.isArray(data.documents) ? data.documents : [];
       order._bankReversal = data.bankReversal || null;
       order._bankInquiryAvailable = data.bankInquiryAvailable === true;
       order._detailLoaded = true;
