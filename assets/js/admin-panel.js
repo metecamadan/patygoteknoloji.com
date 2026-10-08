@@ -1119,8 +1119,8 @@
   }
 
   function alertRequestStatusLabel(kind, request) {
-    if (kind === "stock") return request.status === "notified" ? "Bildirildi" : "Bekliyor";
-    return "Takipte";
+    if (request.status === "notified") return "Bildirildi";
+    return kind === "stock" ? "Bekliyor" : "Takipte";
   }
 
   function renderAlertRequests(kind, products) {
@@ -1147,7 +1147,10 @@
               "<tr>" +
               "<td><a href='mailto:" + escapeAttr(request.email) + "'>" + escapeHtml(request.email) + "</a></td>" +
               "<td>" + escapeHtml(formatOrderDate(request.createdAt)) + "</td>" +
-              (kind === "price" ? "<td>" + escapeHtml(moneyTr(request.basePrice)) + "</td>" : "") +
+              (kind === "price"
+                ? "<td>" + escapeHtml(moneyTr(request.basePrice)) + "</td>" +
+                  "<td>" + (request.targetPrice ? escapeHtml(moneyTr(request.targetPrice)) : "%2 düşüş") + "</td>"
+                : "") +
               "<td><span class='admin-alert-status admin-alert-status--" + escapeAttr(request.status) + "'>" +
               escapeHtml(alertRequestStatusLabel(kind, request)) +
               "</span></td>" +
@@ -1170,7 +1173,7 @@
           "</header>" +
           "<div class='admin-table-wrap'><table class='admin-table'><thead><tr>" +
           "<th scope='col'>E-posta</th><th scope='col'>Talep tarihi</th>" +
-          (kind === "price" ? "<th scope='col'>Talepteki fiyat</th>" : "") +
+          (kind === "price" ? "<th scope='col'>Talepteki fiyat</th><th scope='col'>Hedef fiyat</th>" : "") +
           "<th scope='col'>Durum</th><th scope='col'>Bildirim</th><th scope='col'>İşlem</th>" +
           "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
           "</article>"

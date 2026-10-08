@@ -1066,6 +1066,36 @@
       body.appendChild(desc);
     }
 
+    const attachMedia = () => {
+      const visualWrap = document.createElement("a");
+      visualWrap.className = "product-card-media";
+      visualWrap.href = window.PatygoCatalog.productHref(product);
+      visualWrap.addEventListener("pointerenter", () => prefetchProductDetail(product.id), {
+        once: true,
+      });
+      visualWrap.appendChild(visual);
+      article.appendChild(visualWrap);
+      article.appendChild(body);
+      return article;
+    };
+
+    if (product.soldOut === true) {
+      article.classList.add("product-card--soldout");
+      const soldOutPrice = document.createElement("div");
+      soldOutPrice.className = "price price--soldout";
+      soldOutPrice.textContent = "Tükendi";
+      const notify = document.createElement("a");
+      notify.className = "btn btn-outline btn-sm";
+      notify.href = window.PatygoCatalog.productHref(product);
+      notify.textContent = "Stoğa gelince haber ver";
+      const soldOutActions = document.createElement("div");
+      soldOutActions.className = "actions actions--cart-only";
+      soldOutActions.appendChild(notify);
+      body.appendChild(soldOutPrice);
+      body.appendChild(soldOutActions);
+      return attachMedia();
+    }
+
     const price = document.createElement("div");
     price.className = "price";
     const discount = window.PatygoCatalog.discountInfo(product);
@@ -1175,16 +1205,7 @@
         .catch(() => {});
     }
     body.appendChild(actions);
-    const visualWrap = document.createElement("a");
-    visualWrap.className = "product-card-media";
-    visualWrap.href = window.PatygoCatalog.productHref(product);
-    visualWrap.addEventListener("pointerenter", () => prefetchProductDetail(product.id), {
-      once: true,
-    });
-    visualWrap.appendChild(visual);
-    article.appendChild(visualWrap);
-    article.appendChild(body);
-    return article;
+    return attachMedia();
   }
 
   function bindTabs(root) {

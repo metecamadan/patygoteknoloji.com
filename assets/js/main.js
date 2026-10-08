@@ -418,8 +418,8 @@
           name.className = "search-suggest-name";
           name.textContent = product.name || "";
           const price = document.createElement("span");
-          price.className = "search-suggest-price";
-          price.textContent = suggestPrice(product);
+          price.className = "search-suggest-price" + (product.soldOut === true ? " suggest-price--soldout" : "");
+          price.textContent = product.soldOut === true ? "Tükendi" : suggestPrice(product);
           link.append(name, price);
         });
       });

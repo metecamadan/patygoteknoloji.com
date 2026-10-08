@@ -608,9 +608,10 @@
     price: {
       summary: "Fiyatı düşünce haber ver",
       submit: "Alarm kur",
-      consent: "Bu ürünün fiyatı düştüğünde e-posta almayı kabul ediyorum.",
-      done: "Talebinizi aldık. Fiyatı düştüğünde sizi e-postayla bilgilendireceğiz.",
-      already: "Bu ürün için fiyat alarmınız zaten açık. Fiyatı düştüğünde sizi e-postayla bilgilendireceğiz.",
+      consent: "Bu ürünün fiyatı hedefime indiğinde e-posta almayı kabul ediyorum.",
+      done: "Talebinizi aldık. Fiyat {target} veya altına indiğinde sizi bir kez e-postayla bilgilendireceğiz.",
+      already: "Bu ürün için fiyat alarmınız zaten açık. Fiyat {target} veya altına indiğinde sizi e-postayla bilgilendireceğiz.",
+      updated: "Hedef fiyatınız {target} olarak güncellendi.",
       doneSummary: "Fiyat alarmı kuruldu",
       failed: "Fiyat alarmı kurulamadı.",
     },
@@ -625,11 +626,28 @@
     },
   };
 
-  /** kind "price": in-stock product, mails on a price drop; "stock": sold-out product, mails once when back. */
+  /** Default target ~5% under the current price, whole lira. */
+  function suggestedTargetPrice(current) {
+    const target = Math.floor(current * 0.95);
+    return target > 0 && target < current ? target : Math.round((current - 0.01) * 100) / 100;
+  }
+
+  /** kind "price": in-stock product, mails once at the customer's target price; "stock": sold-out product, mails once when back. */
   function buildPriceAlert(product, kind) {
     const alertKind = kind === "stock" ? "stock" : "price";
     const copy = ALERT_COPY[alertKind];
     const inputId = alertKind === "stock" ? "stockAlertEmail" : "priceAlertEmail";
+    const currentPrice = window.PatygoCatalog.priceInclVat(product);
+    const targetField =
+      alertKind === "price"
+        ? '<label for="priceAlertTarget">Hedef fiyat (KDV dahil, ₺)</label>' +
+          '<div class="price-alert-row price-alert-row--target"><input type="number" id="priceAlertTarget" name="target" min="1" step="0.01" inputmode="decimal" value="' +
+          suggestedTargetPrice(currentPrice) +
+          '" required /></div>' +
+          '<p class="price-alert-hint">Şu anki fiyat: ' +
+          window.PatygoCatalog.formatPrice(currentPrice) +
+          ". Fiyat bu tutara veya altına inince bir kez haber veririz.</p>"
+        : "";
     const box = document.createElement("details");
     box.className = "price-alert" + (alertKind === "stock" ? " price-alert--stock" : "");
     if (alertKind === "stock") box.open = true;
@@ -638,6 +656,7 @@
       copy.summary +
       "</summary>" +
       '<form class="price-alert-form" novalidate>' +
+      targetField +
       '<label for="' + inputId + '">E-posta adresiniz</label>' +
       '<div class="price-alert-row"><input type="email" id="' + inputId + '" name="email" autocomplete="email" inputmode="email" maxlength="160" placeholder="ornek@eposta.com" required />' +
       '<button type="submit" class="btn ' + (alertKind === "stock" ? "btn-primary" : "btn-outline") + ' btn-sm">' + copy.submit + "</button></div>" +
@@ -657,21 +676,34 @@
       ev.preventDefault();
       const email = form.elements.email.value.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return show("err", "Geçerli bir e-posta girin.");
+      let targetPrice = null;
+      if (alertKind === "price") {
+        targetPrice = Math.round(Number(String(form.elements.target.value).replace(",", ".")) * 100) / 100;
+        if (!(targetPrice > 0)) return show("err", "Hedef fiyatı girin.");
+        if (targetPrice >= currentPrice) {
+          return show("err", "Hedef fiyat şu anki fiyattan (" + window.PatygoCatalog.formatPrice(currentPrice) + ") düşük olmalı.");
+        }
+      }
       if (!form.elements.consent.checked) return show("err", "Bildirim almak için onay kutusunu işaretleyin.");
       const btn = form.querySelector("button");
       btn.disabled = true;
       try {
+        const payload = { productId: product.id, email, consent: true, kind: alertKind };
+        if (targetPrice) payload.targetPrice = targetPrice;
         const res = await fetch("/api/price-alerts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productId: product.id, email, consent: true, kind: alertKind }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) throw new Error(data.error || copy.failed);
         const done = document.createElement("p");
         done.className = "price-alert-done";
         done.setAttribute("role", "status");
-        done.textContent = data.state === "active" ? copy.already : copy.done;
+        const message =
+          data.state === "updated" && copy.updated ? copy.updated : data.state === "active" ? copy.already : copy.done;
+        const targetText = window.PatygoCatalog.formatPrice(Number(data.targetPrice) || targetPrice || 0);
+        done.textContent = message.replace("{target}", targetText);
         box.querySelector("summary").lastChild.textContent = copy.doneSummary;
         form.replaceWith(done);
       } catch (err) {
@@ -695,7 +727,7 @@
 
     document.title = product.name + (soldOut ? " | Tükendi" : "") + " | Patygo Teknoloji";
     upsertCanonical(product.urlPath || location.pathname);
-    setRobotsNoindex(soldOut);
+    setRobotsNoindex(false);
     const metaDesc = document.querySelector('meta[name="description"]');
     const seoBlurb = String(product.description || product.details || product.name)
       .replace(/\s+/g, " ")
@@ -816,6 +848,13 @@
     if (soldOut) {
       price.classList.add("detail-soldout-label");
       price.textContent = "Tükendi";
+      const lastPrice = window.PatygoCatalog.priceInclVat(product);
+      if (lastPrice > 0) {
+        const last = document.createElement("small");
+        last.className = "detail-last-price";
+        last.textContent = "Son satış fiyatı: " + window.PatygoCatalog.formatPrice(lastPrice) + " (KDV dahil)";
+        price.appendChild(last);
+      }
     } else {
       price.innerHTML =
         window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
@@ -1010,13 +1049,12 @@
         url: pageUrl,
         priceCurrency: "TRY",
         price: String(price),
-        availability: "https://schema.org/InStock",
+        availability: product.soldOut === true ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
         itemCondition: "https://schema.org/NewCondition",
       },
     };
     if (product.soldOut === true) {
-      const stale = document.getElementById("product-jsonld");
-      if (stale) stale.remove();
+      upsertJsonLd("product-jsonld", productLd);
     } else {
       upsertJsonLd("product-jsonld", productLd);
       loadReviews(product.id).then((data) => {

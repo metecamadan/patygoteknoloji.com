@@ -16,7 +16,8 @@ Site yalnızca gerçek tedarikçi ürünleriyle durur. Demo, ops paneli ve test 
 - Agent Ops paneli, ingest, Cursor hook günlükleri yok. Geri ekleme.
 - Demo `products.json` tohumu, sahte vitrin kartı, “sunucu online” self-report yok.
 - Stok 0 veya son 7 günde stok okunamadıysa ürün sitede ve Akakçe XML’de durmaz.
-  - İstisna (kullanıcı kararı, 8 Eki 2026): daha önce yayınlanmış ürünün sayfası açık kalır; fiyat/sepet yerine “Tükendi” + “Stoğa gelince haber ver” formu. Sayfa `noindex`; listede, aramada, sitemap’te, Akakçe’de ve ödemede yok.
+  - İstisna (kullanıcı kararı, 8 Eki 2026): daha önce yayınlanmış ürünün sayfası açık ve indekslenebilir kalır (canonical + JSON-LD `OutOfStock`, son satış fiyatı); sepet yerine “Tükendi” + “Stoğa gelince haber ver” formu. Arama sonuçlarında stoktakilerden sonra “Tükendi” rozetiyle çıkar; kategori listesinde, sitemap’te, Akakçe’de, `?ids=` ve ödemede yok.
+ - Tedarikçi XML’inden tamamen kalkan ürün linki, link segmentinin kategorisine 301 olur (`.runtime/product-segment-categories.json`); kategori yoksa 404.
 - Ana kategoriler üst menüde; alt kategoriler hover/tıkla.
 - XML görselleri tam boy; açıklama XML’den (kısa + detay).
 

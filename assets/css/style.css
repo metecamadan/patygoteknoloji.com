@@ -3199,6 +3199,8 @@ h1, h2, h3, h4 {
   font: inherit;
 }
 .price-alert-row .btn { min-height: 44px; white-space: nowrap; }
+.price-alert-row--target input { max-width: 200px; }
+.price-alert-hint { margin: 6px 0 12px; font-size: 0.8rem; color: var(--muted); }
 .price-alert-consent {
   display: flex;
   gap: 8px;
@@ -3217,6 +3219,10 @@ h1, h2, h3, h4 {
 .price-alert--stock { border-color: var(--brand); }
 .price-alert--stock summary { font-weight: 700; }
 .detail-info .price.detail-soldout-label { color: #b91c1c; }
+.detail-last-price { display: block; margin-top: 4px; font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+.product-card .price.price--soldout { color: #b91c1c; }
+.product-card--soldout .visual img { opacity: 0.6; }
+.suggest-price--soldout { color: #b91c1c; }
 .site-flash {
   position: relative;
   max-width: 1180px;

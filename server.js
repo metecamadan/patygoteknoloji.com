@@ -169,6 +169,7 @@ const {
   renderCategoryHtml,
   renderMissingCategoryHtml,
   withListingPage,
+  findCategoryNames,
 } = require("./lib/product-ssr");
 
 const ROOT = path.resolve(__dirname);
@@ -1025,6 +1026,9 @@ function soldOutIndex() {
   if (soldOutCatalogMemo.index) return soldOutCatalogMemo.index;
   const products = mergeCatalogProducts([], supplierManager.listProducts(), soldOutCatalogOptions());
   const index = buildStorefrontIndex(products, catalogImageContext());
+  index.compactAll.forEach((item) => {
+    item.soldOut = true;
+  });
   index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   soldOutCatalogMemo.index = index;
   return index;
@@ -1050,6 +1054,55 @@ function lookupSoldOutProductByPath(segment, slug) {
   const product = Array.isArray(result.products) ? result.products[0] : null;
   if (!product) return null;
   return Object.assign(attachProductUrlFields(product, index.routeIndex), { soldOut: true });
+}
+
+// Product URLs start with their category segment (/intel-islemci/<slug>). Segments seen in
+// the storefront are kept on disk so links of products dropped from the supplier XML still
+// resolve to their category after the last product of that segment is gone.
+const SEGMENT_CATEGORY_FILE = path.join(DATA_ROOT, ".runtime", "product-segment-categories.json");
+const segmentCategoryMemo = { index: null, map: null };
+
+function productSegmentCategories() {
+  const live = storefrontIndex(false);
+  if (segmentCategoryMemo.index === live && segmentCategoryMemo.map) return segmentCategoryMemo.map;
+  let saved = {};
+  try {
+    saved = JSON.parse(fs.readFileSync(SEGMENT_CATEGORY_FILE, "utf8")) || {};
+  } catch (_) {}
+  const counts = Object.create(null);
+  live.compactAll.concat(soldOutIndex().compactAll).forEach((item) => {
+    const segment = String((item && item.urlPath) || "").split("/")[1];
+    if (!segment || !item.category) return;
+    const target = categoryQueryToPath(
+      new URLSearchParams(
+        Object.assign({ kategori: item.category }, item.mid ? { ara: item.mid } : {}, item.alt ? { alt: item.alt } : {})
+      )
+    );
+    if (!target) return;
+    const bucket = counts[segment] || (counts[segment] = Object.create(null));
+    bucket[target] = (bucket[target] || 0) + 1;
+  });
+  const map = Object.assign({}, saved);
+  Object.keys(counts).forEach((segment) => {
+    map[segment] = Object.entries(counts[segment]).sort((a, b) => b[1] - a[1])[0][0];
+  });
+  if (JSON.stringify(map) !== JSON.stringify(saved)) {
+    try {
+      fs.mkdirSync(path.dirname(SEGMENT_CATEGORY_FILE), { recursive: true });
+      atomicWriteJson(SEGMENT_CATEGORY_FILE, map);
+    } catch (_) {}
+  }
+  segmentCategoryMemo.index = live;
+  segmentCategoryMemo.map = map;
+  return map;
+}
+
+/** Category page for a product URL that is neither on sale nor kept as sold out; "" when unknown. */
+function goneProductCategoryPath(segment) {
+  const target = productSegmentCategories()[String(segment || "").toLowerCase()];
+  if (!target) return "";
+  const pathCats = parseUrunlerPathname(target);
+  return pathCats && findCategoryNames(categoryStore.list(), pathCats) ? target : "";
 }
 
 function requestedCatalogIds(productId, idsRaw) {
@@ -2027,6 +2080,18 @@ async function handleApi(req, res, urlPath) {
         }
         return json(res, 404, { ok: false, error: "Bu ürün şu anda satışta değil." });
       }
+      let targetPrice = null;
+      if (kind === "price") {
+        targetPrice = Math.round(Number(body.targetPrice) * 100) / 100;
+        if (!(targetPrice > 0)) return json(res, 422, { ok: false, error: "Hedef fiyatı girin." });
+        if (targetPrice >= product.priceIncl) {
+          return json(res, 422, {
+            ok: false,
+            error: "Hedef fiyat şu anki fiyattan düşük olmalı.",
+            priceIncl: product.priceIncl,
+          });
+        }
+      }
       if (!smtpConfigured(process.env)) {
         return json(res, 503, { ok: false, error: "E-posta bildirimi şu anda kullanılamıyor." });
       }
@@ -2036,8 +2101,11 @@ async function handleApi(req, res, urlPath) {
         productId: body.productId,
         productName: product.name,
         price: product.priceIncl,
+        targetPrice,
       });
-      if (state === "active") return json(res, 200, { ok: true, state: "active", kind });
+      if (state === "active" || state === "updated") {
+        return json(res, 200, { ok: true, state, kind, targetPrice: alert.targetPrice });
+      }
       try {
         consentStore.record({
           subjectType: kind === "stock" ? "stock_alert" : "price_alert",
@@ -2055,7 +2123,7 @@ async function handleApi(req, res, urlPath) {
         priceAlertStore.unsubscribe(alert.token);
         throw new Error("Bilgilendirme e-postası gönderilemedi; lütfen biraz sonra tekrar deneyin.");
       }
-      return json(res, 200, { ok: true, state: "created", kind });
+      return json(res, 200, { ok: true, state: "created", kind, targetPrice: alert.targetPrice });
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Fiyat alarmı kurulamadı." });
     }
@@ -2576,6 +2644,7 @@ async function handleApi(req, res, urlPath) {
         );
       }
     }
+    const searchTerm = String(requestUrl.searchParams.get("q") || "").trim();
     const queried = queryPublicCatalogIndexed(storefrontIndex(false), {
       id: requestUrl.searchParams.get("id") || "",
       ids: requestUrl.searchParams.get("ids") || "",
@@ -2592,7 +2661,7 @@ async function handleApi(req, res, urlPath) {
       limit: requestUrl.searchParams.get("limit") || 48,
       sort,
       popularity: sort === "popular" ? popularProductScores() : undefined,
-    });
+    }, { tailIndex: searchTerm ? soldOutIndex() : null });
     return json(
       res,
       200,
@@ -2904,6 +2973,7 @@ async function handleApi(req, res, urlPath) {
             email: alert.email,
             createdAt: alert.createdAt,
             basePrice: alert.basePrice,
+            targetPrice: alert.targetPrice,
             status: alert.status,
             notifyCount: alert.notifyCount,
             lastNotifiedAt: alert.lastNotifiedAt,
@@ -4133,6 +4203,19 @@ function permanentRedirect(res, location) {
   res.end("Moved Permanently");
 }
 
+/** Short cache: the product may come back in a later supplier XML and must win over the redirect. */
+function goneProductRedirect(res, location) {
+  res.writeHead(
+    301,
+    securityHeaders({
+      Location: location,
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    })
+  );
+  res.end("Moved Permanently");
+}
+
 function serveNotFound(res, method) {
   const notFound = path.join(ROOT, "404.html");
   fs.readFile(notFound, (e, page) => {
@@ -4317,7 +4400,10 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
   if (!page) {
     const found = lookupPublicProductsByPath(key);
     const product = found && Array.isArray(found.products) ? found.products[0] : null;
-    page = !product
+    const gonePath = product ? "" : goneProductCategoryPath(key.split("/")[1]);
+    page = gonePath
+      ? { status: 301, location: gonePath }
+      : !product
       ? { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) }
       : product.soldOut
         ? { status: 200, html: renderSoldOutProductHtml(productHtmlCache.shell, product) }
@@ -4325,6 +4411,7 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
     if (productHtmlCache.pages.size >= PRODUCT_HTML_CACHE_MAX) productHtmlCache.pages.clear();
     productHtmlCache.pages.set(key, page);
   }
+  if (page.location) return goneProductRedirect(res, page.location);
   res.writeHead(
     page.status,
     securityHeaders({
@@ -4615,6 +4702,8 @@ const server = http.createServer(async (req, res) => {
       productRoute.slug
     );
     if (!productId && !lookupSoldOutProductByPath(productRoute.segment, productRoute.slug)) {
+      const gonePath = goneProductCategoryPath(productRoute.segment);
+      if (gonePath) return goneProductRedirect(res, gonePath);
       return serveNotFound(res, req.method);
     }
     if (htmlPath && fs.existsSync(htmlPath)) {
