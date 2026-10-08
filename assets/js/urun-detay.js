@@ -853,7 +853,6 @@
       actions.appendChild(stockRow);
       const soldOutTrust = document.createElement("ul");
       soldOutTrust.className = "detail-trust";
-      soldOutTrust.innerHTML = "<li>Şu anda stokta yok · sipariş alınmıyor</li>";
       const soldOutAsk = el("li", "", "Sorunuz mu var? ");
       const soldOutAskLink = el("a", "", "WhatsApp");
       soldOutAskLink.href =
