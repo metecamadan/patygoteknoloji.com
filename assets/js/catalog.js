@@ -1164,6 +1164,16 @@
     }
     body.appendChild(price);
     if (shippingEl) body.appendChild(shippingEl);
+    else if (window.PatygoShipping && !window.PatygoShipping.settings && typeof window.PatygoShipping.load === "function") {
+      // Sliders and slow connections render before /api/shipping answers; fill the line in when it does.
+      window.PatygoShipping.load()
+        .then(() => {
+          if (body.querySelector(".product-shipping")) return;
+          const late = window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product));
+          if (late) body.insertBefore(late, actions);
+        })
+        .catch(() => {});
+    }
     body.appendChild(actions);
     const visualWrap = document.createElement("a");
     visualWrap.className = "product-card-media";

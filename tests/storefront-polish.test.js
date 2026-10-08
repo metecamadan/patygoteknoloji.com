@@ -92,6 +92,18 @@ test("listing cards show the shipping fee, not the free-shipping threshold", () 
   assert.match(read("assets/js/urun-detay.js"), /shipInfo\.thresholdHint \? shipInfo\.thresholdHint \+ "\." : null/);
 });
 
+test("similar-products and cart-suggestion sliders reuse the category card, shipping line included", () => {
+  const catalog = read("assets/js/catalog.js");
+  assert.match(
+    catalog,
+    /else if \(window\.PatygoShipping && !window\.PatygoShipping\.settings[\s\S]*?window\.PatygoShipping\.load\(\)[\s\S]*?body\.querySelector\("\.product-shipping"\)[\s\S]*?body\.insertBefore\(late, actions\)/,
+    "kargo ayarı kart çizildikten sonra gelirse satır sonradan eklenir"
+  );
+  for (const file of ["assets/js/urun-detay.js", "assets/js/sepet.js"]) {
+    assert.match(read(file), /PatygoCatalog\.makeCard\(item, index, \{ compactListing: true \}\)/, file);
+  }
+});
+
 test("category pages render skeleton cards and hold the generic heading until resolved", () => {
   const html = read("urunler.html");
   assert.match(html, /catalog-pending\.js/);
