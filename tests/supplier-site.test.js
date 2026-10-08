@@ -225,6 +225,84 @@ test("panel-chosen category survives XML sync; publish only activates it", () =>
   }
 });
 
+test("XML sub-category without a counterpart is not dropped into a sibling leaf", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-sibling-"));
+  const store = createCategoryStore(root);
+  const xml = (main, mid, sub, name) => ({
+    xmlMainCategory: main,
+    xmlMidCategory: mid,
+    xmlSubCategory: sub,
+    name: name || sub,
+  });
+  const toner = "TÜKETİM ÜRÜNLERİ";
+  const orj = "Yazıcı Tüketim Ürünleri (Orj.)";
+  try {
+    const tree = store.list();
+    const ribbon = suggestSiteCategory(xml(toner, orj, "Şeritler", "Epson ERC-38 Şerit"), tree);
+    assert.deepEqual(ribbon, {
+      siteParent: "kartus-toner",
+      siteMid: "yazici-tuketim-urunleri-orj",
+      siteChild: "seritler",
+    });
+    assert.equal(suggestSiteCategory(xml(toner, orj, "Transfer Roller"), tree), null);
+    assert.equal(
+      suggestSiteCategory(xml("TÜKETİCİ ELEKTRONİĞİ", "Bilgisayar Aksesuarları", "Gamepad"), tree),
+      null,
+      "gamepads are not mouse pads"
+    );
+    assert.equal(
+      suggestSiteCategory(xml("OEM & ÇEVRE BİRİMLERİ", "Monitörler", "LED Monitörler"), tree).siteChild,
+      "monitorler",
+      "a shared word still matches"
+    );
+    assert.equal(
+      suggestSiteCategory(xml("OEM & ÇEVRE BİRİMLERİ", "Harddiskler", "Notebook Harddiski - SATA"), tree).siteChild,
+      "harddiskler",
+      "harddiski / harddiskler share a stem; the drive is not a caddy"
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("sync withdraws automatic placements the mapper no longer suggests", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-stale-"));
+  const store = createCategoryStore(root);
+  const gamepad = (sku, extra) =>
+    Object.assign(
+      {
+        supplierSlot: "supplier-1",
+        supplierSku: sku,
+        xmlMainCategory: "TÜKETİCİ ELEKTRONİĞİ",
+        xmlMidCategory: "Bilgisayar Aksesuarları",
+        xmlSubCategory: "Gamepad",
+        siteParent: "bilgisayar-tablet",
+        siteMid: "bilgisayar-aksesuarlari",
+        siteChild: "mouse-pad",
+        siteCategoryAssigned: true,
+        active: true,
+      },
+      extra || {}
+    );
+  const updates = [];
+  const manager = {
+    listProducts: () => [
+      gamepad("AUTO"),
+      gamepad("PANEL", { siteCategoryManual: true }),
+      gamepad("OLD", { siteParent: "tuketici-elektronigi", siteMid: "", siteChild: "oyun", siteCategoryAssigned: false }),
+    ],
+    updateProducts: (rows) => updates.push(...rows),
+  };
+  try {
+    syncXmlSiteCategories({ manager, categoryStore: store, slotId: "supplier-1" });
+    assert.deepEqual(updates, [
+      { supplierSlot: "supplier-1", supplierSku: "AUTO", siteParent: "", siteMid: "", siteChild: "" },
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("panel PATCH marks category edits as manual unless explicitly released", () => {
   assert.equal(
     markPanelCategoryChoice({ supplierSku: "A", siteParent: "x", siteMid: "y", siteChild: "z" })
