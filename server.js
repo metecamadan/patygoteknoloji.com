@@ -99,7 +99,7 @@ const {
   normalizeCode: normalizeCouponCode,
 } = require("./lib/coupons");
 const { createPriceAlertStore } = require("./lib/price-alerts");
-const { buildConfirmMail: buildPriceAlertConfirmMail, buildNotifyMail: buildPriceAlertNotifyMail } = require("./lib/price-alert-mail");
+const { buildReceivedMail: buildPriceAlertReceivedMail, buildNotifyMail: buildPriceAlertNotifyMail } = require("./lib/price-alert-mail");
 const { createReviewStore, reviewEligibility, REVIEW_STATUSES } = require("./lib/reviews");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
@@ -1972,12 +1972,17 @@ async function handleApi(req, res, urlPath) {
           subjectType: "price_alert",
           subjectRef: String(alert.id),
           purpose: "price_alert_email",
-          policyVersion: "2026-10-04",
+          policyVersion: "2026-10-08",
           evidence: { ip, email: alert.email, productId: alert.productId, granted: true },
         });
       } catch (_) {}
-      await deliverSimpleMail(buildPriceAlertConfirmMail(alert));
-      return json(res, 200, { ok: true, state: "pending" });
+      try {
+        await deliverSimpleMail(buildPriceAlertReceivedMail(alert, { productPath: product.urlPath }));
+      } catch (err) {
+        priceAlertStore.unsubscribe(alert.token);
+        throw new Error("Bilgilendirme e-postası gönderilemedi; lütfen biraz sonra tekrar deneyin.");
+      }
+      return json(res, 200, { ok: true, state: "created" });
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Fiyat alarmı kurulamadı." });
     }

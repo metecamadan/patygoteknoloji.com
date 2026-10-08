@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { decideAlert, createPriceAlertStore, MAX_ACTIVE_PER_EMAIL } = require("../lib/price-alerts");
-const { buildConfirmMail, buildNotifyMail } = require("../lib/price-alert-mail");
+const { buildReceivedMail, buildNotifyMail } = require("../lib/price-alert-mail");
 const { getDb, resetDbForTests } = require("../lib/db");
 const { spawnTestServer } = require("./helpers/spawn-server");
 
@@ -24,29 +24,37 @@ test("decideAlert mails on a 2% drop, on return to sale, and remembers unavailab
   assert.deepEqual(decideAlert(gone, null), { kind: null, basePrice: 1000, available: false });
 });
 
-test("price alert store: double opt-in, per-address cap, retry until mailed, purge", () => {
+test("price alert store: active on request, per-address cap, retry until mailed, purge", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-alert-"));
   resetDbForTests();
   let clock = Date.parse("2026-10-04T09:00:00Z");
-  const store = createPriceAlertStore(getDb(dir), { now: () => clock });
+  const db = getDb(dir);
+  const store = createPriceAlertStore(db, { now: () => clock });
 
   const first = store.subscribe({ email: " Ali@Example.com ", productId: "p1", productName: "Laptop", price: 1000 });
   assert.equal(first.state, "created");
   assert.equal(first.alert.email, "ali@example.com");
-  assert.equal(first.alert.status, "pending");
+  assert.equal(first.alert.status, "active", "talep onay beklemeden başlar");
+  assert.ok(first.alert.confirmedAt);
   assert.match(first.alert.token, /^[a-f0-9]{48}$/);
-  assert.equal(store.subscribe({ email: "ali@example.com", productId: "p1", price: 990 }).state, "pending");
-  assert.equal(store.evaluate(() => ({ priceIncl: 500 })).length, 0, "onaysız alarm bildirim almaz");
-
-  assert.equal(store.confirm(first.alert.token).status, "active");
   assert.equal(store.subscribe({ email: "ali@example.com", productId: "p1", price: 990 }).state, "active");
+  assert.equal(store.get(first.alert.token).basePrice, 1000, "tekrar talep taban fiyatı değiştirmez");
   assert.deepEqual(store.summary(), { pending: 0, active: 1 });
+
+  db.prepare(
+    "INSERT INTO price_alerts (token, email, product_id, base_price, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)"
+  ).run("b".repeat(48), "eski-onay@example.com", "p1", 1200, new Date(clock).toISOString());
+  const legacy = store.subscribe({ email: "eski-onay@example.com", productId: "p1", productName: "Laptop", price: 1000 });
+  assert.equal(legacy.state, "created", "eski onay bekleyen talep yeniden istenince başlar");
+  assert.equal(legacy.alert.status, "active");
+  assert.equal(legacy.alert.basePrice, 1000);
+  assert.equal(store.unsubscribe(legacy.alert.token).email, "eski-onay@example.com");
 
   let product = { priceIncl: 950, name: "Laptop", urlPath: "/bilgisayar/laptop" };
   let due = store.evaluate(() => product);
   assert.equal(due.length, 1);
   assert.equal(due[0].kind, "drop");
-  assert.equal(due[0].previousPrice, 990);
+  assert.equal(due[0].previousPrice, 1000);
   assert.equal(store.evaluate(() => product).length, 1, "gönderilmeyen bildirim bir sonraki turda tekrar denenir");
   store.markNotified(due[0]);
   assert.equal(store.evaluate(() => product).length, 0);
@@ -61,20 +69,21 @@ test("price alert store: double opt-in, per-address cap, retry until mailed, pur
   assert.equal(store.get(first.alert.token).available, true);
 
   for (let i = 0; i < MAX_ACTIVE_PER_EMAIL; i += 1) {
-    const sub = store.subscribe({ email: "cok@example.com", productId: "x" + i, price: 10 });
-    store.confirm(sub.alert.token);
+    store.subscribe({ email: "cok@example.com", productId: "x" + i, price: 10 });
   }
   assert.throws(
     () => store.subscribe({ email: "cok@example.com", productId: "fazla", price: 10 }),
     /en fazla 20 ürün/
   );
 
-  const stale = store.subscribe({ email: "eski@example.com", productId: "p1", price: 10 });
+  db.prepare(
+    "INSERT INTO price_alerts (token, email, product_id, base_price, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)"
+  ).run("c".repeat(48), "eski@example.com", "p1", 10, new Date(clock).toISOString());
   clock += 8 * DAY;
-  assert.equal(store.purge(), 1, "onaylanmayan talep 7 gün sonra silinir");
-  assert.equal(store.get(stale.alert.token), null);
+  assert.equal(store.purge(), 1, "eski onay bekleyen talep 7 gün sonra silinir");
+  assert.equal(store.get("c".repeat(48)), null);
   clock += 200 * DAY;
-  assert.ok(store.purge() >= 21, "onaylı alarmlar 180 gün sonra silinir");
+  assert.ok(store.purge() >= 21, "alarmlar 180 gün sonra silinir");
 
   const gone = store.subscribe({ email: "ali@example.com", productId: "p2", price: 10 });
   assert.equal(store.unsubscribe(gone.alert.token).productId, "p2");
@@ -83,7 +92,7 @@ test("price alert store: double opt-in, per-address cap, retry until mailed, pur
   resetDbForTests();
 });
 
-test("price alert mails link the domain, confirm token and one-click unsubscribe", () => {
+test("price alert mails: received notice without confirmation step, one-click cancel on the domain", () => {
   const alert = {
     id: 1,
     token: "a".repeat(48),
@@ -92,11 +101,15 @@ test("price alert mails link the domain, confirm token and one-click unsubscribe
     basePrice: 1000,
   };
   const env = { SITE_BASE_URL: "http://127.0.0.1:5173" };
-  const confirm = buildConfirmMail(alert, { env });
-  assert.equal(confirm.to, "ali@example.com");
-  assert.match(confirm.text, /https:\/\/patygoteknoloji\.com\/api\/price-alerts\/confirm\?token=a{48}/);
-  assert.match(confirm.text, /₺1\.000,00/);
-  assert.match(confirm.html, /Alarmı onayla/);
+  const received = buildReceivedMail(alert, { env, productPath: "/bilgisayar/lenovo-laptop" });
+  assert.equal(received.to, "ali@example.com");
+  assert.equal(received.subject, "Fiyat alarmı talebinizi aldık");
+  assert.match(received.text, /talebinizi aldık\. Şu anki fiyat: ₺1\.000,00/);
+  assert.match(received.text, /sizi e-postayla bilgilendireceğiz/);
+  assert.match(received.text, /https:\/\/patygoteknoloji\.com\/bilgisayar\/lenovo-laptop/);
+  assert.match(received.text, /https:\/\/patygoteknoloji\.com\/api\/price-alerts\/unsubscribe\?token=a{48}/);
+  assert.doesNotMatch(received.text + received.html, /onaylay|confirm\?token/i, "onay istenmez");
+  assert.match(received.html, /alarmı iptal edin/);
 
   const notify = buildNotifyMail(
     { alert, product: { priceIncl: 900, name: "Lenovo Laptop", urlPath: "/bilgisayar/lenovo-laptop" }, kind: "drop", previousPrice: 1000 },
@@ -121,9 +134,59 @@ test("product page offers the alert form with consent; KVKK lists purpose and re
   assert.match(detail, /fetch\("\/api\/price-alerts"/);
   assert.match(detail, /consent: true/);
   assert.match(detail, /name="consent" required/);
+  assert.match(detail, /form\.replaceWith\(done\)/, "talep alınınca form kapanır");
+  assert.match(detail, /Talebinizi aldık\. Fiyatı düştüğünde veya ürün yeniden satışa girdiğinde sizi e-postayla bilgilendireceğiz\./);
+  assert.doesNotMatch(detail, /Onay e-postası gönderdik/);
   assert.match(main, /alarmParams\.get\("alarm"\)/);
   assert.match(kvkk, /fiyat alarmı; açık rızanıza dayanır/);
-  assert.match(kvkk, /Fiyat alarmı \(e-posta, takip edilen ürün\)/);
+  assert.match(kvkk, /Fiyat alarmı \(e-posta, takip edilen ürün\)<\/td><td>En fazla 180 gün veya iptale kadar/);
+  assert.doesNotMatch(kvkk, /e-posta onayınızla/);
+});
+
+test("price alert API removes the alert again when the received mail cannot be sent", async (t) => {
+  const net = require("node:net");
+  const closedPort = await new Promise((resolve) => {
+    const probe = net.createServer().listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+  const { baseUrl, dataRoot, stop } = await spawnTestServer(
+    t,
+    { SMTP_HOST: "127.0.0.1", SMTP_PORT: String(closedPort), SMTP_USER: "u@example.com", SMTP_PASS: "x", SMTP_SECURE: "false" },
+    {
+      products: [
+        {
+          id: "alert-mail-fail",
+          brand: "TEST",
+          name: "Alarm Mail Ürünü",
+          price: 1000,
+          vatPercent: 20,
+          category: "bilgisayar-tablet",
+          siteParent: "bilgisayar-tablet",
+          siteMid: "tasinabilir-bilgisayarlar",
+          siteChild: "notebooklar",
+          active: true,
+          image: "/assets/img/products/macbook-air-m3.svg",
+          images: ["/assets/img/products/macbook-air-m3.svg"],
+          stockQty: 5,
+          currency: "TRY",
+          unit: "ADET",
+        },
+      ],
+    }
+  );
+  const res = await fetch(baseUrl + "/api/price-alerts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productId: "alert-mail-fail", email: "ali@example.com", consent: true }),
+  });
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error, /Bilgilendirme e-postası gönderilemedi/);
+  await stop();
+  resetDbForTests();
+  assert.deepEqual(createPriceAlertStore(getDb(dataRoot)).summary(), { pending: 0, active: 0 }, "maili gitmeyen alarm açık kalmaz");
+  resetDbForTests();
 });
 
 test("price alert API validates input, needs SMTP, and confirm/unsubscribe links redirect to the product", async (t) => {

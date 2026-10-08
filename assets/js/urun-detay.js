@@ -613,14 +613,15 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) throw new Error(data.error || "Fiyat alarmı kurulamadı.");
-        show(
-          "ok",
+        const done = document.createElement("p");
+        done.className = "price-alert-done";
+        done.setAttribute("role", "status");
+        done.textContent =
           data.state === "active"
-            ? "Bu ürün için fiyat alarmınız zaten açık."
-            : "Onay e-postası gönderdik. E-postadaki bağlantıya tıkladığınızda alarm başlar."
-        );
-        form.elements.email.value = "";
-        form.elements.consent.checked = false;
+            ? "Bu ürün için fiyat alarmınız zaten açık. Değişiklik olduğunda sizi e-postayla bilgilendireceğiz."
+            : "Talebinizi aldık. Fiyatı düştüğünde veya ürün yeniden satışa girdiğinde sizi e-postayla bilgilendireceğiz.";
+        box.querySelector("summary").lastChild.textContent = "Fiyat alarmı kuruldu";
+        form.replaceWith(done);
       } catch (err) {
         show("err", err.message || "Fiyat alarmı kurulamadı.");
       } finally {
