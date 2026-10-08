@@ -1092,9 +1092,7 @@
 
     const shippingEl =
       window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"
-        ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product), {
-            card: true,
-          })
+        ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product))
         : null;
 
     const actions = document.createElement("div");

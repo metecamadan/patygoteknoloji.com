@@ -73,10 +73,23 @@ test("brand counts and marka filter treat casing and dotted İ as the same brand
   assert.equal(queryPublicCatalog(items, { marka: "dell", limit: 48 }).total, 2);
 });
 
-test("listing cards show the free-shipping threshold instead of the flat fee", () => {
+test("listing cards show the shipping fee, not the free-shipping threshold", () => {
+  const vm = require("node:vm");
+  const window = {};
+  const document = { createElement: () => ({ className: "", textContent: "" }) };
+  vm.runInNewContext(read("assets/js/shipping.js"), { window, document });
+  const settings = { enabled: true, shippingFee: 199, freeShippingThreshold: 1500 };
+  const fmt = (n) => "₺" + n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  window.PatygoCatalog = { formatPrice: fmt };
+  const info = window.PatygoShipping.productShippingInfo(899, settings);
+  assert.equal(info.text, "Kargo: " + fmt(199));
+  assert.equal(window.PatygoShipping.productShippingInfo(1500, settings).text, "Ücretsiz kargo");
+  assert.match(info.thresholdHint, /ve üzeri ücretsiz kargo$/, "eşik notu ürün sayfasında kalır");
+
   const shipping = read("assets/js/shipping.js");
-  assert.match(shipping, /options\.card && !info\.free && info\.thresholdHint/);
-  assert.match(read("assets/js/catalog.js"), /createProductShippingEl\(window\.PatygoCatalog\.priceInclVat\(product\), \{\s*card: true/);
+  assert.match(shipping, /function createProductShippingEl\(grossInclVat\) \{[\s\S]*?el\.textContent = info\.text;/);
+  assert.doesNotMatch(read("assets/js/catalog.js"), /card: true/, "kart eşik metnine dönmez");
+  assert.match(read("assets/js/urun-detay.js"), /shipInfo\.thresholdHint \? shipInfo\.thresholdHint \+ "\." : null/);
 });
 
 test("category pages render skeleton cards and hold the generic heading until resolved", () => {

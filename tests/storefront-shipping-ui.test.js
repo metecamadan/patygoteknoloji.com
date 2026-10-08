@@ -55,7 +55,7 @@ test("checkout and product detail surface the minimum order rule", () => {
 test("storefront pages load shipping.js before catalog", () => {
   for (const page of ["index.html", "urunler.html", "urun-detay.html", "sepet.html", "odeme.html"]) {
     const html = read(page);
-    assert.match(html, /shipping\.js\?v=storefront-ship-5/);
+    assert.match(html, /shipping\.js\?v=storefront-ship-6/);
     const shipIdx = html.indexOf("shipping.js");
     const catalogIdx = html.indexOf("catalog.js");
     assert.ok(shipIdx >= 0 && catalogIdx >= 0, page + " should include both scripts");

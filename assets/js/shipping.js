@@ -148,14 +148,13 @@
     };
   }
 
-  /** Listing cards show the free-shipping threshold instead of repeating the flat fee on every card. */
-  function createProductShippingEl(grossInclVat, options) {
+  /** Cards show what this product costs to ship on its own; the free-shipping threshold lives on the product page and cart. */
+  function createProductShippingEl(grossInclVat) {
     const info = productShippingInfo(grossInclVat);
     if (!info) return null;
     const el = document.createElement("p");
     el.className = "product-shipping" + (info.free ? " product-shipping--free" : "");
-    el.textContent =
-      options && options.card && !info.free && info.thresholdHint ? info.thresholdHint : info.text;
+    el.textContent = info.text;
     return el;
   }
 
