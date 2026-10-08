@@ -338,7 +338,6 @@
       line: f[prefix + "Adres"].value.trim(),
       district: f[prefix + "Ilce"].value.trim(),
       city: f[prefix + "Il"].value,
-      postalCode: f[prefix + "Posta"].value.trim(),
     };
   }
 
@@ -374,8 +373,6 @@
       rules[prefix + "Il"] = required("İl seçin.");
       rules[prefix + "Ilce"] = required("İlçe seçin.");
       rules[prefix + "Adres"] = minLength(10, "Açık adresi yazın (mahalle, sokak, bina no).");
-      rules[prefix + "Posta"] = (input) =>
-        identity.validatePostalCode ? fromCheck(identity.validatePostalCode(input.value)) : "";
     });
     return rules;
   }
@@ -384,8 +381,8 @@
     const names = ["ad", "email", "tel"];
     if (invoiceType() === "kurumsal") names.push("firma", "vergiDairesi", "vkn");
     else names.push("tckn");
-    names.push("faturaIl", "faturaIlce", "faturaAdres", "faturaPosta");
-    if (!sameAddressChecked()) names.push("teslimatIl", "teslimatIlce", "teslimatAdres", "teslimatPosta");
+    names.push("faturaIl", "faturaIlce", "faturaAdres");
+    if (!sameAddressChecked()) names.push("teslimatIl", "teslimatIlce", "teslimatAdres");
     return names;
   }
 

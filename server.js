@@ -722,10 +722,8 @@ function buildCheckoutOrder(body) {
       shippingAddress,
       billingCity: billingParts ? billingParts.city : "",
       billingDistrict: billingParts ? billingParts.district : "",
-      billingPostalCode: billingParts ? billingParts.postalCode : "",
       shippingCity: shippingParts ? shippingParts.city : "",
       shippingDistrict: shippingParts ? shippingParts.district : "",
-      shippingPostalCode: shippingParts ? shippingParts.postalCode : "",
     },
     contractsAccepted: {
       onBilgilendirme: true,

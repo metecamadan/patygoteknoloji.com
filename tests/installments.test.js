@@ -146,7 +146,7 @@ test("checkout and product page render installments from /api/installments and s
   assert.match(shared, /posReady !== false/);
   assert.match(odeme, /id="installmentFieldset"[^>]*hidden/);
   assert.match(odeme, /id="installmentRow" hidden/);
-  assert.match(odeme, /installments\.js\?v=[\w-]+"><\/script>\s*<script defer src="\/assets\/js\/checkout\.js\?v=checkout-p10"/);
+  assert.match(odeme, /installments\.js\?v=[\w-]+"><\/script>\s*<script defer src="\/assets\/js\/checkout\.js\?v=checkout-p11"/);
   assert.match(odeme, /kartınızın bankasına ve kart tipine bağlıdır/);
   assert.match(checkout, /installCount: totals\.installCount \|\| 1/);
   assert.match(checkout, /return applyInstallment\(applyCoupon\(summary\)\)/);

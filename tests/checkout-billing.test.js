@@ -57,17 +57,18 @@ test("normalizeAddress accepts only districts of the chosen province and stores 
 });
 
 test("normalizeAddress builds the order address line and rejects incomplete parts", () => {
-  const ok = normalizeAddress({ line: "Bağdat Cad. No:45 D:3", district: "Kadıköy", city: "İstanbul", postalCode: "34710" });
-  assert.equal(ok.ok, true);
-  assert.equal(ok.value.text, "Bağdat Cad. No:45 D:3, Kadıköy / İstanbul 34710");
+  const ok = normalizeAddress({ line: "Bağdat Cad. No:45 D:3", district: "Kadıköy", city: "İstanbul", postalCode: "99000" });
+  assert.equal(ok.ok, true, "posta kodu alınmaz; eski istemciden gelse de yok sayılır");
+  assert.equal(ok.value.text, "Bağdat Cad. No:45 D:3, Kadıköy / İstanbul");
+  assert.equal(ok.value.postalCode, undefined);
   assert.equal(normalizeAddress({ line: "Bağdat Cad. No:45", district: "Kadıköy", city: "İstanbul" }).value.text,
     "Bağdat Cad. No:45, Kadıköy / İstanbul");
   assert.match(normalizeAddress({ line: "No:1", district: "Kadıköy", city: "İstanbul" }).error, /açık adres/);
   assert.match(normalizeAddress({ line: "Bağdat Cad. No:45", district: "", city: "İstanbul" }).error, /ilçe/);
   assert.match(normalizeAddress({ line: "Bağdat Cad. No:45", district: "Kadıköy", city: "Paris" }).error, /il seçin/);
   assert.match(
-    normalizeAddress({ line: "Bağdat Cad. No:45", district: "Kadıköy", city: "İstanbul", postalCode: "99000" }, "Teslimat adresi").error,
-    /^Teslimat adresi: posta kodu/
+    normalizeAddress({ line: "Bağdat Cad. No:45", district: "", city: "İstanbul" }, "Teslimat adresi").error,
+    /^Teslimat adresi: ilçe/
   );
 });
 
@@ -135,7 +136,9 @@ test("checkout form validates phone live and hides the order number until the ba
   assert.match(html, /name="customerType" value="kurumsal"/);
   assert.match(html, /id="vergiDairesi"/);
   assert.match(html, /id="faturaIlce"/);
-  assert.match(html, /id="faturaPosta"/);
+  assert.doesNotMatch(html, /Posta kodu|faturaPosta|teslimatPosta|postal-code/, "ödeme formunda posta kodu alanı yok");
+  assert.doesNotMatch(js, /Posta|postalCode/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, "server.js"), "utf8"), /PostalCode/, "sipariş posta kodu kaydetmez");
   assert.match(html, /id="tel-error"/);
   assert.match(js, /bindLiveValidation/);
   assert.match(js, /aria-invalid/);

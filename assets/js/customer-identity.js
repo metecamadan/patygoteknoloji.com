@@ -101,19 +101,11 @@
     return { ok: true, value: digits };
   }
 
-  function validatePostalCode(raw) {
-    const digits = String(raw || "").replace(/\D/g, "");
-    if (!digits) return { ok: true, value: "" };
-    if (!/^(0[1-9]|[1-7]\d|8[01])\d{3}$/.test(digits)) return { ok: false, error: "Posta kodu 5 haneli olmalı." };
-    return { ok: true, value: digits };
-  }
-
   window.PatygoCustomerIdentity = {
     validateCustomerName,
     validateCustomerPhone,
     formatTrMobilePhone,
     validateTckn,
     validateTaxNumber,
-    validatePostalCode,
   };
 })();

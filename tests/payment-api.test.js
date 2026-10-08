@@ -410,7 +410,7 @@ test("payment start rejects invalid customer identity", async (t) => {
   const badPhoneBody = await badPhone.json();
   assert.equal(badPhoneBody.ok, false);
 
-  const billing = { line: "Mevlana Mah. Test Sk. No:1", district: "Gaziosmanpaşa", city: "İstanbul", postalCode: "34245" };
+  const billing = { line: "Mevlana Mah. Test Sk. No:1", district: "Gaziosmanpaşa", city: "İstanbul" };
   const structured = await tryStart({ billing, customerType: "bireysel" });
   assert.equal(structured.status, 200);
   assert.equal((await structured.json()).ok, true);
