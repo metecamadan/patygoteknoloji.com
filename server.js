@@ -339,7 +339,8 @@ function priceAlertProduct(productId) {
   if (!index.compactById) index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   const item = index.compactById.get(String(productId || ""));
   if (!item) return null;
-  return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath };
+  const image = item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
+  return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath, image };
 }
 
 let priceAlertRun = null;
@@ -1977,7 +1978,9 @@ async function handleApi(req, res, urlPath) {
         });
       } catch (_) {}
       try {
-        await deliverSimpleMail(buildPriceAlertReceivedMail(alert, { productPath: product.urlPath }));
+        await deliverSimpleMail(
+          buildPriceAlertReceivedMail(alert, { productPath: product.urlPath, productImage: product.image })
+        );
       } catch (err) {
         priceAlertStore.unsubscribe(alert.token);
         throw new Error("Bilgilendirme e-postası gönderilemedi; lütfen biraz sonra tekrar deneyin.");

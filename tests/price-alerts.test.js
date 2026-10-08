@@ -110,11 +110,38 @@ test("price alert mails: received notice without confirmation step, one-click ca
   assert.match(received.text, /https:\/\/patygoteknoloji\.com\/api\/price-alerts\/unsubscribe\?token=a{48}/);
   assert.doesNotMatch(received.text + received.html, /onaylay|confirm\?token/i, "onay istenmez");
   assert.match(received.html, /alarmı iptal edin/);
+  const productImg = /<img[^>]+width="80" height="80"/;
+  assert.doesNotMatch(received.html, productImg, "görsel verilmezse yer tutucu yok");
+
+  const withImage = buildReceivedMail(alert, {
+    env,
+    productPath: "/bilgisayar/lenovo-laptop",
+    productImage: "/media/catalog/abc.jpg",
+  });
+  assert.match(
+    withImage.html,
+    /<img src="https:\/\/patygoteknoloji\.com\/media\/catalog\/abc\.jpg" width="80" height="80" alt="Lenovo Laptop"/,
+    "kullanıcı hangi ürüne alarm kurduğunu görselden tanır"
+  );
+  assert.match(withImage.html, /Şu anki fiyat: ₺1\.000,00/);
+  const supplierImage = buildReceivedMail(alert, { env, productImage: "https://www.bilgisayarim.com.tr/img/x.jpg" });
+  assert.doesNotMatch(supplierImage.html, productImg, "tedarikçi sunucusundaki görsel maile konmaz");
 
   const notify = buildNotifyMail(
-    { alert, product: { priceIncl: 900, name: "Lenovo Laptop", urlPath: "/bilgisayar/lenovo-laptop" }, kind: "drop", previousPrice: 1000 },
+    {
+      alert,
+      product: {
+        priceIncl: 900,
+        name: "Lenovo Laptop",
+        urlPath: "/bilgisayar/lenovo-laptop",
+        image: "https://patygoteknoloji.com/media/catalog/abc.jpg",
+      },
+      kind: "drop",
+      previousPrice: 1000,
+    },
     { env }
   );
+  assert.match(notify.html, /<img src="https:\/\/patygoteknoloji\.com\/media\/catalog\/abc\.jpg"/);
   assert.equal(notify.subject, "Lenovo Laptop fiyatı düştü");
   assert.match(notify.text, /₺1\.000,00 → ₺900,00/);
   assert.match(notify.text, /https:\/\/patygoteknoloji\.com\/bilgisayar\/lenovo-laptop/);
