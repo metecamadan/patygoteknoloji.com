@@ -921,17 +921,10 @@
       })
       .catch(() => {});
     const tab = currentAdminTab();
-    const xmlView =
-      tab === "xml" ||
-      (tab === "products" &&
-        (function () {
-          try {
-            return sessionStorage.getItem("patygo_products_view") === "xml";
-          } catch (_) {
-            return false;
-          }
-        })());
-    if (tab === "products" && !xmlView) ensureManualProducts().catch(() => {});
+    const productsView = savedProductsView();
+    if (tab === "products" && productsView === "manual") ensureManualProducts().catch(() => {});
+    if (tab === "products" && productsView.startsWith("alerts-")) loadAlertRequests().catch(() => {});
+    else refreshAlertRequestCounts().catch(() => {});
     if (tab === "overview") loadDigitalDashboard().catch(() => {});
     if (tab === "orders") loadAdminOrders().catch(() => {});
     loadAdminReviews(tab === "reviews").catch(() => {});
@@ -970,6 +963,25 @@
     }
   }
 
+  const PRODUCTS_VIEW_META = {
+    manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
+    xml: ["XML Ürünleri", "Tedarikçi XML havuzundaki ürünleri yönetin."],
+    "alerts-price": ["Fiyat Alarm Talepleri", "Fiyatı düşünce haber almak isteyen müşteriler, ürün bazında."],
+    "alerts-stock": ["Stoğu Biten Ürün Talepleri", "Tükenen ürün stoğa girince haber almak isteyen müşteriler, ürün bazında."],
+  };
+
+  function normalizeProductsView(value) {
+    return Object.prototype.hasOwnProperty.call(PRODUCTS_VIEW_META, value) ? value : "manual";
+  }
+
+  function savedProductsView() {
+    try {
+      return normalizeProductsView(sessionStorage.getItem("patygo_products_view"));
+    } catch (_) {
+      return "manual";
+    }
+  }
+
   function selectAdminTab(name, focus) {
     const tabs = Array.from(document.querySelectorAll(".admin-nav > [data-admin-tab]"));
     const pageMeta = {
@@ -985,10 +997,7 @@
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
       unlisted: ["Listelenmeyen Ürünler", "Sitede ve Akakçe XML'inde gösterilmeyen XML ürünleri."],
     };
-    const productsMeta = {
-      manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
-      xml: ["XML Ürünleri", "Tedarikçi XML havuzundaki ürünleri yönetin."],
-    };
+    const productsMeta = PRODUCTS_VIEW_META;
     tabs.forEach((tab) => {
       const selected = tab.dataset.adminTab === name;
       tab.classList.toggle("active", selected);
@@ -1005,12 +1014,7 @@
     if (productsTabBtn) productsTabBtn.setAttribute("aria-expanded", String(name === "products"));
     let meta = pageMeta[name] || pageMeta.overview;
     if (name === "products") {
-      let view = "manual";
-      try {
-        const saved = sessionStorage.getItem("patygo_products_view");
-        if (saved === "manual" || saved === "xml") view = saved;
-      } catch (_) {}
-      meta = productsMeta[view] || productsMeta.manual;
+      meta = productsMeta[savedProductsView()] || productsMeta.manual;
     }
     document.getElementById("adminPageTitle").textContent = meta[0];
     document.getElementById("adminPageSubtitle").textContent = meta[1];
@@ -1018,12 +1022,7 @@
     if (newProductBtn && name !== "products") newProductBtn.hidden = true;
     if (name === "xml" && token) loadSupplierData().catch(() => {});
     if (name === "products" && token) {
-      let view = "manual";
-      try {
-        const saved = sessionStorage.getItem("patygo_products_view");
-        if (saved === "manual" || saved === "xml") view = saved;
-      } catch (_) {}
-      if (view === "manual") ensureManualProducts().catch(() => {});
+      if (savedProductsView() === "manual") ensureManualProducts().catch(() => {});
     }
     if (name === "overview" && token) loadDigitalDashboard().catch(() => {});
     if (name === "calendar" && token) {
@@ -1050,12 +1049,7 @@
     tab.addEventListener("click", () => {
       selectAdminTab(tab.dataset.adminTab, false);
       if (tab.dataset.adminTab === "products") {
-        let view = "manual";
-        try {
-          const saved = sessionStorage.getItem("patygo_products_view");
-          if (saved === "manual" || saved === "xml") view = saved;
-        } catch (_) {}
-        selectProductsView(view, false);
+        selectProductsView(savedProductsView(), false);
       }
     });
   });
@@ -1078,20 +1072,171 @@
   } catch (_) {}
   selectAdminTab(initialAdminTab, false);
 
-  function selectProductsView(name) {
-    const view = name === "xml" ? "xml" : "manual";
-    const viewMeta = {
-      manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
-      xml: ["XML Ürünleri", "Tedarikçi XML havuzundaki ürünleri yönetin."],
+  const alertRequestsList = document.getElementById("alertRequestsList");
+  const alertRequestsNote = document.getElementById("alertRequestsNote");
+  const ALERT_REQUEST_COPY = {
+    price: {
+      eyebrow: "FİYAT ALARMI",
+      title: "Fiyat alarm talepleri",
+      lead: "Ürün sayfasında “Fiyatı düşünce haber ver” diyen müşteriler. Fiyat %2 ve üzeri düşünce otomatik e-posta gider; alarm 180 gün veya müşteri iptal edene kadar açık kalır.",
+      empty: "Açık fiyat alarmı yok.",
+    },
+    stock: {
+      eyebrow: "STOK BİLDİRİMİ",
+      title: "Stoğu biten ürün talepleri",
+      lead: "Tükenen ürünün sayfasında “Stoğa gelince haber ver” diyen müşteriler. Ürün yeniden satışa girince her müşteriye bir kez e-posta gider ve talep “Bildirildi” olur.",
+      empty: "Stok bildirimi talebi yok.",
+    },
+  };
+  const ALERT_STATE_LABELS = { live: "Satışta", soldout: "Tükendi", gone: "Satışta değil" };
+  let alertRequestsKind = "price";
+
+  function setAlertRequestsKind(kind) {
+    alertRequestsKind = kind === "stock" ? "stock" : "price";
+    const copy = ALERT_REQUEST_COPY[alertRequestsKind];
+    const set = (id, text) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = text;
     };
+    set("alertRequestsEyebrow", copy.eyebrow);
+    set("alertRequestsTitle", copy.title);
+    set("alertRequestsLead", copy.lead);
+    const view = document.getElementById("alertRequestsView");
+    if (view) view.setAttribute("aria-labelledby", alertRequestsKind === "stock" ? "stockAlertsNav" : "priceAlertsNav");
+  }
+
+  function renderAlertRequestCounts(counts) {
+    [
+      ["priceAlertsNavCount", counts && counts.price],
+      ["stockAlertsNavCount", counts && counts.stock],
+    ].forEach(([id, value]) => {
+      const node = document.getElementById(id);
+      if (!node) return;
+      const n = Number(value) || 0;
+      node.textContent = String(n);
+      node.hidden = n <= 0;
+    });
+  }
+
+  function alertRequestStatusLabel(kind, request) {
+    if (kind === "stock") return request.status === "notified" ? "Bildirildi" : "Bekliyor";
+    return "Takipte";
+  }
+
+  function renderAlertRequests(kind, products) {
+    if (!alertRequestsList) return;
+    if (!products.length) {
+      alertRequestsList.innerHTML = "<p class='admin-hint'>" + escapeHtml(ALERT_REQUEST_COPY[kind].empty) + "</p>";
+      return;
+    }
+    alertRequestsList.innerHTML = products
+      .map((product) => {
+        const state =
+          product.state === "live" && product.priceIncl
+            ? ALERT_STATE_LABELS.live + " · " + moneyTr(product.priceIncl)
+            : ALERT_STATE_LABELS[product.state] || product.state;
+        const name = product.urlPath
+          ? "<a href='" + escapeAttr(product.urlPath) + "' target='_blank' rel='noopener'>" + escapeHtml(product.name) + " ↗</a>"
+          : escapeHtml(product.name);
+        const thumb = product.image
+          ? "<img src='" + escapeAttr(product.image) + "' alt='' width='44' height='44' loading='lazy' />"
+          : "";
+        const rows = product.requests
+          .map(
+            (request) =>
+              "<tr>" +
+              "<td><a href='mailto:" + escapeAttr(request.email) + "'>" + escapeHtml(request.email) + "</a></td>" +
+              "<td>" + escapeHtml(formatOrderDate(request.createdAt)) + "</td>" +
+              (kind === "price" ? "<td>" + escapeHtml(moneyTr(request.basePrice)) + "</td>" : "") +
+              "<td><span class='admin-alert-status admin-alert-status--" + escapeAttr(request.status) + "'>" +
+              escapeHtml(alertRequestStatusLabel(kind, request)) +
+              "</span></td>" +
+              "<td>" +
+              (request.notifyCount
+                ? escapeHtml(request.notifyCount + " · " + formatOrderDate(request.lastNotifiedAt))
+                : "—") +
+              "</td>" +
+              "<td><button type='button' class='btn btn-ghost btn-xs' data-alert-request-delete='" + request.id + "'>Sil</button></td>" +
+              "</tr>"
+          )
+          .join("");
+        return (
+          "<article class='admin-alert-product'>" +
+          "<header class='admin-alert-product-head'>" +
+          thumb +
+          "<div><strong>" + name + "</strong>" +
+          "<p class='admin-alert-product-meta'><span class='admin-alert-state admin-alert-state--" + escapeAttr(product.state) + "'>" +
+          escapeHtml(state) + "</span> · " + product.requests.length + " talep</p></div>" +
+          "</header>" +
+          "<div class='admin-table-wrap'><table class='admin-table'><thead><tr>" +
+          "<th scope='col'>E-posta</th><th scope='col'>Talep tarihi</th>" +
+          (kind === "price" ? "<th scope='col'>Talepteki fiyat</th>" : "") +
+          "<th scope='col'>Durum</th><th scope='col'>Bildirim</th><th scope='col'>İşlem</th>" +
+          "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+          "</article>"
+        );
+      })
+      .join("");
+  }
+
+  async function refreshAlertRequestCounts() {
+    if (!token) return;
+    const data = await api("/api/admin/price-alerts?countsOnly=1");
+    renderAlertRequestCounts(data && data.counts);
+  }
+
+  async function loadAlertRequests() {
+    if (!token) return;
+    const kind = alertRequestsKind;
+    const data = await api("/api/admin/price-alerts?kind=" + kind);
+    renderAlertRequestCounts(data && data.counts);
+    if (kind !== alertRequestsKind) return;
+    renderAlertRequests(kind, (data && data.products) || []);
+    note(alertRequestsNote, "", "");
+  }
+
+  const alertRequestsRefresh = document.getElementById("alertRequestsRefresh");
+  if (alertRequestsRefresh) {
+    alertRequestsRefresh.addEventListener("click", () => {
+      loadAlertRequests().catch((err) => note(alertRequestsNote, "err", err.message || "Talepler yüklenemedi"));
+    });
+  }
+
+  if (alertRequestsList) {
+    alertRequestsList.addEventListener("click", async (ev) => {
+      const target = ev.target.closest("[data-alert-request-delete]");
+      if (!target) return;
+      if (!confirm("Bu talep silinsin mi? Müşteriye bu ürün için e-posta gitmez.")) return;
+      target.disabled = true;
+      try {
+        await api("/api/admin/price-alerts/" + encodeURIComponent(target.getAttribute("data-alert-request-delete")), {
+          method: "DELETE",
+        });
+        await loadAlertRequests();
+        note(alertRequestsNote, "ok", "Talep silindi.");
+      } catch (err) {
+        target.disabled = false;
+        note(alertRequestsNote, "err", err.message || "Talep silinemedi");
+      }
+    });
+  }
+
+  function selectProductsView(name) {
+    const view = normalizeProductsView(name);
     document.querySelectorAll(".admin-nav-children [data-products-view]").forEach((tab) => {
       tab.classList.toggle("active", tab.dataset.productsView === view);
     });
     const manualView = document.getElementById("manualProductsView");
     const xmlView = document.getElementById("xmlProductsView");
+    const alertsView = document.getElementById("alertRequestsView");
     if (manualView) manualView.hidden = view !== "manual";
     if (xmlView) xmlView.hidden = view !== "xml";
-    const meta = viewMeta[view];
+    if (alertsView) alertsView.hidden = !view.startsWith("alerts-");
+    if (view.startsWith("alerts-")) {
+      setAlertRequestsKind(view === "alerts-stock" ? "stock" : "price");
+      if (token) loadAlertRequests().catch((err) => note(alertRequestsNote, "err", err.message || "Talepler yüklenemedi"));
+    }
+    const meta = PRODUCTS_VIEW_META[view];
     const productsTab = document.getElementById("productsTab");
     if (productsTab && productsTab.classList.contains("active")) {
       document.getElementById("adminPageTitle").textContent = meta[0];
@@ -1120,13 +1265,7 @@
     });
   });
 
-  let initialProductsView = "manual";
-  try {
-    if (sessionStorage.getItem("patygo_products_view") === "xml") {
-      initialProductsView = "xml";
-    }
-  } catch (_) {}
-  selectProductsView(initialProductsView);
+  selectProductsView(savedProductsView());
 
   function renderImagePreviews() {
     imagePreview.textContent = "";

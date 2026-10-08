@@ -223,12 +223,13 @@
     tablist.setAttribute("role", "tablist");
     tablist.setAttribute("aria-label", "Ürün bilgileri");
 
+    const soldOut = product.soldOut === true;
     const defs = [
       { id: "desc", label: "Ürün Açıklaması" },
       { id: "payment", label: "Ödeme ve Teslimat" },
       { id: "returns", label: "İade ve Cayma" },
       { id: "installments", label: "Taksit Seçenekleri" },
-    ];
+    ].filter((def) => !soldOut || def.id === "desc");
     defs.forEach((def, index) => {
       const tab = el("button", "detail-tab" + (index === 0 ? " is-active" : ""));
       tab.type = "button";
@@ -326,9 +327,11 @@
     instPanel.appendChild(buildInstallmentTable(gross));
 
     panels.appendChild(descPanel);
-    panels.appendChild(payPanel);
-    panels.appendChild(retPanel);
-    panels.appendChild(instPanel);
+    if (!soldOut) {
+      panels.appendChild(payPanel);
+      panels.appendChild(retPanel);
+      panels.appendChild(instPanel);
+    }
     section.appendChild(tablist);
     section.appendChild(panels);
     wireDetailTabs(section);
@@ -373,6 +376,28 @@
   }
 
   let stickyObserver = null;
+
+  function hideStickyBuyBar() {
+    if (stickyObserver) stickyObserver.disconnect();
+    stickyObserver = null;
+    const bar = document.getElementById("detailStickyBar");
+    if (bar) bar.hidden = true;
+    document.body.classList.remove("has-detail-bar");
+  }
+
+  function setRobotsNoindex(on) {
+    let meta = document.querySelector('meta[name="robots"]');
+    if (on) {
+      if (!meta) {
+        meta = document.createElement("meta");
+        meta.name = "robots";
+        document.head.appendChild(meta);
+      }
+      meta.content = "noindex";
+    } else if (meta && meta.content === "noindex") {
+      meta.remove();
+    }
+  }
 
   function bindStickyBuyBar(product, actions, add) {
     let bar = document.getElementById("detailStickyBar");
@@ -579,16 +604,46 @@
     };
   }
 
-  function buildPriceAlert(product) {
+  const ALERT_COPY = {
+    price: {
+      summary: "Fiyatı düşünce haber ver",
+      submit: "Alarm kur",
+      consent: "Bu ürünün fiyatı düştüğünde e-posta almayı kabul ediyorum.",
+      done: "Talebinizi aldık. Fiyatı düştüğünde sizi e-postayla bilgilendireceğiz.",
+      already: "Bu ürün için fiyat alarmınız zaten açık. Fiyatı düştüğünde sizi e-postayla bilgilendireceğiz.",
+      doneSummary: "Fiyat alarmı kuruldu",
+      failed: "Fiyat alarmı kurulamadı.",
+    },
+    stock: {
+      summary: "Stoğa gelince haber ver",
+      submit: "Haber ver",
+      consent: "Bu ürün yeniden stoğa girdiğinde e-posta almayı kabul ediyorum.",
+      done: "Talebinizi aldık. Ürün yeniden stoğa girdiğinde sizi e-postayla bilgilendireceğiz.",
+      already: "Bu ürün için stok bildirimi talebiniz zaten açık. Ürün stoğa girdiğinde sizi e-postayla bilgilendireceğiz.",
+      doneSummary: "Stok bildirimi talebiniz alındı",
+      failed: "Talebiniz alınamadı.",
+    },
+  };
+
+  /** kind "price": in-stock product, mails on a price drop; "stock": sold-out product, mails once when back. */
+  function buildPriceAlert(product, kind) {
+    const alertKind = kind === "stock" ? "stock" : "price";
+    const copy = ALERT_COPY[alertKind];
+    const inputId = alertKind === "stock" ? "stockAlertEmail" : "priceAlertEmail";
     const box = document.createElement("details");
-    box.className = "price-alert";
+    box.className = "price-alert" + (alertKind === "stock" ? " price-alert--stock" : "");
+    if (alertKind === "stock") box.open = true;
     box.innerHTML =
-      '<summary><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round"/></svg>Fiyatı düşünce haber ver</summary>' +
+      '<summary><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round"/></svg>' +
+      copy.summary +
+      "</summary>" +
       '<form class="price-alert-form" novalidate>' +
-      '<label for="priceAlertEmail">E-posta adresiniz</label>' +
-      '<div class="price-alert-row"><input type="email" id="priceAlertEmail" name="email" autocomplete="email" inputmode="email" maxlength="160" placeholder="ornek@eposta.com" required />' +
-      '<button type="submit" class="btn btn-outline btn-sm">Alarm kur</button></div>' +
-      '<label class="price-alert-consent"><input type="checkbox" name="consent" required /> <span>Bu ürünün fiyatı düştüğünde veya yeniden satışa girdiğinde e-posta almayı kabul ediyorum. <a href="/kvkk" target="_blank" rel="noopener">KVKK Aydınlatma Metni</a></span></label>' +
+      '<label for="' + inputId + '">E-posta adresiniz</label>' +
+      '<div class="price-alert-row"><input type="email" id="' + inputId + '" name="email" autocomplete="email" inputmode="email" maxlength="160" placeholder="ornek@eposta.com" required />' +
+      '<button type="submit" class="btn ' + (alertKind === "stock" ? "btn-primary" : "btn-outline") + ' btn-sm">' + copy.submit + "</button></div>" +
+      '<label class="price-alert-consent"><input type="checkbox" name="consent" required /> <span>' +
+      copy.consent +
+      ' <a href="/kvkk" target="_blank" rel="noopener">KVKK Aydınlatma Metni</a></span></label>' +
       '<p class="price-alert-note" role="status" hidden></p>' +
       "</form>";
     const form = box.querySelector("form");
@@ -609,21 +664,18 @@
         const res = await fetch("/api/price-alerts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productId: product.id, email, consent: true }),
+          body: JSON.stringify({ productId: product.id, email, consent: true, kind: alertKind }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || "Fiyat alarmı kurulamadı.");
+        if (!res.ok || !data.ok) throw new Error(data.error || copy.failed);
         const done = document.createElement("p");
         done.className = "price-alert-done";
         done.setAttribute("role", "status");
-        done.textContent =
-          data.state === "active"
-            ? "Bu ürün için fiyat alarmınız zaten açık. Değişiklik olduğunda sizi e-postayla bilgilendireceğiz."
-            : "Talebinizi aldık. Fiyatı düştüğünde veya ürün yeniden satışa girdiğinde sizi e-postayla bilgilendireceğiz.";
-        box.querySelector("summary").lastChild.textContent = "Fiyat alarmı kuruldu";
+        done.textContent = data.state === "active" ? copy.already : copy.done;
+        box.querySelector("summary").lastChild.textContent = copy.doneSummary;
         form.replaceWith(done);
       } catch (err) {
-        show("err", err.message || "Fiyat alarmı kurulamadı.");
+        show("err", err.message || copy.failed);
       } finally {
         btn.disabled = false;
       }
@@ -639,9 +691,11 @@
       return;
     }
     loadSimilar(product);
+    const soldOut = product.soldOut === true;
 
-    document.title = product.name + " | Patygo Teknoloji";
+    document.title = product.name + (soldOut ? " | Tükendi" : "") + " | Patygo Teknoloji";
     upsertCanonical(product.urlPath || location.pathname);
+    setRobotsNoindex(soldOut);
     const metaDesc = document.querySelector('meta[name="description"]');
     const seoBlurb = String(product.description || product.details || product.name)
       .replace(/\s+/g, " ")
@@ -759,10 +813,15 @@
 
     const price = document.createElement("div");
     price.className = "price";
-    price.innerHTML =
-      window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
-      " <small>KDV dahil</small>";
-    const discount = window.PatygoCatalog.discountInfo(product);
+    if (soldOut) {
+      price.classList.add("detail-soldout-label");
+      price.textContent = "Tükendi";
+    } else {
+      price.innerHTML =
+        window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
+        " <small>KDV dahil</small>";
+    }
+    const discount = soldOut ? null : window.PatygoCatalog.discountInfo(product);
     if (discount) {
       const before = document.createElement("p");
       before.className = "detail-price-before";
@@ -775,18 +834,58 @@
     }
 
     const shippingLine =
-      window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"
+      !soldOut && window.PatygoShipping && typeof window.PatygoShipping.createProductShippingEl === "function"
         ? window.PatygoShipping.createProductShippingEl(window.PatygoCatalog.priceInclVat(product))
         : null;
     if (shippingLine) {
       shippingLine.classList.add("detail-shipping");
     }
     const dispatchLine =
-      window.PatygoShipping && typeof window.PatygoShipping.createDispatchEl === "function"
+      !soldOut && window.PatygoShipping && typeof window.PatygoShipping.createDispatchEl === "function"
         ? window.PatygoShipping.createDispatchEl()
         : null;
     const actions = document.createElement("div");
     actions.className = "actions";
+    if (soldOut) {
+      const stockRow = document.createElement("div");
+      stockRow.className = "detail-buy-row";
+      stockRow.appendChild(buildPriceAlert(product, "stock"));
+      actions.appendChild(stockRow);
+      const soldOutTrust = document.createElement("ul");
+      soldOutTrust.className = "detail-trust";
+      soldOutTrust.innerHTML = "<li>Şu anda stokta yok · sipariş alınmıyor</li>";
+      const soldOutAsk = el("li", "", "Sorunuz mu var? ");
+      const soldOutAskLink = el("a", "", "WhatsApp");
+      soldOutAskLink.href =
+        "https://wa.me/905555070724?text=" +
+        encodeURIComponent(
+          "Merhaba, bu ürün ne zaman stoğa girer: " +
+            product.name +
+            " " +
+            (product.urlPath ? location.origin + product.urlPath : location.href)
+        );
+      soldOutAskLink.target = "_blank";
+      soldOutAskLink.rel = "noopener noreferrer";
+      soldOutAsk.appendChild(soldOutAskLink);
+      soldOutTrust.appendChild(soldOutAsk);
+      info.appendChild(tag);
+      info.appendChild(h1);
+      info.appendChild(buildRatingLink(product));
+      info.appendChild(price);
+      info.appendChild(actions);
+      info.appendChild(soldOutTrust);
+      const soldOutHub = buildHighlights(product);
+      if (soldOutHub) info.appendChild(soldOutHub);
+      grid.appendChild(gallery);
+      grid.appendChild(info);
+      root.appendChild(crumb);
+      root.appendChild(grid);
+      root.appendChild(buildDetailTabs(product));
+      root.appendChild(buildReviewSection(product));
+      hideStickyBuyBar();
+      upsertProductJsonLd(product, trail);
+      return;
+    }
     let addQty = 1;
     if (window.PatygoCatalog.createQtyStepper) {
       const qtyRow = window.PatygoCatalog.createQtyStepper(1);
@@ -816,7 +915,7 @@
     const buyRow = document.createElement("div");
     buyRow.className = "detail-buy-row";
     buyRow.appendChild(add);
-    buyRow.appendChild(buildPriceAlert(product));
+    buyRow.appendChild(buildPriceAlert(product, "price"));
     actions.appendChild(buyRow);
 
     const trust = document.createElement("ul");
@@ -916,10 +1015,17 @@
         itemCondition: "https://schema.org/NewCondition",
       },
     };
-    upsertJsonLd("product-jsonld", productLd);
-    loadReviews(product.id).then((data) => {
-      if (data) upsertJsonLd("product-jsonld", Object.assign({}, productLd, reviewJsonLd(data)));
-    });
+    if (product.soldOut === true) {
+      const stale = document.getElementById("product-jsonld");
+      if (stale) stale.remove();
+    } else {
+      upsertJsonLd("product-jsonld", productLd);
+      loadReviews(product.id).then((data) => {
+        if (data && product.soldOut !== true) {
+          upsertJsonLd("product-jsonld", Object.assign({}, productLd, reviewJsonLd(data)));
+        }
+      });
+    }
     const crumbs = [
       { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: "https://patygoteknoloji.com/" },
     ];

@@ -375,6 +375,22 @@
 .admin-review-status--pending { background: #ffedd5; color: #c2410c; }
 .admin-review-status--approved { background: #dcfce7; color: #166534; }
 .admin-review-status--rejected { background: #f3f4f6; color: #6b7280; }
+.admin-alert-requests { display: grid; gap: 12px; }
+.admin-alert-product {
+  padding: 14px 16px;
+  border: 1px solid var(--admin-line, #e2e8f0);
+  border-radius: 12px;
+}
+.admin-alert-product-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.admin-alert-product-head img { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; background: #fff; flex: none; }
+.admin-alert-product-head a { color: inherit; }
+.admin-alert-product-meta { margin: 4px 0 0; font-size: 0.85rem; color: #64748b; }
+.admin-alert-state { font-weight: 700; }
+.admin-alert-state--live { color: #15803d; }
+.admin-alert-state--soldout { color: #b91c1c; }
+.admin-alert-status { padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+.admin-alert-status--active { background: #dbeafe; color: #1d4ed8; }
+.admin-alert-status--notified { background: #dcfce7; color: #166534; }
 .order-status--cancelled {
   background: #f3f4f6;
   color: #6b7280;
@@ -2721,6 +2737,11 @@ html.admin-theme-dark .order-status--preparing { background: #1e3a8a; color: #93
 html.admin-theme-dark .order-status--shipped { background: #134e4a; color: #5eead4; }
 html.admin-theme-dark .order-status--delivered { background: #14532d; color: #86efac; }
 html.admin-theme-dark .admin-review { border-color: #334155; }
+html.admin-theme-dark .admin-alert-product { border-color: #334155; }
+html.admin-theme-dark .admin-alert-product-head img { background: #f8fafc; }
+html.admin-theme-dark .admin-alert-state--soldout { color: #fca5a5; }
+html.admin-theme-dark .admin-alert-status--active { background: #1e3a8a; color: #bfdbfe; }
+html.admin-theme-dark .admin-alert-status--notified { background: #14532d; color: #86efac; }
 html.admin-theme-dark .order-status--cancelled { background: #374151; color: #d1d5db; }
 html.admin-theme-dark .order-status--refunded { background: #4c1d95; color: #ddd6fe; }
 html.admin-theme-dark .order-status--neutral { background: #374151; color: #e5e7eb; }

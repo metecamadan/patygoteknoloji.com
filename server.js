@@ -164,6 +164,7 @@ const {
 const { createInstallmentSettingsStore, resolveInstallment } = require("./lib/installment-settings");
 const {
   renderProductHtml,
+  renderSoldOutProductHtml,
   renderMissingProductHtml,
   renderCategoryHtml,
   renderMissingCategoryHtml,
@@ -341,6 +342,18 @@ function priceAlertProduct(productId) {
   if (!item) return null;
   const image = item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
   return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath, image };
+}
+
+/** Published but sold-out product (stock alert target), or null. priceIncl is the last known price. */
+function soldOutAlertProduct(productId) {
+  const item = soldOutCompact(productId);
+  if (!item) return null;
+  const image = item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
+  return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath, image, soldOut: true };
+}
+
+function alertProductInfo(productId) {
+  return priceAlertProduct(productId) || soldOutAlertProduct(productId);
 }
 
 let priceAlertRun = null;
@@ -878,6 +891,7 @@ function normalizeProduct(p, fallbackId) {
 }
 
 const storefrontCatalogMemo = { active: null, all: null };
+const soldOutCatalogMemo = { index: null };
 let akakceXmlMemo = null;
 let akakceFeedSummaryMemo = { products: null, summary: null };
 const CATALOG_BOOTSTRAP_LIMIT = 20;
@@ -922,6 +936,7 @@ function invalidateStorefrontCatalog() {
   akakceFeedSummaryMemo = { products: null, summary: null };
   storefrontCatalogMemo.active = null;
   storefrontCatalogMemo.all = null;
+  soldOutCatalogMemo.index = null;
   akakceXmlMemo = null;
   if (warmCatalogTimer) {
     clearTimeout(warmCatalogTimer);
@@ -992,6 +1007,51 @@ function storefrontIndex(includeInactiveManual) {
   return memo.index;
 }
 
+function soldOutCatalogOptions() {
+  return {
+    soldOutOnly: true,
+    normalizeProduct,
+    categoryDefaults: CATEGORY_FEED_DEFAULTS,
+    ...catalogImageContext(),
+  };
+}
+
+/**
+ * Published XML products that are out of stock (or unread for 7 days). Only the product page
+ * ("Tükendi" + stock alert form, noindex), stock alerts and the admin panel use it; listings,
+ * search, sitemap, Akakçe and checkout never see these products.
+ */
+function soldOutIndex() {
+  if (soldOutCatalogMemo.index) return soldOutCatalogMemo.index;
+  const products = mergeCatalogProducts([], supplierManager.listProducts(), soldOutCatalogOptions());
+  const index = buildStorefrontIndex(products, catalogImageContext());
+  index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
+  soldOutCatalogMemo.index = index;
+  return index;
+}
+
+function soldOutCompact(productId) {
+  const id = String(productId || "");
+  if (!id || storefrontIndex(false).routeIndex.byId[id]) return null;
+  return soldOutIndex().compactById.get(id) || null;
+}
+
+function lookupSoldOutProductByPath(segment, slug) {
+  const index = soldOutIndex();
+  const productId = resolveProductIdFromRoute(index.routeIndex, segment, slug);
+  if (!productId || !soldOutCompact(productId)) return null;
+  const supplier = supplierManager.getProductById(productId);
+  if (!supplier) return null;
+  const result = queryPublicCatalog(
+    mergeCatalogProducts([], [supplier], soldOutCatalogOptions()),
+    { id: productId },
+    catalogImageContext()
+  );
+  const product = Array.isArray(result.products) ? result.products[0] : null;
+  if (!product) return null;
+  return Object.assign(attachProductUrlFields(product, index.routeIndex), { soldOut: true });
+}
+
 function requestedCatalogIds(productId, idsRaw) {
   if (productId) return [productId];
   return String(idsRaw || "")
@@ -1040,7 +1100,10 @@ function lookupPublicProductsByPath(pathValue) {
     }
   }
   if (!productId) {
-    return { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
+    const soldOut = lookupSoldOutProductByPath(parts[0], parts[1]);
+    return soldOut
+      ? { products: [soldOut], total: 1, page: 1, limit: 1, totalPages: 1 }
+      : { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
   }
   return lookupPublicProductsByIds(productId, "");
 }
@@ -1956,25 +2019,32 @@ async function handleApi(req, res, urlPath) {
       if (body.consent !== true) {
         return json(res, 422, { ok: false, error: "Bildirim almak için onay kutusunu işaretleyin." });
       }
-      const product = priceAlertProduct(body.productId);
-      if (!product) return json(res, 404, { ok: false, error: "Bu ürün şu anda satışta değil." });
+      const kind = body.kind === "stock" ? "stock" : "price";
+      const product = kind === "stock" ? soldOutAlertProduct(body.productId) : priceAlertProduct(body.productId);
+      if (!product) {
+        if (kind === "stock" && priceAlertProduct(body.productId)) {
+          return json(res, 409, { ok: false, error: "Bu ürün şu anda stokta; sayfayı yenileyip sipariş verebilirsiniz." });
+        }
+        return json(res, 404, { ok: false, error: "Bu ürün şu anda satışta değil." });
+      }
       if (!smtpConfigured(process.env)) {
         return json(res, 503, { ok: false, error: "E-posta bildirimi şu anda kullanılamıyor." });
       }
       const { alert, state } = priceAlertStore.subscribe({
         email,
+        kind,
         productId: body.productId,
         productName: product.name,
         price: product.priceIncl,
       });
-      if (state === "active") return json(res, 200, { ok: true, state: "active" });
+      if (state === "active") return json(res, 200, { ok: true, state: "active", kind });
       try {
         consentStore.record({
-          subjectType: "price_alert",
+          subjectType: kind === "stock" ? "stock_alert" : "price_alert",
           subjectRef: String(alert.id),
-          purpose: "price_alert_email",
+          purpose: kind === "stock" ? "stock_alert_email" : "price_alert_email",
           policyVersion: "2026-10-08",
-          evidence: { ip, email: alert.email, productId: alert.productId, granted: true },
+          evidence: { ip, email: alert.email, productId: alert.productId, kind, granted: true },
         });
       } catch (_) {}
       try {
@@ -1985,7 +2055,7 @@ async function handleApi(req, res, urlPath) {
         priceAlertStore.unsubscribe(alert.token);
         throw new Error("Bilgilendirme e-postası gönderilemedi; lütfen biraz sonra tekrar deneyin.");
       }
-      return json(res, 200, { ok: true, state: "created" });
+      return json(res, 200, { ok: true, state: "created", kind });
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Fiyat alarmı kurulamadı." });
     }
@@ -2000,7 +2070,7 @@ async function handleApi(req, res, urlPath) {
       alert = priceAlertStore && token ? (confirming ? priceAlertStore.confirm(token) : priceAlertStore.unsubscribe(token)) : null;
     } catch (_) {}
     if (!alert) return redirectTo(res, SITE_BASE_URL + "/urunler?alarm=gecersiz");
-    const product = priceAlertProduct(alert.productId);
+    const product = alertProductInfo(alert.productId);
     const target = product && product.urlPath ? product.urlPath : "/urunler";
     return redirectTo(res, SITE_BASE_URL + target + "?alarm=" + (confirming ? "onay" : "iptal"));
   }
@@ -2392,10 +2462,12 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/products/similar") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
+    const similarId = requestUrl.searchParams.get("id");
     const products = similarProductsIndexed(
       storefrontIndex(false),
-      requestUrl.searchParams.get("id"),
-      requestUrl.searchParams.get("limit")
+      similarId,
+      requestUrl.searchParams.get("limit"),
+      soldOutCompact(similarId)
     );
     return json(res, 200, { products }, {
       "Cache-Control": "public, max-age=300, stale-while-revalidate=900",
@@ -2793,6 +2865,75 @@ async function handleApi(req, res, urlPath) {
       return json(res, 405, { ok: false, error: "Desteklenmeyen işlem." });
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Kupon kaydedilemedi." });
+    }
+  }
+
+  if (urlPath === "/api/admin/price-alerts" || urlPath.startsWith("/api/admin/price-alerts/")) {
+    if (!priceAlertStore) return json(res, 503, { ok: false, error: "Alarm modülü kullanılamıyor." });
+    const idParam = urlPath.startsWith("/api/admin/price-alerts/")
+      ? Number(urlPath.slice("/api/admin/price-alerts/".length))
+      : 0;
+    try {
+      if (req.method === "GET" && !idParam) {
+        const requestUrl = new URL(req.url || urlPath, "http://localhost");
+        if (requestUrl.searchParams.get("countsOnly") === "1") {
+          return json(res, 200, { ok: true, counts: priceAlertStore.adminCounts() });
+        }
+        const kind = requestUrl.searchParams.get("kind") === "stock" ? "stock" : "price";
+        const groups = new Map();
+        priceAlertStore.adminList(kind).forEach((alert) => {
+          let group = groups.get(alert.productId);
+          if (!group) {
+            const live = priceAlertProduct(alert.productId);
+            const soldOut = live ? null : soldOutAlertProduct(alert.productId);
+            const info = live || soldOut;
+            group = {
+              productId: alert.productId,
+              name: (info && info.name) || alert.productName || alert.productId,
+              urlPath: info ? info.urlPath : null,
+              image: info ? info.image : "",
+              state: live ? "live" : soldOut ? "soldout" : "gone",
+              priceIncl: live ? live.priceIncl : null,
+              lastRequestAt: alert.createdAt,
+              requests: [],
+            };
+            groups.set(alert.productId, group);
+          }
+          group.requests.push({
+            id: alert.id,
+            email: alert.email,
+            createdAt: alert.createdAt,
+            basePrice: alert.basePrice,
+            status: alert.status,
+            notifyCount: alert.notifyCount,
+            lastNotifiedAt: alert.lastNotifiedAt,
+          });
+        });
+        const products = Array.from(groups.values()).sort(
+          (a, b) => b.requests.length - a.requests.length || String(b.lastRequestAt).localeCompare(String(a.lastRequestAt))
+        );
+        return json(res, 200, { ok: true, kind, counts: priceAlertStore.adminCounts(), products });
+      }
+      if (req.method === "DELETE" && idParam) {
+        const alert = priceAlertStore.remove(idParam);
+        if (!alert) return json(res, 404, { ok: false, error: "Talep bulunamadı." });
+        try {
+          const session = getSession(req);
+          auditStore.record({
+            actorType: "admin_user",
+            actorId: session && session.userId,
+            action: "price_alert.delete",
+            entityType: "price_alert",
+            entityId: String(alert.id),
+            detail: { productId: alert.productId, kind: alert.kind },
+            ip: clientIp(req),
+          });
+        } catch (_) {}
+        return json(res, 200, { ok: true, counts: priceAlertStore.adminCounts() });
+      }
+      return json(res, 405, { ok: false, error: "Desteklenmeyen işlem." });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Talepler okunamadı." });
     }
   }
 
@@ -4176,9 +4317,11 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
   if (!page) {
     const found = lookupPublicProductsByPath(key);
     const product = found && Array.isArray(found.products) ? found.products[0] : null;
-    page = product
-      ? { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) }
-      : { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) };
+    page = !product
+      ? { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) }
+      : product.soldOut
+        ? { status: 200, html: renderSoldOutProductHtml(productHtmlCache.shell, product) }
+        : { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) };
     if (productHtmlCache.pages.size >= PRODUCT_HTML_CACHE_MAX) productHtmlCache.pages.clear();
     productHtmlCache.pages.set(key, page);
   }
@@ -4471,7 +4614,7 @@ const server = http.createServer(async (req, res) => {
       productRoute.segment,
       productRoute.slug
     );
-    if (!productId) {
+    if (!productId && !lookupSoldOutProductByPath(productRoute.segment, productRoute.slug)) {
       return serveNotFound(res, req.method);
     }
     if (htmlPath && fs.existsSync(htmlPath)) {

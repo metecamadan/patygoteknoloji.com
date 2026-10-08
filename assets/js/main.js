@@ -498,8 +498,8 @@
 
   // Landing message after the price-alert confirm / unsubscribe links in e-mails.
   const ALERT_MESSAGES = {
-    onay: ["ok", "Fiyat alarmınız başladı. Fiyat düştüğünde veya ürün yeniden satışa girdiğinde e-posta göndereceğiz."],
-    iptal: ["ok", "Bu ürün için fiyat alarmı bildirimleri durduruldu."],
+    onay: ["ok", "Fiyat alarmınız başladı. Fiyat düştüğünde e-posta göndereceğiz."],
+    iptal: ["ok", "Bu ürün için e-posta bildirim talebiniz iptal edildi."],
     gecersiz: ["err", "Bağlantı geçersiz veya süresi dolmuş. Alarmı ürün sayfasından yeniden kurabilirsiniz."],
   };
   const alarmParams = new URLSearchParams(location.search);

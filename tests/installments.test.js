@@ -151,7 +151,7 @@ test("checkout and product page render installments from /api/installments and s
   assert.match(checkout, /installCount: totals\.installCount \|\| 1/);
   assert.match(checkout, /return applyInstallment\(applyCoupon\(summary\)\)/);
   assert.match(checkout, /Vade farkı \(/);
-  assert.match(detail, /\{ id: "returns", label: "İade ve Cayma" \},\s*\{ id: "installments", label: "Taksit Seçenekleri" \},\s*\];/, "Taksit Seçenekleri is the last detail tab");
+  assert.match(detail, /\{ id: "returns", label: "İade ve Cayma" \},\s*\{ id: "installments", label: "Taksit Seçenekleri" \},\s*\]/, "Taksit Seçenekleri is the last detail tab");
   assert.match(detail, /instPanel\.appendChild\(buildInstallmentTable\(gross\)\);/);
   assert.doesNotMatch(detail, /info\.appendChild\(installmentTable\)/, "installments live only in the tab");
   assert.match(detail, /label: "Tek çekim", monthly: gross, total: gross/);

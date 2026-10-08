@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p35" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-16" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p36" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-17" />
   <script>
     (function () {
       try {
@@ -79,6 +79,8 @@
           <div class="admin-nav-children" id="productsNavChildren" hidden>
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
+            <button type="button" class="admin-nav-subitem" id="priceAlertsNav" data-admin-tab="products" data-products-view="alerts-price">Fiyat Alarm Talepleri <span class="admin-nav-count" id="priceAlertsNavCount" hidden></span></button>
+            <button type="button" class="admin-nav-subitem" id="stockAlertsNav" data-admin-tab="products" data-products-view="alerts-stock">Stoğu Biten Ürün Talepleri <span class="admin-nav-count" id="stockAlertsNavCount" hidden></span></button>
           </div>
           <button type="button" class="admin-nav-item" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted"><span class="admin-nav-icon">⊘</span>Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
           <button type="button" class="admin-nav-item" id="categoriesTab" aria-controls="adminTabCategories" data-admin-tab="categories"><span class="admin-nav-icon">▤</span>Kategoriler</button>
@@ -857,6 +859,23 @@
 
             </section>
 
+            <section id="alertRequestsView" class="admin-products-view" aria-labelledby="priceAlertsNav" hidden>
+              <section class="admin-card">
+                <div class="admin-card-head">
+                  <div>
+                    <span class="admin-eyebrow" id="alertRequestsEyebrow">FİYAT ALARMI</span>
+                    <h2 id="alertRequestsTitle">Fiyat alarm talepleri</h2>
+                    <p class="admin-card-lead" id="alertRequestsLead"></p>
+                  </div>
+                  <div class="admin-card-head-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="alertRequestsRefresh">Yenile</button>
+                  </div>
+                </div>
+                <div id="alertRequestsList" class="admin-alert-requests" aria-live="polite"></div>
+                <p class="admin-note" id="alertRequestsNote" role="status"></p>
+              </section>
+            </section>
+
             <section id="xmlProductsView" class="admin-products-view" aria-labelledby="xmlProductsNav" hidden>
               <section class="admin-card admin-supplier-catalog">
                 <div class="admin-card-head">
@@ -1237,6 +1256,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-16"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-17"></script>
 </body>
 </html>

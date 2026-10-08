@@ -3214,6 +3214,9 @@ h1, h2, h3, h4 {
 .price-alert-note.ok { color: #047857; }
 .price-alert-note.err { color: #b91c1c; }
 .price-alert-done { margin: 0; padding: 12px 14px 14px; font-size: 0.88rem; color: #047857; }
+.price-alert--stock { border-color: var(--brand); }
+.price-alert--stock summary { font-weight: 700; }
+.detail-info .price.detail-soldout-label { color: #b91c1c; }
 .site-flash {
   position: relative;
   max-width: 1180px;
