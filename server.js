@@ -31,7 +31,14 @@ const {
   createOrderDocStore,
   createDocLinkSigner,
 } = require("./lib/order-docs");
-const { loadMirrorIndex, mirrorAkakceCatalogImages, mirrorPaths, getCachedPlaceholderMirrorFileSet } = require("./lib/product-image-mirror");
+const {
+  loadMirrorIndex,
+  loadMirrorFailures,
+  mirrorAkakceCatalogImages,
+  mirrorPaths,
+  getCachedPlaceholderMirrorFileSet,
+  supplierImageState,
+} = require("./lib/product-image-mirror");
 const { generateMissingThumbnails } = require("./lib/product-thumbnails");
 const {
   mergeCatalogProducts,
@@ -976,6 +983,14 @@ function catalogImageContext() {
     placeholderMirrorFiles: getCachedPlaceholderMirrorFileSet(DATA_ROOT, mirrorIndex),
     priceReference: priceReferenceFor,
   };
+}
+
+/** Classifies a listed supplier row by its XML images, ignoring panel-uploaded ones. */
+function supplierXmlImageStateReader() {
+  const context = catalogImageContext();
+  context.failures = loadMirrorFailures(DATA_ROOT);
+  return (item) =>
+    supplierImageState(Array.isArray(item.xmlImages) ? item.xmlImages : item.images || [], context);
 }
 
 function readHomeFeaturedSnapshot() {
@@ -4015,10 +4030,24 @@ async function handleApi(req, res, urlPath) {
     const status = requestUrl.searchParams.get("status") || "";
     // "feedmissing" = in stock, published, Export badge "Eksik".
     const feedMissing = status === "feedmissing";
+    const noImage = status === "noimage";
+    let match = null;
+    if (feedMissing) match = (item) => item.active === true && !feedReadyOf(item);
+    const imageState = noImage ? supplierXmlImageStateReader() : null;
+    if (noImage) {
+      const manual = requestUrl.searchParams.get("image") || "";
+      match = (item) => {
+        if (item.unlisted) return false;
+        if (manual === "waiting" && item.imageOverride) return false;
+        if (manual === "added" && !item.imageOverride) return false;
+        const state = imageState(item);
+        return state === "missing" || state === "broken";
+      };
+    }
     const queried = supplierManager.queryProducts({
       q: requestUrl.searchParams.get("q") || "",
-      status: feedMissing ? "stock" : status,
-      match: feedMissing ? (item) => item.active === true && !feedReadyOf(item) : null,
+      status: feedMissing ? "stock" : noImage ? "" : status,
+      match,
       reason: requestUrl.searchParams.get("reason") || "",
       slot: requestUrl.searchParams.get("slot") || "",
       page: requestUrl.searchParams.get("page") || 1,
@@ -4030,8 +4059,14 @@ async function handleApi(req, res, urlPath) {
         feed: (item) => (feedReadyOf(item) ? 2 : item.active ? 0 : 1),
       },
     });
+    const products = enrichSupplierProducts(queried.products, categories);
+    if (imageState) {
+      products.forEach((item) => {
+        item.xmlImageState = imageState(item);
+      });
+    }
     return json(res, 200, {
-      products: enrichSupplierProducts(queried.products, categories),
+      products,
       total: queried.total,
       page: queried.page,
       limit: queried.limit,

@@ -200,6 +200,10 @@
     unlistedPage = 1;
     loadUnlistedProducts().catch(() => {});
   });
+  const noImageSort = setupSortableHeader(document.getElementById("adminNoImageHead"), "noimage", () => {
+    noImagePage = 1;
+    loadNoImageProducts().catch(() => {});
+  });
   const productPoolSort = setupSortableHeader(document.getElementById("productPoolHead"), "pool", () => {
     productPoolPage = 1;
     loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
@@ -963,8 +967,8 @@
     }
   }
 
-  // "unlisted" is its own tab but its nav entry sits under Ürünler.
-  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted"]);
+  // "unlisted" and "noimage" are their own tabs but their nav entries sit under Ürünler.
+  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted", "noimage"]);
   let activeAdminTab = "overview";
 
   const PRODUCTS_VIEW_META = {
@@ -1001,6 +1005,7 @@
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
       unlisted: ["Listelenmeyen Ürünler", "Sitede ve Akakçe XML'inde gösterilmeyen XML ürünleri."],
+      noimage: ["Görselsiz Ürünler", "Tedarikçiden görselsiz gelen ürünlere görsel ekleyip yayına alın."],
     };
     const productsMeta = PRODUCTS_VIEW_META;
     tabs.forEach((tab) => {
@@ -1054,6 +1059,7 @@
     if (name === "reviews" && token) loadAdminReviews(true).catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
     if (name === "unlisted" && token) loadUnlistedProducts().catch(() => {});
+    if (name === "noimage" && token) loadNoImageProducts().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -3091,6 +3097,333 @@
     });
   }
 
+  let noImagePage = 1;
+  let noImageQuery = "";
+  let noImageFilter = "waiting";
+  const NO_IMAGE_STATE_LABELS = {
+    missing: "XML'de görsel yok",
+    broken: "XML görseli açılmıyor",
+  };
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Only panel uploads count here: the XML images of these rows are missing or broken.
+  function noImageOwnImages(item) {
+    return item.imageOverride && Array.isArray(item.images) ? item.images.slice() : [];
+  }
+
+  async function patchNoImageProduct(item, fields) {
+    await api("/api/admin/supplier/products", {
+      method: "PATCH",
+      body: JSON.stringify({
+        updates: [Object.assign({ supplierSku: item.supplierSku, supplierSlot: item.supplierSlot }, fields)],
+      }),
+    });
+    notifySite();
+  }
+
+  function renderNoImagePager(totalPages) {
+    const pager = document.getElementById("adminNoImagePager");
+    if (!pager) return;
+    pager.textContent = "";
+    pager.hidden = totalPages <= 1;
+    if (totalPages <= 1) return;
+    const addBtn = (label, page, opts) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts && opts.current) btn.className = "is-current";
+      btn.disabled = !!(opts && opts.disabled);
+      btn.addEventListener("click", () => {
+        noImagePage = page;
+        loadNoImageProducts().catch(() => {});
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", noImagePage - 1, { disabled: noImagePage <= 1 });
+    addBtn(noImagePage + " / " + totalPages, noImagePage, { current: true, disabled: true });
+    addBtn("›", noImagePage + 1, { disabled: noImagePage >= totalPages });
+  }
+
+  function renderNoImageNavCount(count) {
+    const badge = document.getElementById("noImageNavCount");
+    if (!badge) return;
+    const value = Number(count) || 0;
+    badge.hidden = value <= 0;
+    badge.textContent = value > 0 ? String(value) : "";
+  }
+
+  function noImageMediaCell(item, noteEl, rerender) {
+    const td = document.createElement("td");
+    const gallery = document.createElement("div");
+    gallery.className = "admin-noimage-gallery";
+    const own = noImageOwnImages(item);
+    own.forEach((url, index) => {
+      const figure = document.createElement("div");
+      figure.className = "admin-noimage-thumb";
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = (item.name || "Ürün") + " görsel " + (index + 1);
+      img.width = 48;
+      img.height = 48;
+      img.loading = "lazy";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", "Görsel " + (index + 1) + " kaldır");
+      remove.addEventListener("click", async () => {
+        remove.disabled = true;
+        const next = own.filter((_, i) => i !== index);
+        try {
+          await patchNoImageProduct(item, { images: next });
+          item.images = next;
+          item.imageOverride = next.length > 0;
+          rerender();
+          note(noteEl, "ok", "Görsel kaldırıldı.");
+        } catch (err) {
+          remove.disabled = false;
+          note(noteEl, "err", err.message || "Görsel kaldırılamadı");
+        }
+      });
+      figure.append(img, remove);
+      gallery.appendChild(figure);
+    });
+    if (own.length < MAX_PRODUCT_IMAGES) {
+      const label = document.createElement("label");
+      label.className = "btn btn-outline btn-xs admin-noimage-upload";
+      label.textContent = own.length ? "Görsel ekle" : "Görsel yükle";
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png,image/jpeg,image/webp";
+      input.multiple = true;
+      input.className = "sr-only";
+      input.addEventListener("change", async () => {
+        const files = Array.from(input.files || []).slice(0, MAX_PRODUCT_IMAGES - own.length);
+        if (!files.length) return;
+        note(noteEl, "", files.length + " görsel yükleniyor…");
+        try {
+          const added = [];
+          for (const file of files) {
+            const uploaded = await api("/api/admin/upload", {
+              method: "POST",
+              body: JSON.stringify({ dataUrl: await readFileAsDataUrl(file), name: item.supplierSku || file.name }),
+            });
+            if (uploaded && uploaded.url) added.push(String(uploaded.url));
+          }
+          const next = own.concat(added).slice(0, MAX_PRODUCT_IMAGES);
+          await patchNoImageProduct(item, { images: next });
+          item.images = next;
+          item.imageOverride = next.length > 0;
+          rerender();
+          note(noteEl, "ok", (item.name || item.supplierSku) + ": " + added.length + " görsel kaydedildi.");
+        } catch (err) {
+          input.value = "";
+          note(noteEl, "err", err.message || "Görsel yüklenemedi");
+        }
+      });
+      label.appendChild(input);
+      gallery.appendChild(label);
+    }
+    td.appendChild(gallery);
+    return td;
+  }
+
+  function renderNoImageRow(item, noteEl) {
+    const tr = document.createElement("tr");
+    const rerender = () => tr.replaceWith(renderNoImageRow(item, noteEl));
+
+    const nameTd = document.createElement("td");
+    const title = document.createElement("strong");
+    title.textContent = item.name || item.supplierSku;
+    const meta = document.createElement("small");
+    meta.className = "admin-noimage-meta";
+    meta.textContent = [
+      item.supplierSku,
+      item.brand,
+      [item.xmlMainCategory, item.xmlMidCategory, item.xmlSubCategory].filter(Boolean).join(" › "),
+      NO_IMAGE_STATE_LABELS[item.xmlImageState] || "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    nameTd.append(title, document.createElement("br"), meta);
+    tr.appendChild(nameTd);
+
+    const stockTd = document.createElement("td");
+    stockTd.textContent = item.stockQty == null ? "—" : String(item.stockQty);
+    tr.appendChild(stockTd);
+    const priceTd = document.createElement("td");
+    priceTd.textContent = Number(item.salePrice) > 0 ? moneyTr(item.salePrice) : "—";
+    tr.appendChild(priceTd);
+
+    tr.appendChild(noImageMediaCell(item, noteEl, rerender));
+
+    const catTd = document.createElement("td");
+    const selects = document.createElement("div");
+    selects.className = "admin-cat-selects";
+    const parentSelect = document.createElement("select");
+    const midSelect = document.createElement("select");
+    const childSelect = document.createElement("select");
+    [parentSelect, midSelect, childSelect].forEach((select, i) => {
+      select.setAttribute("aria-label", ["Ana kategori", "Ara kategori", "Alt kategori"][i]);
+    });
+    fillSiteParentSelect(parentSelect, item.siteParent || "");
+    fillSiteMidSelect(midSelect, item.siteParent || "", item.siteMid || "");
+    fillSiteChildSelect(childSelect, item.siteParent || "", item.siteMid || "", item.siteChild || "");
+    parentSelect.addEventListener("change", () => {
+      fillSiteMidSelect(midSelect, parentSelect.value, "");
+      fillSiteChildSelect(childSelect, parentSelect.value, "", "");
+    });
+    midSelect.addEventListener("change", () => {
+      fillSiteChildSelect(childSelect, parentSelect.value, midSelect.value, "");
+    });
+    selects.append(parentSelect, midSelect, childSelect);
+    catTd.appendChild(selects);
+    tr.appendChild(catTd);
+
+    const statusTd = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = "admin-status " + (item.active ? "on" : "pending");
+    badge.textContent = item.active ? "Aktif" : "Pasif";
+    statusTd.appendChild(badge);
+    tr.appendChild(statusTd);
+
+    const actionTd = document.createElement("td");
+    const actions = document.createElement("div");
+    actions.className = "admin-noimage-actions";
+    const chosenCategory = () => {
+      if (!parentSelect.value || !midSelect.value || !childSelect.value) {
+        note(noteEl, "err", "ANA, ARA ve ALT kategori seçin.");
+        return null;
+      }
+      return {
+        siteParent: parentSelect.value,
+        siteMid: midSelect.value,
+        siteChild: childSelect.value,
+        siteCategoryManual: true,
+      };
+    };
+    const runAction = async (button, fields, done, message) => {
+      button.disabled = true;
+      try {
+        await patchNoImageProduct(item, fields);
+        Object.assign(item, done);
+        rerender();
+        note(noteEl, "ok", message);
+      } catch (err) {
+        button.disabled = false;
+        note(noteEl, "err", err.message || "Kaydedilemedi");
+      }
+    };
+    const publish = document.createElement("button");
+    publish.type = "button";
+    publish.className = "btn btn-primary btn-xs";
+    publish.textContent = item.active ? "Kaydet" : "Yayına al";
+    publish.addEventListener("click", () => {
+      if (!noImageOwnImages(item).length) {
+        note(noteEl, "err", "Önce görsel yükleyin; görselsiz ürün sitede gösterilmez.");
+        return;
+      }
+      const category = chosenCategory();
+      if (!category) return;
+      runAction(
+        publish,
+        Object.assign({ active: true }, category),
+        Object.assign({ active: true }, category),
+        (item.name || item.supplierSku) + " yayına alındı; stok ve fiyat uygunsa sitede görünür."
+      );
+    });
+    actions.appendChild(publish);
+    if (item.active) {
+      const disable = document.createElement("button");
+      disable.type = "button";
+      disable.className = "btn btn-ghost btn-xs";
+      disable.textContent = "Pasife al";
+      disable.addEventListener("click", () => {
+        runAction(disable, { active: false }, { active: false }, (item.name || item.supplierSku) + " pasife alındı.");
+      });
+      actions.appendChild(disable);
+    }
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "btn btn-ghost btn-xs";
+    edit.textContent = "Detaylı düzenle";
+    edit.addEventListener("click", () => {
+      openSupplierFeedModal(Object.assign({}, item, { images: noImageOwnImages(item), image: "" }));
+    });
+    actions.appendChild(edit);
+    actionTd.appendChild(actions);
+    tr.appendChild(actionTd);
+    return tr;
+  }
+
+  async function loadNoImageProducts() {
+    const rows = document.getElementById("adminNoImageRows");
+    const noteEl = document.getElementById("adminNoImageNote");
+    if (!rows) return;
+    try {
+      if (!siteCategories.length) await loadSiteCategories();
+      const qs = new URLSearchParams({
+        status: "noimage",
+        image: noImageFilter,
+        q: noImageQuery,
+        page: String(noImagePage),
+        limit: "50",
+      });
+      noImageSort.apply(qs);
+      const data = await api("/api/admin/supplier/products?" + qs.toString());
+      const list = Array.isArray(data.products) ? data.products : [];
+      noImagePage = Number(data.page) || 1;
+      if (noImageFilter === "waiting" && !noImageQuery) renderNoImageNavCount(data.total);
+      renderNoImagePager(Number(data.totalPages) || 1);
+      rows.textContent = "";
+      if (!list.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 7;
+        td.className = "admin-table-empty";
+        td.textContent = noImageQuery ? "Aramaya uyan ürün yok." : "Bu filtrede görselsiz ürün yok.";
+        tr.appendChild(td);
+        rows.appendChild(tr);
+      }
+      list.forEach((item) => rows.appendChild(renderNoImageRow(item, noteEl)));
+      note(noteEl, "", "Toplam " + (Number(data.total) || 0) + " ürün");
+    } catch (err) {
+      note(noteEl, "err", err.message || "Liste yüklenemedi");
+    }
+  }
+
+  const noImageRefreshBtn = document.getElementById("adminNoImageRefresh");
+  if (noImageRefreshBtn) {
+    noImageRefreshBtn.addEventListener("click", () => loadNoImageProducts().catch(() => {}));
+  }
+  const noImageSearch = document.getElementById("adminNoImageSearch");
+  if (noImageSearch) {
+    let noImageSearchTimer = null;
+    noImageSearch.addEventListener("input", () => {
+      clearTimeout(noImageSearchTimer);
+      noImageSearchTimer = setTimeout(() => {
+        noImageQuery = noImageSearch.value.trim();
+        noImagePage = 1;
+        loadNoImageProducts().catch(() => {});
+      }, 280);
+    });
+  }
+  const noImageFilterSelect = document.getElementById("adminNoImageFilter");
+  if (noImageFilterSelect) {
+    noImageFilterSelect.addEventListener("change", () => {
+      noImageFilter = noImageFilterSelect.value;
+      noImagePage = 1;
+      loadNoImageProducts().catch(() => {});
+    });
+  }
+
   let productsLoaded = false;
 
   async function refresh() {
@@ -3334,6 +3667,7 @@
         await updateSupplierProducts([payload]);
         notifySite();
         closeSupplierFeedModal();
+        if (activeAdminTab === "noimage") loadNoImageProducts().catch(() => {});
         note(
           document.getElementById("supplierProductsNote"),
           "ok",

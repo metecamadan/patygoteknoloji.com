@@ -24,7 +24,7 @@ test("sidebar has an unlisted products tab wired to the supplier API", () => {
     "Listelenmeyen Ürünler, Ürünler menüsünün altında"
   );
   assert.equal((html.match(/id="unlistedTab"/g) || []).length, 1);
-  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted"\]\)/);
+  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted", "noimage"\]\)/);
   assert.match(script, /querySelectorAll\("\.admin-nav \[data-admin-tab\]\[aria-controls\]"\)/);
   assert.match(html, /id="adminTabUnlisted"/);
   assert.match(html, /id="adminUnlistedRows"/);
@@ -47,6 +47,30 @@ test("unlisted tab also lists products whose category left the menu, with paging
   assert.match(script, /data\.menuMissingCount/);
   assert.match(script, /renderUnlistedNavCount\(unlistedTotal\(results\[1\]\)\)/);
   assert.doesNotMatch(script, /status=unlisted&limit=100/);
+});
+
+test("Görselsiz Ürünler tab sits under Ürünler with upload, category and publish actions", () => {
+  const productsChildren = html.match(/<div class="admin-nav-children" id="productsNavChildren"[^>]*>([\s\S]*?)<\/div>/)[1];
+  assert.match(
+    productsChildren,
+    /id="unlistedTab"[\s\S]*?class="admin-nav-subitem" id="noImageTab" aria-controls="adminTabNoImage" data-admin-tab="noimage">Görselsiz Ürünler/
+  );
+  assert.match(html, /id="adminTabNoImage"[^>]*aria-labelledby="noImageTab"/);
+  assert.match(html, /id="adminNoImageFilter"[\s\S]*?value="waiting"[\s\S]*?value="added"/);
+  assert.match(html, /id="adminNoImageRows"/);
+  assert.match(html, /id="adminNoImagePager"/);
+  assert.match(script, /status: "noimage"/);
+  assert.match(script, /image: noImageFilter/);
+  assert.match(script, /noImageSort\.apply\(qs\)/);
+  assert.match(script, /name === "noimage" && token\) loadNoImageProducts\(\)/);
+  assert.match(script, /api\("\/api\/admin\/upload"[\s\S]{0,200}readFileAsDataUrl\(file\)/);
+  assert.match(script, /patchNoImageProduct\(item, \{ images: next \}\)/);
+  assert.match(script, /Object\.assign\(\{ active: true \}, category\)/);
+  assert.match(script, /siteCategoryManual: true/);
+  assert.match(script, /Önce görsel yükleyin/);
+  assert.match(script, /openSupplierFeedModal\(Object\.assign\(\{\}, item, \{ images: noImageOwnImages\(item\)/);
+  assert.doesNotMatch(script, /adminNoImageRows[^\n]*innerHTML/);
+  assert.match(css, /\.admin-noimage-gallery \{/);
 });
 
 test("products tab separates manual and XML product areas", () => {
@@ -504,7 +528,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-19/);
+  assert.match(html, /admin\.css\?v=siparis-20/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

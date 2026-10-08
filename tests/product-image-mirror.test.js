@@ -8,6 +8,9 @@ const {
   mirrorAkakceCatalogImages,
   loadMirrorIndex,
   exposesSupplierHost,
+  supplierImageState,
+  loadMirrorFailures,
+  KNOWN_PLACEHOLDER_SHA256,
 } = require("../lib/product-image-mirror");
 const { buildAkakceXml, analyzeAkakceProducts } = require("../lib/akakce");
 
@@ -144,6 +147,59 @@ test("mirrorAkakceCatalogImages does not retry 404 images until the retry window
   await mirrorAkakceCatalogImages(products, Object.assign({ now: now + 8 * 24 * 60 * 60 * 1000 }, base));
   assert.deepEqual(calls.sort(), [flaky, missing].sort(), "retried after 7 days");
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("supplierImageState separates missing, failed, untried and usable XML images", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-imgstate-"));
+  const media = path.join(tmp, ".runtime", "media", "catalog");
+  fs.mkdirSync(media, { recursive: true });
+  fs.writeFileSync(path.join(media, "good.jpg"), Buffer.alloc(4096, 7));
+  const good = "https://cdn.bilgisayarim.com.tr/images/good.jpg";
+  const gone = "https://cdn.bilgisayarim.com.tr/images/gone.jpg";
+  const blank = "https://cdn.bilgisayarim.com.tr/images/blank.jpg";
+  const fresh = "https://cdn.bilgisayarim.com.tr/images/fresh.jpg";
+  const ctx = {
+    siteBaseUrl: "https://patygoteknoloji.com",
+    dataRoot: tmp,
+    mirrorIndex: { [good]: { file: "good.jpg", publicPath: "/media/catalog/good.jpg", placeholder: false } },
+    failures: { [gone]: { status: 404 }, [blank]: { status: "placeholder" } },
+  };
+  assert.equal(supplierImageState([], ctx), "missing");
+  assert.equal(supplierImageState([gone, blank], ctx), "broken");
+  assert.equal(supplierImageState([gone, fresh], ctx), "pending");
+  assert.equal(supplierImageState([gone, good], ctx), "ok");
+  assert.equal(supplierImageState(["/assets/img/products/x.jpg"], ctx), "ok");
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("mirror records supplier placeholder images so they are not re-downloaded every run", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-mirror-ph-"));
+  const source = "https://cdn.bilgisayarim.com.tr/images/nophoto.jpg";
+  const bytes = Buffer.alloc(32448, 3);
+  const digest = require("node:crypto").createHash("sha256").update(bytes).digest("hex");
+  KNOWN_PLACEHOLDER_SHA256.add(digest);
+  const calls = [];
+  const base = {
+    dataRoot: tmp,
+    siteBaseUrl: "https://patygoteknoloji.com",
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return { ok: true, status: 200, headers: { get: () => "image/jpeg" }, arrayBuffer: async () => bytes };
+    },
+    resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+  };
+  try {
+    const now = Date.parse("2026-10-08T00:00:00Z");
+    const products = [feedReadyProduct({ image: source, images: [source] })];
+    await mirrorAkakceCatalogImages(products, Object.assign({ now }, base));
+    assert.equal(loadMirrorIndex(tmp)[source], undefined);
+    assert.equal(loadMirrorFailures(tmp)[source].status, "placeholder");
+    await mirrorAkakceCatalogImages(products, Object.assign({ now: now + 60000 }, base));
+    assert.deepEqual(calls, [source], "placeholder not downloaded again inside the retry window");
+  } finally {
+    KNOWN_PLACEHOLDER_SHA256.delete(digest);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test("server exposes mirrored catalog media route and mirror scheduler", () => {

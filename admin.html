@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p38" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-19" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-20" />
   <script>
     (function () {
       try {
@@ -80,6 +80,7 @@
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
             <button type="button" class="admin-nav-subitem" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted">Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
+            <button type="button" class="admin-nav-subitem" id="noImageTab" aria-controls="adminTabNoImage" data-admin-tab="noimage">Görselsiz Ürünler <span class="admin-nav-count" id="noImageNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="priceAlertsNav" data-admin-tab="products" data-products-view="alerts-price">Fiyat Alarm Talepleri <span class="admin-nav-count" id="priceAlertsNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="stockAlertsNav" data-admin-tab="products" data-products-view="alerts-stock">Stoğu Biten Ürün Talepleri <span class="admin-nav-count" id="stockAlertsNavCount" hidden></span></button>
           </div>
@@ -430,6 +431,39 @@
               </div>
               <nav id="adminUnlistedPager" class="admin-pager" aria-label="Listelenmeyen ürün sayfaları" hidden></nav>
               <p class="admin-note" id="adminUnlistedNote" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section id="adminTabNoImage" class="admin-tab-panel" aria-labelledby="noImageTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">KATALOG</span>
+                  <h2>Görselsiz ürünler</h2>
+                  <p class="admin-card-lead">Tedarikçi XML'inde görseli olmayan veya görseli açılmayan (bulunamadı, boş görsel) ürünler. Sitede ve Akakçe'de görselsiz ürün gösterilmez. Görsel yükleyin, site kategorisini seçin ve yayına alın; stok ve fiyat uygunsa ürün sitede görünür.</p>
+                </div>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminNoImageRefresh">Yenile</button>
+                </div>
+              </div>
+              <div class="admin-toolbar">
+                <input id="adminNoImageSearch" type="search" placeholder="Ürün, stok kodu veya marka ara" />
+                <select id="adminNoImageFilter" aria-label="Görsel durumu">
+                  <option value="waiting">Görsel bekleyen</option>
+                  <option value="added">Görsel eklenen</option>
+                  <option value="">Tümü</option>
+                </select>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table admin-noimage-table">
+                  <thead id="adminNoImageHead"><tr><th scope="col" data-sort-key="name">Ürün</th><th scope="col" data-sort-key="stock">Stok</th><th scope="col" data-sort-key="price">Fiyat</th><th scope="col">Görsel</th><th scope="col" data-sort-key="siteCategory">Site kategorisi</th><th scope="col" data-sort-key="active">Durum</th><th scope="col">İşlem</th></tr></thead>
+                  <tbody id="adminNoImageRows"><tr><td colspan="7" class="admin-table-empty">Yükleniyor…</td></tr></tbody>
+                </table>
+              </div>
+              <nav id="adminNoImagePager" class="admin-pager" aria-label="Görselsiz ürün sayfaları" hidden></nav>
+              <p class="admin-note" id="adminNoImageNote" role="status"></p>
             </section>
           </div>
         </section>
@@ -1256,6 +1290,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-19"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-20"></script>
 </body>
 </html>
