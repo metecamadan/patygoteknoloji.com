@@ -340,7 +340,7 @@ function priceAlertProduct(productId) {
   const index = storefrontIndex(false);
   if (!index.compactById) index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   const item = index.compactById.get(String(productId || ""));
-  if (!item) return null;
+  if (!item || item.soldOut === true) return null;
   const image = item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
   return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath, image };
 }
@@ -601,6 +601,9 @@ function priceCheckoutItems(rawItems) {
     const product = byId[String(row.productId || "")];
     if (!product || product.active === false) {
       throw new Error("Sepette geçersiz ürün var.");
+    }
+    if (product.soldOut === true) {
+      throw new Error((product.name || "Sepetteki bir ürün") + " tükendi; lütfen sepetten çıkarın.");
     }
     const qty = Math.max(1, Math.min(99, Number(row.qty) || 1));
     const vatPercent = normalizeVatPercent(product.vatPercent);
@@ -888,7 +891,23 @@ function normalizeProduct(p, fallbackId) {
     siteChild: siteChild || undefined,
     urlSlug: String(p.urlSlug || "").trim().slice(0, 120) || undefined,
     urlCategorySegment: String(p.urlCategorySegment || "").trim().slice(0, 40) || undefined,
+    restockedAt: p.restockedAt && Number.isFinite(Date.parse(p.restockedAt)) ? String(p.restockedAt) : undefined,
   };
+}
+
+/**
+ * restockedAt is set by the server only: when a saved manual product goes from zero stock to
+ * stock, it leads its category for a while; it clears again at zero stock.
+ */
+function stampManualRestock(product, previous, nowIso) {
+  if (!(product.stockQty > 0)) {
+    product.restockedAt = undefined;
+  } else if (previous && Number.isFinite(Number(previous.stockQty)) && Number(previous.stockQty) <= 0) {
+    product.restockedAt = nowIso;
+  } else {
+    product.restockedAt = (previous && previous.restockedAt) || undefined;
+  }
+  return product;
 }
 
 const storefrontCatalogMemo = { active: null, all: null };
@@ -1018,9 +1037,10 @@ function soldOutCatalogOptions() {
 }
 
 /**
- * Published XML products that are out of stock (or unread for 7 days). Only the product page
- * ("Tükendi" + stock alert form, noindex), stock alerts and the admin panel use it; listings,
- * search, sitemap, Akakçe and checkout never see these products.
+ * Published XML products that are out of stock (or unread for 7 days): product page
+ * ("Tükendi" + stock alert form), the end of search results, stock alerts and the admin panel.
+ * Category listings, sitemap, Akakçe and checkout never see these products. Sold-out manual
+ * products live in the storefront index instead (flagged soldOut, listed last).
  */
 function soldOutIndex() {
   if (soldOutCatalogMemo.index) return soldOutCatalogMemo.index;
@@ -1034,9 +1054,16 @@ function soldOutIndex() {
   return index;
 }
 
+/** Sold-out compact product: a listed manual product at zero stock, or a published XML product. */
 function soldOutCompact(productId) {
   const id = String(productId || "");
-  if (!id || storefrontIndex(false).routeIndex.byId[id]) return null;
+  if (!id) return null;
+  const live = storefrontIndex(false);
+  if (live.routeIndex.byId[id]) {
+    if (!live.compactById) live.compactById = new Map(live.compactAll.map((item) => [String(item.id), item]));
+    const item = live.compactById.get(id);
+    return item && item.soldOut === true ? item : null;
+  }
   return soldOutIndex().compactById.get(id) || null;
 }
 
@@ -1132,6 +1159,11 @@ function lookupPublicProductsByIds(productId, idsRaw) {
   const routeIndex = storefrontIndex(false).routeIndex;
   if (routeIndex && Array.isArray(result.products)) {
     result.products = result.products.map((item) => attachProductUrlFields(item, routeIndex));
+  }
+  // Cart and favourites resolve ?ids=; a sold-out manual product drops out like an XML one.
+  if (!productId && Array.isArray(result.products)) {
+    result.products = result.products.filter((item) => item.soldOut !== true);
+    result.total = result.products.length;
   }
   return result;
 }
@@ -4067,6 +4099,8 @@ async function handleApi(req, res, urlPath) {
       const list = Array.isArray(body.products) ? body.products : [];
       const seen = new Set();
       const normalized = [];
+      const previousById = new Map(loadProducts().map((item) => [String(item && item.id), item]));
+      const nowIso = new Date().toISOString();
       for (const item of list) {
         if (!isAllowedVatPercent(item && item.vatPercent)) {
           const label = String((item && (item.name || item.id)) || "Ürün");
@@ -4101,7 +4135,7 @@ async function handleApi(req, res, urlPath) {
           });
         }
         seen.add(p.id);
-        normalized.push(p);
+        normalized.push(stampManualRestock(p, previousById.get(p.id), nowIso));
       }
       saveProducts(normalized);
       return json(res, 200, { ok: true, count: normalized.length, products: normalized });
