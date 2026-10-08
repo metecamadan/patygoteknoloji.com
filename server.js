@@ -4049,6 +4049,7 @@ async function handleApi(req, res, urlPath) {
       status: feedMissing ? "stock" : noImage ? "" : status,
       match,
       reason: requestUrl.searchParams.get("reason") || "",
+      inStock: requestUrl.searchParams.get("stock") === "1",
       slot: requestUrl.searchParams.get("slot") || "",
       page: requestUrl.searchParams.get("page") || 1,
       limit: requestUrl.searchParams.get("limit") || 50,
@@ -4075,6 +4076,7 @@ async function handleApi(req, res, urlPath) {
       activeCount: queried.activeCount,
       unlistedCount: queried.unlistedCount,
       menuMissingCount: queried.menuMissingCount,
+      categoryUnmatchedCount: queried.categoryUnmatchedCount,
       slots,
       status: slots[0],
     });

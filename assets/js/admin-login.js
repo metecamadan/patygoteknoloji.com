@@ -2,7 +2,7 @@
   "use strict";
 
   const TOKEN_KEY = "patygo_admin_token";
-  const PANEL_SRC = "/assets/js/admin-panel.js?v=siparis-20";
+  const PANEL_SRC = "/assets/js/admin-panel.js?v=siparis-21";
   const loginForm = document.getElementById("loginForm");
   const loginNote = document.getElementById("loginNote");
 

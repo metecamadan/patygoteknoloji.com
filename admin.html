@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p38" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-20" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-21" />
   <script>
     (function () {
       try {
@@ -409,7 +409,7 @@
                 <div>
                   <span class="admin-eyebrow">KATALOG</span>
                   <h2>Listelenmeyen ürünler</h2>
-                  <p class="admin-card-lead">Sitede, ürün sayfasında, ödemede ve Akakçe XML'inde görünmeyen yayındaki XML ürünleri: XML Ürünleri'nde “Listeden çıkar” denenler ve site kategorisi menü ağacında artık bulunmayanlar. Menüdeki bir kategoriye taşınan ürün buradan çıkar ve sitede görünür.</p>
+                  <p class="admin-card-lead">Sitede, ürün sayfasında, ödemede ve Akakçe XML'inde görünmeyen XML ürünleri: XML Ürünleri'nde “Listeden çıkar” denenler, site kategorisi menü ağacında artık bulunmayanlar ve tedarikçi kategorisi hiçbir menü kategorisiyle eşleşmeyenler. Menüdeki bir kategoriye taşınan ürün yayına alınır, buradan çıkar; stok ve görsel uygunsa sitede görünür.</p>
                 </div>
                 <div class="admin-card-head-actions">
                   <button type="button" class="btn btn-outline btn-sm" id="adminUnlistedRefresh">Yenile</button>
@@ -420,7 +420,12 @@
                 <select id="adminUnlistedReason" aria-label="Gerekçe">
                   <option value="">Tümü</option>
                   <option value="menu">Menüde kategorisi yok</option>
+                  <option value="nocat">Kategori eşleşmedi</option>
                   <option value="manual">Listeden çıkarılan</option>
+                </select>
+                <select id="adminUnlistedStock" aria-label="Stok durumu">
+                  <option value="1" selected>Stokta olanlar</option>
+                  <option value="">Stoksuzlar dahil</option>
                 </select>
               </div>
               <div class="admin-table-wrap">
@@ -1290,6 +1295,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-20"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-21"></script>
 </body>
 </html>

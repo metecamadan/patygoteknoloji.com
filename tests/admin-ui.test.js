@@ -39,7 +39,12 @@ test("sidebar has an unlisted products tab wired to the supplier API", () => {
 
 test("unlisted tab also lists products whose category left the menu, with paging and a move action", () => {
   assert.match(html, /id="adminUnlistedSearch"/);
-  assert.match(html, /id="adminUnlistedReason"[\s\S]*?value="menu"[\s\S]*?value="manual"/);
+  assert.match(html, /id="adminUnlistedReason"[\s\S]*?value="menu"[\s\S]*?value="nocat"[\s\S]*?value="manual"/);
+  assert.match(html, /id="adminUnlistedStock"[\s\S]*?value="1" selected/);
+  assert.match(script, /stock: unlistedInStock/);
+  assert.match(script, /item\.categoryUnmatched/);
+  assert.match(script, /data\.categoryUnmatchedCount/);
+  assert.match(script, /siteChild: childSelect\.value,\s*active: true,/, "moving an unlisted row also publishes it");
   assert.match(html, /id="adminUnlistedPager"/);
   assert.match(script, /reason: unlistedReason/);
   assert.match(script, /item\.menuMissing/);
@@ -528,7 +533,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-20/);
+  assert.match(html, /admin\.css\?v=siparis-21/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

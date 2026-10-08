@@ -130,11 +130,18 @@ test("three supplier slots keep configuration, products and overrides isolated",
     manager.updateProducts([
       { supplierSlot: "supplier-2", supplierSku: "SKU-1", unlisted: true, unlistedReason: "Test" },
     ]);
-    const unlisted = manager.queryProducts({ status: "unlisted", page: 1, limit: 50 });
+    const unlisted = manager.queryProducts({ status: "unlisted", reason: "manual", page: 1, limit: 50 });
     assert.equal(unlisted.total, 1);
     assert.equal(unlisted.unlistedCount, 1);
     assert.equal(unlisted.products[0].supplierSlot, "supplier-2");
     assert.equal(unlisted.products[0].unlistedReason, "Test");
+    const unmatched = manager.queryProducts({ status: "unlisted", reason: "nocat", page: 1, limit: 50 });
+    assert.deepEqual(
+      unmatched.products.map((item) => [item.supplierSlot, item.categoryUnmatched]),
+      [["supplier-1", true], ["supplier-3", true]],
+      "inactive rows the mapper could not place are listed for a manual move"
+    );
+    assert.equal(unmatched.categoryUnmatchedCount, 2);
     const pool = manager.queryProducts({ status: "pool", page: 1, limit: 50 });
     assert.ok(pool.products.every((item) => !item.unlisted));
     assert.equal(manager.queryProducts({ page: 1, limit: 50 }).unlistedCount, 1);
@@ -154,10 +161,12 @@ test("three supplier slots keep configuration, products and overrides isolated",
         children: TEST_SITE_CATEGORIES[0].children.filter((row) => row.slug !== "islemciler"),
       }),
     ]);
-    const both = manager.queryProducts({ status: "unlisted", page: 1, limit: 50 });
-    assert.equal(both.total, 2, "active products whose category is not in the menu tree are listed too");
-    assert.equal(both.unlistedCount, 1);
-    assert.equal(both.menuMissingCount, 1);
+    const all = manager.queryProducts({ status: "unlisted", page: 1, limit: 50 });
+    assert.equal(all.total, 3, "manual, menu-missing and unmatched rows together");
+    assert.equal(all.unlistedCount, 1);
+    assert.equal(all.menuMissingCount, 1);
+    assert.equal(all.categoryUnmatchedCount, 1);
+    assert.equal(manager.queryProducts({ status: "unlisted", inStock: true, page: 1, limit: 50 }).total, 3);
     const menuOnly = manager.queryProducts({ status: "unlisted", reason: "menu", page: 1, limit: 50 });
     assert.deepEqual(menuOnly.products.map((item) => [item.supplierSlot, item.menuMissing]), [["supplier-3", true]]);
     const manualOnly = manager.queryProducts({ status: "unlisted", reason: "manual", page: 1, limit: 50 });
