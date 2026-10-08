@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p38" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-18" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-19" />
   <script>
     (function () {
       try {
@@ -79,10 +79,10 @@
           <div class="admin-nav-children" id="productsNavChildren" hidden>
             <button type="button" class="admin-nav-subitem active" id="manualProductsNav" data-admin-tab="products" data-products-view="manual">Manuel Ürünler</button>
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
+            <button type="button" class="admin-nav-subitem" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted">Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="priceAlertsNav" data-admin-tab="products" data-products-view="alerts-price">Fiyat Alarm Talepleri <span class="admin-nav-count" id="priceAlertsNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="stockAlertsNav" data-admin-tab="products" data-products-view="alerts-stock">Stoğu Biten Ürün Talepleri <span class="admin-nav-count" id="stockAlertsNavCount" hidden></span></button>
           </div>
-          <button type="button" class="admin-nav-item" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted"><span class="admin-nav-icon">⊘</span>Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
           <button type="button" class="admin-nav-item" id="categoriesTab" aria-controls="adminTabCategories" data-admin-tab="categories"><span class="admin-nav-icon">▤</span>Kategoriler</button>
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
@@ -1256,6 +1256,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-18"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-19"></script>
 </body>
 </html>

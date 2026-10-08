@@ -963,6 +963,10 @@
     }
   }
 
+  // "unlisted" is its own tab but its nav entry sits under Ürünler.
+  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted"]);
+  let activeAdminTab = "overview";
+
   const PRODUCTS_VIEW_META = {
     manual: ["Manuel Ürünler", "Katalogdaki manuel ürünleri ekleyin ve düzenleyin."],
     xml: ["XML Ürünleri", "Tedarikçi XML havuzundaki ürünleri yönetin."],
@@ -983,7 +987,8 @@
   }
 
   function selectAdminTab(name, focus) {
-    const tabs = Array.from(document.querySelectorAll(".admin-nav > [data-admin-tab]"));
+    activeAdminTab = name;
+    const tabs = Array.from(document.querySelectorAll(".admin-nav [data-admin-tab][aria-controls]"));
     const pageMeta = {
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
       calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
@@ -1010,8 +1015,17 @@
     });
     const productsChildren = document.getElementById("productsNavChildren");
     const productsTabBtn = document.getElementById("productsTab");
-    if (productsChildren) productsChildren.hidden = name !== "products";
-    if (productsTabBtn) productsTabBtn.setAttribute("aria-expanded", String(name === "products"));
+    const inProductsGroup = PRODUCTS_GROUP_TABS.has(name);
+    if (productsChildren) productsChildren.hidden = !inProductsGroup;
+    if (productsTabBtn) {
+      productsTabBtn.setAttribute("aria-expanded", String(inProductsGroup));
+      productsTabBtn.classList.toggle("active", inProductsGroup);
+    }
+    if (name !== "products") {
+      document.querySelectorAll(".admin-nav-children [data-products-view]").forEach((tab) => {
+        tab.classList.remove("active");
+      });
+    }
     let meta = pageMeta[name] || pageMeta.overview;
     if (name === "products") {
       meta = productsMeta[savedProductsView()] || productsMeta.manual;
@@ -1045,7 +1059,7 @@
     } catch (_) {}
   }
 
-  document.querySelectorAll(".admin-nav > [data-admin-tab]").forEach((tab) => {
+  document.querySelectorAll(".admin-nav [data-admin-tab][aria-controls]").forEach((tab) => {
     tab.addEventListener("click", () => {
       selectAdminTab(tab.dataset.adminTab, false);
       if (tab.dataset.adminTab === "products") {
@@ -1226,8 +1240,9 @@
 
   function selectProductsView(name) {
     const view = normalizeProductsView(name);
+    const onProducts = activeAdminTab === "products";
     document.querySelectorAll(".admin-nav-children [data-products-view]").forEach((tab) => {
-      tab.classList.toggle("active", tab.dataset.productsView === view);
+      tab.classList.toggle("active", onProducts && tab.dataset.productsView === view);
     });
     const manualView = document.getElementById("manualProductsView");
     const xmlView = document.getElementById("xmlProductsView");
@@ -1240,8 +1255,7 @@
       if (token) loadAlertRequests().catch((err) => note(alertRequestsNote, "err", err.message || "Talepler yüklenemedi"));
     }
     const meta = PRODUCTS_VIEW_META[view];
-    const productsTab = document.getElementById("productsTab");
-    if (productsTab && productsTab.classList.contains("active")) {
+    if (onProducts) {
       document.getElementById("adminPageTitle").textContent = meta[0];
       document.getElementById("adminPageSubtitle").textContent = meta[1];
     }

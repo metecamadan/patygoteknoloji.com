@@ -17,6 +17,15 @@ test("admin markup has unique element IDs", () => {
 
 test("sidebar has an unlisted products tab wired to the supplier API", () => {
   assert.match(html, /data-admin-tab="unlisted"[^>]*>[\s\S]*?Listelenmeyen Ürünler/);
+  const productsChildren = html.match(/<div class="admin-nav-children" id="productsNavChildren"[^>]*>([\s\S]*?)<\/div>/)[1];
+  assert.match(
+    productsChildren,
+    /class="admin-nav-subitem" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted"/,
+    "Listelenmeyen Ürünler, Ürünler menüsünün altında"
+  );
+  assert.equal((html.match(/id="unlistedTab"/g) || []).length, 1);
+  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted"\]\)/);
+  assert.match(script, /querySelectorAll\("\.admin-nav \[data-admin-tab\]\[aria-controls\]"\)/);
   assert.match(html, /id="adminTabUnlisted"/);
   assert.match(html, /id="adminUnlistedRows"/);
   assert.match(html, /id="unlistedNavCount"/);
@@ -50,7 +59,7 @@ test("products tab separates manual and XML product areas", () => {
   assert.doesNotMatch(html, /admin-subtabs|manualProductsSubtab|xmlProductsSubtab/);
   assert.match(script, /selectProductsView/);
   assert.match(script, /productsNavChildren/);
-  assert.match(script, /\.admin-nav > \[data-admin-tab\]/);
+  assert.match(script, /\.admin-nav \[data-admin-tab\]\[aria-controls\]/);
   assert.doesNotMatch(script, /\.admin-subtabs/);
 });
 
@@ -495,7 +504,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-18/);
+  assert.match(html, /admin\.css\?v=siparis-19/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -619,7 +628,7 @@ test("admin overview header keeps period controls on one compact row", () => {
 
 test("admin products view does not overwrite the overview title on reload", () => {
   const fn = script.match(/function selectProductsView\(name\) \{[\s\S]*?\n  \}/)[0];
-  assert.match(fn, /productsTab\.classList\.contains\("active"\)[\s\S]*?adminPageTitle/);
+  assert.match(fn, /const onProducts = activeAdminTab === "products";[\s\S]*?if \(onProducts\) \{\s*document\.getElementById\("adminPageTitle"\)/);
 });
 
 test("admin mobile shell does not widen the page with the scrolling nav", () => {
