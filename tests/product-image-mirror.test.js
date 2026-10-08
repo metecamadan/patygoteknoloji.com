@@ -202,6 +202,12 @@ test("mirror records supplier placeholder images so they are not re-downloaded e
   }
 });
 
+test("CLI publish mirrors images of newly live products like the panel publish", () => {
+  const script = fs.readFileSync(path.join(__dirname, "..", "scripts", "publish-supplier-slot.js"), "utf8");
+  assert.match(script, /mirrorAkakceCatalogImages\(supplierStorefrontCandidates\(manager\.listProducts\(\)\)/);
+  assert.match(script, /process\.env\.SITE_BASE_URL/);
+});
+
 test("server exposes mirrored catalog media route and mirror scheduler", () => {
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /\/media\/catalog\//);
