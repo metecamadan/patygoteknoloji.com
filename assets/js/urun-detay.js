@@ -163,24 +163,31 @@
     return buildSpecTableFromRows(rows);
   }
 
-  function wireDetailTabs(section) {
-    const tabs = section.querySelectorAll('[role="tab"]');
-    const panels = section.querySelectorAll('[role="tabpanel"]');
-    tabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const target = tab.getAttribute("data-tab");
-        tabs.forEach((item) => {
-          const active = item === tab;
-          item.classList.toggle("is-active", active);
-          item.setAttribute("aria-selected", active ? "true" : "false");
-        });
-        panels.forEach((panel) => {
-          const active = panel.getAttribute("data-tab") === target;
-          panel.hidden = !active;
-          panel.classList.toggle("is-active", active);
-        });
-      });
+  function activateDetailTab(section, target) {
+    if (!section || !section.querySelector('[role="tab"][data-tab="' + target + '"]')) return false;
+    section.querySelectorAll('[role="tab"]').forEach((item) => {
+      const active = item.getAttribute("data-tab") === target;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-selected", active ? "true" : "false");
     });
+    section.querySelectorAll('[role="tabpanel"]').forEach((panel) => {
+      const active = panel.getAttribute("data-tab") === target;
+      panel.hidden = !active;
+      panel.classList.toggle("is-active", active);
+    });
+    return true;
+  }
+
+  function wireDetailTabs(section) {
+    section.querySelectorAll('[role="tab"]').forEach((tab) => {
+      tab.addEventListener("click", () => activateDetailTab(section, tab.getAttribute("data-tab")));
+    });
+  }
+
+  function openReviewsTab() {
+    const section = document.querySelector(".detail-tabs");
+    if (!activateDetailTab(section, "reviews")) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   /** Muadil/uyumlu sarf malzemesi orijinal değildir; "Orijinal ürün" yalnızca diğerlerinde. */
@@ -229,7 +236,8 @@
       { id: "payment", label: "Ödeme ve Teslimat" },
       { id: "returns", label: "İade ve Cayma" },
       { id: "installments", label: "Taksit Seçenekleri" },
-    ].filter((def) => !soldOut || def.id === "desc");
+      { id: "reviews", label: "Değerlendirmeler" },
+    ].filter((def) => !soldOut || def.id === "desc" || def.id === "reviews");
     defs.forEach((def, index) => {
       const tab = el("button", "detail-tab" + (index === 0 ? " is-active" : ""));
       tab.type = "button";
@@ -326,15 +334,24 @@
     instPanel.setAttribute("data-tab", "installments");
     instPanel.appendChild(buildInstallmentTable(gross));
 
+    const reviewPanel = el("div", "detail-tabpanel detail-reviews");
+    reviewPanel.hidden = true;
+    reviewPanel.id = "degerlendirmeler";
+    reviewPanel.setAttribute("role", "tabpanel");
+    reviewPanel.setAttribute("data-tab", "reviews");
+    fillReviewPanel(reviewPanel, tablist.querySelector('[data-tab="reviews"]'), product);
+
     panels.appendChild(descPanel);
     if (!soldOut) {
       panels.appendChild(payPanel);
       panels.appendChild(retPanel);
       panels.appendChild(instPanel);
     }
+    panels.appendChild(reviewPanel);
     section.appendChild(tablist);
     section.appendChild(panels);
     wireDetailTabs(section);
+    if (window.location.hash === "#degerlendirmeler") activateDetailTab(section, "reviews");
     return section;
   }
 
@@ -510,11 +527,23 @@
     return reviewCache.get(key);
   }
 
+  function formatRating(value) {
+    return String(Math.round((Number(value) || 0) * 10) / 10).replace(".", ",");
+  }
+
+  /** Gold fill is clipped to the exact average, so 4,3 shows a third of the fifth star. */
   function buildStars(rating) {
-    const full = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
-    const stars = el("span", "review-stars", "★★★★★".slice(0, full) + "☆☆☆☆☆".slice(0, 5 - full));
+    const value = Math.max(0, Math.min(5, Number(rating) || 0));
+    const stars = el("span", "review-stars");
     stars.setAttribute("role", "img");
-    stars.setAttribute("aria-label", "5 üzerinden " + String(rating).replace(".", ","));
+    stars.setAttribute("aria-label", "5 üzerinden " + formatRating(value));
+    const fill = el("span", "review-stars-fill", "★★★★★");
+    fill.style.width = (value / 5) * 100 + "%";
+    fill.setAttribute("aria-hidden", "true");
+    const base = el("span", "review-stars-base", "★★★★★");
+    base.setAttribute("aria-hidden", "true");
+    stars.appendChild(base);
+    stars.appendChild(fill);
     return stars;
   }
 
@@ -525,36 +554,44 @@
       : date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
   }
 
+  const REVIEW_POLICY_NOTE =
+    "Yorumları yalnızca bu ürünü satın alıp teslim alan müşteriler yazabilir; yorumlar kontrol edildikten sonra yayınlanır.";
+
+  /** Shown under the product name only once an approved review exists; empty stars would read as a bad score. */
   function buildRatingLink(product) {
     const link = el("a", "detail-rating");
     link.href = "#degerlendirmeler";
     link.hidden = true;
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      openReviewsTab();
+    });
     loadReviews(product.id).then((data) => {
       if (!data) return;
       link.appendChild(buildStars(data.summary.average));
-      link.appendChild(
-        el("span", "", String(data.summary.average).replace(".", ",") + " (" + data.summary.count + " değerlendirme)")
+      link.appendChild(el("strong", "detail-rating-value", formatRating(data.summary.average)));
+      link.appendChild(el("span", "detail-rating-count", data.summary.count + " değerlendirme"));
+      link.setAttribute(
+        "aria-label",
+        "Değerlendirme: 5 üzerinden " + formatRating(data.summary.average) + ", " + data.summary.count + " değerlendirme"
       );
       link.hidden = false;
     });
     return link;
   }
 
-  function buildReviewSection(product) {
-    const section = el("section", "detail-reviews");
-    section.id = "degerlendirmeler";
-    section.hidden = true;
-    section.setAttribute("aria-labelledby", "detailReviewsTitle");
-    const title = el("h2", "detail-reviews-title", "Değerlendirmeler");
-    title.id = "detailReviewsTitle";
-    section.appendChild(title);
+  function fillReviewPanel(panel, tab, product) {
+    panel.appendChild(el("p", "detail-reviews-empty", "Bu ürün için henüz onaylanmış değerlendirme yok."));
+    panel.appendChild(el("p", "detail-reviews-note", REVIEW_POLICY_NOTE));
     loadReviews(product.id).then((data) => {
       if (!data) return;
+      panel.textContent = "";
+      if (tab) tab.textContent = "Değerlendirmeler (" + data.summary.count + ")";
       const head = el("div", "detail-reviews-head");
-      head.appendChild(el("strong", "detail-reviews-avg", String(data.summary.average).replace(".", ",")));
+      head.appendChild(el("strong", "detail-reviews-avg", formatRating(data.summary.average)));
       head.appendChild(buildStars(data.summary.average));
       head.appendChild(el("span", "detail-reviews-count", data.summary.count + " değerlendirme"));
-      section.appendChild(head);
+      panel.appendChild(head);
       const list = el("ul", "detail-reviews-list");
       data.reviews.forEach((item) => {
         const li = el("li", "detail-review");
@@ -571,17 +608,9 @@
         li.appendChild(el("p", "detail-review-body", item.body));
         list.appendChild(li);
       });
-      section.appendChild(list);
-      section.appendChild(
-        el(
-          "p",
-          "detail-reviews-note",
-          "Yorumları yalnızca bu ürünü satın alıp teslim alan müşteriler yazabilir; yorumlar kontrol edildikten sonra yayınlanır."
-        )
-      );
-      section.hidden = false;
+      panel.appendChild(list);
+      panel.appendChild(el("p", "detail-reviews-note", REVIEW_POLICY_NOTE));
     });
-    return section;
   }
 
   function reviewJsonLd(data) {
@@ -919,7 +948,6 @@
       root.appendChild(crumb);
       root.appendChild(grid);
       root.appendChild(buildDetailTabs(product));
-      root.appendChild(buildReviewSection(product));
       hideStickyBuyBar();
       upsertProductJsonLd(product, trail);
       return;
@@ -992,7 +1020,6 @@
     root.appendChild(crumb);
     root.appendChild(grid);
     root.appendChild(buildDetailTabs(product));
-    root.appendChild(buildReviewSection(product));
     bindStickyBuyBar(product, actions, add);
 
     upsertProductJsonLd(product, trail);

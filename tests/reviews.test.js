@@ -129,7 +129,14 @@ test("storefront, admin and KVKK wire verified reviews", () => {
   const admin = read("admin.html");
   const panel = read("assets/js/admin-panel.js");
   const kvkk = read("kvkk.html");
-  assert.match(detail, /root\.appendChild\(buildReviewSection\(product\)\)/);
+  assert.doesNotMatch(detail, /buildReviewSection/, "reviews live in the Değerlendirmeler tab, not a block below");
+  assert.match(detail, /fillReviewPanel\(reviewPanel, tablist\.querySelector\('\[data-tab="reviews"\]'\), product\)/);
+  assert.match(detail, /reviewPanel\.id = "degerlendirmeler"/);
+  assert.match(detail, /!soldOut \|\| def\.id === "desc" \|\| def\.id === "reviews"/, "sold-out pages keep their reviews");
+  assert.match(detail, /info\.appendChild\(h1\);\s*info\.appendChild\(buildRatingLink\(product\)\);/, "rating sits right under the name");
+  assert.match(detail, /openReviewsTab\(\)/);
+  assert.match(detail, /"Değerlendirmeler \(" \+ data\.summary\.count \+ "\)"/);
+  assert.match(detail, /fill\.style\.width = \(value \/ 5\) \* 100 \+ "%"/);
   assert.match(detail, /fetch\("\/api\/reviews\?productId="/);
   assert.match(detail, /reviewJsonLd\(data\)/);
   const verifiedLabel = detail.match(/const VERIFIED_BUYER_LABEL = "([^"]+)";/);
