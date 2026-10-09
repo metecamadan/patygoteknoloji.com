@@ -2708,6 +2708,7 @@ h1, h2, h3, h4 {
 }
 .footer-bottom .legal-links { display: flex; flex-wrap: wrap; gap: 16px; }
 .footer-bottom a:hover { color: #fff; }
+.footer-sponsor a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 /* ---------- FAB / reveal ---------- */
 .fab {
   position: fixed;

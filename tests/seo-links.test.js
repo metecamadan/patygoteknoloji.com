@@ -30,6 +30,18 @@ test("footer and homepage expose crawlable ANA category hrefs", () => {
   assert.match(indexHtml, /"@type": "Organization"/);
 });
 
+test("footer sponsor link to the hosting partner passes no link equity", () => {
+  const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html") && f !== "admin.html" && f !== "404.html");
+  for (const page of pages) {
+    const html = fs.readFileSync(path.join(root, page), "utf8");
+    if (!html.includes('class="footer-bottom"')) continue;
+    const links = html.match(/<a [^>]*skyversal\.com[^>]*>/g) || [];
+    assert.equal(links.length, 1, page);
+    assert.match(links[0], /rel="sponsored nofollow noopener"/, page);
+    assert.match(links[0], /target="_blank"/, page);
+  }
+});
+
 test("sitemap lists category pages and omits checkout surfaces", () => {
   const sitemap = buildStorefrontSitemap({
     baseUrl: "https://patygoteknoloji.com",

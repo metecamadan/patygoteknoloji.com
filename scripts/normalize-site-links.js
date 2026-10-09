@@ -48,7 +48,7 @@ const FOOTER_GRID = `
         </div>
       </div>
       <div class="footer-bottom">
-        <span>&copy; <span data-year>2026</span> Patygo Teknoloji ve Bilişim Ltd. Şti.</span>
+        <span>&copy; <span data-year>2026</span> Patygo Teknoloji ve Bilişim Ltd. Şti.<span class="footer-sponsor"> · Sunucu sponsoru: <a href="https://skyversal.com/" rel="sponsored nofollow noopener" target="_blank">Skyversal</a></span></span>
         <div class="legal-links">
           <a href="/kvkk">KVKK</a>
           <a href="/gizlilik">Gizlilik</a>
