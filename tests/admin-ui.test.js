@@ -92,6 +92,16 @@ test("products tab separates manual and XML product areas", () => {
   assert.doesNotMatch(script, /\.admin-subtabs/);
 });
 
+test("every admin tab uses the same full-width frame so switching tabs keeps the content edge", () => {
+  const rule = css.match(/\n\.admin-page \{([^}]*)\}/);
+  assert.ok(rule, ".admin-page rule");
+  assert.match(rule[1], /width: 100%;/);
+  assert.match(rule[1], /max-width: none;/);
+  assert.match(rule[1], /padding: 12px 16px 28px;/);
+  assert.doesNotMatch(css, /\.admin-page[^{]*\{[^}]*min\(1400px/);
+  assert.doesNotMatch(css, /\.admin-page--(overview|flush|calendar) \{[^}]*padding/);
+});
+
 test("manual product form opens in a modal over full-width catalog", () => {
   assert.match(html, /id="productFormModal"/);
   assert.match(html, /class="admin-layout admin-layout--catalog"/);
@@ -533,7 +543,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-21/);
+  assert.match(html, /admin\.css\?v=siparis-22/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {

@@ -1494,18 +1494,17 @@ html.admin-theme-dark .admin-order-block.is-open {
   font-size: 0.72rem;
   font-weight: 700;
 }
+/* Every tab shares one frame so switching tabs never shifts the content edge. */
 .admin-page {
-  width: min(1400px, 100%);
-  margin: 0 auto;
-  padding: 24px clamp(16px, 3vw, 36px) 40px;
-}
-.admin-page--overview {
   width: 100%;
   max-width: none;
+  margin: 0;
+  padding: 12px 16px 28px;
+}
+.admin-page--overview {
   display: grid;
   gap: 16px;
   align-content: start;
-  padding: 16px 20px 32px;
 }
 .admin-page--overview > .admin-page-head,
 .admin-page--overview > .admin-kpis,
@@ -1513,14 +1512,6 @@ html.admin-theme-dark .admin-order-block.is-open {
 .admin-page--overview > .admin-card,
 .admin-page--overview > .admin-hint {
   margin: 0;
-}
-.admin-page--flush {
-  width: 100%;
-  max-width: none;
-  padding: 12px 16px 28px;
-}
-.admin-page--calendar {
-  padding-bottom: 32px;
 }
 .admin-calendar-shell {
   display: grid;
