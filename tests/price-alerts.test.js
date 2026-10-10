@@ -451,17 +451,36 @@ test("sold-out product keeps an indexable page, trails search results; gone prod
   assert.ok(Number(ld.offers.price) > 0);
 
   const segment = soldOut.urlPath.split("/")[1];
-  const gone = await fetch(baseUrl + "/" + segment + "/xmlden-kalkan-urun", {
+  const neverExisted = await fetch(baseUrl + "/" + segment + "/hic-var-olmamis-urun", {
     headers: { Accept: "text/html" },
     redirect: "manual",
   });
-  assert.equal(gone.status, 301, "XML'den kalkan ürün linki kategorisine yönlenir");
+  assert.equal(neverExisted.status, 404, "hiç yayınlanmamış ürün adresi kategoriye yönlenmez (soft-404 yok)");
+  const livePath = listing.products.find((p) => p.id === "sup-cpu-1").urlPath;
+  assert.equal(livePath.split("/")[1], segment);
+  const closed = await fetch(baseUrl + "/api/admin/supplier/products", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ updates: [{ supplierSku: "CPU-1", supplierSlot: "supplier-1", active: false }] }),
+  });
+  assert.equal(closed.status, 200);
+  const gone = await fetch(baseUrl + livePath, {
+    headers: { Accept: "text/html" },
+    redirect: "manual",
+  });
+  assert.equal(gone.status, 301, "yayından kalkan ürünün eski linki kategorisine yönlenir");
   assert.match(gone.headers.get("location"), /^\/urunler\/[a-z0-9-]+/);
   assert.equal(gone.headers.get("cache-control"), "public, max-age=3600");
   const category = await fetch(baseUrl + gone.headers.get("location"), { headers: { Accept: "text/html" } });
   assert.equal(category.status, 200);
-  const goneApi = await fetch(baseUrl + "/" + segment + "/xmlden-kalkan-urun", { redirect: "manual" });
+  const goneApi = await fetch(baseUrl + livePath, { redirect: "manual" });
   assert.equal(goneApi.status, 301);
+  const reopened = await fetch(baseUrl + "/api/admin/supplier/products", {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ updates: [{ supplierSku: "CPU-1", supplierSlot: "supplier-1", active: true }] }),
+  });
+  assert.equal(reopened.status, 200);
   const unknown = await fetch(baseUrl + "/bilinmeyen-segment/olmayan-urun", {
     headers: { Accept: "text/html" },
     redirect: "manual",

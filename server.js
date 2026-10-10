@@ -150,6 +150,7 @@ const {
 const { normalizeAddress, normalizeInvoiceIdentity } = require("./lib/checkout-billing");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { createManualStock, findStockShortage, trackedStock } = require("./lib/manual-stock");
+const { createPublishedPaths } = require("./lib/published-paths");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
 const {
   createAdminSecurityStore,
@@ -285,6 +286,7 @@ const analyticsStore = createAnalyticsStore(DATA_ROOT, {
   },
 });
 const orderStore = createOrderStore(DATA_ROOT);
+const publishedPaths = createPublishedPaths(DATA_ROOT);
 let priceHistory = null;
 try {
   priceHistory = createPriceHistory(getDb(DATA_ROOT));
@@ -1082,8 +1084,17 @@ function storefrontIndex(includeInactiveManual) {
     if (!includeInactiveManual) recordPriceHistory(products);
     memo.index = buildStorefrontIndex(products, catalogImageContext());
     memo.day = day;
+    if (!includeInactiveManual) recordPublishedProductPaths(memo.index);
   }
   return memo.index;
+}
+
+function recordPublishedProductPaths(index) {
+  try {
+    publishedPaths.record(index.compactAll.map((item) => item && item.urlPath));
+  } catch (err) {
+    console.error("[published-paths] kayıt hatası:", err && err.message);
+  }
 }
 
 function soldOutCatalogOptions() {
@@ -1110,6 +1121,7 @@ function soldOutIndex() {
   });
   index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   soldOutCatalogMemo.index = index;
+  recordPublishedProductPaths(index);
   return index;
 }
 
@@ -1183,8 +1195,13 @@ function productSegmentCategories() {
   return map;
 }
 
-/** Category page for a product URL that is neither on sale nor kept as sold out; "" when unknown. */
-function goneProductCategoryPath(segment) {
+/**
+ * Category page for a product URL that was once published but is neither on sale nor kept as
+ * sold out; "" for URLs that never existed (a 404, not a redirect) or an unknown segment.
+ */
+function goneProductCategoryPath(urlPath) {
+  if (!publishedPaths.has(urlPath)) return "";
+  const segment = String(urlPath || "").split("/").filter(Boolean)[0];
   const target = productSegmentCategories()[String(segment || "").toLowerCase()];
   if (!target) return "";
   const pathCats = parseUrunlerPathname(target);
@@ -1378,6 +1395,12 @@ function writeCatalogBootstrapSnapshots() {
     writeLegacyRedirectConf(index.routeIndex);
   } catch (err) {
     console.warn("Eski ürün yönlendirme dosyası yazılamadı:", err.message || err);
+  }
+  try {
+    // Builds (and records the URLs of) published sold-out products before they can leave the XML.
+    soldOutIndex();
+  } catch (err) {
+    console.warn("Tükenen ürün dizini kurulamadı:", err.message || err);
   }
   try {
     const featured = homeFeaturedCatalog(mergedProducts(false), {
@@ -4617,7 +4640,7 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
   if (!page) {
     const found = lookupPublicProductsByPath(key);
     const product = found && Array.isArray(found.products) ? found.products[0] : null;
-    const gonePath = product ? "" : goneProductCategoryPath(key.split("/")[1]);
+    const gonePath = product ? "" : goneProductCategoryPath(key);
     page = gonePath
       ? { status: 301, location: gonePath }
       : !product
@@ -4919,7 +4942,7 @@ const server = http.createServer(async (req, res) => {
       productRoute.slug
     );
     if (!productId && !lookupSoldOutProductByPath(productRoute.segment, productRoute.slug)) {
-      const gonePath = goneProductCategoryPath(productRoute.segment);
+      const gonePath = goneProductCategoryPath(urlPath);
       if (gonePath) return goneProductRedirect(res, gonePath);
       return serveNotFound(res, req.method);
     }
