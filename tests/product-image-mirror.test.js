@@ -10,6 +10,7 @@ const {
   exposesSupplierHost,
   supplierImageState,
   loadMirrorFailures,
+  probeSupplierImages,
   KNOWN_PLACEHOLDER_SHA256,
 } = require("../lib/product-image-mirror");
 const { buildAkakceXml, analyzeAkakceProducts } = require("../lib/akakce");
@@ -200,6 +201,81 @@ test("mirror records supplier placeholder images so they are not re-downloaded e
     KNOWN_PLACEHOLDER_SHA256.delete(digest);
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+test("background probe checks unpublished products' images in small batches and records broken ones", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-probe-"));
+  const cdn = "https://cdn.bilgisayarim.com.tr/images/";
+  const [ok, gone, blank, flaky, mirrored, hidden] = ["ok", "gone", "blank", "flaky", "mirrored", "hidden"].map((n) => cdn + n + ".jpg");
+  const placeholder = Buffer.alloc(32448, 7);
+  const digest = require("node:crypto").createHash("sha256").update(placeholder).digest("hex");
+  KNOWN_PLACEHOLDER_SHA256.add(digest);
+  fs.mkdirSync(path.join(tmp, ".runtime"), { recursive: true });
+  fs.writeFileSync(
+    path.join(tmp, ".runtime", "catalog-image-mirror.json"),
+    JSON.stringify({ entries: { [mirrored]: { file: "m.jpg", publicPath: "/media/catalog/m.jpg" } } })
+  );
+  const calls = [];
+  const answers = { [ok]: 200, [gone]: 404, [blank]: 200, [flaky]: 500 };
+  const base = {
+    dataRoot: tmp,
+    siteBaseUrl: "https://patygoteknoloji.com",
+    resolveHost: async () => [{ address: "93.184.216.34", family: 4 }],
+    fetchImpl: async (url) => {
+      calls.push(url);
+      const status = answers[url] || 200;
+      return {
+        ok: status === 200,
+        status,
+        headers: { get: () => "image/jpeg" },
+        arrayBuffer: async () => (url === blank ? placeholder : Buffer.alloc(900, 1)),
+      };
+    },
+  };
+  const row = (id, image, extra) => feedReadyProduct(Object.assign({ id, image, images: [image], active: false }, extra || {}));
+  const products = [
+    row("a", ok),
+    row("b", gone),
+    row("c", blank),
+    row("d", flaky),
+    row("e", mirrored),
+    row("f", hidden, { unlisted: true }),
+  ];
+  try {
+    const now = Date.parse("2026-10-10T00:00:00Z");
+    const first = await probeSupplierImages(products, Object.assign({ now }, base));
+    assert.deepEqual(calls.sort(), [blank, flaky, gone, ok].sort(), "already mirrored and unlisted products are skipped");
+    assert.deepEqual(first, { checked: 4, broken: 2, ok: 1, remaining: 0 });
+    const failures = loadMirrorFailures(tmp);
+    assert.equal(failures[gone].status, 404);
+    assert.equal(failures[blank].status, "placeholder");
+    assert.equal(failures[flaky], undefined, "transient errors are retried, not recorded");
+    assert.equal(supplierImageState([gone], { siteBaseUrl: base.siteBaseUrl, dataRoot: tmp, failures }), "broken");
+    assert.equal(supplierImageState([ok], { siteBaseUrl: base.siteBaseUrl, dataRoot: tmp, failures }), "pending");
+    const leftovers = fs.readdirSync(path.join(tmp, ".runtime", "media", "catalog"));
+    assert.deepEqual(leftovers, [], "probe keeps nothing on disk");
+    assert.deepEqual(Object.keys(loadMirrorIndex(tmp)), [mirrored], "probe never touches the mirror index");
+
+    calls.length = 0;
+    await probeSupplierImages(products, Object.assign({ now: now + 60000 }, base));
+    assert.deepEqual(calls, [flaky], "working and broken images are not fetched again");
+
+    calls.length = 0;
+    const batch = await probeSupplierImages(products, Object.assign({ now: now + 8 * 24 * 60 * 60 * 1000, limit: 1 }, base));
+    assert.equal(batch.checked, 1);
+    assert.equal(batch.remaining, 2, "expired failures come back for a re-check, one batch at a time");
+  } finally {
+    KNOWN_PLACEHOLDER_SHA256.delete(digest);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("server runs the image probe only on the live https site and shares the mirror lock", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /function scheduleSupplierImageProbe\(delayMs\) \{\s*if \(!\/\^https:\\\/\\\/\/\.test\(SITE_BASE_URL\)\) return;/);
+  assert.match(server, /if \(akakceMirrorRunning \|\| isEventLoopBusy\(200\)\) \{\s*scheduleSupplierImageProbe\(60000\);/);
+  assert.match(server, /if \(akakceMirrorRunning\) \{\s*scheduleAkakceImageMirror\(\{ delayMs: 60000 \}\);/, "a publish during a probe batch is not lost");
+  assert.match(server, /scheduleSupplierImageProbe\(10 \* 60 \* 1000\);/);
 });
 
 test("CLI publish mirrors images of newly live products like the panel publish", () => {

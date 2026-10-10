@@ -35,6 +35,7 @@ const {
   loadMirrorIndex,
   loadMirrorFailures,
   mirrorAkakceCatalogImages,
+  probeSupplierImages,
   mirrorPaths,
   getCachedPlaceholderMirrorFileSet,
   supplierImageState,
@@ -1524,7 +1525,10 @@ function scheduleAkakceImageMirror(options) {
   if (akakceMirrorTimer) clearTimeout(akakceMirrorTimer);
   akakceMirrorTimer = setTimeout(() => {
     akakceMirrorTimer = null;
-    if (akakceMirrorRunning) return;
+    if (akakceMirrorRunning) {
+      scheduleAkakceImageMirror({ delayMs: 60000 });
+      return;
+    }
     if (isEventLoopBusy(200)) {
       scheduleAkakceImageMirror({ delayMs: 60000 });
       return;
@@ -1567,6 +1571,39 @@ function scheduleAkakceImageMirror(options) {
     });
   }, delayMs);
   if (typeof akakceMirrorTimer.unref === "function") akakceMirrorTimer.unref();
+}
+
+const IMAGE_PROBE_NEXT_BATCH_MS = 2 * 60 * 1000;
+const IMAGE_PROBE_IDLE_MS = 6 * 60 * 60 * 1000;
+let imageProbeTimer = null;
+
+/** One small batch per tick so the supplier's image host never sees a burst; shares the mirror lock. */
+function scheduleSupplierImageProbe(delayMs) {
+  if (!/^https:\/\//.test(SITE_BASE_URL)) return;
+  if (imageProbeTimer) clearTimeout(imageProbeTimer);
+  imageProbeTimer = setTimeout(() => {
+    imageProbeTimer = null;
+    if (akakceMirrorRunning || isEventLoopBusy(200)) {
+      scheduleSupplierImageProbe(60000);
+      return;
+    }
+    akakceMirrorRunning = true;
+    let next = IMAGE_PROBE_IDLE_MS;
+    Promise.resolve()
+      .then(() => probeSupplierImages(supplierManager.listProducts(), { dataRoot: DATA_ROOT, siteBaseUrl: SITE_BASE_URL }))
+      .then((result) => {
+        if (result.remaining > 0) next = IMAGE_PROBE_NEXT_BATCH_MS;
+        if (result.checked) {
+          console.log("Görsel kontrolü:", result.checked, "denendi,", result.broken, "açılmadı,", result.remaining, "kaldı");
+        }
+      })
+      .catch((err) => console.warn("Görsel kontrolü atlandı:", err.message || err))
+      .finally(() => {
+        akakceMirrorRunning = false;
+        scheduleSupplierImageProbe(next);
+      });
+  }, Math.max(0, Number(delayMs) || 0));
+  if (typeof imageProbeTimer.unref === "function") imageProbeTimer.unref();
 }
 
 const POPULAR_SCORES_TTL_MS = 60 * 1000;
@@ -4896,6 +4933,7 @@ setImmediate(() => {
   // Do not hammer image mirror on every process restart when the index is already fresh.
   scheduleAkakceImageMirror({ delayMs: 180000, skipIfRecent: true });
   scheduleThumbnailBackfill(240000);
+  scheduleSupplierImageProbe(10 * 60 * 1000);
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();
