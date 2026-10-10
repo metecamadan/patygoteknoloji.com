@@ -997,7 +997,7 @@
       overview: ["Genel Bakış", "Trafik, talepler, siparişler ve katalog durumu."],
       calendar: ["Takvim", "Hatırlatıcı ve notları gün bazında yönetin."],
       orders: ["Siparişler", "Ödeme durumu, müşteri ve kalemleri yönetin."],
-      reviews: ["Yorumlar", "Teslim alınmış siparişlerden gelen ürün yorumlarını onaylayın veya reddedin."],
+      reviews: ["Yorumlar", "Ürün sayfasından ve teslim alınmış siparişlerden gelen yorumları onaylayın veya reddedin. Olumsuz yorumu yalnızca olumsuz olduğu için reddetmeyin."],
       leads: ["Talepler", "İletişim formundan gelen teklif / talep kayıtları."],
       users: ["Kullanıcılar", "Panel girişi için ad, soyad, e-posta ve şifre yönetin."],
       shipping: ["Kargo ve taksit", "Kargo bedeli, ücretsiz kargo eşiği ve taksit oranlarını yönetin."],
@@ -7460,7 +7460,10 @@
           "</span></header>" +
           "<p class='admin-review-meta'><span class='admin-review-stars' aria-label='" + review.rating + " / 5'>" + stars + "</span> · " +
           escapeHtml(review.author) + " · " + escapeHtml(formatOrderDate(review.createdAt)) +
-          " · Sipariş " + escapeHtml(review.orderId) + "</p>" +
+          (review.source === "guest"
+            ? " · Ziyaretçi (" + escapeHtml(review.email) + ")"
+            : " · Doğrulanmış alıcı · Sipariş " + escapeHtml(review.orderId)) +
+          "</p>" +
           (review.title ? "<p class='admin-review-title'>" + escapeHtml(review.title) + "</p>" : "") +
           "<p class='admin-review-body'>" + escapeHtml(review.body) + "</p>" +
           "<div class='admin-form-actions'>" + actions.join("") + "</div>" +

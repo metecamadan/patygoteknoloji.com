@@ -555,7 +555,80 @@
   }
 
   const REVIEW_POLICY_NOTE =
-    "Yorumları yalnızca bu ürünü satın alıp teslim alan müşteriler yazabilir; yorumlar kontrol edildikten sonra yayınlanır.";
+    "Yorumlar kontrol edildikten sonra yayınlanır. Ürünü bizden satın alıp teslim alan müşterilerin yorumları “Doğrulanmış alıcı” rozetiyle gösterilir.";
+
+  function buildReviewForm(product) {
+    const box = el("details", "detail-review-write");
+    box.appendChild(el("summary", "", "Bu ürünü değerlendirin"));
+    const form = el("form", "review-form");
+    form.noValidate = true;
+    form.innerHTML =
+      '<fieldset class="review-rating"><legend>Puanınız</legend><div class="review-rating-stars">' +
+      [5, 4, 3, 2, 1]
+        .map(
+          (n) =>
+            '<input type="radio" name="rating" value="' + n + '" id="pdReviewR' + n + '" />' +
+            '<label for="pdReviewR' + n + '" title="' + n + ' yıldız"><span class="sr-only">' + n + " yıldız</span>★</label>"
+        )
+        .join("") +
+      "</div></fieldset>" +
+      '<label for="pdReviewName">Adınız Soyadınız <small>(“Ayşe Y.” gibi kısaltılarak görünür)</small></label>' +
+      '<input type="text" id="pdReviewName" name="name" maxlength="60" autocomplete="name" required />' +
+      '<label for="pdReviewEmail">E-posta <small>(yayınlanmaz)</small></label>' +
+      '<input type="email" id="pdReviewEmail" name="email" maxlength="160" autocomplete="email" inputmode="email" required />' +
+      '<label for="pdReviewTitle">Başlık <small>(isteğe bağlı)</small></label>' +
+      '<input type="text" id="pdReviewTitle" name="title" maxlength="120" />' +
+      '<label for="pdReviewBody">Yorumunuz</label>' +
+      '<textarea id="pdReviewBody" name="body" rows="4" minlength="10" maxlength="2000" required placeholder="Ürünü nasıl buldunuz? Kurulum, performans, paketleme…"></textarea>' +
+      '<div class="review-hp" aria-hidden="true"><label>Web siteniz <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>' +
+      '<label class="review-check"><input type="checkbox" name="hideName" /> Adım görünmesin (“Anonim” olarak yayınlansın)</label>' +
+      '<div class="review-actions"><button type="submit" class="btn btn-primary">Değerlendirmeyi gönder</button></div>' +
+      '<p class="review-note" role="status" hidden></p>' +
+      '<p class="review-legal">Kişisel verileriniz <a href="/kvkk" target="_blank" rel="noopener">KVKK Aydınlatma Metni</a> kapsamında işlenir.</p>';
+    const note = form.querySelector(".review-note");
+    const show = (kind, text) => {
+      note.className = "review-note" + (kind ? " is-" + kind : "");
+      note.textContent = text;
+      note.hidden = !text;
+    };
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const checked = form.querySelector('input[name="rating"]:checked');
+      if (!checked) return show("err", "1 ile 5 arasında puan seçin.");
+      const name = form.elements.name.value.trim();
+      if (name.length < 2) return show("err", "Adınızı girin.");
+      const email = form.elements.email.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return show("err", "Geçerli bir e-posta girin.");
+      const body = form.elements.body.value.trim();
+      if (body.length < 10) return show("err", "Yorumunuz en az 10 karakter olmalı.");
+      const btn = form.querySelector("button");
+      btn.disabled = true;
+      try {
+        const res = await fetch("/api/reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: product.id,
+            rating: Number(checked.value),
+            name,
+            email,
+            title: form.elements.title.value.trim(),
+            body,
+            hideName: form.elements.hideName.checked,
+            website: form.elements.website.value,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || "Değerlendirme kaydedilemedi.");
+        form.replaceWith(el("p", "review-done", "Teşekkürler! Değerlendirmeniz kontrol edildikten sonra yayınlanacak."));
+      } catch (err) {
+        show("err", err.message || "Değerlendirme kaydedilemedi.");
+        btn.disabled = false;
+      }
+    });
+    box.appendChild(form);
+    return box;
+  }
 
   /** Shown under the product name only once an approved review exists; empty stars would read as a bad score. */
   function buildRatingLink(product) {
@@ -581,24 +654,30 @@
   }
 
   function fillReviewPanel(panel, tab, product) {
-    panel.appendChild(el("p", "detail-reviews-empty", "Bu ürün için henüz onaylanmış değerlendirme yok."));
+    const content = el("div", "detail-reviews-body");
+    content.appendChild(el("p", "detail-reviews-empty", "Bu ürün için henüz değerlendirme yok. İlk değerlendirmeyi siz yazın."));
+    const write = buildReviewForm(product);
+    write.open = true;
+    panel.appendChild(content);
+    panel.appendChild(write);
     panel.appendChild(el("p", "detail-reviews-note", REVIEW_POLICY_NOTE));
     loadReviews(product.id).then((data) => {
       if (!data) return;
-      panel.textContent = "";
+      content.textContent = "";
+      if (!write.contains(document.activeElement)) write.open = false;
       if (tab) tab.textContent = "Değerlendirmeler (" + data.summary.count + ")";
       const head = el("div", "detail-reviews-head");
       head.appendChild(el("strong", "detail-reviews-avg", formatRating(data.summary.average)));
       head.appendChild(buildStars(data.summary.average));
       head.appendChild(el("span", "detail-reviews-count", data.summary.count + " değerlendirme"));
-      panel.appendChild(head);
+      content.appendChild(head);
       const list = el("ul", "detail-reviews-list");
       data.reviews.forEach((item) => {
         const li = el("li", "detail-review");
         const meta = el("div", "detail-review-meta");
         meta.appendChild(buildStars(item.rating));
         meta.appendChild(el("span", "detail-review-author", item.author));
-        if (item.author !== VERIFIED_BUYER_LABEL) {
+        if (item.verified && item.author !== VERIFIED_BUYER_LABEL) {
           meta.appendChild(el("span", "detail-review-badge", VERIFIED_BUYER_LABEL));
         }
         const date = formatReviewDate(item.createdAt);
@@ -608,8 +687,7 @@
         li.appendChild(el("p", "detail-review-body", item.body));
         list.appendChild(li);
       });
-      panel.appendChild(list);
-      panel.appendChild(el("p", "detail-reviews-note", REVIEW_POLICY_NOTE));
+      content.appendChild(list);
     });
   }
 

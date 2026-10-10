@@ -8,7 +8,10 @@ const {
   normalizeReviewInput,
   reviewEligibility,
   abbreviateName,
+  hashReviewIp,
   ANONYMOUS_AUTHOR,
+  GUEST_ANONYMOUS_AUTHOR,
+  GUEST_DAILY_LIMIT,
 } = require("../lib/reviews");
 const { renderProductHtml, reviewJsonLd } = require("../lib/product-ssr");
 const { getDb, resetDbForTests } = require("../lib/db");
@@ -80,7 +83,8 @@ test("review store: one review per order line, only approved ones are public", (
   });
   const listed = store.publicList("p1");
   assert.equal(listed.length, 2);
-  assert.deepEqual(Object.keys(listed[0]).sort(), ["author", "body", "createdAt", "id", "rating", "title"]);
+  assert.deepEqual(Object.keys(listed[0]).sort(), ["author", "body", "createdAt", "id", "rating", "title", "verified"]);
+  assert.equal(listed[0].verified, true);
   assert.ok(!JSON.stringify(listed).includes("PTY-REV"), "sipariş numarası yayına çıkmaz");
 
   store.moderate(hidden.id, "rejected");
@@ -91,6 +95,56 @@ test("review store: one review per order line, only approved ones are public", (
   assert.equal(store.remove(hidden.id).id, hidden.id);
   assert.equal(store.remove(hidden.id), null);
   assert.equal(store.moderate(9999, "approved"), null);
+  resetDbForTests();
+});
+
+test("guest reviews: anyone can submit, they stay pending, never verified, one per e-mail and a daily cap per IP", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-review-guest-"));
+  resetDbForTests();
+  let clock = Date.parse("2026-10-10T09:00:00Z");
+  const store = createReviewStore(getDb(dir), { now: () => clock });
+  const product = { id: "p1", name: "Lenovo Laptop" };
+  const input = { rating: 4, body: "Fiyatına göre gayet iyi.", name: "Zeynep Kara", email: "Zeynep@Example.com" };
+
+  assert.throws(() => store.submitGuest(product, Object.assign({}, input, { name: "1" }), {}), /Adınızı/);
+  assert.throws(() => store.submitGuest(product, Object.assign({}, input, { email: "yok" }), {}), /e-posta/);
+  assert.throws(() => store.submitGuest(product, Object.assign({}, input, { body: "kısa" }), {}), /en az 10/);
+
+  const guest = store.submitGuest(product, input, { ipHash: "ip-a" });
+  assert.equal(guest.status, "pending");
+  assert.equal(guest.source, "guest");
+  assert.equal(guest.verified, false);
+  assert.equal(guest.author, "Zeynep K.");
+  assert.equal(guest.email, "zeynep@example.com");
+  assert.equal(guest.orderId, "");
+  assert.throws(() => store.submitGuest(product, input, { ipHash: "ip-b" }), /zaten alındı/);
+  const anon = store.submitGuest(product, Object.assign({}, input, { email: "b@example.com", hideName: true }), { ipHash: "ip-a" });
+  assert.equal(anon.author, GUEST_ANONYMOUS_AUTHOR);
+
+  for (let i = 0; i < GUEST_DAILY_LIMIT - 2; i += 1) {
+    store.submitGuest(product, Object.assign({}, input, { email: "x" + i + "@example.com" }), { ipHash: "ip-a" });
+  }
+  assert.throws(
+    () => store.submitGuest(product, Object.assign({}, input, { email: "over@example.com" }), { ipHash: "ip-a" }),
+    /sınırına/
+  );
+  assert.equal(store.submitGuest(product, Object.assign({}, input, { email: "other@example.com" }), { ipHash: "ip-b" }).status, "pending");
+  clock += 25 * 60 * 60 * 1000;
+  assert.equal(store.submitGuest(product, Object.assign({}, input, { email: "next@example.com" }), { ipHash: "ip-a" }).status, "pending");
+
+  assert.equal(store.summary("p1").count, 0, "ziyaretçi yorumu da onaysız sayılmaz");
+  store.moderate(guest.id, "approved");
+  const listed = store.publicList("p1");
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].verified, false);
+  assert.ok(!JSON.stringify(listed).includes("example.com"), "e-posta yayına çıkmaz");
+  assert.equal(store.adminList({ status: "approved" })[0].email, "zeynep@example.com");
+
+  store.moderate(guest.id, "rejected");
+  assert.equal(store.submitGuest(product, input, { ipHash: "ip-c" }).status, "pending", "reddedilen yorum yeniden yazılabilir");
+  assert.equal(hashReviewIp("1.2.3.4"), hashReviewIp("1.2.3.4"));
+  assert.notEqual(hashReviewIp("1.2.3.4"), hashReviewIp("1.2.3.5"));
+  assert.ok(!hashReviewIp("1.2.3.4").includes("1.2.3.4"));
   resetDbForTests();
 });
 
@@ -142,7 +196,11 @@ test("storefront, admin and KVKK wire verified reviews", () => {
   const verifiedLabel = detail.match(/const VERIFIED_BUYER_LABEL = "([^"]+)";/);
   assert.ok(verifiedLabel);
   assert.equal(verifiedLabel[1], ANONYMOUS_AUTHOR);
-  assert.match(detail, /if \(item\.author !== VERIFIED_BUYER_LABEL\)/);
+  assert.match(detail, /if \(item\.verified && item\.author !== VERIFIED_BUYER_LABEL\)/, "badge only on order reviews");
+  assert.match(detail, /const write = buildReviewForm\(product\);/, "review form sits in the tab for every visitor");
+  assert.match(detail, /name="website" tabindex="-1"/, "honeypot field");
+  assert.match(detail, /href="\/kvkk"/);
+  assert.match(panel, /review\.source === "guest"/);
   assert.match(page, /<meta name="robots" content="noindex,nofollow" \/>/);
   assert.match(page, /<meta name="referrer" content="no-referrer" \/>/);
   assert.match(pageJs, /history\.replaceState/);
@@ -153,7 +211,8 @@ test("storefront, admin and KVKK wire verified reviews", () => {
   assert.match(panel, /api\("\/api\/admin\/reviews"/);
   assert.match(panel, /\["preparing", "delivered", "cancelled"\]/);
   assert.match(kvkk, /kısaltılmış adınızla/);
-  assert.match(kvkk, /Ürün değerlendirmesi \(puan, yorum, kısaltılmış ad\)/);
+  assert.match(kvkk, /Ürün değerlendirmesi \(puan, yorum, kısaltılmış ad; ürün sayfasından yazıldıysa yayınlanmayan e-posta\)/);
+  assert.match(kvkk, /e-posta adresiniz yayınlanmaz/);
 });
 
 test("review API: delivered order owner reviews, admin approves, product page shows the rating", async (t) => {
@@ -280,4 +339,57 @@ test("review API: delivered order owner reviews, admin approves, product page sh
   assert.equal(del.status, 200);
   const pageAfterDelete = await (await fetch(baseUrl + items.items[0].urlPath)).text();
   assert.ok(!pageAfterDelete.includes("aggregateRating"), "silinen yorum SSR önbelleğinden düşer");
+
+  const guest = { productId: "rev-test-item", rating: 4, name: "Deniz Ak", email: "deniz@example.com", body: "Ürün sayfasından yazdım, güzel." };
+  assert.equal((await send("POST", "/api/reviews", Object.assign({}, guest, { productId: "yok" }))).status, 404);
+  const bot = await send("POST", "/api/reviews", Object.assign({}, guest, { website: "spam" }));
+  assert.equal(bot.status, 200);
+  assert.equal((await send("POST", "/api/reviews", guest, { "X-Real-IP": "203.0.113.7" })).status, 200);
+  const guestPending = await (await fetch(baseUrl + "/api/admin/reviews?status=pending", { headers: auth })).json();
+  assert.equal(guestPending.counts.pending, 1, "bot tuzağına düşen yorum kaydedilmez");
+  assert.equal(guestPending.reviews[0].source, "guest");
+  assert.equal(guestPending.reviews[0].email, "deniz@example.com");
+  assert.equal(guestPending.reviews[0].author, "Deniz A.");
+  await send("PATCH", "/api/admin/reviews/" + guestPending.reviews[0].id, { status: "approved" }, auth);
+  const guestPublic = await (await fetch(baseUrl + "/api/reviews?productId=rev-test-item")).json();
+  assert.equal(guestPublic.summary.count, 1);
+  assert.equal(guestPublic.reviews[0].verified, false);
+  assert.ok(!JSON.stringify(guestPublic).includes("deniz@example.com"), "e-posta yayına çıkmaz");
+});
+
+test("per-IP limits use nginx's X-Real-IP, so one visitor cannot exhaust another's quota", async (t) => {
+  const { baseUrl } = await spawnTestServer(t, {}, {
+    products: [
+      {
+        id: "rev-ip-item",
+        brand: "TEST",
+        name: "IP Test Ürünü",
+        price: 500,
+        vatPercent: 20,
+        category: "bilgisayar-tablet",
+        siteParent: "bilgisayar-tablet",
+        siteMid: "tasinabilir-bilgisayarlar",
+        siteChild: "notebooklar",
+        active: true,
+        image: "/assets/img/products/macbook-air-m3.svg",
+        images: ["/assets/img/products/macbook-air-m3.svg"],
+        stockQty: 5,
+        currency: "TRY",
+        unit: "ADET",
+      },
+    ],
+  });
+  const post = (email, ip) =>
+    fetch(baseUrl + "/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Real-IP": ip },
+      body: JSON.stringify({ productId: "rev-ip-item", rating: 5, name: "Ali Veli", email, body: "Gayet memnun kaldım, teşekkürler." }),
+    });
+  for (let i = 0; i < GUEST_DAILY_LIMIT; i += 1) {
+    assert.equal((await post("a" + i + "@example.com", "198.51.100.20")).status, 200);
+  }
+  const blocked = await post("over@example.com", "198.51.100.20");
+  assert.equal(blocked.status, 422);
+  assert.match((await blocked.json()).error, /sınırına/);
+  assert.equal((await post("b@example.com", "198.51.100.21")).status, 200, "başka ziyaretçi etkilenmez");
 });

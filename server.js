@@ -107,7 +107,7 @@ const {
 } = require("./lib/coupons");
 const { createPriceAlertStore } = require("./lib/price-alerts");
 const { buildReceivedMail: buildPriceAlertReceivedMail, buildNotifyMail: buildPriceAlertNotifyMail } = require("./lib/price-alert-mail");
-const { createReviewStore, reviewEligibility, REVIEW_STATUSES } = require("./lib/reviews");
+const { createReviewStore, reviewEligibility, hashReviewIp, REVIEW_STATUSES } = require("./lib/reviews");
 const { createCalendarStore } = require("./lib/calendar");
 const { createAdminUserStore } = require("./lib/admin-users");
 const { createConsentStore } = require("./lib/consent");
@@ -545,8 +545,14 @@ function parseFormBody(buf) {
   return out;
 }
 
+const LOOPBACK_PEERS = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+/** nginx overwrites X-Real-IP with the visitor address; the header is trusted only on its loopback hop. */
 function clientIp(req) {
-  return String((req.socket && req.socket.remoteAddress) || "unknown");
+  const peer = String((req.socket && req.socket.remoteAddress) || "unknown");
+  const realIp = String((req.headers && req.headers["x-real-ip"]) || "").trim();
+  if (LOOPBACK_PEERS.has(peer) && /^[0-9a-fA-F:.]{3,45}$/.test(realIp)) return realIp;
+  return peer;
 }
 
 function rateLimited(map, ip, max, windowMs) {
@@ -2238,7 +2244,18 @@ async function handleApi(req, res, urlPath) {
     try {
       if (!reviewStore) return json(res, 503, { ok: false, error: "Değerlendirme şu anda kullanılamıyor." });
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
-      const order = body.orderId ? orderStore.get(String(body.orderId).slice(0, 64)) : null;
+      if (!body.orderId) {
+        // Bots fill the hidden "website" field; they get the normal answer and nothing is stored.
+        if (String(body.website || "").trim()) return json(res, 200, { ok: true, status: "pending" });
+        const productId = String(body.productId || "").slice(0, 80);
+        const product = alertProductInfo(productId);
+        if (!product) return json(res, 404, { ok: false, error: "Bu ürün için değerlendirme yapılamıyor." });
+        const review = reviewStore.submitGuest({ id: productId, name: product.name }, body, {
+          ipHash: hashReviewIp(clientIp(req)),
+        });
+        return json(res, 200, { ok: true, status: review.status });
+      }
+      const order = orderStore.get(String(body.orderId).slice(0, 64));
       if (!order || !orderAccessOk(order, String(body.token || "").slice(0, 64))) {
         return json(res, 403, { ok: false, error: "Değerlendirme bağlantısı geçersiz." });
       }
