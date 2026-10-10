@@ -105,6 +105,15 @@ test("consumables and demo units get no default warranty tile", () => {
   assert.equal(demo.some((item) => item.label === "Garanti Süresi"), false);
 });
 
+test("stock tile shows sellable stock: no tile at or below the critical level or on a sold-out page", () => {
+  const base = { name: "HP CC500 Projector", source: "supplier", stockQty: 3 };
+  const stockTile = (product) => buildProductHighlights(product).find((item) => item.label === "Stok Durumu");
+  assert.equal(stockTile(Object.assign({}, base, { criticalStockQty: 3 })), undefined, "3 adet ≤ kritik 3 → Tükendi, kutucuk yok");
+  assert.equal(stockTile(Object.assign({}, base, { soldOut: true })), undefined);
+  assert.deepEqual(stockTile(Object.assign({}, base, { criticalStockQty: 2 })), { label: "Stok Durumu", value: "3 adet" });
+  assert.deepEqual(stockTile({ name: "Manuel ürün", stockQty: 4, criticalStockQty: 10 }), { label: "Stok Durumu", value: "4 adet" });
+});
+
 test("public detail product carries highlights; compact list rows do not", () => {
   const product = {
     id: "sup-x",
