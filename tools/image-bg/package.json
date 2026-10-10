@@ -1,0 +1,9 @@
+{
+  "name": "patygo-image-bg",
+  "private": true,
+  "description": "White-background worker for mirrored catalog images. Installed only on the VPS (scripts/ensure-image-bg-tool.sh); the app runs without it.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@imgly/background-removal-node": "1.4.5"
+  }
+}

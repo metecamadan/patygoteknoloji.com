@@ -24,7 +24,7 @@ test("sidebar has an unlisted products tab wired to the supplier API", () => {
     "Listelenmeyen Ürünler, Ürünler menüsünün altında"
   );
   assert.equal((html.match(/id="unlistedTab"/g) || []).length, 1);
-  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted", "noimage"\]\)/);
+  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted", "noimage", "whitebg"\]\)/);
   assert.match(script, /querySelectorAll\("\.admin-nav \[data-admin-tab\]\[aria-controls\]"\)/);
   assert.match(html, /id="adminTabUnlisted"/);
   assert.match(html, /id="adminUnlistedRows"/);
@@ -543,7 +543,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-25/);
+  assert.match(html, /admin\.css\?v=siparis-26/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -934,8 +934,9 @@ test("every light surface or dark text color in admin.css has a dark theme overr
       if (part.startsWith("html.admin-theme-dark ")) darkCovered.add(part.replace(/^html\.admin-theme-dark\s+/, ""));
     }
   }
-  // The switch knob stays white on both themes by design.
-  const allowed = new Set([".admin-switch span::after"]);
+  // The switch knob stays white on both themes by design; white-background previews must look
+  // exactly like the storefront card, so their image backdrop stays white too.
+  const allowed = new Set([".admin-switch span::after", ".admin-whitebg-figure img"]);
   const missing = [];
   for (const rule of rules) {
     if (rule.selector.includes("admin-theme-dark")) continue;

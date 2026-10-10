@@ -42,6 +42,17 @@ const {
 } = require("./lib/product-image-mirror");
 const { generateMissingThumbnails } = require("./lib/product-thumbnails");
 const {
+  storefrontMirrorIndex,
+  backgroundIndexStamp,
+  backgroundPaths,
+  loadBackgroundIndex,
+  backgroundCounts,
+  backgroundMeta,
+  setBackgroundDecision,
+  cardImageFiles,
+  productsByImageFile,
+} = require("./lib/image-background");
+const {
   mergeCatalogProducts,
   queryPublicCatalog,
   queryPublicCatalogIndexed,
@@ -1022,8 +1033,13 @@ function invalidateStorefrontCatalog() {
   } catch (_) {}
 }
 
+/** Mirror index with white-background copies swapped in; only for reading, never saved back. */
+function storefrontMirror() {
+  return storefrontMirrorIndex(DATA_ROOT, loadMirrorIndex(DATA_ROOT));
+}
+
 function catalogImageContext() {
-  const mirrorIndex = loadMirrorIndex(DATA_ROOT);
+  const mirrorIndex = storefrontMirror();
   return {
     mirrorIndex,
     siteBaseUrl: SITE_BASE_URL,
@@ -1453,11 +1469,11 @@ function writeCatalogBootstrapSnapshots() {
 
 function akakceMirrorIndexStamp() {
   const { indexFile } = mirrorPaths(DATA_ROOT);
+  let mirrorMtime = 0;
   try {
-    return fs.statSync(indexFile).mtimeMs;
-  } catch (_) {
-    return 0;
-  }
+    mirrorMtime = fs.statSync(indexFile).mtimeMs;
+  } catch (_) {}
+  return mirrorMtime + ":" + backgroundIndexStamp(DATA_ROOT);
 }
 
 function akakceShippingOptions() {
@@ -1466,7 +1482,7 @@ function akakceShippingOptions() {
 
 function storefrontAkakceXml() {
   const products = mergedProducts(false);
-  const mirrorIndex = loadMirrorIndex(DATA_ROOT);
+  const mirrorIndex = storefrontMirror();
   const mirrorStamp = akakceMirrorIndexStamp();
   const shippingStamp = JSON.stringify(shippingSettingsStore.getSettings());
   if (
@@ -1526,7 +1542,7 @@ function scheduleThumbnailBackfill(delayMs) {
     }
     thumbnailRunning = true;
     const startedAt = Date.now();
-    generateMissingThumbnails(DATA_ROOT, loadMirrorIndex(DATA_ROOT), {
+    generateMissingThumbnails(DATA_ROOT, storefrontMirror(), {
       logError: (file, detail) => console.warn("Küçük görsel üretilemedi", file, detail),
     })
       .then((result) => {
@@ -1609,6 +1625,7 @@ function scheduleAkakceImageMirror(options) {
               invalidateStorefrontCatalog();
             }
             scheduleThumbnailBackfill(5000);
+            scheduleImageBackgroundRun(60000);
           })
           .catch((err) => {
             console.warn("Akakçe görsel aynası atlandı:", err.message || err);
@@ -1685,6 +1702,95 @@ function scheduleSupplierImageProbe(delayMs) {
       });
   }, Math.max(0, Number(delayMs) || 0));
   if (typeof imageProbeTimer.unref === "function") imageProbeTimer.unref();
+}
+
+const IMAGE_BG_TOOL_DIR = path.join(ROOT, "tools", "image-bg");
+const IMAGE_BG_PASS_MINUTES = 20;
+let imageBgTimer = null;
+let imageBgChild = null;
+// A worker left over from before a PM2 restart keeps writing the index; refresh when it changed.
+let imageBgAppliedStamp = backgroundIndexStamp(DATA_ROOT);
+
+function imageBackgroundToolInstalled() {
+  return fs.existsSync(path.join(IMAGE_BG_TOOL_DIR, "node_modules", "@imgly", "background-removal-node", "package.json"));
+}
+
+function writeImageBackgroundPriority() {
+  try {
+    const files = cardImageFiles(mergedProducts(false), loadMirrorIndex(DATA_ROOT), SITE_BASE_URL);
+    atomicWriteJson(backgroundPaths(DATA_ROOT).priorityFile, files);
+  } catch (err) {
+    console.warn("Beyaz zemin öncelik listesi yazılamadı:", err.message || err);
+  }
+}
+
+/** White-background pass in a separate low-priority process (the ONNX model must not share the site's event loop). */
+function scheduleImageBackgroundRun(delayMs) {
+  if (!imageBackgroundToolInstalled()) return;
+  if (imageBgTimer) clearTimeout(imageBgTimer);
+  imageBgTimer = setTimeout(() => {
+    imageBgTimer = null;
+    if (imageBgChild) return;
+    writeImageBackgroundPriority();
+    const { spawn } = require("child_process");
+    const args = [path.join(IMAGE_BG_TOOL_DIR, "run.js"), "--data-root", DATA_ROOT, "--minutes", String(IMAGE_BG_PASS_MINUTES)];
+    const linux = process.platform === "linux";
+    let child;
+    try {
+      child = spawn(linux ? "nice" : process.execPath, linux ? ["-n", "19", process.execPath, ...args] : args, {
+        cwd: ROOT,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (err) {
+      console.warn("Beyaz zemin aracı başlatılamadı:", err.message || err);
+      return;
+    }
+    imageBgChild = child;
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout = (stdout + chunk).slice(-4000);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr = (stderr + chunk).slice(-2000);
+    });
+    child.on("error", (err) => console.warn("Beyaz zemin aracı hatası:", err.message || err));
+    child.on("close", (code) => {
+      imageBgChild = null;
+      let result = null;
+      try {
+        result = JSON.parse(stdout.trim().split("\n").pop() || "null");
+      } catch (_) {}
+      const stamp = backgroundIndexStamp(DATA_ROOT);
+      if (stamp !== imageBgAppliedStamp) {
+        imageBgAppliedStamp = stamp;
+        invalidateStorefrontCatalog();
+        warmStorefrontCatalog();
+        scheduleAkakceFeedSummaryWarm();
+        scheduleThumbnailBackfill(5000);
+      }
+      if (result && result.busy) {
+        scheduleImageBackgroundRun(5 * 60 * 1000);
+        return;
+      }
+      if (!result || !result.ok) {
+        console.warn("Beyaz zemin turu başarısız (çıkış " + code + "):", (result && result.error) || stderr.trim().slice(-300));
+        return;
+      }
+      if (result.checked) {
+        console.log(
+          "Beyaz zemin:",
+          result.checked, "görsel,",
+          result.whitened, "beyazlatıldı,",
+          result.rejected, "reddedildi,",
+          result.failed, "hata,",
+          result.remaining, "kaldı"
+        );
+      }
+      if (result.remaining > 0) scheduleImageBackgroundRun(60000);
+    });
+  }, Math.max(0, Number(delayMs) || 0));
+  if (typeof imageBgTimer.unref === "function") imageBgTimer.unref();
 }
 
 const POPULAR_SCORES_TTL_MS = 60 * 1000;
@@ -1784,7 +1890,7 @@ function akakceFeedFullSummary() {
   }
   const summary = buildAkakceFeedSummary(products, {
     siteBaseUrl: SITE_BASE_URL,
-    mirrorIndex: loadMirrorIndex(DATA_ROOT),
+    mirrorIndex: storefrontMirror(),
     ...akakceShippingOptions(),
   });
   akakceFeedSummaryMemo = { products, summary };
@@ -4246,6 +4352,85 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/image-backgrounds") {
+    const requestUrl = new URL(req.url || urlPath, "http://localhost");
+    const wanted = requestUrl.searchParams.get("status") || "";
+    const status = ["whitened", "rejected", "reverted"].includes(wanted) ? wanted : "whitened";
+    const q = String(requestUrl.searchParams.get("q") || "").trim().toLocaleLowerCase("tr");
+    const limit = Math.min(100, Math.max(1, Number(requestUrl.searchParams.get("limit")) || 40));
+    const byFile = productsByImageFile(supplierManager.listProducts(), loadMirrorIndex(DATA_ROOT), SITE_BASE_URL);
+    const rows = [];
+    for (const [file, entry] of Object.entries(loadBackgroundIndex(DATA_ROOT))) {
+      if (!entry || entry.status !== status) continue;
+      // Images whose product left the XML are not on the site; nothing to review.
+      const products = (byFile.get(file) || []).map((p) => ({
+        id: p.id,
+        sku: p.supplierSku || "",
+        name: p.name || "",
+        active: p.active === true,
+      }));
+      if (!products.length) continue;
+      if (q && !products.some((p) => (p.name + " " + p.sku).toLocaleLowerCase("tr").includes(q))) continue;
+      rows.push({
+        file,
+        status: entry.status,
+        at: entry.decidedAt || entry.at || "",
+        decidedBy: entry.decidedBy || "",
+        original: "/media/catalog/" + file,
+        white: entry.whiteFile ? "/media/catalog/" + entry.whiteFile : "",
+        products,
+      });
+    }
+    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const totalPages = Math.max(1, Math.ceil(rows.length / limit));
+    const page = Math.min(totalPages, Math.max(1, Number(requestUrl.searchParams.get("page")) || 1));
+    return json(res, 200, {
+      ok: true,
+      status,
+      items: rows.slice((page - 1) * limit, page * limit),
+      total: rows.length,
+      page,
+      totalPages,
+      counts: backgroundCounts(DATA_ROOT),
+      tool: {
+        installed: imageBackgroundToolInstalled(),
+        running: Boolean(imageBgChild),
+        lastRun: backgroundMeta(DATA_ROOT),
+      },
+    });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/image-backgrounds/decision") {
+    try {
+      const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+      const file = String(body.file || "");
+      if (!/^[a-f0-9]{28}\.(?:jpe?g|png|webp|gif)$/.test(file)) {
+        return json(res, 422, { ok: false, error: "Geçersiz görsel." });
+      }
+      const result = setBackgroundDecision(DATA_ROOT, file, String(body.use || ""));
+      if (!result.ok) return json(res, 422, result);
+      try {
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action: result.entry.status === "whitened" ? "image.background_white" : "image.background_original",
+          entityType: "image",
+          entityId: file,
+          detail: {},
+          ip: clientIp(req),
+        });
+      } catch (_) {}
+      invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
+      scheduleAkakceFeedSummaryWarm();
+      scheduleThumbnailBackfill(5000);
+      return json(res, 200, { ok: true, status: result.entry.status, counts: backgroundCounts(DATA_ROOT) });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Kaydedilemedi" });
+    }
+  }
+
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/settings") {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
@@ -5051,6 +5236,7 @@ setImmediate(() => {
   scheduleAkakceImageMirror({ delayMs: 180000, skipIfRecent: true });
   scheduleThumbnailBackfill(240000);
   scheduleSupplierImageProbe(10 * 60 * 1000);
+  scheduleImageBackgroundRun(5 * 60 * 1000);
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();

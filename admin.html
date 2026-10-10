@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p41" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-25" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-26" />
   <script>
     (function () {
       try {
@@ -81,6 +81,7 @@
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
             <button type="button" class="admin-nav-subitem" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted">Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="noImageTab" aria-controls="adminTabNoImage" data-admin-tab="noimage">Görselsiz Ürünler <span class="admin-nav-count" id="noImageNavCount" hidden></span></button>
+            <button type="button" class="admin-nav-subitem" id="whiteBgTab" aria-controls="adminTabWhiteBg" data-admin-tab="whitebg">Beyaz Zemin Görselleri</button>
             <button type="button" class="admin-nav-subitem" id="priceAlertsNav" data-admin-tab="products" data-products-view="alerts-price">Fiyat Alarm Talepleri <span class="admin-nav-count" id="priceAlertsNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="stockAlertsNav" data-admin-tab="products" data-products-view="alerts-stock">Stoğu Biten Ürün Talepleri <span class="admin-nav-count" id="stockAlertsNavCount" hidden></span></button>
           </div>
@@ -469,6 +470,35 @@
               </div>
               <nav id="adminNoImagePager" class="admin-pager" aria-label="Görselsiz ürün sayfaları" hidden></nav>
               <p class="admin-note" id="adminNoImageNote" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section id="adminTabWhiteBg" class="admin-tab-panel" aria-labelledby="whiteBgTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">KATALOG</span>
+                  <h2>Beyaz zemin görselleri</h2>
+                  <p class="admin-card-lead">Tedarikçi görseli siyah, gri veya renkli zeminliyse sistem ürünü zeminden ayırıp beyaz zemine oturtur. Kalite kontrolünden geçenler sitede ve Akakçe'de otomatik kullanılır; geçemeyenlerde orijinal kalır. Orijinal görsel silinmez: beğenmediğiniz sonucu "Orijinale dön" ile geri alın, reddedilen ama iyi görünen sonucu "Beyazı kullan" ile yayına alın.</p>
+                  <p class="admin-note" id="adminWhiteBgTool" role="status"></p>
+                </div>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminWhiteBgRefresh">Yenile</button>
+                </div>
+              </div>
+              <div class="admin-toolbar">
+                <input id="adminWhiteBgSearch" type="search" placeholder="Ürün veya stok kodu ara" />
+                <select id="adminWhiteBgFilter" aria-label="Görsel durumu">
+                  <option value="whitened">Beyaz zemin kullanılan</option>
+                  <option value="rejected">Kalite kontrolünden geçemeyen</option>
+                  <option value="reverted">Orijinale döndürülen</option>
+                </select>
+              </div>
+              <div class="admin-whitebg-grid" id="adminWhiteBgRows"></div>
+              <nav id="adminWhiteBgPager" class="admin-pager" aria-label="Beyaz zemin sayfaları" hidden></nav>
+              <p class="admin-note" id="adminWhiteBgNote" role="status"></p>
             </section>
           </div>
         </section>
@@ -1295,6 +1325,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-25"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-26"></script>
 </body>
 </html>

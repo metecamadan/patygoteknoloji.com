@@ -967,8 +967,8 @@
     }
   }
 
-  // "unlisted" and "noimage" are their own tabs but their nav entries sit under Ürünler.
-  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted", "noimage"]);
+  // "unlisted", "noimage" and "whitebg" are their own tabs but their nav entries sit under Ürünler.
+  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted", "noimage", "whitebg"]);
   let activeAdminTab = "overview";
 
   const PRODUCTS_VIEW_META = {
@@ -1006,6 +1006,7 @@
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
       unlisted: ["Listelenmeyen Ürünler", "Sitede ve Akakçe XML'inde gösterilmeyen XML ürünleri."],
       noimage: ["Görselsiz Ürünler", "Tedarikçiden görselsiz gelen ürünlere görsel ekleyip yayına alın."],
+      whitebg: ["Beyaz Zemin Görselleri", "Zemini beyaza çevrilen tedarikçi görsellerini kontrol edin; beğenmediğinizi orijinale döndürün."],
     };
     const productsMeta = PRODUCTS_VIEW_META;
     tabs.forEach((tab) => {
@@ -1060,6 +1061,7 @@
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
     if (name === "unlisted" && token) loadUnlistedProducts().catch(() => {});
     if (name === "noimage" && token) loadNoImageProducts().catch(() => {});
+    if (name === "whitebg" && token) loadWhiteBgImages().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
     } catch (_) {}
@@ -3440,6 +3442,188 @@
       noImageFilter = noImageFilterSelect.value;
       noImagePage = 1;
       loadNoImageProducts().catch(() => {});
+    });
+  }
+
+  let whiteBgPage = 1;
+  let whiteBgQuery = "";
+  let whiteBgFilter = "whitened";
+  const WHITE_BG_FILTER_LABELS = {
+    whitened: "Beyaz zemin kullanılan",
+    rejected: "Kalite kontrolünden geçemeyen",
+    reverted: "Orijinale döndürülen",
+  };
+
+  function renderWhiteBgTool(data) {
+    const el = document.getElementById("adminWhiteBgTool");
+    if (!el) return;
+    const tool = data.tool || {};
+    const last = (tool.lastRun && tool.lastRun.lastResult) || null;
+    if (!tool.installed) {
+      note(el, "err", "Beyaz zemin aracı sunucuda kurulu değil; yeni görseller işlenmiyor.");
+    } else if (tool.running) {
+      note(el, "", "Görseller şu an işleniyor.");
+    } else if (last && tool.lastRun.lastFinishedAt) {
+      note(
+        el,
+        "",
+        "Son tur " + new Date(tool.lastRun.lastFinishedAt).toLocaleString("tr-TR") + ": " +
+          last.checked + " görsel, " + last.whitened + " beyaz zemin, " + last.rejected + " reddedildi" +
+          (last.remaining ? ", " + last.remaining + " sırada" : "") + "."
+      );
+    } else {
+      note(el, "", "");
+    }
+    const select = document.getElementById("adminWhiteBgFilter");
+    const counts = data.counts || {};
+    if (select) {
+      Array.from(select.options).forEach((option) => {
+        const n = Number(counts[option.value]) || 0;
+        option.textContent = WHITE_BG_FILTER_LABELS[option.value] + " (" + n + ")";
+      });
+    }
+  }
+
+  function renderWhiteBgPager(totalPages) {
+    const pager = document.getElementById("adminWhiteBgPager");
+    if (!pager) return;
+    pager.textContent = "";
+    pager.hidden = totalPages <= 1;
+    if (totalPages <= 1) return;
+    const addBtn = (label, page, opts) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts && opts.current) btn.className = "is-current";
+      btn.disabled = !!(opts && opts.disabled);
+      btn.addEventListener("click", () => {
+        whiteBgPage = page;
+        loadWhiteBgImages().catch(() => {});
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", whiteBgPage - 1, { disabled: whiteBgPage <= 1 });
+    addBtn(whiteBgPage + " / " + totalPages, whiteBgPage, { current: true, disabled: true });
+    addBtn("›", whiteBgPage + 1, { disabled: whiteBgPage >= totalPages });
+  }
+
+  function whiteBgFigure(src, caption, alt) {
+    const figure = document.createElement("figure");
+    figure.className = "admin-whitebg-figure";
+    if (src) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = alt;
+      img.width = 160;
+      img.height = 160;
+      img.loading = "lazy";
+      figure.appendChild(img);
+    }
+    const cap = document.createElement("figcaption");
+    cap.textContent = caption;
+    figure.appendChild(cap);
+    return figure;
+  }
+
+  function renderWhiteBgCard(item, noteEl) {
+    const card = document.createElement("article");
+    card.className = "admin-whitebg-card";
+    const main = item.products[0] || {};
+    const label = main.name || main.sku || item.file;
+    const pair = document.createElement("div");
+    pair.className = "admin-whitebg-pair";
+    pair.append(
+      whiteBgFigure(item.original, "Orijinal", label + " orijinal görsel"),
+      whiteBgFigure(item.white, "Beyaz zemin", label + " beyaz zeminli görsel")
+    );
+    const title = document.createElement("strong");
+    title.textContent = label;
+    const meta = document.createElement("small");
+    meta.className = "admin-noimage-meta";
+    meta.textContent = [main.sku, item.products.length > 1 ? "+" + (item.products.length - 1) + " ürün daha" : ""]
+      .filter(Boolean)
+      .join(" · ");
+    const actions = document.createElement("div");
+    actions.className = "admin-noimage-actions";
+    const useWhite = item.status !== "whitened";
+    if (!useWhite || item.white) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = useWhite ? "btn btn-primary btn-xs" : "btn btn-outline btn-xs";
+      btn.textContent = useWhite ? "Beyazı kullan" : "Orijinale dön";
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          await api("/api/admin/image-backgrounds/decision", {
+            method: "POST",
+            body: JSON.stringify({ file: item.file, use: useWhite ? "white" : "original" }),
+          });
+          notifySite();
+          card.remove();
+          note(noteEl, "ok", label + (useWhite ? ": beyaz zeminli görsel kullanılıyor." : ": orijinal görsele dönüldü."));
+        } catch (err) {
+          btn.disabled = false;
+          note(noteEl, "err", err.message || "Kaydedilemedi");
+        }
+      });
+      actions.appendChild(btn);
+    }
+    card.append(pair, title, meta, actions);
+    return card;
+  }
+
+  async function loadWhiteBgImages() {
+    const rows = document.getElementById("adminWhiteBgRows");
+    const noteEl = document.getElementById("adminWhiteBgNote");
+    if (!rows) return;
+    try {
+      const qs = new URLSearchParams({
+        status: whiteBgFilter,
+        q: whiteBgQuery,
+        page: String(whiteBgPage),
+        limit: "40",
+      });
+      const data = await api("/api/admin/image-backgrounds?" + qs.toString());
+      const list = Array.isArray(data.items) ? data.items : [];
+      whiteBgPage = Number(data.page) || 1;
+      renderWhiteBgTool(data);
+      renderWhiteBgPager(Number(data.totalPages) || 1);
+      rows.textContent = "";
+      if (!list.length) {
+        const empty = document.createElement("p");
+        empty.className = "admin-table-empty";
+        empty.textContent = whiteBgQuery ? "Aramaya uyan görsel yok." : "Bu filtrede görsel yok.";
+        rows.appendChild(empty);
+      }
+      list.forEach((item) => rows.appendChild(renderWhiteBgCard(item, noteEl)));
+      note(noteEl, "", "Toplam " + (Number(data.total) || 0) + " görsel");
+    } catch (err) {
+      note(noteEl, "err", err.message || "Liste yüklenemedi");
+    }
+  }
+
+  const whiteBgRefreshBtn = document.getElementById("adminWhiteBgRefresh");
+  if (whiteBgRefreshBtn) {
+    whiteBgRefreshBtn.addEventListener("click", () => loadWhiteBgImages().catch(() => {}));
+  }
+  const whiteBgSearch = document.getElementById("adminWhiteBgSearch");
+  if (whiteBgSearch) {
+    let whiteBgSearchTimer = null;
+    whiteBgSearch.addEventListener("input", () => {
+      clearTimeout(whiteBgSearchTimer);
+      whiteBgSearchTimer = setTimeout(() => {
+        whiteBgQuery = whiteBgSearch.value.trim();
+        whiteBgPage = 1;
+        loadWhiteBgImages().catch(() => {});
+      }, 280);
+    });
+  }
+  const whiteBgFilterSelect = document.getElementById("adminWhiteBgFilter");
+  if (whiteBgFilterSelect) {
+    whiteBgFilterSelect.addEventListener("change", () => {
+      whiteBgFilter = whiteBgFilterSelect.value;
+      whiteBgPage = 1;
+      loadWhiteBgImages().catch(() => {});
     });
   }
 
