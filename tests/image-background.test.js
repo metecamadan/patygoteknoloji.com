@@ -61,13 +61,43 @@ test("acceptCutout: only crisp cut-outs of a real backdrop are used", () => {
   assert.equal(bg.acceptCutout(null), false);
 });
 
-test("borderProfile tells a white backdrop from a black one", async () => {
+test("borderProfile tells a light backdrop from a black one", async () => {
   const dataRoot = tempDataRoot();
   const dir = mirrorPaths(dataRoot).mediaDir;
   await productOn("#ffffff", path.join(dir, "w.jpg"));
+  await productOn("#dcdcdc", path.join(dir, "g.jpg"));
   await productOn("#101010", path.join(dir, "b.jpg"));
-  assert.ok((await bg.borderProfile(sharp, path.join(dir, "w.jpg"))).white >= bg.WHITE_BORDER_MIN);
-  assert.ok((await bg.borderProfile(sharp, path.join(dir, "b.jpg"))).white < 0.05);
+  const w = await bg.borderProfile(sharp, path.join(dir, "w.jpg"));
+  const g = await bg.borderProfile(sharp, path.join(dir, "g.jpg"));
+  const b = await bg.borderProfile(sharp, path.join(dir, "b.jpg"));
+  assert.ok(w.light >= bg.LIGHT_BORDER_MIN);
+  assert.ok(g.white < 0.05 && g.light >= bg.LIGHT_BORDER_MIN, "açık gri zemin de açık sayılır");
+  assert.ok(b.light < 0.05);
+  fs.rmSync(dataRoot, { recursive: true, force: true });
+});
+
+test("processBackgrounds leaves pale grey backdrops alone (silver parts would be cut)", async () => {
+  const dataRoot = tempDataRoot();
+  const dir = mirrorPaths(dataRoot).mediaDir;
+  const pale = "e".repeat(28) + ".jpg";
+  await productOn("#dcdcdc", path.join(dir, pale));
+  const mirrorIndex = {
+    "https://cdn.example/p.jpg": { file: pale, publicPath: "/media/catalog/" + pale, placeholder: false },
+  };
+  let calls = 0;
+  const result = await bg.processBackgrounds({
+    dataRoot,
+    sharp,
+    removeBackground: async (png) => {
+      calls += 1;
+      return thresholdRemover(png);
+    },
+    mirrorIndex,
+  });
+  assert.equal(calls, 0, "açık zeminli görsel modele gönderilmez");
+  assert.equal(result.white, 1);
+  assert.equal(bg.loadBackgroundIndex(dataRoot)[pale].status, "white");
+  assert.equal(bg.storefrontMirrorIndex(dataRoot, mirrorIndex)["https://cdn.example/p.jpg"].file, pale);
   fs.rmSync(dataRoot, { recursive: true, force: true });
 });
 
