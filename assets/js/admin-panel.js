@@ -3458,16 +3458,20 @@
     const el = document.getElementById("adminWhiteBgTool");
     if (!el) return;
     const tool = data.tool || {};
-    const last = (tool.lastRun && tool.lastRun.lastResult) || null;
+    const run = tool.lastRun || {};
+    const last = run.lastResult || null;
+    const failedLast = run.lastError && run.lastFailedAt && !(run.lastFinishedAt > run.lastFailedAt);
     if (!tool.installed) {
       note(el, "err", "Beyaz zemin aracı sunucuda kurulu değil; yeni görseller işlenmiyor.");
+    } else if (failedLast) {
+      note(el, "err", "Son tur " + new Date(run.lastFailedAt).toLocaleString("tr-TR") + " hata verdi: " + run.lastError);
     } else if (tool.running) {
       note(el, "", "Görseller şu an işleniyor.");
-    } else if (last && tool.lastRun.lastFinishedAt) {
+    } else if (last && run.lastFinishedAt) {
       note(
         el,
         "",
-        "Son tur " + new Date(tool.lastRun.lastFinishedAt).toLocaleString("tr-TR") + ": " +
+        "Son tur " + new Date(run.lastFinishedAt).toLocaleString("tr-TR") + ": " +
           last.checked + " görsel, " + last.whitened + " beyaz zemin, " + last.rejected + " reddedildi" +
           (last.remaining ? ", " + last.remaining + " sırada" : "") + "."
       );

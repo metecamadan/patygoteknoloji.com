@@ -53,6 +53,11 @@ test("acceptCutout: only crisp cut-outs of a real backdrop are used", () => {
   assert.equal(bg.acceptCutout(Object.assign({}, good, { foreground: 0.01 })), false, "ürün neredeyse silinmiş");
   assert.equal(bg.acceptCutout(Object.assign({}, good, { foreground: 0.9 })), false, "zemin yok sayılmış");
   assert.equal(bg.acceptCutout(Object.assign({}, good, { foreignRemoved: 0.4 })), false, "kutu/yazı silinmiş");
+  assert.equal(
+    bg.acceptCutout(Object.assign({}, good, { foreignRemoved: 0.134 })),
+    false,
+    "kahve paketinin mor üst kısmı silinmiş"
+  );
   assert.equal(bg.acceptCutout(null), false);
 });
 
@@ -153,6 +158,35 @@ test("processBackgrounds stops at the deadline and reports what is left", async 
   assert.equal(result.checked, 2);
   assert.equal(result.remaining, 1);
   fs.rmSync(dataRoot, { recursive: true, force: true });
+});
+
+test("a broken model stops the pass after 5 failures; failed images are retried next pass", async () => {
+  const dataRoot = tempDataRoot();
+  const dir = mirrorPaths(dataRoot).mediaDir;
+  const mirrorIndex = {};
+  for (let i = 0; i < 8; i++) {
+    const file = String(i).repeat(28) + ".jpg";
+    await productOn("#101010", path.join(dir, file));
+    mirrorIndex["https://cdn.example/" + i] = { file, publicPath: "/media/catalog/" + file };
+  }
+  const broken = async () => {
+    throw new Error("ENOENT resources.json");
+  };
+  await assert.rejects(
+    bg.processBackgrounds({ dataRoot, sharp, removeBackground: broken, mirrorIndex }),
+    /üst üste 5 görselde hata verdi: ENOENT resources\.json/
+  );
+  assert.equal(bg.backgroundCounts(dataRoot).error, 5, "durmadan önce yalnızca 5 hata yazılır");
+  const fixed = await bg.processBackgrounds({ dataRoot, sharp, removeBackground: thresholdRemover, mirrorIndex });
+  assert.equal(fixed.checked, 8, "hatalı görseller sonraki turda yeniden denenir");
+  assert.equal(bg.backgroundCounts(dataRoot).error, 0);
+  fs.rmSync(dataRoot, { recursive: true, force: true });
+});
+
+test("worker points the model at its own install, not the app root it is started from", () => {
+  const worker = read("tools/image-bg/run.js");
+  assert.match(worker, /path\.dirname\(require\.resolve\("@imgly\/background-removal-node"\)\)/);
+  assert.match(worker, /publicPath: MODEL_PUBLIC_PATH/);
 });
 
 test("storefrontMirrorIndex swaps in white copies only while they are chosen and on disk", () => {
