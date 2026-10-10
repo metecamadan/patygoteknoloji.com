@@ -3445,10 +3445,19 @@
   }
 
   let productsLoaded = false;
+  // Stock as last read from the server; an unchanged field lets the server keep sales made meanwhile.
+  let loadedStockById = new Map();
+
+  function rememberLoadedStock(list) {
+    loadedStockById = new Map(
+      (list || []).filter((p) => p && p.id).map((p) => [String(p.id), p.stockQty])
+    );
+  }
 
   async function refresh() {
     const data = await api("/api/admin/products");
     products = Array.isArray(data.products) ? data.products : [];
+    rememberLoadedStock(products);
     productsLoaded = true;
     renderList();
   }
@@ -3475,11 +3484,17 @@
 
   async function persist(list, msg) {
     assertManualProductsHaveGallery(list);
+    const payload = list.map((p) =>
+      p && loadedStockById.has(String(p.id))
+        ? Object.assign({}, p, { stockQtyLoaded: loadedStockById.get(String(p.id)) })
+        : p
+    );
     const data = await api("/api/admin/products", {
       method: "PUT",
-      body: JSON.stringify({ products: list }),
+      body: JSON.stringify({ products: payload }),
     });
     products = data.products || list;
+    rememberLoadedStock(products);
     productsLoaded = true;
     renderList();
     notifySite();

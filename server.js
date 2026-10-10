@@ -149,6 +149,7 @@ const {
 } = require("./lib/customer-identity");
 const { normalizeAddress, normalizeInvoiceIdentity } = require("./lib/checkout-billing");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
+const { createManualStock, findStockShortage, trackedStock } = require("./lib/manual-stock");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
 const {
   createAdminSecurityStore,
@@ -419,6 +420,33 @@ setCategoryListLoader(() => categoryStore.list(), () => categoryStore.stamp());
 const adminUserStore = createAdminUserStore(DATA_ROOT);
 const consentStore = createConsentStore(DATA_ROOT);
 const auditStore = createAuditStore(DATA_ROOT);
+const manualStock = createManualStock(DATA_ROOT, {
+  loadProducts,
+  saveProducts,
+  stampRestock: stampManualRestock,
+});
+
+function recordManualStockMoves(orderId, label, run) {
+  let changes = [];
+  try {
+    changes = run();
+  } catch (err) {
+    console.error("[manual-stock] " + label + " " + orderId + ":", err && err.message);
+    return;
+  }
+  for (const change of changes) {
+    if (change.shortBy > 0) {
+      console.warn("[manual-stock] " + orderId + " " + change.productId + ": stoktan " + change.shortBy + " adet fazla satıldı");
+    }
+    auditStore.record({
+      actorType: "system",
+      action: label === "sale" ? "product.stock_sale" : "product.stock_refund",
+      entityType: "product",
+      entityId: change.productId,
+      detail: { orderId, qty: change.qty, before: change.before, after: change.after, shortBy: change.shortBy },
+    });
+  }
+}
 const orderDocStore = createOrderDocStore(DATA_ROOT);
 const orderDocLinks = createDocLinkSigner();
 
@@ -598,8 +626,9 @@ function orderAccessOk(order, token) {
 function priceCheckoutItems(rawItems) {
   if (!rawItems.length) throw new Error("Sepet boş.");
   const productIds = rawItems.slice(0, 40).map((row) => String(row.productId || "").trim());
+  const manualProducts = loadProducts();
   const byId = lookupCheckoutProductsByIds(productIds, {
-    loadManual: loadProducts,
+    loadManual: () => manualProducts,
     getSupplierById: (id) => supplierManager.getProductById(id),
     mergeOptions: {
       includeInactiveManual: false,
@@ -636,6 +665,16 @@ function priceCheckoutItems(rawItems) {
       line,
       lineVat,
     });
+  }
+
+  const shortage = findStockShortage(
+    items,
+    manualProducts.filter((item) => item && byId[item.id] && byId[item.id].source === "manual")
+  );
+  if (shortage) {
+    throw new Error(
+      shortage.name + ": stokta yalnızca " + shortage.available + " adet var; lütfen sepetteki adedi azaltın."
+    );
   }
 
   subtotal = Math.round(subtotal * 100) / 100;
@@ -1994,6 +2033,11 @@ async function afterSuccessfulReversal(before, updated, event) {
   if (fully && before && before.coupon && couponStore) {
     couponReleased = couponStore.release(before.id);
   }
+  if (updated && event && event.success) {
+    recordManualStockMoves(updated.id, "refund", () =>
+      manualStock.recordReturn(before, updated, (event.type || "reversal") + ":" + event.at)
+    );
+  }
   const wasShipped = Boolean(before && (before.status === "shipped" || before.status === "delivered"));
   let mailResult = null;
   try {
@@ -2517,6 +2561,7 @@ async function handleApi(req, res, urlPath) {
           updated && (updated.paymentTaken || updated.paymentStatus === "paid")
         );
         if (nowPaid && !beforePaid) {
+          recordManualStockMoves(updated.id, "sale", () => manualStock.recordSale(updated));
           if (couponStore && updated.coupon && updated.coupon.code) {
             try {
               couponStore.redeem(updated.id, updated.coupon.code);
@@ -3748,7 +3793,12 @@ async function handleApi(req, res, urlPath) {
     if (req.method === "GET") {
       let order = orderStore.get(orderId);
       if (!order) return json(res, 404, { ok: false, error: "Sipariş bulunamadı" });
+      const wasPaid = Boolean(order.paymentTaken || order.paymentStatus === "paid");
       order = orderStore.reconcilePaidFromBankEvidence(orderId) || order;
+      if (!wasPaid && (order.paymentTaken || order.paymentStatus === "paid")) {
+        const reconciled = order;
+        recordManualStockMoves(orderId, "sale", () => manualStock.recordSale(reconciled));
+      }
       const bizimhesap = orderStore.getIntegration(orderId, "bizimhesap_invoice");
       return json(res, 200, {
         ok: true,
@@ -4252,7 +4302,14 @@ async function handleApi(req, res, urlPath) {
           });
         }
         seen.add(p.id);
-        normalized.push(stampManualRestock(p, previousById.get(p.id), nowIso));
+        const previous = previousById.get(p.id);
+        // Sales move stock while the panel is open; an untouched stock field keeps the live count.
+        const loadedStock = trackedStock(item && item.stockQtyLoaded);
+        const liveStock = trackedStock(previous && previous.stockQty);
+        if (loadedStock !== null && liveStock !== null && loadedStock === p.stockQty) {
+          p.stockQty = liveStock;
+        }
+        normalized.push(stampManualRestock(p, previous, nowIso));
       }
       saveProducts(normalized);
       return json(res, 200, { ok: true, count: normalized.length, products: normalized });
