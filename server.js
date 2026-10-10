@@ -1573,6 +1573,25 @@ function scheduleAkakceImageMirror(options) {
   if (typeof akakceMirrorTimer.unref === "function") akakceMirrorTimer.unref();
 }
 
+/** Panel reads use the same daily supplier quota as scheduled ones; the digest and audit log must show them. */
+function recordManualXmlFetch(req, slotId, ok, error) {
+  try {
+    xmlFetchDigest.recordAttempt({ slotId, dueKey: "Panelden elle okuma", ok, error: error || "" });
+  } catch (_) {}
+  try {
+    const session = getSession(req);
+    auditStore.record({
+      actorType: "admin_user",
+      actorId: session && session.userId,
+      action: "supplier.refresh",
+      entityType: "supplier_slot",
+      entityId: String(slotId),
+      detail: { ok: Boolean(ok), error: String(error || "").slice(0, 200) },
+      ip: clientIp(req),
+    });
+  } catch (_) {}
+}
+
 const IMAGE_PROBE_NEXT_BATCH_MS = 2 * 60 * 1000;
 const IMAGE_PROBE_IDLE_MS = 6 * 60 * 60 * 1000;
 let imageProbeTimer = null;
@@ -4056,9 +4075,18 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "POST" && urlPath === "/api/admin/supplier/refresh") {
+    let slotId = "supplier-1";
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
-      const result = await supplierManager.refresh(body.slotId || "supplier-1");
+      slotId = String(body.slotId || "supplier-1").slice(0, 32);
+      let result;
+      try {
+        result = await supplierManager.refresh(slotId);
+      } catch (err) {
+        recordManualXmlFetch(req, slotId, false, err && err.message);
+        throw err;
+      }
+      recordManualXmlFetch(req, slotId, true, "");
       // Category sync + catalog warm must not hold the HTTP response (blocks all panel APIs).
       enqueueXmlCategorySync(result.slotId);
       scheduleAkakceImageMirror();

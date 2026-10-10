@@ -81,6 +81,55 @@ test("scheduler catches a late slot once and never refetches the same key", asyn
   assert.equal(refreshed, 1, "same slot is not pulled twice inside the window");
 });
 
+test("scheduler claims the slot before the request, so a restart mid-read never repeats it", async () => {
+  const { createSupplierScheduler } = require("../lib/supplier-schedule");
+  let savedKey = "";
+  const requests = [];
+  const manager = {
+    listSlots() {
+      return [{ id: "supplier-1", configured: true, lastScheduledFetchKey: savedKey, lastError: "" }];
+    },
+    async refresh() {
+      requests.push(savedKey);
+      throw new Error("process killed by deploy");
+    },
+    markScheduledFetch(_slotId, key) {
+      savedKey = key;
+    },
+  };
+  const realDate = Date;
+  const runAt = async (iso) => {
+    const frozen = new realDate(iso);
+    global.Date = class extends realDate {
+      constructor(...args) {
+        if (!args.length) return frozen;
+        super(...args);
+      }
+      static now() {
+        return frozen.getTime();
+      }
+    };
+    try {
+      await createSupplierScheduler({ manager, intervalMs: 60 * 60 * 1000, log() {}, logError() {} }).tick();
+    } finally {
+      global.Date = realDate;
+    }
+  };
+  await runAt("2026-10-08T20:30:10.000Z");
+  assert.deepEqual(requests, ["2026-10-08 23:30"], "slot is saved before the supplier sees the request");
+  await runAt("2026-10-08T20:31:51.000Z");
+  assert.equal(requests.length, 1, "the restarted process does not read the same slot again");
+});
+
+test("panel XML refresh is written to the daily XML digest and the audit log", () => {
+  const server = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /function recordManualXmlFetch\(req, slotId, ok, error\)/);
+  assert.match(server, /xmlFetchDigest\.recordAttempt\(\{ slotId, dueKey: "Panelden elle okuma"/);
+  assert.match(server, /action: "supplier\.refresh"/);
+  assert.match(server, /recordManualXmlFetch\(req, slotId, false, err && err\.message\);\s*throw err;/);
+  assert.match(server, /recordManualXmlFetch\(req, slotId, true, ""\);/);
+});
+
 test("getNextScheduledAt returns later slot same day", () => {
   const next = getNextScheduledAt(new Date("2026-08-13T05:00:00.000Z"));
   assert.equal(next.label, "13.08.2026 11:00");
