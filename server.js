@@ -1689,20 +1689,29 @@ function popularProductScores() {
   return scores;
 }
 
+/** New XML products whose category matches go live on every read; panel-closed ones stay closed. */
 function syncLiveXmlCategoriesAsync(slotId) {
   return syncXmlSiteCategoriesAsync({
     manager: supplierManager,
     categoryStore,
     slotId: slotId || "supplier-1",
-    activate: false,
-  }).catch((err) => {
-    console.warn(
-      "XML kategori senkronu atlandı:",
-      slotId || "supplier-1",
-      err && err.message ? err.message : err
-    );
-    return null;
-  });
+    activate: true,
+  })
+    .then((result) => {
+      if (result && result.activated > 0) {
+        console.log("XML yeni ürün yayına alındı:", slotId || "supplier-1", result.activated);
+        scheduleAkakceImageMirror();
+      }
+      return result;
+    })
+    .catch((err) => {
+      console.warn(
+        "XML kategori senkronu atlandı:",
+        slotId || "supplier-1",
+        err && err.message ? err.message : err
+      );
+      return null;
+    });
 }
 
 let xmlCategorySyncQueue = Promise.resolve();

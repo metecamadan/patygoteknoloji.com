@@ -225,6 +225,55 @@ test("panel-chosen category survives XML sync; publish only activates it", () =>
   }
 });
 
+test("XML sync opens new matched products but never reopens one closed in the panel", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-open-"));
+  const store = createCategoryStore(root);
+  const row = (sku, extra) =>
+    Object.assign(
+      {
+        supplierSlot: "supplier-1",
+        supplierSku: sku,
+        name: "Epson ERC-38 Şerit " + sku,
+        xmlMainCategory: "TÜKETİM ÜRÜNLERİ",
+        xmlMidCategory: "Yazıcı Tüketim Ürünleri (Orj.)",
+        xmlSubCategory: "Şeritler",
+        active: false,
+      },
+      extra
+    );
+  const placed = { siteParent: "kartus-toner", siteMid: "yazici-tuketim-urunleri-orj", siteChild: "seritler", siteCategoryAssigned: true };
+  const products = [
+    row("NEW-1"),
+    row("SEEN-1", placed),
+    row("CLOSED-1", Object.assign({ deactivated: true }, placed)),
+    row("CLOSED-NEW", { deactivated: true }),
+    row("LIVE-1", Object.assign({ active: true }, placed)),
+  ];
+  const updates = [];
+  const manager = { listProducts: () => products, updateProducts: (rows) => updates.push(...rows) };
+  try {
+    const result = syncXmlSiteCategories({ manager, categoryStore: store, slotId: "supplier-1", activate: true });
+    const bySku = Object.fromEntries(updates.map((u) => [u.supplierSku, u]));
+    assert.equal(bySku["NEW-1"].active, true, "kategorisi eşleşen yeni ürün yayına girer");
+    assert.equal(bySku["SEEN-1"].active, true, "kategorisi atanmış ama hiç kapatılmamış ürün yayına girer");
+    assert.equal(bySku["CLOSED-1"], undefined, "panelden kapatılan ürün yeniden açılmaz");
+    assert.equal(bySku["CLOSED-NEW"].siteChild, "seritler", "kapalı ürünün kategorisi yine güncellenir");
+    assert.equal(bySku["CLOSED-NEW"].active, undefined, "ama açılmaz");
+    assert.equal(bySku["LIVE-1"], undefined, "zaten yayında olan ürüne dokunulmaz");
+    assert.equal(result.activated, 2);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("every XML read publishes new matched products and mirrors their images", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(
+    server,
+    /function syncLiveXmlCategoriesAsync\(slotId\) \{[\s\S]*?activate: true,[\s\S]*?result\.activated > 0[\s\S]*?scheduleAkakceImageMirror\(\)/
+  );
+});
+
 test("XML sub-category without a counterpart is not dropped into a sibling leaf", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-sibling-"));
   const store = createCategoryStore(root);

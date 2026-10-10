@@ -2319,7 +2319,6 @@
       siteMid: midSlug || "",
       siteChild: childSlug || "",
     };
-    if (item.active && !(parentSlug && childSlug)) updates.active = false;
     await updateSupplierProducts([updates]);
   }
 

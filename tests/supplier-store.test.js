@@ -393,6 +393,9 @@ test("supplier store blocks publish without a valid site category", async () => 
     const cleared = store.listProducts()[0];
     assert.equal(cleared.active, false);
     assert.equal(cleared.siteCategoryAssigned, false);
+    assert.equal(cleared.deactivated, false, "kategorisi kalkan ürün kapatılmış sayılmaz; kategori dönünce yeniden açılabilir");
+    store.updateOverrides([{ supplierSku: "SKU-1", active: false }]);
+    assert.equal(store.listProducts()[0].deactivated, true, "panelden kapatma kalıcı işaretlenir");
   } finally {
     clearTestSiteCategories();
     fs.rmSync(root, { recursive: true, force: true });
