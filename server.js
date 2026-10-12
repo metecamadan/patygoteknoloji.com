@@ -65,6 +65,7 @@ const {
   mergeCatalogProducts,
   queryPublicCatalog,
   queryPublicCatalogIndexed,
+  storefrontSearchIndex,
   similarProductsIndexed,
   buildBrandCounts,
   buildStorefrontIndex,
@@ -1109,9 +1110,23 @@ function storefrontIndex(includeInactiveManual) {
     if (!includeInactiveManual) recordPriceHistory(products);
     memo.index = buildStorefrontIndex(products, catalogImageContext());
     memo.day = day;
-    if (!includeInactiveManual) recordPublishedProductPaths(memo.index);
+    if (!includeInactiveManual) {
+      recordPublishedProductPaths(memo.index);
+      warmSearchIndex(memo.index);
+    }
   }
   return memo.index;
+}
+
+/** The first shopper search after a catalog rebuild should not pay for the word index. */
+function warmSearchIndex(index) {
+  setImmediate(() => {
+    try {
+      storefrontSearchIndex(index);
+    } catch (err) {
+      console.error("[search] dizin hazırlanamadı:", err && err.message);
+    }
+  });
 }
 
 function recordPublishedProductPaths(index) {
@@ -1147,6 +1162,7 @@ function soldOutIndex() {
   index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   soldOutCatalogMemo.index = index;
   recordPublishedProductPaths(index);
+  warmSearchIndex(index);
   return index;
 }
 
