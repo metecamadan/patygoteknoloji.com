@@ -943,7 +943,7 @@
     if (tab === "categories") loadCategoryTree().catch(() => {});
     if (tab === "users") loadAdminUsers().catch(() => {});
     if (tab === "unlisted") loadUnlistedProducts().catch(() => {});
-    if (xmlView) {
+    if (tab === "xml") {
       loadSupplierData().catch((err) => {
         note(
           document.getElementById("supplierProductsNote"),

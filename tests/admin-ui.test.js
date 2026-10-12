@@ -9,6 +9,19 @@ const loginScript = fs.readFileSync(path.join(root, "assets", "js", "admin-login
 const script = fs.readFileSync(path.join(root, "assets", "js", "admin-panel.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "assets", "css", "admin.css"), "utf8");
 
+test("login boot does not use names declared only in other functions (xmlView regression)", () => {
+  const start = script.indexOf("async function bootAuthedWorkspace() {");
+  assert.ok(start > 0);
+  const end = script.indexOf("\n  function showPanel(", start);
+  const body = script.slice(start, end);
+  // A fresh login awaits this function; an undeclared name throws and sends the user back to login.
+  for (const name of ["xmlView", "manualView", "alertsView", "productsView"]) {
+    if (!new RegExp("\\b" + name + "\\b").test(body)) continue;
+    assert.match(body, new RegExp("\\b(const|let|var) " + name + "\\b"), name + " bootAuthedWorkspace içinde tanımlı olmalı");
+  }
+  assert.match(body, /if \(tab === "xml"\) \{\s*loadSupplierData\(\)/);
+});
+
 test("admin markup has unique element IDs", () => {
   const ids = Array.from(html.matchAll(/\sid="([^"]+)"/g), (match) => match[1]);
   const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -688,7 +701,7 @@ test("admin login does not block on supplier catalog or dashboard merge", () => 
     script,
     /await Promise\.all\(\[\s*refresh\(\),\s*loadSupplierData/
   );
-  assert.match(script, /if \(xmlView\) \{\s*loadSupplierData/s);
+  assert.match(script, /if \(tab === "xml"\) \{\s*loadSupplierData/s);
   assert.doesNotMatch(script, /refresh\(\)\.catch\(\(\) => \{\}\);/);
 });
 
