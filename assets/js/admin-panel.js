@@ -5948,9 +5948,86 @@
     );
   }
 
+  const CARGO_STATE_TEXT = {
+    created: "Gönderi açıldı; şube paketi okutunca takip numarası kendiliğinden gelir ve müşteriye mail gider.",
+    in_transit: "Paket Yurtiçi'de, yolda.",
+    delivered: "Yurtiçi teslim etti.",
+    returning: "Paket iade sürecinde (Yurtiçi). Müşteriyle iletişime geçin.",
+    returned: "Paket göndericiye geri döndü.",
+    cancelled: "Gönderi iptal edildi.",
+  };
+
+  function orderCargoHtml(order) {
+    const cargo = order._cargo;
+    if (!cargo) return "";
+    const title = "<h3 class='admin-order-section-title'>Yurtiçi Kargo" + (cargo.mode === "test" ? " <small>(test ortamı)</small>" : "") + "</h3>";
+    if (!cargo.configured) {
+      return title + "<p class='admin-field-help'>Yurtiçi bilgileri sunucuda tanımlı değil; kargo bilgisini aşağıdan elle girin.</p>";
+    }
+    const s = cargo.shipment;
+    const paid = order.paymentTaken || order.paymentStatus === "paid";
+    const shippable = paid && (order.status === "paid" || order.status === "preparing");
+    if (!s || s.state === "cancelled") {
+      if (!shippable) {
+        return title + "<p class='admin-field-help'>Gönderi yalnızca ödemesi alınmış, kargoya verilmemiş siparişte açılır.</p>";
+      }
+      return (
+        title +
+        (s ? "<p class='admin-field-help'>Önceki gönderi (" + escapeHtml(s.cargoKey) + ") iptal edildi; yeniden açabilirsiniz.</p>" : "") +
+        "<div class='admin-order-shipping-fields'>" +
+        "<div class='field'><label for='adminCargoDesi'>Desi</label>" +
+        "<input type='number' id='adminCargoDesi' min='0.1' max='1000' step='0.1' value='1'></div>" +
+        "</div>" +
+        "<p class='admin-field-help'>Alıcı adı, adres, il/ilçe ve telefon siparişten gider. Etiketi yazdırıp pakete yapıştırın.</p>" +
+        "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminCargoCreate'>Yurtiçi'ye gönder</button></div>"
+      );
+    }
+    const rows = [
+      ["Kargo anahtarı", escapeHtml(s.cargoKey)],
+      ["Desi", escapeHtml(String(s.desi || "—"))],
+      s.docId
+        ? [
+            "Takip no",
+            s.trackingUrl
+              ? "<a href='" + escapeAttr(s.trackingUrl) + "' target='_blank' rel='noopener noreferrer'>" + escapeHtml(s.docId) + "</a>"
+              : escapeHtml(s.docId),
+          ]
+        : null,
+      s.operationMessage ? ["Yurtiçi durumu", escapeHtml(s.operationMessage)] : null,
+      s.lastCheckedAt ? ["Son sorgu", escapeHtml(formatOrderDate(s.lastCheckedAt))] : null,
+    ];
+    const warn = s.state === "returning" || s.state === "returned" || s.orderConflict;
+    const actions = [];
+    if (cargo.labelUrl) {
+      actions.push(
+        "<a class='btn btn-outline' id='adminCargoLabel' href='" + escapeAttr(cargo.labelUrl) + "' target='_blank' rel='noopener'>Etiketi yazdır (A5)</a>"
+      );
+    }
+    if (s.state === "created" || s.state === "in_transit") {
+      actions.push("<button type='button' class='btn btn-outline' id='adminCargoRefresh'>Durumu sorgula</button>");
+    }
+    if (s.state === "created") {
+      actions.push("<button type='button' class='btn btn-outline' id='adminCargoCancel'>Gönderiyi iptal et</button>");
+    }
+    return (
+      title +
+      "<p class='admin-order-mail-banner " +
+      (warn ? "admin-order-mail-banner--warn" : "admin-order-mail-banner--ok") +
+      "'>" +
+      escapeHtml(CARGO_STATE_TEXT[s.state] || s.state) +
+      (s.orderConflict ? " Sipariş durumu: " + escapeHtml(orderStatusLabel(s.orderConflict)) + " — kargoyu kontrol edin." : "") +
+      "</p>" +
+      "<dl class='admin-xml-meta'>" +
+      metaRows(rows) +
+      "</dl>" +
+      (actions.length ? "<div class='admin-form-actions'>" + actions.join("") + "</div>" : "")
+    );
+  }
+
   function orderShippingFormHtml(order, shippedMailSent) {
     return (
-      "<h3 class='admin-order-section-title'>Kargo bilgisi</h3>" +
+      orderCargoHtml(order) +
+      "<h3 class='admin-order-section-title'>Kargo bilgisi" + (order._cargo && order._cargo.configured ? " <small>(elle)</small>" : "") + "</h3>" +
       "<p class='admin-field-help' data-smtp-mail-help>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur ve müşteriye mail gider.</p>" +
       "<div class='admin-order-shipping-fields'>" +
       "<div class='field'><label for='adminOrderCarrier'>Kargo firması</label>" +
@@ -6215,9 +6292,58 @@
     });
   }
 
+  function bindCargoActions(orderId) {
+    const run = async (btn, path, body, okText) => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      try {
+        const result = await api("/api/admin/orders/" + encodeURIComponent(orderId) + "/cargo" + path, {
+          method: "POST",
+          body: JSON.stringify(body || {}),
+          timeout: 45000,
+        });
+        result.order._cargo = result.cargo || null;
+        note(adminOrdersNote, "ok", okText);
+        applyOrderPatchToUi(result.order, result.statusMails);
+      } catch (err) {
+        btn.disabled = false;
+        note(adminOrdersNote, "err", err.message || "Kargo işlemi yapılamadı");
+      }
+    };
+    const labelLink = document.getElementById("adminCargoLabel");
+    if (labelLink) labelLink.addEventListener("click", (event) => event.stopPropagation());
+    const createBtn = document.getElementById("adminCargoCreate");
+    if (createBtn) {
+      createBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const desi = document.getElementById("adminCargoDesi").value;
+        run(createBtn, "", { desi }, "Yurtiçi gönderisi açıldı. Etiketi yazdırıp pakete yapıştırın.");
+      });
+    }
+    const refreshBtn = document.getElementById("adminCargoRefresh");
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        run(refreshBtn, "/refresh", null, "Yurtiçi durumu güncellendi.");
+      });
+    }
+    const cancelBtn = document.getElementById("adminCargoCancel");
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!window.confirm("Yurtiçi gönderisi iptal edilsin mi? Paket şubeye verilmediyse iptal olur.")) return;
+        run(cancelBtn, "/cancel", null, "Yurtiçi gönderisi iptal edildi.");
+      });
+    }
+  }
+
   function bindOrderDetailActions(orderId) {
     bindOrderDetailTabs(orderId);
     bindOrderDocActions(orderId);
+    bindCargoActions(orderId);
     const saveBtn = document.getElementById("adminOrderSaveStatus");
     if (saveBtn) {
       saveBtn.addEventListener("click", async (event) => {
@@ -6654,6 +6780,7 @@
       order._documents = Array.isArray(data.documents) ? data.documents : [];
       order._bankReversal = data.bankReversal || null;
       order._bankInquiryAvailable = data.bankInquiryAvailable === true;
+      order._cargo = data.cargo || null;
       order._detailLoaded = true;
       const idx = ordersCache.findIndex((row) => row.id === orderId);
       if (idx >= 0) ordersCache[idx] = order;
