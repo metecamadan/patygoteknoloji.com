@@ -180,6 +180,20 @@ test("queryShipments maps operation/return flags to store states and keeps only 
   assert.match(fetchImpl.calls[0].body, /<keyType>0<\/keyType>/);
 });
 
+test("pingYurtici: 'key not found' proves credentials and IP; anything else is reported", async () => {
+  const notFound = queryResponse([detailXml({ cargoKey: "PATYGO-PING", errCode: "82519", errMessage: "Kayıt bulunamadı" })]);
+  const ok = await yk.pingYurtici({ env: ENV, fetchImpl: fakeFetch(() => notFound) });
+  assert.deepEqual(ok, { ok: true, mode: "test", outFlag: "0", message: "Kayıt bulunamadı" });
+  const denied = soap("<queryShipmentResponse><ShippingDeliveryVO><outFlag>1</outFlag><outResult>Kullanıcı adı veya şifre hatalı</outResult></ShippingDeliveryVO></queryShipmentResponse>");
+  const bad = await yk.pingYurtici({ env: ENV, fetchImpl: fakeFetch(() => denied) });
+  assert.equal(bad.ok, false);
+  assert.match(bad.message, /şifre hatalı/);
+  const script = fs.readFileSync(path.join(__dirname, "..", "scripts", "vps_set_yurtici.py"), "utf8");
+  assert.match(script, /getpass\.getpass\("Yurtiçi şifre: "\)/);
+  assert.match(script, /pm2 restart patygo --update-env/);
+  assert.doesNotMatch(script, /print\(values|print\(.*PASSWORD/);
+});
+
 test("cancelShipment succeeds on CNL/ISC/already-cancelled and refuses a parcel already moving", async () => {
   const reply = (code) =>
     soap(
