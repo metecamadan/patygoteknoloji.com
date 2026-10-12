@@ -19,9 +19,16 @@ Kullanıcı Yurtiçi'den isteyecek:
 - Şube, bizim bastığımız A5 etiketteki Code128 barkodu (değer = kargo anahtarı, örn. `PTY-261012-A1B2C3`) okutup kabul ediyor mu? Etmiyorsa Yurtiçi kendi barkodunu `createShipmentWithDelivery` ile veriyor (WSDL'de var); o yola geçilir.
 - Sözleşme: ödeme tipi gönderici ödemeli mi, gönderiler doğru müşteri koduna mı bağlanıyor.
 
-Gelince: kullanıcı `python scripts/vps_set_yurtici.py` → mod `live`. Bilgiler sohbete yazılmaz.
+Gelince: kullanıcı `python scripts/vps_set_yurtici.py` → mod `live` (sonunda bağlantı OK/HATA yazar). Bilgiler sohbete yazılmaz.
 
-Test tarafında beklenen: IP bildirimi + `vps_set_yurtici.py` (mod `test`) → agent VPS'ten sentetik deneme (oluştur / sorgula / iptal). Resmî WSDL: `tests/fixtures/yurtici-shipping-order-dispatcher.wsdl` (test: `https://testws.yurticikargo.com/...`, canlı: `https://ws.yurticikargo.com/...`).
+Deneme planı (kullanıcı kararı 12 Eki 2026): test ortamında deneme **yok**; canlı bilgiler gelince uçtan uca gerçek deneme:
+
+1. Kullanıcı sitede kendine küçük bir sipariş verir, gerçek kartla öder.
+2. Panelde sipariş → "Yurtiçi'ye gönder" (desi 1) → A5 etiketi basar, telefonla barkodu okutur (değer = kargo anahtarı).
+3. Paketi şubeye verir; şube okutunca "Kargoda" maili (takip linkiyle), teslimde "Teslim edildi" + mail gelir (durum sorgusu 30 dk'da bir; panelde "Durumu yenile" var).
+4. Sonra iade + BizimHesap belge işlemi birlikte yapılır.
+
+Resmî WSDL: `tests/fixtures/yurtici-shipping-order-dispatcher.wsdl` (test: `https://testws.yurticikargo.com/...`, canlı: `https://ws.yurticikargo.com/...`).
 
 ### 2. Kolay Gelsin — API bilgileri (12 Eki 2026)
 
