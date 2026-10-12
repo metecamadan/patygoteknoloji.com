@@ -156,6 +156,12 @@ test("createShipment: existing key counts as created, rejection and SOAP fault t
   );
   const fault = soap("<S:Fault><faultcode>S:Server</faultcode><faultstring>Yetkisiz IP</faultstring></S:Fault>");
   await assert.rejects(yk.createShipment(order(), { env: ENV, fetchImpl: fakeFetch(() => fault), cargoKey: "K1" }), /Yetkisiz IP/);
+  const wsFault = soap(
+    "<S:Fault><faultcode>S:Server</faultcode><faultstring>YurticikargoWSException</faultstring><detail>" +
+      '<ns1:YurticikargoWSException xmlns:ns1="http://yurticikargo.com.tr/WSExceptions/"><errorCode>1</errorCode>' +
+      "<errText>Kullanıcı yetkisiz</errText></ns1:YurticikargoWSException></detail></S:Fault>"
+  );
+  await assert.rejects(yk.createShipment(order(), { env: ENV, fetchImpl: fakeFetch(() => wsFault), cargoKey: "K1" }), /Kullanıcı yetkisiz/);
   await assert.rejects(yk.createShipment(order(), { env: {}, cargoKey: "K1" }), /tanımlı değil/);
 });
 
@@ -197,14 +203,16 @@ test("pingYurtici: 'key not found' proves credentials and IP; anything else is r
 test("cancelShipment succeeds on CNL/ISC/already-cancelled and refuses a parcel already moving", async () => {
   const reply = (code) =>
     soap(
-      "<cancelDispatchResponse><ShippingOrderResultVO><outFlag>0</outFlag><outResult>OK</outResult>" +
-        "<shippingOrderDetailVO><cargoKey>K</cargoKey><operationCode>" +
+      "<cancelShipmentResponse><ShippingOrderResultVO><outFlag>0</outFlag><outResult>OK</outResult>" +
+        "<shippingCancelDetailVO><cargoKey>K</cargoKey><operationCode>" +
         code +
         "</operationCode><operationMessage>m" +
         code +
-        "</operationMessage></shippingOrderDetailVO></ShippingOrderResultVO></cancelDispatchResponse>"
+        "</operationMessage></shippingCancelDetailVO></ShippingOrderResultVO></cancelShipmentResponse>"
     );
-  assert.equal((await yk.cancelShipment("K", { env: ENV, fetchImpl: fakeFetch(() => reply("3")) })).cancelled, true);
+  const fetchImpl = fakeFetch(() => reply("3"));
+  assert.equal((await yk.cancelShipment("K", { env: ENV, fetchImpl })).cancelled, true);
+  assert.match(fetchImpl.calls[0].body, /<ship:cancelShipment><wsUserName>YKTEST<\/wsUserName><wsPassword>YK<\/wsPassword><userLanguage>TR<\/userLanguage><cargoKeys>K<\/cargoKeys><\/ship:cancelShipment>/);
   assert.equal((await yk.cancelShipment("K", { env: ENV, fetchImpl: fakeFetch(() => reply("4")) })).cancelled, true);
   const moving = await yk.cancelShipment("K", { env: ENV, fetchImpl: fakeFetch(() => reply("1")) });
   assert.equal(moving.cancelled, false);
@@ -335,10 +343,10 @@ test("cargo flow: create → branch scan marks shipped + mail → delivery marks
 test("cargo flow: cancel before pickup, retry gets a new key; unpaid and other-mode shipments are refused/skipped", async (t) => {
   const store = storeWith(t, order());
   const cancelOk = soap(
-    "<cancelDispatchResponse><ShippingOrderResultVO><outFlag>0</outFlag><outResult>OK</outResult>" +
-      "<shippingOrderDetailVO><operationCode>3</operationCode></shippingOrderDetailVO></ShippingOrderResultVO></cancelDispatchResponse>"
+    "<cancelShipmentResponse><ShippingOrderResultVO><outFlag>0</outFlag><outResult>OK</outResult>" +
+      "<shippingCancelDetailVO><operationCode>3</operationCode></shippingCancelDetailVO></ShippingOrderResultVO></cancelShipmentResponse>"
   );
-  const fetchImpl = fakeFetch((body) => (/cancelDispatch/.test(body) ? cancelOk : CREATE_OK));
+  const fetchImpl = fakeFetch((body) => (/ship:cancelShipment/.test(body) ? cancelOk : CREATE_OK));
   let env = ENV;
   const cargo = createCargoShipments({ orderStore: store, env: () => env, fetchImpl });
 
