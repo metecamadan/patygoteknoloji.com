@@ -105,32 +105,34 @@ function fakeBrowser(stored) {
   };
 }
 
-test("no answer yet: the banner asks, nothing is sent to Google and events wait", () => {
+const DENIED = { analytics_storage: "denied", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" };
+const GRANTED = { analytics_storage: "granted", ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted" };
+
+test("no answer yet: the tag loads cookieless (all denied) and events still reach Google", () => {
   const b = fakeBrowser(null);
   assert.ok(b.banner(), "onay penceresi açılır");
   assert.deepEqual(b.labels(), ["Özelleştir", "Kabul et"]);
-  b.window.PatygoGa.event("view_item", { items: [] });
-  assert.equal(b.gaScripts().length, 0, "onaysız Google betiği yüklenmez");
-  assert.equal(b.window.dataLayer, undefined, "onaysız hiçbir şey kuyruğa girmez");
-});
-
-test("accepting loads gtag with granted consent and sends the events raised before the answer", () => {
-  const b = fakeBrowser(null);
-  b.window.PatygoGa.event("view_item", { value: 10 });
-  b.click("accept");
-  assert.equal(b.banner(), null, "pencere kapanır");
   const scripts = b.gaScripts();
-  assert.equal(scripts.length, 1);
+  assert.equal(scripts.length, 1, "gelişmiş izin modu: betik herkese yüklenir");
   assert.equal(scripts[0].src, "https://www.googletagmanager.com/gtag/js?id=" + GA_ID);
   const calls = b.calls();
-  assert.deepEqual(calls[0], ["consent", "default", {
-    analytics_storage: "denied", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied",
-  }]);
-  assert.deepEqual(calls[1], ["consent", "update", {
-    analytics_storage: "granted", ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted",
-  }]);
-  assert.ok(calls.some((c) => c[0] === "config" && c[1] === GA_ID && c[2].allow_google_signals === true));
-  assert.ok(calls.some((c) => c[0] === "event" && c[1] === "view_item"), "bekleyen olay gönderilir");
+  assert.deepEqual(calls[0], ["consent", "default", DENIED], "onay gelmeden önce çerez yok");
+  assert.ok(calls.some((c) => c[0] === "set" && c[1] === "ads_data_redaction" && c[2] === true));
+  assert.ok(calls.some((c) => c[0] === "config" && c[1] === GA_ID && c[2].allow_google_signals === false));
+  b.window.PatygoGa.event("view_item", { items: [] });
+  assert.ok(b.calls().some((c) => c[0] === "event" && c[1] === "view_item"), "çerezsiz sinyal gider");
+  assert.equal(b.jar.has("_ga"), true, "cevap yokken mevcut çerezlere dokunulmaz");
+});
+
+test("accepting grants consent on the already loaded tag and turns ad signals on", () => {
+  const b = fakeBrowser(null);
+  b.click("accept");
+  assert.equal(b.banner(), null, "pencere kapanır");
+  assert.equal(b.gaScripts().length, 1, "betik ikinci kez eklenmez");
+  const calls = b.calls();
+  assert.deepEqual(calls.find((c) => c[0] === "consent" && c[1] === "update"), ["consent", "update", GRANTED]);
+  assert.ok(calls.some((c) => c[0] === "set" && c[1].allow_google_signals === true));
+  assert.deepEqual(calls[calls.length - 1], ["set", "ads_data_redaction", false]);
   const saved = JSON.parse(b.store.get("patygo_consent_v1"));
   assert.equal(saved.analytics, true);
   assert.equal(saved.ads, true);
@@ -143,17 +145,18 @@ test("Özelleştir opens unticked choices with reject, save and accept-all", () 
   assert.equal(b.box("analytics").checked, false, "önceden işaretli kutu onay sayılmaz");
   assert.equal(b.box("ads").checked, false);
   assert.equal(b.box("required").disabled, true);
-  assert.equal(b.gaScripts().length, 0, "Özelleştir tek başına onay değildir");
+  assert.equal(b.calls().some((c) => c[1] === "update"), false, "Özelleştir tek başına onay değildir");
 });
 
-test("rejecting sends nothing, drops queued events and deletes Google cookies", () => {
+test("rejecting keeps consent denied, deletes Google cookies; events stay cookieless", () => {
   const b = fakeBrowser(null);
-  b.window.PatygoGa.event("view_item", {});
   b.click("customize");
   b.click("reject");
   b.window.PatygoGa.event("add_to_cart", {});
-  assert.equal(b.gaScripts().length, 0);
-  assert.equal(b.window.dataLayer, undefined);
+  const calls = b.calls();
+  assert.deepEqual(calls.find((c) => c[0] === "consent" && c[1] === "update"), ["consent", "update", DENIED]);
+  assert.equal(calls.some((c) => JSON.stringify(c).includes("granted")), false);
+  assert.ok(calls.some((c) => c[0] === "event" && c[1] === "add_to_cart"));
   assert.equal(b.jar.has("_ga"), false);
   assert.equal(b.jar.has("_ga_ZW8V1C7EL0"), false);
   assert.equal(b.jar.has("_gcl_au"), false);
@@ -170,20 +173,22 @@ test("statistics only: analytics granted, ad signals denied", () => {
   assert.equal(update[2].analytics_storage, "granted");
   assert.equal(update[2].ad_storage, "denied");
   assert.equal(update[2].ad_personalization, "denied");
-  assert.ok(b.calls().some((c) => c[0] === "config" && c[2].allow_google_signals === false));
+  assert.ok(b.calls().some((c) => c[0] === "set" && c[1].allow_google_signals === false));
   assert.equal(b.jar.has("_gcl_au"), false, "reklam çerezi silinir");
+  assert.equal(b.jar.has("_ga"), true, "istatistik çerezi kalır");
 });
 
-test("a stored answer is honoured without asking again; it expires after a year", () => {
+test("a stored answer sets the default consent without asking again; it expires after a year", () => {
   const recent = fakeBrowser({ analytics: true, ads: true, at: new Date().toISOString() });
   assert.equal(recent.banner(), null);
-  assert.equal(recent.gaScripts().length, 1);
+  assert.deepEqual(recent.calls()[0], ["consent", "default", GRANTED]);
   const refused = fakeBrowser({ analytics: false, ads: false, at: new Date().toISOString() });
   assert.equal(refused.banner(), null);
-  assert.equal(refused.gaScripts().length, 0);
+  assert.deepEqual(refused.calls()[0], ["consent", "default", DENIED]);
+  assert.equal(refused.jar.has("_ga"), false, "reddedenin eski çerezleri açılışta silinir");
   const old = fakeBrowser({ analytics: true, ads: true, at: new Date(Date.now() - 400 * 864e5).toISOString() });
   assert.ok(old.banner(), "12 aydan eski onay yeniden sorulur");
-  assert.equal(old.gaScripts().length, 0);
+  assert.deepEqual(old.calls()[0], ["consent", "default", DENIED]);
 });
 
 test("purchase is sent once per order with VAT-inclusive prices and no customer details", () => {
@@ -270,6 +275,11 @@ test("legal pages disclose Google Analytics, consent and transfer abroad", () =>
   assert.match(cerez, /_ga_ZW8V1C7EL0/);
   assert.match(cerez, /yurt dışına aktarılması/);
   assert.match(cerez, /data-consent-open/, "çerez sayfasından tercih değiştirilebilir");
-  assert.match(read("kvkk.html"), /Google Ireland Limited \/ Google LLC/);
+  assert.match(cerez, /Onay vermezseniz çerez kullanılmaz; Google’a yalnızca çerezsiz/);
+  assert.doesNotMatch(cerez, /Google Analytics yüklenmez|veri gönderimi durur/, "eski onaysız-yüklenmez iddiası kalmadı");
+  const kvkk = read("kvkk.html");
+  assert.match(kvkk, /Google Ireland Limited \/ Google LLC/);
+  assert.match(kvkk, /Onay vermezseniz Google Analytics çerez kullanmadan çalışır/);
+  assert.doesNotMatch(kvkk, /Google Analytics yüklenmez/);
   assert.match(read("gizlilik.html"), /Google Analytics/);
 });

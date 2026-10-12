@@ -6,13 +6,11 @@
   const STORE_KEY = "patygo_consent_v1";
   const PURCHASE_KEY = "patygo_ga_purchases";
   const CONSENT_DAYS = 365;
-  const PENDING_MAX = 20;
   const ALLOWED_VAT = [1, 8, 10, 20];
 
+  // Advanced consent mode: the tag loads for every visitor; without consent Google only receives
+  // cookieless pings. cerez.html and kvkk.html describe this behaviour and must change with it.
   let choice = readChoice();
-  let loaded = false;
-  // Events raised before the visitor answers; sent if they accept on this page, dropped otherwise.
-  let pending = [];
   let banner = null;
 
   function readChoice() {
@@ -49,48 +47,33 @@
     };
   }
 
-  function wantsGoogle() {
-    return Boolean(choice && (choice.analytics || choice.ads));
+  function adSignals() {
+    const ads = Boolean(choice && choice.ads);
+    return { allow_google_signals: ads, allow_ad_personalization_signals: ads };
+  }
+
+  function clearDeniedCookies() {
+    if (!choice.analytics) deleteCookies(/^(_ga|_gid)/);
+    if (!choice.ads) deleteCookies(/^_gcl/);
   }
 
   function applyChoice() {
-    if (!choice) return;
-    if (!choice.analytics) deleteCookies(/^(_ga|_gid)/);
-    if (!choice.ads) deleteCookies(/^_gcl/);
-    if (!loaded) {
-      if (!wantsGoogle()) {
-        pending = [];
-        return;
-      }
-      loadGoogle();
-    } else {
-      gtag("consent", "update", consentState());
-    }
-    window["ga-disable-" + GA_ID] = !wantsGoogle();
-    const queued = pending;
-    pending = [];
-    if (wantsGoogle()) queued.forEach((args) => gtag("event", args[0], args[1]));
+    clearDeniedCookies();
+    gtag("consent", "update", consentState());
+    gtag("set", adSignals());
+    gtag("set", "ads_data_redaction", !choice.ads);
   }
 
   function loadGoogle() {
     window.dataLayer = window.dataLayer || [];
-    gtag("consent", "default", {
-      analytics_storage: "denied",
-      ad_storage: "denied",
-      ad_user_data: "denied",
-      ad_personalization: "denied",
-    });
-    gtag("consent", "update", consentState());
+    gtag("consent", "default", consentState());
+    gtag("set", "ads_data_redaction", !(choice && choice.ads));
     gtag("js", new Date());
-    gtag("config", GA_ID, {
-      allow_google_signals: Boolean(choice.ads),
-      allow_ad_personalization_signals: Boolean(choice.ads),
-    });
+    gtag("config", GA_ID, adSignals());
     const script = document.createElement("script");
     script.async = true;
     script.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
     document.head.appendChild(script);
-    loaded = true;
   }
 
   function deleteCookies(pattern) {
@@ -107,11 +90,7 @@
   }
 
   function event(name, params) {
-    if (choice) {
-      if (wantsGoogle()) gtag("event", name, params || {});
-      return;
-    }
-    if (pending.length < PENDING_MAX) pending.push([name, params || {}]);
+    gtag("event", name, params || {});
   }
 
   function priceIncl(product) {
@@ -308,7 +287,8 @@
 
   window.PatygoGa = { event, item, itemsValue, purchase, open: () => openBanner(true) };
 
-  applyChoice();
+  loadGoogle();
+  if (choice) clearDeniedCookies();
   const start = () => {
     addPreferencesLinks();
     if (!choice) openBanner(false);
