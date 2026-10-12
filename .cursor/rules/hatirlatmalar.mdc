@@ -1,0 +1,40 @@
+---
+description: Kullanıcıya hatırlatılacak açık işler (kargo bilgileri vb.)
+alwaysApply: true
+---
+
+# Hatırlatmalar
+
+Kullanıcı "kaydet, sonra hatırlat" dediği açık işler. Yeni sohbetin ilk cevabında, büyük bir işe başlarken ve kargo/sipariş konusu açıldığında kısaca hatırlat. Madde yalnızca kullanıcı "tamamlandı / sil" deyince kaldırılır; kapananı tarihle "Kapandı" altına taşı.
+
+## Açık
+
+### 1. Yurtiçi Kargo — canlı bilgiler (12 Eki 2026)
+
+Kullanıcı Yurtiçi'den isteyecek:
+
+- Canlı web servis kullanıcı adı + şifresi (Giden Kargo, `ShippingOrderDispatcherServices`).
+- Sunucu IP'si `87.76.157.41` hem test hem canlı servis için tanımlansın.
+- Hata kodu listesi / entegrasyon dokümanı. Kod şu kodları açık kaynaktan biliyor, resmî teyit yok: `60020` anahtar zaten var, `82519` kayıt bulunamadı, `82520` zaten iptal.
+- Şube, bizim bastığımız A5 etiketteki Code128 barkodu (değer = kargo anahtarı, örn. `PTY-261012-A1B2C3`) okutup kabul ediyor mu? Etmiyorsa Yurtiçi kendi barkodunu `createShipmentWithDelivery` ile veriyor (WSDL'de var); o yola geçilir.
+- Sözleşme: ödeme tipi gönderici ödemeli mi, gönderiler doğru müşteri koduna mı bağlanıyor.
+
+Gelince: kullanıcı `python scripts/vps_set_yurtici.py` → mod `live`. Bilgiler sohbete yazılmaz.
+
+Test tarafında beklenen: IP bildirimi + `vps_set_yurtici.py` (mod `test`) → agent VPS'ten sentetik deneme (oluştur / sorgula / iptal). Resmî WSDL: `tests/fixtures/yurtici-shipping-order-dispatcher.wsdl` (test: `https://testws.yurticikargo.com/...`, canlı: `https://ws.yurticikargo.com/...`).
+
+### 2. Kolay Gelsin — API bilgileri (12 Eki 2026)
+
+Agent'ta resmî doküman yok; açık kaynaklar çelişiyor (eski Sendeo `LoginAES` müşteri kodu+şifre / yeni REST + Bearer token; adresler `apiintg.kolaygelsin.com`, `apiintg.klyglsn.com`, `api.kolaygelsin.com`, `api.sendeo.com.tr`). Kullanıcı Kolay Gelsin'den isteyecek:
+
+- Resmî entegrasyon dokümanı (hangi API: REST token'lı entegrasyon API'si).
+- Test ve canlı API adresi.
+- API kullanıcı adı + API token (yıllık yenileniyor mu?), müşteri ID (CustomerId).
+- Gönderici adres ID (panelde tanımlı çıkış adresi / depo).
+- IP kısıtı var mı (varsa `87.76.157.41`).
+- Etiket: kendi barkodları/etiket PDF'i mi, bizim barkodumuz mu.
+- Durum bildirimi: webhook mu, sorgulama mı.
+
+## Kapandı
+
+(yok)

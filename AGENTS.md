@@ -119,6 +119,7 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 - `.cursor/rules/no-cover-up.mdc` — hatayı örtme; geleceği düşün
 - `.cursor/rules/supplier-xml-ip.mdc` — tedarikçi XML yalnızca kayıtlı IP
 - `.cursor/rules/vps-shared-auction.mdc` — VPS'i paylaşan Açık Artırma projesiyle izolasyon
+- `.cursor/rules/hatirlatmalar.mdc` — kullanıcıya hatırlatılacak açık işler (Yurtiçi canlı bilgileri, Kolay Gelsin API)
 - `.cursor/rules/smtp-homework.mdc` — SMTP canlı (tamamlandı)
 - `.cursor/rules/agent-task-breakdown.mdc` — agent içi görev parçalama
 - `.cursor/rules/designer-agent.mdc` — Product Designer UX denetimi
