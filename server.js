@@ -169,6 +169,8 @@ const {
   validateCustomerPhone,
 } = require("./lib/customer-identity");
 const { normalizeAddress, normalizeInvoiceIdentity } = require("./lib/checkout-billing");
+const { createCargoShipments } = require("./lib/cargo-shipments");
+const { buildCargoLabelHtml } = require("./lib/cargo-label");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { createManualStock, findStockShortage, trackedStock } = require("./lib/manual-stock");
 const { createPublishedPaths } = require("./lib/published-paths");
@@ -472,6 +474,32 @@ function recordManualStockMoves(orderId, label, run) {
 }
 const orderDocStore = createOrderDocStore(DATA_ROOT);
 const orderDocLinks = createDocLinkSigner();
+const cargoLabelLinks = createDocLinkSigner(null, "/api/cargo-labels/");
+const cargoShipments = createCargoShipments({
+  orderStore,
+  sendStatusMail: (order, key, extra) => sendOrderStatusMail(order, key, { extra, store: orderStore }),
+  reviewUrlFor: (order) => reviewPageUrl(order),
+  onEvent: (event) => {
+    try {
+      auditStore.record({
+        actorType: event.actorId ? "admin_user" : "system",
+        actorId: event.actorId,
+        action: event.action,
+        entityType: "order",
+        entityId: event.orderId,
+        detail: event.detail,
+      });
+    } catch (_) {}
+  },
+});
+
+/** Panel view of the order's Yurtiçi shipment, with a signed label link while the parcel is not cancelled. */
+function cargoViewWithLabel(orderId) {
+  const view = cargoShipments.view(orderId);
+  const shipment = view.shipment;
+  view.labelUrl = shipment && shipment.state !== "cancelled" ? cargoLabelLinks.link(orderId, "a5") : null;
+  return view;
+}
 
 function orderDocumentsWithLinks(orderId) {
   return orderDocStore.list(orderId).map((doc) => Object.assign({}, doc, { viewUrl: orderDocLinks.link(orderId, doc.id) }));
@@ -3616,6 +3644,31 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  const adminOrderCargoMatch = /^\/api\/admin\/orders\/([^/]+)\/cargo(?:\/(cancel|refresh))?$/.exec(urlPath);
+  if (adminOrderCargoMatch && req.method === "POST") {
+    const orderId = decodeURIComponent(adminOrderCargoMatch[1]);
+    const action = adminOrderCargoMatch[2] || "create";
+    const session = getSession(req);
+    try {
+      if (action === "create") {
+        const body = JSON.parse((await readBody(req, 8 * 1024)).toString("utf8") || "{}");
+        await cargoShipments.create(orderId, { desi: body.desi, kg: body.kg, actorId: session && session.userId });
+      } else if (action === "cancel") {
+        await cargoShipments.cancel(orderId, session && session.userId);
+      } else {
+        await cargoShipments.refresh(orderId);
+      }
+    } catch (err) {
+      return json(res, err.status || 400, { ok: false, error: (err && err.message) || "Kargo işlemi yapılamadı" });
+    }
+    return json(res, 200, {
+      ok: true,
+      order: orderStore.get(orderId),
+      cargo: cargoViewWithLabel(orderId),
+      statusMails: orderStore.listStatusMails(orderId),
+    });
+  }
+
   const adminOrderDocsMatch = /^\/api\/admin\/orders\/([^/]+)\/documents(?:\/([^/]+))?$/.exec(urlPath);
   if (adminOrderDocsMatch) {
     const orderId = decodeURIComponent(adminOrderDocsMatch[1]);
@@ -3696,6 +3749,25 @@ async function handleApi(req, res, urlPath) {
       );
     }
     return sendOrderDocument(res, found);
+  }
+
+  const cargoLabelMatch = /^\/api\/cargo-labels\/([^/]+)\/(a5)$/.exec(urlPath);
+  if (cargoLabelMatch && req.method === "GET") {
+    const orderId = decodeURIComponent(cargoLabelMatch[1]);
+    const params = new URL(req.url, "http://localhost").searchParams;
+    const valid = cargoLabelLinks.verify(orderId, cargoLabelMatch[2], params.get("exp"), params.get("sig"));
+    const order = valid ? orderStore.get(orderId) : null;
+    const shipment = order ? cargoShipments.read(orderId) : null;
+    const headers = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
+    if (!shipment || shipment.state === "cancelled") {
+      res.writeHead(403, securityHeaders(headers));
+      return res.end(
+        "<!doctype html><meta charset='utf-8'><title>Etiket açılamadı</title>" +
+          "<p style='font-family:sans-serif;padding:24px'>Etiket bağlantısının süresi doldu veya gönderi iptal edildi. Paneldeki siparişi yeniden açıp tekrar deneyin.</p>"
+      );
+    }
+    res.writeHead(200, securityHeaders(headers));
+    return res.end(buildCargoLabelHtml(order, shipment));
   }
 
   const adminOrderBizimhesapMatch = /^\/api\/admin\/orders\/([^/]+)\/bizimhesap-invoice$/.exec(urlPath);
@@ -4049,6 +4121,7 @@ async function handleApi(req, res, urlPath) {
           order.status === "shipped" || order.status === "delivered" ? { action: "refund" } : { mode: "cancel" }
         ),
         bankInquiryAvailable: Boolean(akbankConfig.enabled),
+        cargo: cargoViewWithLabel(orderId),
       });
     }
     if (req.method === "PATCH") {
@@ -5365,6 +5438,14 @@ const invoiceSyncStartTimer = setTimeout(() => {
   syncPendingInvoiceNumbers().catch(() => {});
 }, 90 * 1000);
 if (typeof invoiceSyncStartTimer.unref === "function") invoiceSyncStartTimer.unref();
+
+const CARGO_SYNC_INTERVAL_MS = 30 * 60 * 1000;
+const cargoSyncTimer = setInterval(() => {
+  cargoShipments.sync().catch((err) => {
+    console.error("yurtici cargo sync failed:", String((err && err.message) || err).slice(0, 200));
+  });
+}, CARGO_SYNC_INTERVAL_MS);
+if (typeof cargoSyncTimer.unref === "function") cargoSyncTimer.unref();
 
 const priceAlertTimer = setInterval(() => {
   runPriceAlertCheck().catch(() => {});
