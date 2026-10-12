@@ -81,7 +81,20 @@ const home = [
   { id: "charger", name: "Anker 20W Şarj Adaptörü USB-C", brand: "ANKER", category: "Şarj Cihazları", price: 450 },
   { id: "bin", name: "Xerox Atık Toner Kutusu", brand: "XEROX", category: "Sarf", price: 700 },
   { id: "glass", name: "Lav Cam Çay Bardağı 6'lı", brand: "LAV", category: "Mutfak", price: 150 },
+  { id: "coin", name: "Duracell CR2032 Lityum Pil 3V", brand: "DURACELL", category: "Piller", price: 60 },
+  { id: "board", name: "MSI Pro B760M LGA1700 Anakart", brand: "MSI", category: "Anakartlar", price: 4500 },
 ];
+
+test("letters-only terms match from the start of a word; terms with digits may sit inside a model code", () => {
+  assert.deepEqual(ids(searchProducts(home, "utu")), ["iron"], "utu, 'Kutusu' içinde eşleşmez");
+  assert.equal(ids(searchProducts(home, "kutu"))[0], "bin", "ütü yalnızca tek harf hatası toleransıyla arkada kalır");
+  assert.deepEqual(ids(searchProducts(home, "arj")), [], "kelime ortası harf dizisi eşleşmez");
+  assert.deepEqual(ids(searchProducts(home, "2032")), ["coin"], "CR2032");
+  assert.deepEqual(ids(searchProducts(home, "1700")), ["board"], "LGA1700");
+  assert.deepEqual(ids(searchProducts(home, "cr2032")), ["coin"]);
+  assert.deepEqual(ids(searchProducts(home, "pil")), ["coin"], "kategori kelime başından eşleşir");
+  assert.deepEqual(ids(searchProducts(home, "ller")), [], "kategori ortası eşleşmez");
+});
 
 test("Turkish letters typed or not find the same products (ütü = utu = ÜTÜ)", () => {
   const same = [
@@ -145,7 +158,8 @@ test("the token index ranks exactly like row-by-row scoring, for whole lists and
     "laptop", "notebook", "notbook", "lenova", "lenvoo", "logitec mouse", "kablosuz fare", "kulaklik", "kulaklık",
     "toner", "tonr", "yazici", "printer", "şarj", "sarj", "canta", "laptop çantası", "laptop standı", "ssd 1tb",
     "ddr5", "monitor", "hoparlor", "speaker", "modem", "utu", "ütü", "ogutucu", "kutu", "cay", "western digital",
-    "wd", "m101", "m10", "i9", "hp toner", "hp kahve", "bilgisayar", "aksesuar", "ev aletleri", "a", "ab",
+    "wd", "m101", "m10", "33", "1tb", "tb", "i9", "hp toner", "hp kahve", "bilgisayar", "aksesuar", "ev aletleri",
+    "a", "ab", "lar", "utu kutu",
   ];
   for (const query of queries) {
     const expected = ids(rankOneByOne(items, query, tieBreak));
