@@ -10,12 +10,13 @@ const {
 const { analyzeAkakceProducts } = require("../lib/akakce");
 
 test("supplier schedule defaults to fixed Istanbul pull times", () => {
-  assert.deepEqual(SCHEDULE_MINUTES, [8 * 60, 11 * 60, 16 * 60, 21 * 60, 23 * 60 + 30]);
+  assert.deepEqual(SCHEDULE_MINUTES, [8 * 60, 11 * 60, 16 * 60, 21 * 60]);
   const summary = scheduleSummary();
   assert.match(summary.summary, /08:00/);
-  assert.match(summary.summary, /23:30/);
+  assert.match(summary.summary, /21:00/);
+  assert.doesNotMatch(summary.summary, /23:30/, "5. okuma tedarikçi kotasına takılıyor");
   assert.equal(summary.mode, "fixed");
-  assert.equal(summary.dailyPullCount, 5);
+  assert.equal(summary.dailyPullCount, 4);
 });
 
 test("custom interval builds schedule until 20:00", () => {
@@ -36,7 +37,8 @@ test("findDueScheduleKey keeps a slot due for a 15 minute catch-up window", () =
   assert.equal(findDueScheduleKey(new Date("2026-08-13T05:14:59.000Z")), "2026-08-13 08:00");
   assert.equal(findDueScheduleKey(new Date("2026-08-13T05:15:00.000Z")), "");
   assert.equal(findDueScheduleKey(new Date("2026-08-13T04:59:00.000Z")), "");
-  assert.equal(findDueScheduleKey(new Date("2026-08-13T20:40:00.000Z")), "2026-08-13 23:30");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T18:10:00.000Z")), "2026-08-13 21:00");
+  assert.equal(findDueScheduleKey(new Date("2026-08-13T20:40:00.000Z")), "", "23:30 artık okuma saati değil");
   assert.equal(findDueScheduleKey(new Date("2026-08-13T05:01:00.000Z"), null, 1), "");
 });
 
@@ -115,9 +117,9 @@ test("scheduler claims the slot before the request, so a restart mid-read never 
       global.Date = realDate;
     }
   };
-  await runAt("2026-10-08T20:30:10.000Z");
-  assert.deepEqual(requests, ["2026-10-08 23:30"], "slot is saved before the supplier sees the request");
-  await runAt("2026-10-08T20:31:51.000Z");
+  await runAt("2026-10-08T18:00:10.000Z");
+  assert.deepEqual(requests, ["2026-10-08 21:00"], "slot is saved before the supplier sees the request");
+  await runAt("2026-10-08T18:01:51.000Z");
   assert.equal(requests.length, 1, "the restarted process does not read the same slot again");
 });
 

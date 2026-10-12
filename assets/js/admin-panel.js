@@ -1573,7 +1573,7 @@
     if (Array.isArray(knownTimes) && knownTimes.length) {
       return knownTimes.join(", ") + " (günde " + knownTimes.length + " kez, İstanbul)";
     }
-    return "08:00, 11:00, 16:00, 21:00, 23:30 (günde 5 kez, İstanbul)";
+    return "08:00, 11:00, 16:00, 21:00 (günde 4 kez, İstanbul)";
   }
 
   function emptyPoolQuotaMessage() {

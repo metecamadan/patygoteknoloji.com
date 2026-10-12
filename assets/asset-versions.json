@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "files": {
+    "/assets/css/admin.css": {
+      "v": "siparis-29",
+      "sha256": "98c6624825b355308918c8df3e5850d4bf68397ad212f6cce9e78f5654c59e3e"
+    },
+    "/assets/css/style.css": {
+      "v": "storefront-p41",
+      "sha256": "1ae75655d616994a5e0aab214efee7d1f9df0e01cc0824590f1037544994f07b"
+    },
+    "/assets/geo/tr-districts.json": {
+      "v": "ilce-1",
+      "sha256": "a1b4184976a8465dea908da2b5021db4f17994faa2bbc52f66a530966b539958"
+    },
+    "/assets/js/admin-login.js": {
+      "v": "siparis-29",
+      "sha256": "0a1bbe5e912bc98826ce5b1dd2aa75e66e38ee28a6445d1fb3c811efdf2f7ff1"
+    },
+    "/assets/js/admin-panel.js": {
+      "v": "siparis-29",
+      "sha256": "6f40221804222fc6edbf4c5217bf1d900949bc278b597f59b76b4e4bd2eacc08"
+    },
+    "/assets/js/catalog-pending.js": {
+      "v": "1",
+      "sha256": "dde7f911644916b53acbd00fd34224daf2048c726aa3b7ecb6ab847dec09ad99"
+    },
+    "/assets/js/catalog.js": {
+      "v": "storefront-p41",
+      "sha256": "01723c2ba7f6c5b42e562999178a319eacb1a6a612a68c54ec424f1e04088667"
+    },
+    "/assets/js/checkout.js": {
+      "v": "checkout-p11",
+      "sha256": "ef959945867933157bedc2bc557ccf1814b2b17e1fb3fa2a820f6c16122ad39c"
+    },
+    "/assets/js/customer-identity.js": {
+      "v": "checkout-p6",
+      "sha256": "fdc0a2a4a35c94f1b846f49b5532a808b6e030a892f725b53f39d09fcbd5a904"
+    },
+    "/assets/js/degerlendir.js": {
+      "v": "review-2",
+      "sha256": "6075771c244bf3902d4854e4b771f64560281cb1d968052288f732bd5d07a868"
+    },
+    "/assets/js/detail-specs.js": {
+      "v": "detail-spec-hb-1",
+      "sha256": "61e3d548d3132713571bad2c3a5179b38b9fcc1d89ed3c20f3494cccfcbd5773"
+    },
+    "/assets/js/installments.js": {
+      "v": "taksit-1",
+      "sha256": "468dcf37a993070409d2967616cc337f53e989795925d07d619d25c787e370d1"
+    },
+    "/assets/js/main.js": {
+      "v": "main-alarm-4",
+      "sha256": "89065bc672dd7cb9955e3321a1b85409bc40d53d8781197f060da35c2b0b514c"
+    },
+    "/assets/js/markalar.js": {
+      "v": "brand-link-1",
+      "sha256": "7df0145bfdce36bf1b3b520dc5e18356e0b8066bb7c05dee4d1c400c5dde4bad"
+    },
+    "/assets/js/nav.js": {
+      "v": "nav-d43-1",
+      "sha256": "12cdd13414ae6b4307d87bc932bc1d1b4e40e86be40aa72ed02c8db4c7d45b12"
+    },
+    "/assets/js/sepet.js": {
+      "v": "cart-p9",
+      "sha256": "428508a7b2ec67dfbe17bdd4bb47638cbc0da41a1d5c455016c251301ff98bf0"
+    },
+    "/assets/js/shipping.js": {
+      "v": "storefront-ship-6",
+      "sha256": "c730ae0eb2254d7f0327cd24f6bb3920aaf5d081cda46273e4634da4ea48a44f"
+    },
+    "/assets/js/urun-detay.js": {
+      "v": "storefront-p41",
+      "sha256": "9ee19117de7cfd4106563adcf61a48fe94deaa86cba87f9bb39ae2e2855385d8"
+    }
+  }
+}

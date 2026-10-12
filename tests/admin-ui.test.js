@@ -543,7 +543,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-28/);
+  assert.match(html, /admin\.css\?v=siparis-29/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
@@ -579,7 +579,8 @@ test("admin overview uses consistent full-width grid spacing", () => {
 });
 
 test("admin XML schedule is locked to five Istanbul pull times", () => {
-  assert.match(html, /08:00, 11:00, 16:00, 21:00, 23:30/);
+  assert.match(html, /08:00, 11:00, 16:00, 21:00 /);
+  assert.doesNotMatch(html, /23:30/);
   assert.match(html, /Saatler kilitlidir/);
   assert.doesNotMatch(html, /data-slot-input="scheduleStart"/);
   assert.doesNotMatch(html, /data-slot-input="scheduleInterval"/);
