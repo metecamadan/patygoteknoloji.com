@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "note": "Verified manufacturer pictures for products whose supplier photo sits on a dark backdrop. Each row is checked by hand: same barcode on the manufacturer page, picture from the manufacturer's own site or CDN.",
+  "products": [
+    {
+      "supplierSku": "600.20.50.0015",
+      "barcode": "8690627001034",
+      "brand": "M.EFENDİ",
+      "pageUrl": "https://online.mehmetefendi.com/ethiopia-filtre-kahve-250g",
+      "imageUrl": "https://static.ticimax.cloud/69824/uploads/urunresimleri/buyuk/ethiopia-filtre-kahve-250g-3-4ffc.png",
+      "verifiedAt": "2026-10-12",
+      "note": "Yeni ambalaj; kullanıcı onayı 12 Eki 2026."
+    }
+  ]
+}

@@ -3452,10 +3452,60 @@
     whitened: "Beyaz zemin kullanılan",
     rejected: "Kalite kontrolünden geçemeyen",
     reverted: "Orijinale döndürülen",
+    official: "Resmî görsel kullanılan",
+    "official-reverted": "Resmî görselden orijinale döndürülen",
   };
+  const OFFICIAL_FILTER_STATUS = { official: "applied", "official-reverted": "reverted" };
+  const whiteBgCounts = {};
+
+  function isOfficialFilter(value) {
+    return Object.prototype.hasOwnProperty.call(OFFICIAL_FILTER_STATUS, value);
+  }
+
+  function renderWhiteBgFilterCounts() {
+    const select = document.getElementById("adminWhiteBgFilter");
+    if (!select) return;
+    Array.from(select.options).forEach((option) => {
+      const n = whiteBgCounts[option.value];
+      option.textContent = WHITE_BG_FILTER_LABELS[option.value] + (n === undefined ? "" : " (" + n + ")");
+    });
+  }
+
+  function renderOfficialTool(data) {
+    const el = document.getElementById("adminWhiteBgTool");
+    const counts = data.counts || {};
+    whiteBgCounts.official = Number(counts.applied) || 0;
+    whiteBgCounts["official-reverted"] = Number(counts.reverted) || 0;
+    renderWhiteBgFilterCounts();
+    if (!el) return;
+    const tool = data.tool || {};
+    const run = tool.lastRun || {};
+    const last = run.lastResult || null;
+    const failedLast = run.lastError && run.lastFailedAt && !(run.lastRunAt > run.lastFailedAt);
+    const parts = [];
+    if (failedLast) {
+      note(el, "err", "Son resmî görsel turu " + new Date(run.lastFailedAt).toLocaleString("tr-TR") + " hata verdi: " + run.lastError);
+      return;
+    }
+    if (tool.running) parts.push("Resmî görseller şu an aranıyor.");
+    else if (last && run.lastRunAt) {
+      parts.push(
+        "Son tur " + new Date(run.lastRunAt).toLocaleString("tr-TR") + ": " +
+          last.checked + " ürün, " + last.applied + " resmî görsel, " + last.notFound + " bulunamadı" +
+          (last.remaining ? ", " + last.remaining + " sırada" : "") + "."
+      );
+    }
+    parts.push(tool.icecat ? "Icecat açık." : "Icecat kapalı (kullanıcı adı girilmedi); yalnızca doğrulanmış üretici listesi kullanılıyor.");
+    note(el, "", parts.join(" "));
+  }
 
   function renderWhiteBgTool(data) {
     const el = document.getElementById("adminWhiteBgTool");
+    const counts = data.counts || {};
+    ["whitened", "rejected", "reverted"].forEach((key) => {
+      whiteBgCounts[key] = Number(counts[key]) || 0;
+    });
+    renderWhiteBgFilterCounts();
     if (!el) return;
     const tool = data.tool || {};
     const run = tool.lastRun || {};
@@ -3477,14 +3527,6 @@
       );
     } else {
       note(el, "", "");
-    }
-    const select = document.getElementById("adminWhiteBgFilter");
-    const counts = data.counts || {};
-    if (select) {
-      Array.from(select.options).forEach((option) => {
-        const n = Number(counts[option.value]) || 0;
-        option.textContent = WHITE_BG_FILTER_LABELS[option.value] + " (" + n + ")";
-      });
     }
   }
 
@@ -3576,21 +3618,83 @@
     return card;
   }
 
+  function renderOfficialCard(item, noteEl) {
+    const card = document.createElement("article");
+    card.className = "admin-whitebg-card";
+    const main = item.products[0] || {};
+    const label = main.name || main.sku || item.file;
+    const pair = document.createElement("div");
+    pair.className = "admin-whitebg-pair";
+    pair.append(
+      whiteBgFigure(item.original, "Orijinal", label + " orijinal görsel"),
+      whiteBgFigure(item.official, "Resmî görsel", label + " üreticinin resmî görseli")
+    );
+    const title = document.createElement("strong");
+    title.textContent = label;
+    const meta = document.createElement("small");
+    meta.className = "admin-noimage-meta";
+    meta.textContent = [
+      main.sku,
+      item.source === "icecat" ? "Kaynak: Open Icecat" : "Kaynak: üretici sitesi",
+      item.products.length > 1 ? "+" + (item.products.length - 1) + " ürün daha" : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const actions = document.createElement("div");
+    actions.className = "admin-noimage-actions";
+    if (item.pageUrl) {
+      const link = document.createElement("a");
+      link.href = item.pageUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "btn btn-outline btn-xs";
+      link.textContent = "Kaynağı aç";
+      actions.appendChild(link);
+    }
+    const useOfficial = item.status !== "applied";
+    if (!useOfficial || item.official) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = useOfficial ? "btn btn-primary btn-xs" : "btn btn-outline btn-xs";
+      btn.textContent = useOfficial ? "Resmî görseli kullan" : "Orijinale dön";
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          await api("/api/admin/official-images/decision", {
+            method: "POST",
+            body: JSON.stringify({ file: item.file, use: useOfficial ? "official" : "original" }),
+          });
+          notifySite();
+          card.remove();
+          note(noteEl, "ok", label + (useOfficial ? ": resmî görsel kullanılıyor." : ": orijinal görsele dönüldü."));
+        } catch (err) {
+          btn.disabled = false;
+          note(noteEl, "err", err.message || "Kaydedilemedi");
+        }
+      });
+      actions.appendChild(btn);
+    }
+    card.append(pair, title, meta, actions);
+    return card;
+  }
+
   async function loadWhiteBgImages() {
     const rows = document.getElementById("adminWhiteBgRows");
     const noteEl = document.getElementById("adminWhiteBgNote");
     if (!rows) return;
+    const official = isOfficialFilter(whiteBgFilter);
     try {
       const qs = new URLSearchParams({
-        status: whiteBgFilter,
+        status: official ? OFFICIAL_FILTER_STATUS[whiteBgFilter] : whiteBgFilter,
         q: whiteBgQuery,
         page: String(whiteBgPage),
         limit: "40",
       });
-      const data = await api("/api/admin/image-backgrounds?" + qs.toString());
+      const data = await api((official ? "/api/admin/official-images?" : "/api/admin/image-backgrounds?") + qs.toString());
       const list = Array.isArray(data.items) ? data.items : [];
       whiteBgPage = Number(data.page) || 1;
-      renderWhiteBgTool(data);
+      if (official) renderOfficialTool(data);
+      else renderWhiteBgTool(data);
       renderWhiteBgPager(Number(data.totalPages) || 1);
       rows.textContent = "";
       if (!list.length) {
@@ -3599,7 +3703,7 @@
         empty.textContent = whiteBgQuery ? "Aramaya uyan görsel yok." : "Bu filtrede görsel yok.";
         rows.appendChild(empty);
       }
-      list.forEach((item) => rows.appendChild(renderWhiteBgCard(item, noteEl)));
+      list.forEach((item) => rows.appendChild(official ? renderOfficialCard(item, noteEl) : renderWhiteBgCard(item, noteEl)));
       note(noteEl, "", "Toplam " + (Number(data.total) || 0) + " görsel");
     } catch (err) {
       note(noteEl, "err", err.message || "Liste yüklenemedi");

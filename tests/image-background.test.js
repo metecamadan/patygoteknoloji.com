@@ -267,7 +267,11 @@ test("server: storefront, thumbnails and Akakçe read the white-background view;
   assert.match(server, /function catalogImageContext\(\) \{\s*const mirrorIndex = storefrontMirror\(\);/);
   assert.match(server, /function storefrontAkakceXml\(\) \{[\s\S]{0,120}const mirrorIndex = storefrontMirror\(\);/);
   assert.match(server, /generateMissingThumbnails\(DATA_ROOT, storefrontMirror\(\)/);
-  assert.match(server, /return mirrorMtime \+ ":" \+ backgroundIndexStamp\(DATA_ROOT\);/, "Akakçe XML önbelleği beyaz zemin değişiminde tazelenir");
+  assert.match(
+    server,
+    /return mirrorMtime \+ ":" \+ storefrontImageStamp\(DATA_ROOT\);/,
+    "Akakçe XML önbelleği beyaz zemin ve resmî görsel değişiminde tazelenir"
+  );
   assert.match(server, /function scheduleImageBackgroundRun[\s\S]{0,80}if \(!imageBackgroundToolInstalled\(\)\) return;/);
   assert.match(server, /\["-n", "19", process\.execPath/);
   const workflow = read(".github/workflows/ci-deploy.yml");

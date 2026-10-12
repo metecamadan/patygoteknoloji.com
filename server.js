@@ -40,9 +40,8 @@ const {
   getCachedPlaceholderMirrorFileSet,
   supplierImageState,
 } = require("./lib/product-image-mirror");
-const { generateMissingThumbnails } = require("./lib/product-thumbnails");
+const { generateMissingThumbnails, loadSharp } = require("./lib/product-thumbnails");
 const {
-  storefrontMirrorIndex,
   backgroundIndexStamp,
   backgroundPaths,
   loadBackgroundIndex,
@@ -52,6 +51,16 @@ const {
   cardImageFiles,
   productsByImageFile,
 } = require("./lib/image-background");
+const {
+  storefrontImageIndex,
+  storefrontImageStamp,
+  processOfficialImages,
+  loadOfficialIndex,
+  officialCounts,
+  officialMeta,
+  setOfficialDecision,
+  recordOfficialRun,
+} = require("./lib/official-images");
 const {
   mergeCatalogProducts,
   queryPublicCatalog,
@@ -1033,9 +1042,9 @@ function invalidateStorefrontCatalog() {
   } catch (_) {}
 }
 
-/** Mirror index with white-background copies swapped in; only for reading, never saved back. */
+/** Mirror index with white copies and official pictures swapped in; only for reading, never saved back. */
 function storefrontMirror() {
-  return storefrontMirrorIndex(DATA_ROOT, loadMirrorIndex(DATA_ROOT));
+  return storefrontImageIndex(DATA_ROOT, loadMirrorIndex(DATA_ROOT));
 }
 
 function catalogImageContext() {
@@ -1473,7 +1482,7 @@ function akakceMirrorIndexStamp() {
   try {
     mirrorMtime = fs.statSync(indexFile).mtimeMs;
   } catch (_) {}
-  return mirrorMtime + ":" + backgroundIndexStamp(DATA_ROOT);
+  return mirrorMtime + ":" + storefrontImageStamp(DATA_ROOT);
 }
 
 function akakceShippingOptions() {
@@ -1626,6 +1635,7 @@ function scheduleAkakceImageMirror(options) {
             }
             scheduleThumbnailBackfill(5000);
             scheduleImageBackgroundRun(60000);
+            scheduleOfficialImagesRun(10 * 60 * 1000);
           })
           .catch((err) => {
             console.warn("Akakçe görsel aynası atlandı:", err.message || err);
@@ -1788,9 +1798,76 @@ function scheduleImageBackgroundRun(delayMs) {
         );
       }
       if (result.remaining > 0) scheduleImageBackgroundRun(60000);
+      else scheduleOfficialImagesRun(60000);
     });
   }, Math.max(0, Number(delayMs) || 0));
   if (typeof imageBgTimer.unref === "function") imageBgTimer.unref();
+}
+
+const OFFICIAL_IMAGES_PASS_MS = 10 * 60 * 1000;
+let officialImagesTimer = null;
+let officialImagesRunning = false;
+
+/** Manufacturer pictures for dark card images; network-bound, so it runs in-process with a deadline. */
+function scheduleOfficialImagesRun(delayMs) {
+  if (officialImagesTimer) clearTimeout(officialImagesTimer);
+  officialImagesTimer = setTimeout(() => {
+    officialImagesTimer = null;
+    if (officialImagesRunning) return;
+    if (isEventLoopBusy(200)) {
+      scheduleOfficialImagesRun(60000);
+      return;
+    }
+    const sharp = loadSharp();
+    if (!sharp || typeof fetch !== "function") return;
+    officialImagesRunning = true;
+    const startedAt = Date.now();
+    Promise.resolve()
+      .then(() =>
+        processOfficialImages({
+          dataRoot: DATA_ROOT,
+          sharp,
+          fetch,
+          products: supplierManager.listProducts(),
+          mirrorIndex: loadMirrorIndex(DATA_ROOT),
+          siteBaseUrl: SITE_BASE_URL,
+          icecatUsername: String(process.env.ICECAT_USERNAME || "").trim(),
+          deadline: startedAt + OFFICIAL_IMAGES_PASS_MS,
+          log: (...args) => console.warn(...args),
+        })
+      )
+      .then((result) => {
+        recordOfficialRun(DATA_ROOT, { lastRunAt: new Date(startedAt).toISOString(), lastResult: result, lastError: "" });
+        if (result.applied > 0) {
+          invalidateStorefrontCatalog();
+          warmStorefrontCatalog();
+          scheduleAkakceFeedSummaryWarm();
+          scheduleThumbnailBackfill(5000);
+        }
+        if (result.checked) {
+          console.log(
+            "Resmî görsel:",
+            result.checked, "ürün,",
+            result.applied, "uygulandı,",
+            result.notFound, "bulunamadı,",
+            result.failed, "hata,",
+            result.remaining, "kaldı"
+          );
+        }
+        if (result.remaining > 0) scheduleOfficialImagesRun(60000);
+      })
+      .catch((err) => {
+        const message = String((err && err.message) || err).slice(0, 300);
+        try {
+          recordOfficialRun(DATA_ROOT, { lastFailedAt: new Date().toISOString(), lastError: message });
+        } catch (_) {}
+        console.warn("Resmî görsel turu başarısız:", message);
+      })
+      .finally(() => {
+        officialImagesRunning = false;
+      });
+  }, Math.max(0, Number(delayMs) || 0));
+  if (typeof officialImagesTimer.unref === "function") officialImagesTimer.unref();
 }
 
 const POPULAR_SCORES_TTL_MS = 60 * 1000;
@@ -4431,6 +4508,86 @@ async function handleApi(req, res, urlPath) {
     }
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/official-images") {
+    const requestUrl = new URL(req.url || urlPath, "http://localhost");
+    const wanted = requestUrl.searchParams.get("status") || "";
+    const status = ["applied", "reverted"].includes(wanted) ? wanted : "applied";
+    const q = String(requestUrl.searchParams.get("q") || "").trim().toLocaleLowerCase("tr");
+    const limit = Math.min(100, Math.max(1, Number(requestUrl.searchParams.get("limit")) || 40));
+    const byFile = productsByImageFile(supplierManager.listProducts(), loadMirrorIndex(DATA_ROOT), SITE_BASE_URL);
+    const rows = [];
+    for (const [file, entry] of Object.entries(loadOfficialIndex(DATA_ROOT))) {
+      if (!entry || entry.status !== status) continue;
+      const products = (byFile.get(file) || []).map((p) => ({
+        id: p.id,
+        sku: p.supplierSku || "",
+        name: p.name || "",
+        active: p.active === true,
+      }));
+      if (!products.length) continue;
+      if (q && !products.some((p) => (p.name + " " + p.sku).toLocaleLowerCase("tr").includes(q))) continue;
+      rows.push({
+        file,
+        status: entry.status,
+        at: entry.decidedAt || entry.at || "",
+        decidedBy: entry.decidedBy || "",
+        source: entry.source || "",
+        pageUrl: /^https:\/\//.test(String(entry.pageUrl || "")) ? entry.pageUrl : "",
+        original: "/media/catalog/" + file,
+        official: entry.officialFile ? "/media/catalog/" + entry.officialFile : "",
+        products,
+      });
+    }
+    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const totalPages = Math.max(1, Math.ceil(rows.length / limit));
+    const page = Math.min(totalPages, Math.max(1, Number(requestUrl.searchParams.get("page")) || 1));
+    return json(res, 200, {
+      ok: true,
+      status,
+      items: rows.slice((page - 1) * limit, page * limit),
+      total: rows.length,
+      page,
+      totalPages,
+      counts: officialCounts(DATA_ROOT),
+      tool: {
+        icecat: Boolean(String(process.env.ICECAT_USERNAME || "").trim()),
+        running: officialImagesRunning,
+        lastRun: officialMeta(DATA_ROOT),
+      },
+    });
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/official-images/decision") {
+    try {
+      const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+      const file = String(body.file || "");
+      if (!/^[a-f0-9]{28}\.(?:jpe?g|png|webp|gif)$/.test(file)) {
+        return json(res, 422, { ok: false, error: "Geçersiz görsel." });
+      }
+      const result = setOfficialDecision(DATA_ROOT, file, String(body.use || ""));
+      if (!result.ok) return json(res, 422, result);
+      try {
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action: result.entry.status === "applied" ? "image.official_use" : "image.official_original",
+          entityType: "image",
+          entityId: file,
+          detail: {},
+          ip: clientIp(req),
+        });
+      } catch (_) {}
+      invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
+      scheduleAkakceFeedSummaryWarm();
+      scheduleThumbnailBackfill(5000);
+      return json(res, 200, { ok: true, status: result.entry.status, counts: officialCounts(DATA_ROOT) });
+    } catch (err) {
+      return json(res, 422, { ok: false, error: err.message || "Kaydedilemedi" });
+    }
+  }
+
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/settings") {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
@@ -5237,6 +5394,7 @@ setImmediate(() => {
   scheduleThumbnailBackfill(240000);
   scheduleSupplierImageProbe(10 * 60 * 1000);
   scheduleImageBackgroundRun(5 * 60 * 1000);
+  scheduleOfficialImagesRun(7 * 60 * 1000);
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();

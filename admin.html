@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p41" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-27" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-28" />
   <script>
     (function () {
       try {
@@ -481,7 +481,7 @@
                 <div>
                   <span class="admin-eyebrow">KATALOG</span>
                   <h2>Beyaz zemin görselleri</h2>
-                  <p class="admin-card-lead">Tedarikçi görseli siyah, gri veya renkli zeminliyse sistem ürünü zeminden ayırıp beyaz zemine oturtur. Kalite kontrolünden geçenler sitede ve Akakçe'de otomatik kullanılır; geçemeyenlerde orijinal kalır. Orijinal görsel silinmez: beğenmediğiniz sonucu "Orijinale dön" ile geri alın, reddedilen ama iyi görünen sonucu "Beyazı kullan" ile yayına alın.</p>
+                  <p class="admin-card-lead">Tedarikçi görseli siyah, gri veya renkli zeminliyse sistem ürünü zeminden ayırıp beyaz zemine oturtur. Kalite kontrolünden geçenler sitede ve Akakçe'de otomatik kullanılır; geçemeyenlerde orijinal kalır. Orijinal görsel silinmez: beğenmediğiniz sonucu "Orijinale dön" ile geri alın, reddedilen ama iyi görünen sonucu "Beyazı kullan" ile yayına alın. Beyaz zemine çevrilemeyen ürünlerde, aynı barkodla doğrulanmış üretici görseli bulunursa o kullanılır; bunlar "Resmî görsel" filtresinde listelenir.</p>
                   <p class="admin-note" id="adminWhiteBgTool" role="status"></p>
                 </div>
                 <div class="admin-card-head-actions">
@@ -494,6 +494,8 @@
                   <option value="whitened">Beyaz zemin kullanılan</option>
                   <option value="rejected">Kalite kontrolünden geçemeyen</option>
                   <option value="reverted">Orijinale döndürülen</option>
+                  <option value="official">Resmî görsel kullanılan</option>
+                  <option value="official-reverted">Resmî görselden orijinale döndürülen</option>
                 </select>
               </div>
               <div class="admin-whitebg-grid" id="adminWhiteBgRows"></div>
@@ -1325,6 +1327,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-27"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-28"></script>
 </body>
 </html>
