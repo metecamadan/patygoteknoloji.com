@@ -225,6 +225,29 @@ test("processOfficialImages: Icecat by barcode, dark official pictures refused, 
   fs.rmSync(darkRoot, { recursive: true, force: true });
 });
 
+test("processOfficialImages: switching Icecat on re-asks not-found products at once", async () => {
+  const dataRoot = tempDataRoot();
+  const { files, mirrorIndex } = await catalogFixture(dataRoot);
+  const products = [{ supplierSku: "TONER-1", brand: "HP", manufacturerCode: "CF283A", barcode: "0886111111111", image: "https://img.example/a.jpg" }];
+  const fetchImpl = fakeFetch({
+    "https://live.icecat.biz/api?": () =>
+      new Response(JSON.stringify({ msg: "OK", data: { GeneralInfo: { IcecatId: 7 }, Gallery: [{ Pic: "https://images.icecat.biz/t.png" }] } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    "https://images.icecat.biz/t.png": imageResponse(await picture("#ffffff")),
+  });
+  const run = (icecatUsername) =>
+    off.processOfficialImages({ dataRoot, sharp, fetch: fetchImpl, products, mirrorIndex, siteBaseUrl: SITE, manualSources: [], icecatUsername, pause: async () => {} });
+
+  assert.equal((await run("")).notFound, 1);
+  assert.equal((await run("")).checked, 0, "kaynak değişmeden tekrar sorulmaz");
+  const withIcecat = await run("patygo");
+  assert.equal(withIcecat.applied, 1, "Icecat açılınca iki hafta beklenmez");
+  assert.equal(off.loadOfficialIndex(dataRoot)[files.a].source, "icecat");
+  fs.rmSync(dataRoot, { recursive: true, force: true });
+});
+
 test("storefrontImageIndex: an explicit white-background choice in the panel outranks an automatic official picture", async () => {
   const dataRoot = tempDataRoot();
   const { files, mirrorIndex } = await catalogFixture(dataRoot);
