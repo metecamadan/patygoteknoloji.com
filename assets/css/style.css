@@ -1321,17 +1321,21 @@ h1, h2, h3, h4 {
   color: var(--brand);
 }
 .catalog-page-link[hidden] { display: none; }
-.discount-badge {
+/* .product-card .visual .discount-badge outranks the card's ".visual span" placeholder style. */
+.discount-badge,
+.product-card .visual .discount-badge {
   position: absolute;
   top: 10px;
   left: 10px;
   z-index: 1;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #dc2626;
+  background: #15803d;
   color: #fff;
   font-size: 0.78rem;
   font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.4;
 }
 .discount-badge--inline { position: static; display: inline-block; }

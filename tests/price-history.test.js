@@ -101,3 +101,15 @@ test("storefront renders strikethrough price and discount badge from compareAtPr
   assert.match(css, /\.discount-badge \{/);
   assert.match(css, /\.detail-price-before \{/);
 });
+
+test("card discount badge is small white-on-green, not the blue placeholder text of .visual span", () => {
+  const css = fs.readFileSync(path.join(ROOT, "assets/css/style.css"), "utf8");
+  assert.match(css, /\.product-card \.visual span \{[^}]*color: var\(--brand\)/, "kart görsel yazısı kuralı hâlâ var");
+  const rule = css.match(/\.discount-badge,\s*\.product-card \.visual \.discount-badge \{([^}]*)\}/);
+  assert.ok(rule, "rozet kuralı .visual span kuralından daha özgül seçiciyle yazılır");
+  assert.match(rule[1], /background: #15803d;/);
+  assert.match(rule[1], /color: #fff;/);
+  assert.match(rule[1], /font-size: 0\.78rem;/);
+  assert.match(rule[1], /letter-spacing: 0;/);
+  assert.match(rule[1], /text-transform: none;/);
+});
