@@ -115,6 +115,9 @@ jobs:
             git fetch origin main
             git checkout main
             git reset --hard origin/main
+            # Other projects share this VPS under their own users; they must not read .env or .runtime.
+            sed -i 's/\r$//' "$APP_DIR/scripts/ensure-app-dir-isolation.sh" || true
+            bash "$APP_DIR/scripts/ensure-app-dir-isolation.sh" "$APP_DIR"
             npm ci --omit=dev
             # White-background worker is optional for the site; a failed install is reported, not hidden.
             sed -i 's/\r$//' "$APP_DIR/scripts/ensure-image-bg-tool.sh" || true

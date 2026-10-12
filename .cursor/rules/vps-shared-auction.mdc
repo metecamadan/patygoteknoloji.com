@@ -1,0 +1,39 @@
+---
+description: VPS'i paylaşan Açık Artırma projesiyle izolasyon
+alwaysApply: true
+---
+
+# VPS ortak kullanım — Açık Artırma (12 Eki 2026)
+
+Aynı VPS'te (`87.76.157.41`) ikinci proje var; ayrı Cursor sohbetinden yürütülür. Kullanıcı kararı: **ortak alanlar (Akbank POS + BizimHesap hesabı) dışında iki proje birbirini etkilemez.** Öncelik her zaman mağazadadır.
+
+| | Açık artırma | patygoteknoloji.com |
+|---|---|---|
+| Klasör | `/var/www/acik-artirma` | `/var/www/patygoteknoloji.com` |
+| Linux kullanıcı | `artirma` (mağaza dosyalarına erişemez) | `root` |
+| nginx | `/etc/nginx/sites-available/acik-artirma` | `sites-available/patygoteknoloji.com` + `conf.d/00-patygo-hardening.conf` |
+| Veri | kendi PostgreSQL 16 + Redis (dışa kapalı) | SQLite/JSON `.runtime` |
+| PM2 | `artirma` kullanıcısının PM2'si | root PM2 `patygo` |
+| Kaynak | bellek sınırlı, düşük CPU önceliği | öncelikli |
+
+## Bu projeden yapılmaz
+
+- `/var/www/acik-artirma`, `artirma` kullanıcısı, onun nginx dosyası, PostgreSQL, Redis ve PM2'si okunmaz/değiştirilmez/yeniden başlatılmaz.
+- `pm2 restart all`, `pm2 kill`, `pm2 delete` (patygo dışı), genel `systemctl restart nginx|postgresql|redis` yok. nginx yalnızca `reload`.
+- Mağaza nginx ve hardening dosyaları dışında `/etc/nginx` düzenlenmez.
+
+## Mağazayı koruyan kapılar
+
+- Deploy `scripts/ensure-app-dir-isolation.sh` çalıştırır: mağaza klasörü `750 root:www-data`, `.env` `600 root`; ilgisiz kullanıcı girebiliyorsa deploy kırmızı. Gevşetme.
+- `nginx -t` sunucudaki **tüm** siteleri test eder. Açık artırma conf'u bozuksa mağaza deploy'u nginx adımında kırmızı olur: onların dosyasına dokunma, kullanıcıya bildir (düzeltme Açık Artırma sohbetinden).
+- 80 portunda `default_server` mağazadadır; ikinci `default_server` nginx'i kırar. `patygo_` önekli zone/cache adları mağazanındır.
+
+## Ortak alanlar
+
+- **Akbank POS:** aynı üye işyeri. Mağaza sipariş no `PTY-YYMMDD-xxxxxx`; açık artırma farklı önek ve kendi alan adında callback kullanmalı. Akbank `.env` anahtarları iki projeyi birden etkiler — değiştirmeden önce kullanıcıya sor.
+- **BizimHesap:** aynı hesap. Mağaza yalnızca kendi siparişinin belgelerini oluşturur/okur; hesap geneli toplu işlem yapılmaz.
+
+## Ortak olmayan ama paylaşılan kısıt
+
+- Tedarikçi XML IP whitelist + günlük kota VPS IP'sine bağlı. Açık artırma tedarikçi XML'i **çekmez**; görülürse kullanıcıya bildir.
+- Root SSH kuralı aynen geçerli ("yalnızca bu bilgisayar yetkili").

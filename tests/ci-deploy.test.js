@@ -182,6 +182,24 @@ test("nginx serves checkout HTML from disk when Node is busy", () => {
   assert.match(serverJs, /\/api\/catalog-bootstrap/);
 });
 
+test("deploy locks the app dir so other projects on the VPS cannot read .env or .runtime", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci-deploy.yml"), "utf8");
+  assert.match(workflow, /bash "\$APP_DIR\/scripts\/ensure-app-dir-isolation\.sh" "\$APP_DIR"\r?\n/);
+  assert.doesNotMatch(workflow, /ensure-app-dir-isolation\.sh" "\$APP_DIR" \|\|/, "isolation failure must fail the deploy, not be hidden");
+  assert.ok(
+    workflow.indexOf("ensure-app-dir-isolation.sh") < workflow.indexOf("pm2 restart"),
+    "isolation runs before the app restarts"
+  );
+  const script = fs.readFileSync(path.join(root, "scripts", "ensure-app-dir-isolation.sh"), "utf8");
+  assert.match(script, /set -euo pipefail/);
+  assert.match(script, /chown root:"\$\{WEB_GROUP\}" "\$\{APP_DIR\}"/);
+  assert.match(script, /chmod 750 "\$\{APP_DIR\}"/);
+  assert.match(script, /chmod 600 "\$\{APP_DIR\}\/\.env"/);
+  assert.match(script, /runuser -u nobody -- test -x/, "an unrelated user must be proven locked out");
+  assert.match(script, /runuser -u "\$\{WEB_GROUP\}" -- test -x/, "nginx must still reach .runtime/media");
+  assert.doesNotMatch(script, /acik-artirma\/|chmod -R|chown -R/, "never touches the other project or recurses");
+});
+
 test("deploy keeps the SSH MSS clamp so full-size packets on the Actions path do not hang SSH", () => {
   const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci-deploy.yml"), "utf8");
   assert.match(workflow, /bash "\$APP_DIR\/scripts\/ensure-ssh-mss-clamp\.sh"\r?\n/);
