@@ -822,6 +822,9 @@
     return box;
   }
 
+  // render() runs again when fresher data arrives; GA counts one view per product.
+  let gaViewedId = "";
+
   function render(product, categories) {
     root.textContent = "";
     if (!product) {
@@ -833,6 +836,11 @@
     const soldOut = product.soldOut === true;
 
     document.title = product.name + (soldOut ? " | Tükendi" : "") + " | Patygo Teknoloji";
+    if (window.PatygoGa && gaViewedId !== product.id) {
+      gaViewedId = product.id;
+      const row = window.PatygoGa.item(product, 1);
+      window.PatygoGa.event("view_item", { currency: "TRY", value: row.price, items: [row] });
+    }
     upsertCanonical(product.urlPath || location.pathname);
     setRobotsNoindex(false);
     const metaDesc = document.querySelector('meta[name="description"]');

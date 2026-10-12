@@ -66,6 +66,18 @@
     "page_view",
     legacyId || detailRoute ? { productId: legacyId || "" } : undefined
   );
+  const searchParams = new URLSearchParams(location.search);
+  const searchTerm = (searchParams.get("q") || "").trim().slice(0, 100);
+  // Google forbids personal data in events; a search box sometimes receives an e-mail or phone.
+  if (
+    window.PatygoGa &&
+    searchTerm &&
+    location.pathname.startsWith("/urunler") &&
+    (searchParams.get("page") || "1") === "1" &&
+    !/@|\d{7,}/.test(searchTerm.replace(/\s+/g, ""))
+  ) {
+    window.PatygoGa.event("search", { search_term: searchTerm });
+  }
 
   const header = document.querySelector(".site-header");
   const onScroll = () => {

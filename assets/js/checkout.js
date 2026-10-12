@@ -638,6 +638,7 @@
     const continueBtn = document.getElementById("continueShoppingBtn");
     if (continueBtn) continueBtn.className = paid ? "btn btn-primary" : "btn btn-outline";
     if (paid && window.PatygoAnalytics) window.PatygoAnalytics.track("order_submitted");
+    if (paid && window.PatygoGa) window.PatygoGa.purchase(order);
     if (paid && window.PatygoCart) window.PatygoCart.clear();
     try {
       if (paid) sessionStorage.removeItem(PENDING_ORDER_KEY);
@@ -888,6 +889,10 @@
 
     calc();
     if (!booted && window.PatygoAnalytics) window.PatygoAnalytics.track("checkout_started");
+    if (!booted && window.PatygoGa) {
+      const items = lines.map((l) => window.PatygoGa.item(l.product, l.qty));
+      window.PatygoGa.event("begin_checkout", { currency: "TRY", value: window.PatygoGa.itemsValue(items), items });
+    }
 
     if (els.adet && mode === "direct" && !els.adet.dataset.bound) {
       els.adet.dataset.bound = "1";

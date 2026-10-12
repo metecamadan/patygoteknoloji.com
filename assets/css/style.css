@@ -2744,6 +2744,63 @@ h1, h2, h3, h4 {
 }
 .fab svg { width: 22px; height: 22px; }
 
+/* ---------- Çerez onayı ---------- */
+.consent-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1150;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.consent-inner {
+  pointer-events: auto;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px 22px;
+}
+.consent-title { font-size: 1.05rem; margin: 0 0 6px; }
+.consent-text { margin: 0; font-size: 0.9rem; line-height: 1.55; color: var(--muted); }
+.consent-text a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+.consent-prefs { display: grid; gap: 10px; margin-top: 14px; }
+.consent-prefs[hidden] { display: none; }
+.consent-option { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; line-height: 1.45; cursor: pointer; }
+.consent-option input { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--brand); }
+.consent-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.consent-actions .btn { min-height: 44px; }
+.consent-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.consent-link:hover { color: #fff; }
+.consent-inline-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+@media (max-width: 560px) {
+  .consent-banner { left: 8px; right: 8px; bottom: 8px; }
+  .consent-inner { padding: 16px; }
+  .consent-actions .btn { flex: 1 1 100%; }
+}
+
 .quote-rail {
   position: fixed;
   top: 50%;

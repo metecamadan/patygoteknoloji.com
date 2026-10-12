@@ -151,6 +151,11 @@
       }
       write(items);
       if (window.PatygoAnalytics) window.PatygoAnalytics.track("add_to_cart");
+      const added = resolveProduct(items.find((i) => i.id === key), catalogById());
+      if (added && window.PatygoGa) {
+        const row = window.PatygoGa.item(Object.assign({ id: key }, added), q);
+        window.PatygoGa.event("add_to_cart", { currency: "TRY", value: window.PatygoGa.itemsValue([row]), items: [row] });
+      }
       return items;
     },
     setQty(id, qty) {

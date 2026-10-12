@@ -37,8 +37,8 @@ REFERRER = 'add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 PERMISSIONS = 'add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;'
 CSP = (
     "add_header Content-Security-Policy \"default-src 'self'; base-uri 'self'; object-src 'none'; "
-    "frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https:; "
-    "img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self'; "
+    "frame-ancestors 'none'; script-src 'self' https://*.googletagmanager.com; style-src 'self' 'unsafe-inline' https:; "
+    "img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.g.doubleclick.net https://*.google.com https://*.google.com.tr; "
     "form-action 'self' https://virtualpospaymentgatewaypre.akbank.com https://virtualpospaymentgateway.akbank.com\" always;"
 )
 SHELL_HEADERS = (

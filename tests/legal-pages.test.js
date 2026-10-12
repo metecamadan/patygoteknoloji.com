@@ -31,8 +31,8 @@ test("legal pages include company identity and substantive sections", () => {
     const text = fs.readFileSync(path.join(root, file), "utf8");
     assert.match(text, /Patygo Teknoloji ve Bilişim/);
     assert.match(text, /info@patygoteknoloji\.com/);
-    if (file === "cerez.html") {
-      assert.match(text, /Son güncelleme:\s*16 Ağustos 2026/);
+    if (file === "cerez.html" || file === "kvkk.html" || file === "gizlilik.html") {
+      assert.match(text, /Son güncelleme:\s*12 Ekim 2026/, file);
     } else if (file === "on-bilgilendirme-formu.html" || file === "mesafeli-satis-sozlesmesi.html") {
       assert.match(text, /Son güncelleme:\s*4 Ekim 2026/);
     } else {

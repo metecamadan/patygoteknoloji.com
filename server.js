@@ -546,9 +546,9 @@ function securityHeaders(extra) {
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Content-Security-Policy":
         "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
-        "script-src 'self'; style-src 'self' 'unsafe-inline' https:; " +
+        "script-src 'self' https://*.googletagmanager.com; style-src 'self' 'unsafe-inline' https:; " +
         "img-src 'self' data: https:; font-src 'self' data: https:; " +
-        "connect-src 'self'; " +
+        "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.g.doubleclick.net https://*.google.com https://*.google.com.tr; " +
         "form-action 'self' https://virtualpospaymentgatewaypre.akbank.com https://virtualpospaymentgateway.akbank.com",
     },
     extra || {}
