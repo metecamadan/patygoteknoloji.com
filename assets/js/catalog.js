@@ -1102,8 +1102,7 @@
     if (discount) {
       const badge = document.createElement("span");
       badge.className = "discount-badge";
-      badge.textContent = "%" + discount.percent;
-      badge.setAttribute("aria-label", "%" + discount.percent + " indirim");
+      badge.textContent = "%" + discount.percent + " İndirim";
       visual.appendChild(badge);
       const before = document.createElement("s");
       before.className = "price-before";

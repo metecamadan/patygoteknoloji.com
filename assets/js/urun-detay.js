@@ -983,7 +983,7 @@
         "<s></s> <span class=\"discount-badge discount-badge--inline\"></span>" +
         "<small>Son 30 günün en düşük fiyatına göre</small>";
       before.querySelector("s").textContent = window.PatygoCatalog.formatPrice(discount.before);
-      before.querySelector(".discount-badge").textContent = "%" + discount.percent + " indirim";
+      before.querySelector(".discount-badge").textContent = "%" + discount.percent + " İndirim";
       price.prepend(before);
     }
 

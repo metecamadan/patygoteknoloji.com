@@ -96,6 +96,8 @@ test("storefront renders strikethrough price and discount badge from compareAtPr
   assert.match(catalogJs, /percent >= 5/);
   assert.match(catalogJs, /price-before/);
   assert.match(catalogJs, /discount-badge/);
+  assert.match(catalogJs, /badge\.textContent = "%" \+ discount\.percent \+ " İndirim"/, "kart rozeti ne olduğunu söyler");
+  assert.match(detailJs, /textContent = "%" \+ discount\.percent \+ " İndirim"/);
   assert.match(detailJs, /discountInfo\(product\)/);
   assert.match(detailJs, /Son 30 günün en düşük fiyatına göre/);
   assert.match(css, /\.discount-badge \{/);
