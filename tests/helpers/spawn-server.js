@@ -40,32 +40,27 @@ async function waitForServer(baseUrl, child, getStderr) {
   throw new Error("Test sunucusu zamanında başlamadı.");
 }
 
-function spawnTestServer(t, envExtra, options) {
-  const portPromise = getFreePort();
-  return portPromise.then((port) => {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-data-"));
-    const productsDir = path.join(dataRoot, "assets", "data");
-    fs.mkdirSync(productsDir, { recursive: true });
-    const seedProducts = options && Object.prototype.hasOwnProperty.call(options, "products")
-      ? options.products
-      : [];
-    fs.writeFileSync(
-      path.join(productsDir, "products.json"),
-      JSON.stringify(seedProducts, null, 2),
-      "utf8"
-    );
-    // SQLite (WAL) aynı dosyayı iki süreç birlikte açınca Windows'ta ara sıra
-    // "disk I/O error" verir: test verisi sunucu başlamadan yazılır ve bağlantı kapanır.
+const PORT_IN_USE = /portu kullanımda/;
+const MAX_PORT_ATTEMPTS = 5;
+
+async function spawnTestServer(t, envExtra, options) {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-data-"));
+  let child = null;
+  t.after(() => {
+    if (child) child.kill();
     resetDbForTests();
-    if (options && typeof options.seed === "function") {
-      try {
-        options.seed(dataRoot);
-      } finally {
-        resetDbForTests();
-      }
-    }
+    try {
+      fs.rmSync(dataRoot, { recursive: true, force: true });
+    } catch (_) {}
+  });
+  seedDataRoot(dataRoot, options);
+
+  // getFreePort ile listen arasında paralel test dosyaları aynı portu kapabilir.
+  async function attempt(remaining) {
+    const port = await getFreePort();
     const stderrChunks = [];
-    const child = spawn(process.execPath, ["server.js"], {
+    const readStderr = () => Buffer.concat(stderrChunks).toString("utf8").trim().slice(-1500);
+    child = spawn(process.execPath, ["server.js"], {
       cwd: projectRoot,
       env: Object.assign({}, process.env, {
         PORT: String(port),
@@ -81,26 +76,51 @@ function spawnTestServer(t, envExtra, options) {
       stderrChunks.push(Buffer.from(chunk));
       if (stderrChunks.length > 40) stderrChunks.shift();
     });
-    t.after(() => {
-      child.kill();
-      resetDbForTests();
-      try {
-        fs.rmSync(dataRoot, { recursive: true, force: true });
-      } catch (_) {}
-    });
     const baseUrl = `http://127.0.0.1:${port}`;
+    try {
+      await waitForServer(baseUrl, child, readStderr);
+    } catch (err) {
+      if (remaining > 1 && child.exitCode !== null && PORT_IN_USE.test(readStderr())) {
+        return attempt(remaining - 1);
+      }
+      throw err;
+    }
+    const current = child;
     /** Sunucu tamamen kapanınca çözülür; sonrasında test veritabanını güvenle okuyabilir. */
     function stop() {
-      if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+      if (current.exitCode !== null || current.signalCode !== null) return Promise.resolve();
       return new Promise((resolve) => {
-        child.once("exit", () => resolve());
-        child.kill();
+        current.once("exit", () => resolve());
+        current.kill();
       });
     }
-    return waitForServer(baseUrl, child, () =>
-      Buffer.concat(stderrChunks).toString("utf8").trim().slice(-1500)
-    ).then(() => ({ port, baseUrl, child, dataRoot, stop }));
-  });
+    return { port, baseUrl, child: current, dataRoot, stop };
+  }
+
+  return attempt(MAX_PORT_ATTEMPTS);
+}
+
+function seedDataRoot(dataRoot, options) {
+  const productsDir = path.join(dataRoot, "assets", "data");
+  fs.mkdirSync(productsDir, { recursive: true });
+  const seedProducts = options && Object.prototype.hasOwnProperty.call(options, "products")
+    ? options.products
+    : [];
+  fs.writeFileSync(
+    path.join(productsDir, "products.json"),
+    JSON.stringify(seedProducts, null, 2),
+    "utf8"
+  );
+  // SQLite (WAL) aynı dosyayı iki süreç birlikte açınca Windows'ta ara sıra
+  // "disk I/O error" verir: test verisi sunucu başlamadan yazılır ve bağlantı kapanır.
+  resetDbForTests();
+  if (options && typeof options.seed === "function") {
+    try {
+      options.seed(dataRoot);
+    } finally {
+      resetDbForTests();
+    }
+  }
 }
 
 module.exports = {
