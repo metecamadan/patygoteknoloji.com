@@ -232,7 +232,7 @@
       document.createTextNode(
         "Sitenin çalışması için zorunlu çerezleri kullanırız. İzin verirseniz ziyaret ve satışları ölçmek (Google Analytics) " +
           "ve size uygun reklamlar göstermek (Google reklamları) için ek çerezler kullanırız; bu veriler Google’a ve yurt dışına aktarılır. " +
-          "Tercihinizi istediğiniz zaman sayfa altındaki “Çerez tercihleri” bağlantısından değiştirebilirsiniz. Ayrıntılar: "
+          "Reddetmek veya seçim yapmak için “Özelleştir”e tıklayın; tercihinizi istediğiniz zaman sayfa altındaki “Çerez tercihleri” bağlantısından değiştirebilirsiniz. Ayrıntılar: "
       )
     );
     const link = document.createElement("a");
@@ -250,10 +250,14 @@
 
     const actions = document.createElement("div");
     actions.className = "consent-actions";
-    const prefsButton = button(showPrefs ? "Seçimi kaydet" : "Tercihler", showPrefs ? "save" : "prefs", "btn-outline");
-    actions.appendChild(button("Reddet", "reject", "btn-primary"));
-    actions.appendChild(prefsButton);
-    actions.appendChild(button("Kabul et", "accept", "btn-primary"));
+    if (showPrefs) {
+      actions.appendChild(button("Tümünü reddet", "reject", "btn-outline"));
+      actions.appendChild(button("Seçimi kaydet", "save", "btn-outline"));
+      actions.appendChild(button("Tümünü kabul et", "accept", "btn-primary"));
+    } else {
+      actions.appendChild(button("Özelleştir", "customize", "btn-outline"));
+      actions.appendChild(button("Kabul et", "accept", "btn-primary"));
+    }
 
     actions.addEventListener("click", (ev) => {
       const target = ev.target.closest("[data-consent-action]");
@@ -261,11 +265,9 @@
       const action = target.dataset.consentAction;
       if (action === "accept") saveChoice(true, true);
       else if (action === "reject") saveChoice(false, false);
-      else if (action === "prefs") {
-        prefs.hidden = false;
-        target.dataset.consentAction = "save";
-        target.textContent = "Seçimi kaydet";
-        const first = prefs.querySelector('input[data-consent="analytics"]');
+      else if (action === "customize") {
+        openBanner(true);
+        const first = banner && banner.querySelector('input[data-consent="analytics"]');
         if (first) first.focus();
       } else if (action === "save") {
         const value = (key) => {

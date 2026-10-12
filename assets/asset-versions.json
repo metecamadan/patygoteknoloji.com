@@ -34,8 +34,8 @@
       "sha256": "fb3b9b8805f99d26faded585eb474ee33458e8064925ff10455ee55bc8beb2a4"
     },
     "/assets/js/consent.js": {
-      "v": "consent-1",
-      "sha256": "19086550cd06acd6df067441243687650a58af97080f167654b62828e3df9ea0"
+      "v": "consent-2",
+      "sha256": "30c057747e8d810e3f1bf07230a37137c0e826701af67b962362bd4a9cb6cb78"
     },
     "/assets/js/customer-identity.js": {
       "v": "checkout-p6",

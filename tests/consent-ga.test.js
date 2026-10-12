@@ -97,6 +97,8 @@ function fakeBrowser(stored) {
       assert.ok(target, action + " düğmesi");
       actions.handlers.click({ target });
     },
+    labels: () => banner().all().filter((el) => el.tagName === "BUTTON").map((el) => el.textContent),
+    box: (key) => banner().querySelector('input[data-consent="' + key + '"]'),
     check(key, on) {
       banner().querySelector('input[data-consent="' + key + '"]').checked = on;
     },
@@ -106,11 +108,7 @@ function fakeBrowser(stored) {
 test("no answer yet: the banner asks, nothing is sent to Google and events wait", () => {
   const b = fakeBrowser(null);
   assert.ok(b.banner(), "onay penceresi açılır");
-  const labels = b.banner().all().filter((el) => el.tagName === "BUTTON").map((el) => el.textContent);
-  assert.deepEqual(labels, ["Reddet", "Tercihler", "Kabul et"]);
-  const reject = b.banner().all().find((el) => el.dataset.consentAction === "reject");
-  const accept = b.banner().all().find((el) => el.dataset.consentAction === "accept");
-  assert.equal(reject.className, accept.className, "Reddet, Kabul et kadar görünür");
+  assert.deepEqual(b.labels(), ["Özelleştir", "Kabul et"]);
   b.window.PatygoGa.event("view_item", { items: [] });
   assert.equal(b.gaScripts().length, 0, "onaysız Google betiği yüklenmez");
   assert.equal(b.window.dataLayer, undefined, "onaysız hiçbir şey kuyruğa girmez");
@@ -138,9 +136,20 @@ test("accepting loads gtag with granted consent and sends the events raised befo
   assert.equal(saved.ads, true);
 });
 
+test("Özelleştir opens unticked choices with reject, save and accept-all", () => {
+  const b = fakeBrowser(null);
+  b.click("customize");
+  assert.deepEqual(b.labels(), ["Tümünü reddet", "Seçimi kaydet", "Tümünü kabul et"]);
+  assert.equal(b.box("analytics").checked, false, "önceden işaretli kutu onay sayılmaz");
+  assert.equal(b.box("ads").checked, false);
+  assert.equal(b.box("required").disabled, true);
+  assert.equal(b.gaScripts().length, 0, "Özelleştir tek başına onay değildir");
+});
+
 test("rejecting sends nothing, drops queued events and deletes Google cookies", () => {
   const b = fakeBrowser(null);
   b.window.PatygoGa.event("view_item", {});
+  b.click("customize");
   b.click("reject");
   b.window.PatygoGa.event("add_to_cart", {});
   assert.equal(b.gaScripts().length, 0);
@@ -153,7 +162,7 @@ test("rejecting sends nothing, drops queued events and deletes Google cookies", 
 
 test("statistics only: analytics granted, ad signals denied", () => {
   const b = fakeBrowser(null);
-  b.click("prefs");
+  b.click("customize");
   b.check("analytics", true);
   b.check("ads", false);
   b.click("save");
