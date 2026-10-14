@@ -115,3 +115,21 @@ test("card discount badge is small white-on-green, not the blue placeholder text
   assert.match(rule[1], /letter-spacing: 0;/);
   assert.match(rule[1], /text-transform: none;/);
 });
+
+test("listing card stacks old price, price and KDV in one left column without squeezing the title", () => {
+  const css = fs.readFileSync(path.join(ROOT, "assets/css/style.css"), "utf8");
+  const ruleOf = (selector) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const bodies = [...css.matchAll(new RegExp("(?:^|\\n)" + escaped + " \\{([^}]*)\\}", "g"))].map((m) => m[1]);
+    assert.ok(bodies.length, selector + " kuralı var");
+    return bodies.join("\n");
+  };
+  const listingPrice = ruleOf(".product-card.product-card--listing .price");
+  assert.match(listingPrice, /flex-direction: column;/);
+  // Column + wrap with the row layout's 100% basis split the old price into its own column.
+  assert.match(listingPrice, /flex-wrap: nowrap;/);
+  assert.match(ruleOf(".product-card.product-card--listing .price-before"), /flex-basis: auto;/);
+  // A clamped title is overflow hidden: shrinking cuts a line in half, growing reveals text past the ellipsis.
+  assert.match(ruleOf(".product-card h3"), /flex: 0 0 auto;/);
+  assert.match(ruleOf(".product-card .price"), /margin-top: auto;/, "fiyatlar kart altında hizalanır");
+});

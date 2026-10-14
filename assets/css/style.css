@@ -1587,7 +1587,8 @@ h1, h2, h3, h4 {
   color: var(--ink);
   margin-bottom: 8px;
   line-height: 1.35;
-  flex: 1;
+  /* Natural height only: a clamped title (overflow hidden) cut shorter or stretched taller shows half or hidden lines. */
+  flex: 0 0 auto;
 }
 .product-card h3 a { color: inherit; }
 .product-card h3 a:hover { color: var(--brand); }
@@ -1605,6 +1606,7 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  margin-top: auto;
   margin-bottom: 14px;
   font-size: 1.35rem;
   font-weight: 800;
@@ -1684,10 +1686,15 @@ h1, h2, h3, h4 {
 .product-card.product-card--listing .price {
   display: flex;
   flex-direction: column;
+  flex-wrap: nowrap;
   align-items: flex-start;
   gap: 2px;
   font-size: 1.12rem;
   margin-bottom: 12px;
+}
+.product-card.product-card--listing .price-before {
+  flex-basis: auto;
+  line-height: 1.2;
 }
 .product-card.product-card--listing .price-amount {
   display: block;
