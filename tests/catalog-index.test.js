@@ -161,6 +161,8 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /clearCatalogBootstrapSnapshots\(\)/);
   assert.match(serverJs, /Do not delete listing\/home bootstrap JSON here/);
   assert.match(serverJs, /writeCatalogBootstrapSnapshots overwrites atomically/);
+  assert.match(serverJs, /memoFresh/);
+  assert.match(serverJs, /!memo\.stale/);
   assert.doesNotMatch(
     serverJs,
     /if \(pricingChanges\.length\) \{\s*\/\/ Prices must match[\s\S]*?rebuildStorefrontCatalogNow\(false\);/

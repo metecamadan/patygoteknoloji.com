@@ -1311,8 +1311,9 @@ function storefrontIndex(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
   const memo = storefrontCatalogMemo[key];
   // compareAtPrice depends on the calendar day (30-day window), so the index is rebuilt daily.
+  // stale: category/product saves mark the memo until rebuildStorefrontCatalogNow swaps a fresh one.
   const day = new Date().toISOString().slice(0, 10);
-  if (memo && memo.index && memo.day === day) return memo.index;
+  if (memo && memo.index && memo.day === day && !memo.stale) return memo.index;
   return rebuildStorefrontCatalogNow(includeInactiveManual);
 }
 
@@ -3447,23 +3448,30 @@ async function handleApi(req, res, urlPath) {
         requestUrl.searchParams.get("ids") ||
         requestUrl.searchParams.get("featured")
     );
+    // Disk listing snapshots lag behind sync rebuilds (manual restock, etc.). Serve them
+    // only while the in-memory index is missing or stale so /api/products matches the index
+    // shoppers would get after saveProducts rebuildStorefrontCatalogNow.
     if (page <= 1 && !hasListingFilters && !sort) {
-      const snap = readCatalogBootstrapSnapshot(requestUrl);
-      if (snap) {
-        return json(
-          res,
-          200,
-          {
-            products: snap.products,
-            total: snap.total,
-            page: snap.page || 1,
-            limit: snap.limit || CATALOG_BOOTSTRAP_LIMIT,
-            totalPages: snap.totalPages,
-            facets: snap.facets || null,
-            updatedAt,
-          },
-          { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
-        );
+      const memo = storefrontCatalogMemo.active;
+      const memoFresh = memo && memo.index && !memo.stale;
+      if (!memoFresh) {
+        const snap = readCatalogBootstrapSnapshot(requestUrl);
+        if (snap) {
+          return json(
+            res,
+            200,
+            {
+              products: snap.products,
+              total: snap.total,
+              page: snap.page || 1,
+              limit: snap.limit || CATALOG_BOOTSTRAP_LIMIT,
+              totalPages: snap.totalPages,
+              facets: snap.facets || null,
+              updatedAt,
+            },
+            { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" }
+          );
+        }
       }
     }
     const searchTerm = String(requestUrl.searchParams.get("q") || "").trim();
