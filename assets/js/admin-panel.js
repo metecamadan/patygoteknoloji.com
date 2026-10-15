@@ -951,6 +951,7 @@
           err.message || "Havuz yüklenemedi"
         );
       });
+      loadSupplierReconcile().catch((err) => note(document.getElementById("reconcileNote"), "err", err.message));
     }
   }
 
@@ -1040,7 +1041,10 @@
     document.getElementById("adminPageSubtitle").textContent = meta[1];
     const newProductBtn = document.getElementById("newProductBtn");
     if (newProductBtn && name !== "products") newProductBtn.hidden = true;
-    if (name === "xml" && token) loadSupplierData().catch(() => {});
+    if (name === "xml" && token) {
+      loadSupplierData().catch(() => {});
+      loadSupplierReconcile().catch((err) => note(document.getElementById("reconcileNote"), "err", err.message));
+    }
     if (name === "products" && token) {
       if (savedProductsView() === "manual") ensureManualProducts().catch(() => {});
     }
@@ -2203,6 +2207,154 @@
     }
     syncFeedUrlUi();
     updateDashboard();
+  }
+
+  function openReconcileFilter(filter) {
+    if (filter === "nocat" || filter === "menu") {
+      const reason = document.getElementById("adminUnlistedReason");
+      const stock = document.getElementById("adminUnlistedStock");
+      if (reason) reason.value = filter;
+      if (stock) stock.value = "1";
+      unlistedReason = filter;
+      unlistedInStock = "1";
+      unlistedPage = 1;
+      const tab = document.getElementById("unlistedTab");
+      if (tab) tab.click();
+      return;
+    }
+    if (filter === "noimage") {
+      const tab = document.getElementById("noImageTab");
+      if (tab) tab.click();
+      return;
+    }
+    if (!supplierStatusFilter || !supplierStatusFilter.querySelector('option[value="' + filter + '"]')) return;
+    supplierStatusFilter.value = filter;
+    supplierPoolPage = 1;
+    const nav = document.getElementById("xmlProductsNav");
+    if (nav) nav.click();
+  }
+
+  function renderSupplierReconcile(data) {
+    const rows = document.getElementById("reconcileRows");
+    if (!rows) return;
+    const meta = document.getElementById("reconcileMeta");
+    const latest = data && data.latest;
+    const buckets = data && Array.isArray(data.buckets) ? data.buckets : [];
+    rows.textContent = "";
+    if (!latest || !buckets.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5;
+      td.className = "admin-table-empty";
+      td.textContent = "Henüz kontrol yapılmadı. İlk kontrol bir sonraki XML okumasından 10 dakika sonra çalışır.";
+      tr.appendChild(td);
+      rows.appendChild(tr);
+      note(meta, "", "");
+      return;
+    }
+    const history = Array.isArray(data.history) ? data.history : [];
+    const previous = history.length > 1 ? history[history.length - 2].counts || {} : null;
+    const alerted = new Set((data.lastAlerts || []).map((alert) => alert.key));
+    note(
+      meta,
+      alerted.size ? "warn" : "",
+      "Son kontrol: " +
+        formatDate(latest.at) +
+        " · tedarikçide stokta " +
+        String(latest.stocked || 0) +
+        " ürün" +
+        (alerted.size ? " · " + alerted.size + " durumda artış var" : "")
+    );
+    buckets.forEach((bucket) => {
+      const result = (latest.buckets && latest.buckets[bucket.key]) || { count: 0, samples: [] };
+      if (bucket.key !== "akakce" && !result.count) return;
+      const tr = document.createElement("tr");
+      if (alerted.has(bucket.key)) tr.className = "is-alert";
+
+      const label = document.createElement("td");
+      label.textContent = bucket.label;
+      if (bucket.key === "siteonly") {
+        const reasons = Object.entries(latest.siteOnlyReasons || {}).sort((a, b) => b[1] - a[1]);
+        if (reasons.length) {
+          const small = document.createElement("small");
+          small.className = "admin-reconcile-reasons";
+          small.textContent = reasons.map(([reason, count]) => reason + ": " + count).join(" · ");
+          label.appendChild(small);
+        }
+      }
+      tr.appendChild(label);
+
+      const count = document.createElement("td");
+      count.textContent = String(result.count);
+      tr.appendChild(count);
+
+      const change = document.createElement("td");
+      if (previous) {
+        const diff = result.count - (Number(previous[bucket.key]) || 0);
+        change.textContent = diff > 0 ? "+" + diff : String(diff);
+        if (diff > 0 && bucket.alert) change.className = "admin-reconcile-up";
+      } else {
+        change.textContent = "—";
+      }
+      tr.appendChild(change);
+
+      const samples = document.createElement("td");
+      const list = Array.isArray(result.samples) ? result.samples : [];
+      if (bucket.key === "akakce" || !list.length) {
+        samples.textContent = "—";
+      } else {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent =
+          list.length < result.count ? "İlk " + list.length + " ürün" : list.length + " ürün";
+        details.appendChild(summary);
+        const ul = document.createElement("ul");
+        ul.className = "admin-reconcile-samples";
+        list.forEach((row) => {
+          const li = document.createElement("li");
+          li.textContent = row.sku + " · " + row.name + " (stok " + row.stock + ")";
+          ul.appendChild(li);
+        });
+        details.appendChild(ul);
+        samples.appendChild(details);
+      }
+      tr.appendChild(samples);
+
+      const action = document.createElement("td");
+      if (bucket.filter) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-ghost btn-sm";
+        btn.textContent = "Listele";
+        btn.addEventListener("click", () => openReconcileFilter(bucket.filter));
+        action.appendChild(btn);
+      }
+      tr.appendChild(action);
+      rows.appendChild(tr);
+    });
+  }
+
+  async function loadSupplierReconcile() {
+    const data = await api("/api/admin/supplier/reconcile");
+    renderSupplierReconcile(data);
+  }
+
+  const reconcileRunBtn = document.getElementById("reconcileRunBtn");
+  if (reconcileRunBtn) {
+    reconcileRunBtn.addEventListener("click", async () => {
+      const out = document.getElementById("reconcileNote");
+      reconcileRunBtn.disabled = true;
+      note(out, "", "Kontrol çalışıyor…");
+      try {
+        const data = await api("/api/admin/supplier/reconcile", { method: "POST", timeout: 90000 });
+        renderSupplierReconcile(data);
+        note(out, "ok", "Kontrol tamamlandı.");
+      } catch (err) {
+        note(out, "err", err.message || "Kontrol çalıştırılamadı.");
+      } finally {
+        reconcileRunBtn.disabled = false;
+      }
+    });
   }
 
   function supplierQueryString() {

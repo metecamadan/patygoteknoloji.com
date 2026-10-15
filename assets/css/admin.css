@@ -951,6 +951,13 @@ html.admin-theme-dark .admin-order-block.is-open {
 }
 .admin-feed-warning strong { display: block; margin-bottom: 5px; }
 .admin-feed-warning ul { display: grid; gap: 3px; margin: 0; padding-left: 17px; }
+.admin-reconcile-table td { vertical-align: top; }
+.admin-reconcile-table tr.is-alert td:first-child { color: #9a3412; font-weight: 600; }
+.admin-reconcile-reasons { display: block; margin-top: 3px; color: #64748b; font-weight: 400; }
+.admin-reconcile-up { color: #b91c1c; font-weight: 600; }
+.admin-reconcile-samples { display: grid; gap: 2px; margin: 6px 0 0; padding-left: 17px; max-height: 220px; overflow: auto; font-size: 0.85em; }
+html.admin-theme-dark .admin-reconcile-table tr.is-alert td:first-child { color: #fdba74; }
+html.admin-theme-dark .admin-reconcile-up { color: #fca5a5; }
 .admin-xml-card .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

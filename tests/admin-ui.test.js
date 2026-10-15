@@ -67,6 +67,22 @@ test("unlisted tab also lists products whose category left the menu, with paging
   assert.doesNotMatch(script, /status=unlisted&limit=100/);
 });
 
+test("XML tab shows the supplier ↔ storefront reconcile card with reasons, samples and filter links", () => {
+  const xmlTab = html.slice(html.indexOf('id="adminTabXml"'));
+  assert.match(xmlTab, /id="reconcileCard"[\s\S]*?Stokta ama satışta olmayanlar/);
+  assert.match(html, /id="reconcileRunBtn"/);
+  assert.match(html, /id="reconcileRows"/);
+  assert.match(script, /api\("\/api\/admin\/supplier\/reconcile"\)/);
+  assert.match(script, /api\("\/api\/admin\/supplier\/reconcile", \{ method: "POST", timeout: 90000 \}\)/);
+  assert.match(script, /if \(name === "xml" && token\) \{[\s\S]*?loadSupplierReconcile\(\)/);
+  assert.match(script, /if \(tab === "xml"\) \{[\s\S]*?loadSupplierReconcile\(\)/);
+  assert.match(script, /openReconcileFilter\(bucket\.filter\)/);
+  assert.match(script, /supplierStatusFilter\.value = filter/);
+  assert.match(script, /unlistedReason = filter/);
+  assert.doesNotMatch(script, /reconcileRows[^\n]*innerHTML/);
+  assert.doesNotMatch(html.slice(html.indexOf('id="reconcileCard"'), html.indexOf('id="reconcileNote"')), /hazır|online/i);
+});
+
 test("Görselsiz Ürünler tab sits under Ürünler with upload, category and publish actions", () => {
   const productsChildren = html.match(/<div class="admin-nav-children" id="productsNavChildren"[^>]*>([\s\S]*?)<\/div>/)[1];
   assert.match(
@@ -556,7 +572,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-29/);
+  assert.match(html, /admin\.css\?v=siparis-30/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
