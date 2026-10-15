@@ -118,6 +118,56 @@ test("DDR5 XML categories map onto PC and notebook memory leaves", () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("stocked XML groups without a site leaf map onto the cable, phone, alarm and rack leaves", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-new-leaves-"));
+  const tree = createCategoryStore(root).list();
+  const place = (main, mid, sub, name) => {
+    const pair = suggestSiteCategory(
+      { xmlMainCategory: main, xmlMidCategory: mid, xmlSubCategory: sub, name },
+      tree
+    );
+    return pair ? [pair.siteParent, pair.siteMid, pair.siteChild].join("/") : null;
+  };
+  const NET = "KURUMSAL & AĞ ÜRÜNLERİ";
+  const cases = [
+    [NET, "Kablo Çeşitleri", "Cat5 ve Cat6 Kablolar", "Cat6 Patch Kablo 2m", "bilgisayar-tablet/kablolar-ve-donusturuculer/cat5-ve-cat6-kablolar"],
+    [NET, "Kablo Çeşitleri", "Çevirici Kablolar", "HDMI Extender", "bilgisayar-tablet/kablolar-ve-donusturuculer/cevirici-ve-donusturuculer"],
+    [NET, "Kablo Çeşitleri", "HDMI Kablolar", "HDMI 2.1 5m", "bilgisayar-tablet/kablolar-ve-donusturuculer/goruntu-kablolari"],
+    [NET, "Kablo Çeşitleri", "Görüntü Kabloları", "VGA Kablo", "bilgisayar-tablet/kablolar-ve-donusturuculer/goruntu-kablolari"],
+    [NET, "Kablo Çeşitleri", "Güç (Power) Kabloları", "Power Kablosu", "bilgisayar-tablet/kablolar-ve-donusturuculer/guc-kablolari"],
+    [NET, "Kablo Çeşitleri", "Kablo Bağı", "Kablo Kanalı 16x16", "bilgisayar-tablet/kablolar-ve-donusturuculer/kablo-kanali-ve-duzenleyiciler"],
+    [NET, "Kablo Çeşitleri", "Uydu Kabloları", "Tv Uzatma Kablosu", "bilgisayar-tablet/ag-urunleri/anten-ve-anten-kablolari"],
+    [NET, "Kablo Çeşitleri", "Konnectör ve Jaklar", "Cat6 RJ45 Konnektör", "bilgisayar-tablet/modem-ve-switch/konnektor-ve-jaklar"],
+    [NET, "Kablo Çeşitleri", "Kablo Sıyırıcı ve Penseleri", "RJ45 Sıkma Pensesi", "bilgisayar-tablet/modem-ve-switch/kablo-sikma-ve-siyiricilar"],
+    [NET, "Kabin & Aksesuarları", "Kabin", "9U Rack Kabin", "bilgisayar-tablet/modem-ve-switch/rack-kabinler"],
+    [NET, "Kabin & Aksesuarları", "Patch Paneller", "Fiber Adapter", "bilgisayar-tablet/modem-ve-switch/patch-paneller"],
+    ["OEM & ÇEVRE BİRİMLERİ", "Telefon ve Tablet Aksesuarları", "Şarj ve Data Kabloları", "Type-C Data Kablosu", "bilgisayar-tablet/telefon-ve-tablet-aksesuarlari/sarj-ve-data-kablolari"],
+    ["OEM & ÇEVRE BİRİMLERİ", "Telefon ve Tablet Aksesuarları", "Duvar Şarj Cihazları", "25W Şarj Kafa", "bilgisayar-tablet/telefon-ve-tablet-aksesuarlari/duvar-sarj-cihazlari"],
+    ["GÜVENLİK SİSTEMLERİ", "Alarm Sistemleri", "Alarm Sistemleri", "4 Zone Yangın Alarm Kontrol Paneli", "ofis-urunleri/alarm-sistemleri/yangin-alarm-sistemleri"],
+    ["GÜVENLİK SİSTEMLERİ", "Alarm Sistemleri", "Dedektörler", "Kablosuz Pır Dedektör", "ofis-urunleri/alarm-sistemleri/dedektorler"],
+    ["GÜVENLİK SİSTEMLERİ", "Alarm Sistemleri", "Kontrol Paneli", "Wireless LED Keypad", "ofis-urunleri/alarm-sistemleri/alarm-kontrol-panelleri"],
+    ["OEM & ÇEVRE BİRİMLERİ", "Optik Sürücü", "External DVD Yazıcılar", "Harici Dvdrw Slim", "bilgisayar-bilesenleri/optik-suruculer/dvd-yazicilar"],
+    [NET, "Veri Yedekleme ve Depolama", "Veri Depolama Sistemleri", "QNAP NAS 8 Yuva", "bilgisayar-tablet/diskler/nas-depolama"],
+    ["TÜKETİCİ ELEKTRONİĞİ", "Hobi ve Oyuncak", "Oyuncaklar", "USB Oyun Kolu", "bilgisayar-tablet/klavye-mouse-urunleri/oyun-kollari-ve-konsollar"],
+    ["TÜKETİM ÜRÜNLERİ", "Fotokopi Tüketim (Muadil)", "Muadil Fotokopi Tonerler", "Kyocera TK-435 Muadil Toner", "kartus-toner/fotokopi-tuketim/muadil-fotokopi-tonerler"],
+    ["YAPI GEREÇLERİ", "Hırdavat Ürünleri", "Hırdavat Ürünleri", "Hızlı Yapıştırıcı 400ml", "yapi-gerecleri/hirdavat-urunleri/diger-hirdavat"],
+  ];
+  for (const [main, mid, sub, name, expected] of cases) {
+    assert.equal(place(main, mid, sub, name), expected, sub);
+  }
+  // Leaves that already matched keep their products.
+  assert.equal(
+    place("GÜVENLİK SİSTEMLERİ", "Güvenlik Ürünü Aksesuarları", "CCTV Kablolar", "CCTV Kablo 100m"),
+    "ofis-urunleri/guvenlik-urunu-aksesuarlari/cctv-kablolar"
+  );
+  assert.equal(
+    place("OEM & ÇEVRE BİRİMLERİ", "İşlemciler", "Intel İşlemciler", "Intel Core i7 14700K"),
+    "bilgisayar-bilesenleri/islemciler/intel-islemciler"
+  );
+  assert.equal(place("KİŞİSEL BAKIM VE KOZMETİK", "Ağız ve Diş Bakımı", "Diş Macunu", "Diş Macunu"), null);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("canonical merge adds missing DDR5 leaves onto a live Bellekler tree", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-merge-ddr5-"));
   const store = createCategoryStore(root);
@@ -295,9 +345,14 @@ test("XML sub-category without a counterpart is not dropped into a sibling leaf"
     });
     assert.equal(suggestSiteCategory(xml(toner, orj, "Transfer Roller"), tree), null);
     assert.equal(
-      suggestSiteCategory(xml("TÜKETİCİ ELEKTRONİĞİ", "Bilgisayar Aksesuarları", "Gamepad"), tree),
-      null,
+      suggestSiteCategory(xml("TÜKETİCİ ELEKTRONİĞİ", "Bilgisayar Aksesuarları", "Gamepad"), tree).siteChild,
+      "oyun-kollari-ve-konsollar",
       "gamepads are not mouse pads"
+    );
+    assert.equal(
+      suggestSiteCategory(xml("TÜKETİCİ ELEKTRONİĞİ", "Oyun Konsolu", "Oyuncu Koltuğu"), tree),
+      null,
+      "gaming chairs are not game controllers"
     );
     assert.equal(
       suggestSiteCategory(xml("OEM & ÇEVRE BİRİMLERİ", "Monitörler", "LED Monitörler"), tree).siteChild,
@@ -323,8 +378,8 @@ test("sync withdraws automatic placements the mapper no longer suggests", () => 
         supplierSlot: "supplier-1",
         supplierSku: sku,
         xmlMainCategory: "TÜKETİCİ ELEKTRONİĞİ",
-        xmlMidCategory: "Bilgisayar Aksesuarları",
-        xmlSubCategory: "Gamepad",
+        xmlMidCategory: "Oyun Konsolu",
+        xmlSubCategory: "Oyuncu Koltuğu",
         siteParent: "bilgisayar-tablet",
         siteMid: "bilgisayar-aksesuarlari",
         siteChild: "mouse-pad",

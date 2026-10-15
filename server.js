@@ -89,6 +89,11 @@ const {
 } = require("./lib/categories");
 const { buildStorefrontSitemap } = require("./lib/sitemap");
 const {
+  reconcileSupplierCatalog,
+  createReconcileStore,
+  buildReconcileAlertMail,
+} = require("./lib/supplier-reconcile");
+const {
   CATEGORY_FEED_DEFAULTS,
   validateManualFeedFields,
   normalizeVatPercent,
@@ -251,6 +256,7 @@ if (!getAdminPassword()) {
 }
 const adminSecurityStore = createAdminSecurityStore(DATA_ROOT);
 const xmlFetchDigest = createXmlFetchDigestStore(DATA_ROOT);
+const reconcileStore = createReconcileStore(DATA_ROOT);
 if (IS_PRODUCTION && adminSecurityStore.shouldForcePasswordChange(getAdminPassword())) {
   adminSecurityStore.activateForcePasswordChange(
     "Panel şifresi bir sonraki oturumda güncellenmeli (en az " +
@@ -2113,6 +2119,38 @@ async function notifyOwner(mail, label) {
     console.error(label + " mail failed:", err.message);
     return { sent: false, reason: err.message === SMTP_NOT_CONFIGURED ? "smtp_not_configured" : "send_failed" };
   }
+}
+
+function runSupplierReconcile() {
+  const products = mergedProducts(false);
+  const analysis = analyzeAkakceProducts(products, {
+    siteBaseUrl: SITE_BASE_URL,
+    mirrorIndex: storefrontMirror(),
+    categories: loadCategories(),
+  });
+  const result = reconcileSupplierCatalog({
+    rows: supplierManager.listProducts(),
+    storefrontIds: new Set(products.filter((item) => item.source === "supplier").map((item) => item.id)),
+    akakceIds: new Set(analysis.eligible.map((item) => item.id)),
+    akakceReasons: new Map(analysis.excluded.map((item) => [item.id, item.reasons])),
+  });
+  const { alerts } = reconcileStore.record(result);
+  if (alerts.length) {
+    notifyOwner(buildReconcileAlertMail(alerts, result, SITE_BASE_URL), "supplier reconcile alert").catch(() => {});
+  }
+  return result;
+}
+
+// After an XML read the category sync, catalog warm and image mirror need a few minutes.
+function scheduleSupplierReconcile(delayMs) {
+  const timer = setTimeout(() => {
+    try {
+      runSupplierReconcile();
+    } catch (err) {
+      console.error("Tedarikçi ↔ vitrin kontrolü başarısız:", (err && err.message) || err);
+    }
+  }, delayMs);
+  if (typeof timer.unref === "function") timer.unref();
 }
 
 function notifyReversalProblem(input) {
@@ -4457,6 +4495,20 @@ async function handleApi(req, res, urlPath) {
     }
   }
 
+  if (req.method === "GET" && urlPath === "/api/admin/supplier/reconcile") {
+    return json(res, 200, Object.assign({ ok: true }, reconcileStore.summary()));
+  }
+
+  if (req.method === "POST" && urlPath === "/api/admin/supplier/reconcile") {
+    if (!requireOwner(req, res)) return;
+    try {
+      runSupplierReconcile();
+      return json(res, 200, Object.assign({ ok: true }, reconcileStore.summary()));
+    } catch (err) {
+      return json(res, 500, { ok: false, error: (err && err.message) || "Kontrol çalıştırılamadı." });
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const slots = supplierManager.listSlots();
@@ -5462,6 +5514,7 @@ const supplierScheduler = createSupplierScheduler({
       runPriceAlertCheck().catch(() => {});
     }, 3 * 60 * 1000);
     if (typeof alertTimer.unref === "function") alertTimer.unref();
+    scheduleSupplierReconcile(10 * 60 * 1000);
   },
   log: (...parts) => console.log(...parts),
   logError: (...parts) => console.error(...parts),
@@ -5492,6 +5545,7 @@ setImmediate(() => {
   scheduleSupplierImageProbe(10 * 60 * 1000);
   scheduleImageBackgroundRun(5 * 60 * 1000);
   scheduleOfficialImagesRun(7 * 60 * 1000);
+  if (!reconcileStore.latest()) scheduleSupplierReconcile(12 * 60 * 1000);
 });
 const xmlCategorySyncTimer = setTimeout(() => {
   if (!bootstrapSnapshotsReady()) enqueueXmlCategorySync();

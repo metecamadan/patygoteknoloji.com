@@ -554,3 +554,39 @@ test("admin category tree API publishes only active categories to the public fee
     ["yaprak-2", "yaprak-1"]
   );
 });
+
+test("supplier reconcile API is admin-only and records a run on demand", async (t) => {
+  const password = "test-admin-password";
+  const { baseUrl } = await spawnTestServer(t, {
+    ADMIN_PASSWORD: password,
+    SUPPLIER_ALLOWED_HOSTS: "supplier.example",
+  });
+  const anonymous = await fetch(baseUrl + "/api/admin/supplier/reconcile");
+  assert.equal(anonymous.status, 401);
+  const anonymousRun = await fetch(baseUrl + "/api/admin/supplier/reconcile", { method: "POST" });
+  assert.equal(anonymousRun.status, 401);
+
+  const login = await fetch(baseUrl + "/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  const { token } = await login.json();
+  const auth = { Authorization: "Bearer " + token };
+
+  const before = await (await fetch(baseUrl + "/api/admin/supplier/reconcile", { headers: auth })).json();
+  assert.equal(before.latest, null);
+  assert.deepEqual(before.history, []);
+  assert.ok(before.buckets.some((bucket) => bucket.key === "nocat" && bucket.filter === "nocat"));
+
+  const run = await fetch(baseUrl + "/api/admin/supplier/reconcile", { method: "POST", headers: auth });
+  assert.equal(run.status, 200);
+  const ran = await run.json();
+  assert.equal(typeof ran.latest.stocked, "number");
+  assert.equal(typeof ran.latest.buckets.akakce.count, "number");
+  assert.deepEqual(ran.lastAlerts, [], "the first run is the baseline");
+
+  const after = await (await fetch(baseUrl + "/api/admin/supplier/reconcile", { headers: auth })).json();
+  assert.equal(after.history.length, 1);
+  assert.equal(after.latest.at, ran.latest.at);
+});

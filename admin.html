@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p44" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-29" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-30" />
   <script>
     (function () {
       try {
@@ -1321,12 +1321,32 @@
               </section>
             </div>
 
+            <div class="admin-xml-layout admin-feed-layout">
+              <section class="admin-card admin-xml-card" id="reconcileCard" aria-labelledby="reconcileTitle">
+                <div class="admin-card-head">
+                  <div><span class="admin-eyebrow">TEDARİKÇİ ↔ SATIŞ</span><h2 id="reconcileTitle">Stokta ama satışta olmayanlar</h2></div>
+                  <div class="admin-card-head-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="reconcileRunBtn">Şimdi kontrol et</button>
+                  </div>
+                </div>
+                <p class="admin-hint" style="margin-top:0">Her XML okumasından 10 dakika sonra tedarikçide stokta olan her ürün tek bir nedene ayrılır. Beklenmeyen nedenlerde (kategori, görsel, fiyat…) artış olursa e-posta gönderilir.</p>
+                <p class="admin-note" id="reconcileMeta" role="status"></p>
+                <div class="admin-table-wrap">
+                  <table class="admin-table admin-reconcile-table">
+                    <thead><tr><th scope="col">Durum</th><th scope="col">Ürün</th><th scope="col">Önceki kontrole göre</th><th scope="col">Örnekler (en çok stoklu)</th><th scope="col"><span class="sr-only">Listele</span></th></tr></thead>
+                    <tbody id="reconcileRows"><tr><td colspan="5" class="admin-table-empty">Henüz kontrol yapılmadı.</td></tr></tbody>
+                  </table>
+                </div>
+                <p class="admin-note" id="reconcileNote" role="status"></p>
+              </section>
+            </div>
+
           </div>
         </section>
       </div>
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-31"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-32"></script>
 </body>
 </html>
