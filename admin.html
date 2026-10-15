@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p44" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-30" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-32" />
   <script>
     (function () {
       try {
@@ -1105,30 +1105,43 @@
 
         <section id="adminTabCategories" class="admin-tab-panel" aria-labelledby="categoriesTab" hidden>
           <div class="admin-page">
-            <div class="admin-overview-grid admin-overview-grid-2">
-              <section class="admin-card">
-                <div class="admin-card-head">
-                  <div>
-                    <span class="admin-eyebrow">WEB MENÜSÜ</span>
-                    <h2>Kategori ağacı</h2>
-                    <p class="admin-field-help">Sitede görünen adı buradan değiştirin. Ağaç ANA → ARA → ALT şeklindedir. Tutamacı sürükleyerek sıra değiştirin.</p>
-                  </div>
+            <section class="admin-card admin-cat-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">WEB MENÜSÜ</span>
+                  <h2>Kategori ağacı</h2>
+                  <p class="admin-field-help">Sitede görünen adı buradan değiştirin. Ağaç ANA → ARA → ALT şeklindedir. Tutamacı sürükleyerek sıra değiştirin.</p>
                 </div>
-                <div class="admin-cat-toolbar">
-                  <button type="button" class="btn btn-ghost btn-xs" id="catExpandAllBtn">Tümünü aç</button>
-                  <button type="button" class="btn btn-ghost btn-xs" id="catCollapseAllBtn">Tümünü kapat</button>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="catAddParentBtn">+ Ana kategori</button>
                 </div>
-                <div id="categoryTreeList" class="admin-cat-tree"></div>
-                <p class="admin-note" id="categoryTreeNote" role="status"></p>
-              </section>
-              <section class="admin-card">
-                <div class="admin-card-head">
-                  <div>
-                    <span class="admin-eyebrow">DÜZENLE</span>
-                    <h2 id="categoryFormTitle">Kategori ekle</h2>
-                  </div>
+              </div>
+              <div class="admin-cat-toolbar">
+                <button type="button" class="btn btn-ghost btn-xs" id="catExpandAllBtn">Tümünü aç</button>
+                <button type="button" class="btn btn-ghost btn-xs" id="catCollapseAllBtn">Tümünü kapat</button>
+              </div>
+              <div class="admin-cat-grid" role="table" aria-label="Kategori ağacı">
+                <div class="admin-cat-row admin-cat-head" role="row">
+                  <span role="columnheader" class="admin-cat-head-spacer"><span class="sr-only">Sıra</span></span>
+                  <span role="columnheader" class="admin-cat-head-spacer"><span class="sr-only">Aç / kapat</span></span>
+                  <span role="columnheader">Kategori</span>
+                  <span role="columnheader" class="admin-cat-slug">Adres kodu</span>
+                  <span role="columnheader" class="admin-cat-count">Alt</span>
+                  <span role="columnheader">Webde</span>
+                  <span role="columnheader" class="admin-cat-actions">İşlem</span>
                 </div>
-                <form id="categoryForm" class="admin-form">
+                <div id="categoryTreeList" class="admin-cat-tree" role="rowgroup"></div>
+              </div>
+              <p class="admin-note" id="categoryTreeNote" role="status"></p>
+            </section>
+            <div id="categoryFormModal" class="admin-modal" hidden>
+              <div class="admin-modal-backdrop" data-close-category-modal tabindex="-1"></div>
+              <div class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="categoryFormTitle">
+                <div class="admin-modal-head">
+                  <h2 id="categoryFormTitle">Kategori ekle</h2>
+                  <button type="button" class="admin-modal-close" data-close-category-modal aria-label="Kategori formunu kapat">×</button>
+                </div>
+                <form id="categoryForm" class="admin-form admin-modal-form">
                   <input type="hidden" id="catEditKey" value="" />
                   <div class="field">
                     <label for="catParentSlug">Tür</label>
@@ -1149,11 +1162,12 @@
                   <label class="admin-checks"><input type="checkbox" id="catActive" checked /> Webde yayında</label>
                   <div class="admin-form-actions">
                     <button type="submit" class="btn btn-primary" id="catSaveBtn">Kaydet / Yayınla</button>
-                    <button type="button" class="btn btn-outline" id="catResetBtn">Temizle</button>
+                    <button type="button" class="btn btn-outline" id="catResetBtn">Vazgeç</button>
                     <button type="button" class="btn btn-ghost" id="catDeleteBtn" hidden>Sil</button>
                   </div>
+                  <p class="admin-note" id="categoryFormNote" role="status"></p>
                 </form>
-              </section>
+              </div>
             </div>
             <section class="admin-card admin-product-pool-card">
               <div class="admin-card-head">
@@ -1347,6 +1361,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-32"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-33"></script>
 </body>
 </html>

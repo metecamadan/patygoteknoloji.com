@@ -8304,6 +8304,137 @@
     });
   }
 
+  const categoryFormModal = document.getElementById("categoryFormModal");
+  const categoryFormNote = document.getElementById("categoryFormNote");
+
+  function isCategoryModalOpen() {
+    return categoryFormModal && !categoryFormModal.hidden;
+  }
+
+  function openCategoryModal(title) {
+    if (!categoryFormModal) return;
+    if (categoryFormTitle) categoryFormTitle.textContent = title;
+    note(categoryFormNote, "", "");
+    categoryFormModal.hidden = false;
+    document.body.classList.add("admin-modal-open");
+    setTimeout(() => catName && catName.focus(), 0);
+  }
+
+  function closeCategoryModal() {
+    if (!categoryFormModal) return;
+    categoryFormModal.hidden = true;
+    if (!isProductModalOpen() && !isSupplierFeedModalOpen()) document.body.classList.remove("admin-modal-open");
+  }
+
+  function openCategoryAdd(parentValue, title) {
+    resetCategoryForm();
+    catSlug.dataset.manual = "";
+    catParentSlug.value = parentValue;
+    catParentSlug.disabled = false;
+    openCategoryModal(title);
+  }
+
+  function openCategoryEdit(editKey, parentValue, node, title) {
+    resetCategoryForm();
+    catEditKey.value = editKey;
+    catParentSlug.value = parentValue;
+    catParentSlug.disabled = true;
+    catName.value = node.name;
+    catSlug.value = node.slug;
+    catSlug.readOnly = true;
+    catActive.checked = node.active !== false;
+    catDeleteBtn.hidden = false;
+    openCategoryModal(title);
+  }
+
+  function makeCategoryToggle(expanded, label, onToggle) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "admin-cat-toggle";
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    toggle.setAttribute("aria-label", label + (expanded ? " altlarını gizle" : " altlarını göster"));
+    toggle.textContent = "▸";
+    toggle.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      onToggle();
+      renderCategoryTree();
+    });
+    return toggle;
+  }
+
+  function makeCategoryPublish(node, locate) {
+    return makePublishSwitch(node.active, node.name + " yayın", async (input) => {
+      const next = cloneCategoryTree(categoryTree);
+      const target = locate(next);
+      if (target) target.active = input.checked;
+      try {
+        await persistCategoryTree(
+          next,
+          input.checked ? node.name + " webde yayına alındı." : node.name + " yayından kaldırıldı."
+        );
+      } catch (err) {
+        input.checked = !input.checked;
+        note(categoryTreeNote, "err", err.message);
+      }
+    });
+  }
+
+  function makeCategoryButton(label, className, onClick) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-xs " + className;
+    btn.textContent = label;
+    btn.addEventListener("click", onClick);
+    return btn;
+  }
+
+  /** One row per category; every level shares the same columns so new columns line up. */
+  function buildCategoryRow(options) {
+    const row = document.createElement("div");
+    row.className = "admin-cat-row admin-cat-level-" + options.level;
+    row.setAttribute("role", "row");
+    bindCategoryDropTarget(row, options.drop);
+    row.appendChild(createCategoryHandle(options.drop));
+    if (options.toggle) {
+      row.appendChild(options.toggle);
+    } else {
+      const spacer = document.createElement("span");
+      spacer.className = "admin-cat-toggle-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      row.appendChild(spacer);
+    }
+    const nameCell = document.createElement("div");
+    nameCell.className = "admin-cat-name";
+    nameCell.setAttribute("role", "cell");
+    const strong = document.createElement("strong");
+    strong.textContent = options.node.name;
+    nameCell.appendChild(strong);
+    if (options.node.active === false) {
+      const draft = document.createElement("span");
+      draft.className = "admin-cat-draft";
+      draft.textContent = "taslak";
+      nameCell.appendChild(draft);
+    }
+    row.appendChild(nameCell);
+    const slug = document.createElement("span");
+    slug.className = "admin-cat-slug";
+    slug.setAttribute("role", "cell");
+    slug.textContent = options.node.slug;
+    row.appendChild(slug);
+    const count = document.createElement("span");
+    count.className = "admin-cat-count";
+    count.setAttribute("role", "cell");
+    count.textContent = options.countText;
+    row.appendChild(count);
+    row.appendChild(options.publish);
+    const actions = document.createElement("div");
+    actions.className = "admin-cat-actions";
+    actions.setAttribute("role", "cell");
+    options.actions.forEach((btn) => actions.appendChild(btn));
+    row.appendChild(actions);
+    return row;
+  }
+
   function renderCategoryTree() {
     if (!categoryTreeList) return;
     categoryTreeList.textContent = "";
@@ -8311,256 +8442,85 @@
     if (!categoryTree.length) {
       const empty = document.createElement("p");
       empty.className = "admin-table-empty";
-      empty.textContent = "Henüz kategori yok. Sağdaki formdan ana kategori ekleyin.";
+      empty.textContent = "Henüz kategori yok. “+ Ana kategori” ile ekleyin.";
       categoryTreeList.appendChild(empty);
       return;
     }
     categoryTree.forEach((parent, parentIndex) => {
-      const card = document.createElement("article");
       const expanded = expandedCategorySlugs.has(parent.slug);
-      card.className = "admin-cat-parent" + (expanded ? "" : " is-collapsed");
-      bindCategoryDropTarget(card, { kind: "parent", index: parentIndex });
-      const head = document.createElement("div");
-      head.className = "admin-cat-row";
-      const title = document.createElement("div");
-      const strong = document.createElement("strong");
-      strong.textContent = parent.name;
-      const count = document.createElement("span");
-      count.className = "admin-cat-count";
-      count.textContent = (parent.children || []).length + " ara";
-      strong.appendChild(count);
-      const slug = document.createElement("span");
-      slug.className = "admin-cat-slug";
-      slug.textContent = parent.slug + (parent.active ? "" : " · taslak");
-      title.appendChild(strong);
-      title.appendChild(slug);
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className = "admin-cat-toggle";
-      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
-      toggle.setAttribute("aria-label", parent.name + (expanded ? " altlarını gizle" : " altlarını göster"));
-      toggle.textContent = "▸";
-      toggle.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        if (expandedCategorySlugs.has(parent.slug)) expandedCategorySlugs.delete(parent.slug);
-        else expandedCategorySlugs.add(parent.slug);
-        renderCategoryTree();
-      });
-      const publish = makePublishSwitch(parent.active, parent.name + " yayın", async (input) => {
-        const next = cloneCategoryTree(categoryTree);
-        if (next[parentIndex]) next[parentIndex].active = input.checked;
-        try {
-          await persistCategoryTree(
-            next,
-            input.checked ? parent.name + " webde yayına alındı." : parent.name + " yayından kaldırıldı."
-          );
-        } catch (err) {
-          input.checked = !input.checked;
-          note(categoryTreeNote, "err", err.message);
-        }
-      });
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.className = "btn btn-ghost btn-xs";
-      editBtn.textContent = "Düzenle";
-      editBtn.addEventListener("click", () => {
-        expandedCategorySlugs.add(parent.slug);
-        catEditKey.value = parent.slug;
-        catParentSlug.value = "";
-        catParentSlug.disabled = true;
-        catName.value = parent.name;
-        catSlug.value = parent.slug;
-        catSlug.readOnly = true;
-        catActive.checked = parent.active !== false;
-        catDeleteBtn.hidden = false;
-        if (categoryFormTitle) categoryFormTitle.textContent = "Ana kategori düzenle";
-        renderCategoryTree();
-      });
-      head.appendChild(createCategoryHandle({ kind: "parent", index: parentIndex }));
-      head.appendChild(toggle);
-      head.appendChild(title);
-      head.appendChild(publish);
-      head.appendChild(editBtn);
-      card.appendChild(head);
-
-      const children = document.createElement("div");
-      children.className = "admin-cat-children";
+      categoryTreeList.appendChild(
+        buildCategoryRow({
+          level: 0,
+          node: parent,
+          drop: { kind: "parent", index: parentIndex },
+          toggle: makeCategoryToggle(expanded, parent.name, () => {
+            if (expandedCategorySlugs.has(parent.slug)) expandedCategorySlugs.delete(parent.slug);
+            else expandedCategorySlugs.add(parent.slug);
+          }),
+          countText: (parent.children || []).length + " ara",
+          publish: makeCategoryPublish(parent, (next) => next[parentIndex]),
+          actions: [
+            makeCategoryButton("+ Ara kategori", "btn-outline", () => {
+              expandedCategorySlugs.add(parent.slug);
+              openCategoryAdd(parent.slug, "Ara kategori ekle");
+            }),
+            makeCategoryButton("Düzenle", "btn-ghost", () =>
+              openCategoryEdit(parent.slug, "", parent, "Ana kategori düzenle")
+            ),
+          ],
+        })
+      );
+      if (!expanded) return;
       (parent.children || []).forEach((child, childIndex) => {
         const midKey = parent.slug + "/" + child.slug;
         const midExpanded = expandedMidKeys.has(midKey);
-        const row = document.createElement("div");
-        row.className = "admin-cat-row admin-cat-row-child" + (midExpanded ? "" : " is-mid-collapsed");
-        bindCategoryDropTarget(row, {
-          kind: "child",
-          parentIndex: parentIndex,
-          childIndex: childIndex,
-        });
-        const childTitle = document.createElement("div");
-        const childName = document.createElement("strong");
-        childName.textContent = child.name;
-        const midCount = document.createElement("span");
-        midCount.className = "admin-cat-count";
-        midCount.textContent = (child.children || []).length + " alt";
-        childName.appendChild(midCount);
-        const childSlug = document.createElement("span");
-        childSlug.className = "admin-cat-slug";
-        childSlug.textContent = child.slug + (child.active ? "" : " · taslak");
-        childTitle.appendChild(childName);
-        childTitle.appendChild(childSlug);
-        const midToggle = document.createElement("button");
-        midToggle.type = "button";
-        midToggle.className = "admin-cat-toggle";
-        midToggle.setAttribute("aria-expanded", midExpanded ? "true" : "false");
-        midToggle.textContent = "▸";
-        midToggle.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          if (expandedMidKeys.has(midKey)) expandedMidKeys.delete(midKey);
-          else expandedMidKeys.add(midKey);
-          renderCategoryTree();
-        });
-        const childPublish = makePublishSwitch(child.active, child.name + " yayın", async (input) => {
-          const next = cloneCategoryTree(categoryTree);
-          if (next[parentIndex] && next[parentIndex].children[childIndex]) {
-            next[parentIndex].children[childIndex].active = input.checked;
-          }
-          try {
-            await persistCategoryTree(
-              next,
-              input.checked ? child.name + " webde yayına alındı." : child.name + " yayından kaldırıldı."
-            );
-          } catch (err) {
-            input.checked = !input.checked;
-            note(categoryTreeNote, "err", err.message);
-          }
-        });
-        const childEdit = document.createElement("button");
-        childEdit.type = "button";
-        childEdit.className = "btn btn-ghost btn-xs";
-        childEdit.textContent = "Düzenle";
-        childEdit.addEventListener("click", () => {
-          expandedCategorySlugs.add(parent.slug);
-          catEditKey.value = parent.slug + "/" + child.slug;
-          catParentSlug.value = parent.slug;
-          catParentSlug.disabled = true;
-          catName.value = child.name;
-          catSlug.value = child.slug;
-          catSlug.readOnly = true;
-          catActive.checked = child.active !== false;
-          catDeleteBtn.hidden = false;
-          if (categoryFormTitle) categoryFormTitle.textContent = "Ara kategori düzenle";
-        });
-        row.appendChild(
-          createCategoryHandle({
-            kind: "child",
-            parentIndex: parentIndex,
-            childIndex: childIndex,
+        categoryTreeList.appendChild(
+          buildCategoryRow({
+            level: 1,
+            node: child,
+            drop: { kind: "child", parentIndex: parentIndex, childIndex: childIndex },
+            toggle: makeCategoryToggle(midExpanded, child.name, () => {
+              if (expandedMidKeys.has(midKey)) expandedMidKeys.delete(midKey);
+              else expandedMidKeys.add(midKey);
+            }),
+            countText: (child.children || []).length + " alt",
+            publish: makeCategoryPublish(child, (next) => next[parentIndex] && next[parentIndex].children[childIndex]),
+            actions: [
+              makeCategoryButton("+ Alt kategori", "btn-outline", () => {
+                expandedMidKeys.add(midKey);
+                openCategoryAdd(midKey, "Alt kategori ekle");
+              }),
+              makeCategoryButton("Düzenle", "btn-ghost", () =>
+                openCategoryEdit(midKey, parent.slug, child, "Ara kategori düzenle")
+              ),
+            ],
           })
         );
-        row.appendChild(midToggle);
-        row.appendChild(childTitle);
-        row.appendChild(childPublish);
-        row.appendChild(childEdit);
-        children.appendChild(row);
-
-        const leavesWrap = document.createElement("div");
-        leavesWrap.className = "admin-cat-leaves" + (midExpanded ? "" : " is-collapsed");
+        if (!midExpanded) return;
         (child.children || []).forEach((leaf, grandIndex) => {
-          const leafRow = document.createElement("div");
-          leafRow.className = "admin-cat-row admin-cat-row-leaf";
-          bindCategoryDropTarget(leafRow, {
-            kind: "grandchild",
-            parentIndex: parentIndex,
-            childIndex: childIndex,
-            grandIndex: grandIndex,
-          });
-          const leafTitle = document.createElement("div");
-          const leafName = document.createElement("strong");
-          leafName.textContent = leaf.name;
-          const leafSlug = document.createElement("span");
-          leafSlug.className = "admin-cat-slug";
-          leafSlug.textContent = leaf.slug + (leaf.active ? "" : " · taslak");
-          leafTitle.appendChild(leafName);
-          leafTitle.appendChild(leafSlug);
-          const leafPublish = makePublishSwitch(leaf.active, leaf.name + " yayın", async (input) => {
-            const next = cloneCategoryTree(categoryTree);
-            const target =
-              next[parentIndex] &&
-              next[parentIndex].children[childIndex] &&
-              next[parentIndex].children[childIndex].children[grandIndex];
-            if (target) target.active = input.checked;
-            try {
-              await persistCategoryTree(
-                next,
-                input.checked ? leaf.name + " webde yayına alındı." : leaf.name + " yayından kaldırıldı."
-              );
-            } catch (err) {
-              input.checked = !input.checked;
-              note(categoryTreeNote, "err", err.message);
-            }
-          });
-          const leafEdit = document.createElement("button");
-          leafEdit.type = "button";
-          leafEdit.className = "btn btn-ghost btn-xs";
-          leafEdit.textContent = "Düzenle";
-          leafEdit.addEventListener("click", () => {
-            expandedCategorySlugs.add(parent.slug);
-            expandedMidKeys.add(midKey);
-            catEditKey.value = parent.slug + "/" + child.slug + "/" + leaf.slug;
-            catParentSlug.value = parent.slug + "/" + child.slug;
-            catParentSlug.disabled = true;
-            catName.value = leaf.name;
-            catSlug.value = leaf.slug;
-            catSlug.readOnly = true;
-            catActive.checked = leaf.active !== false;
-            catDeleteBtn.hidden = false;
-            if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori düzenle";
-          });
-          leafRow.appendChild(
-            createCategoryHandle({
-              kind: "grandchild",
-              parentIndex: parentIndex,
-              childIndex: childIndex,
-              grandIndex: grandIndex,
+          categoryTreeList.appendChild(
+            buildCategoryRow({
+              level: 2,
+              node: leaf,
+              drop: { kind: "grandchild", parentIndex: parentIndex, childIndex: childIndex, grandIndex: grandIndex },
+              toggle: null,
+              countText: "—",
+              publish: makeCategoryPublish(
+                leaf,
+                (next) =>
+                  next[parentIndex] &&
+                  next[parentIndex].children[childIndex] &&
+                  next[parentIndex].children[childIndex].children[grandIndex]
+              ),
+              actions: [
+                makeCategoryButton("Düzenle", "btn-ghost", () =>
+                  openCategoryEdit(midKey + "/" + leaf.slug, midKey, leaf, "Alt kategori düzenle")
+                ),
+              ],
             })
           );
-          leafRow.appendChild(leafTitle);
-          leafRow.appendChild(leafPublish);
-          leafRow.appendChild(leafEdit);
-          leavesWrap.appendChild(leafRow);
         });
-        const addLeaf = document.createElement("button");
-        addLeaf.type = "button";
-        addLeaf.className = "btn btn-outline btn-xs";
-        addLeaf.textContent = "+ Alt kategori";
-        addLeaf.addEventListener("click", () => {
-          expandedCategorySlugs.add(parent.slug);
-          expandedMidKeys.add(midKey);
-          resetCategoryForm();
-          catParentSlug.value = parent.slug + "/" + child.slug;
-          catParentSlug.disabled = false;
-          if (categoryFormTitle) categoryFormTitle.textContent = "Alt kategori ekle";
-          if (catName) catName.focus();
-          renderCategoryTree();
-        });
-        leavesWrap.appendChild(addLeaf);
-        children.appendChild(leavesWrap);
       });
-      const addChild = document.createElement("button");
-      addChild.type = "button";
-      addChild.className = "btn btn-outline btn-xs";
-      addChild.textContent = "+ Ara kategori";
-      addChild.addEventListener("click", () => {
-        expandedCategorySlugs.add(parent.slug);
-        resetCategoryForm();
-        catParentSlug.value = parent.slug;
-        catParentSlug.disabled = false;
-        if (categoryFormTitle) categoryFormTitle.textContent = "Ara kategori ekle";
-        if (catName) catName.focus();
-        renderCategoryTree();
-      });
-      children.appendChild(addChild);
-      card.appendChild(children);
-      categoryTreeList.appendChild(card);
     });
   }
 
@@ -8654,8 +8614,9 @@
         await persistCategoryTree(next, "Kategori adı kaydedildi. XML ürünleri aynı koda bağlanmaya devam eder.");
         resetCategoryForm();
         catSlug.dataset.manual = "";
+        closeCategoryModal();
       } catch (err) {
-        note(categoryTreeNote, "err", err.message);
+        note(categoryFormNote, "err", err.message);
       }
     });
   }
@@ -8664,9 +8625,20 @@
     document.getElementById("catResetBtn").addEventListener("click", () => {
       resetCategoryForm();
       catSlug.dataset.manual = "";
-      note(categoryTreeNote, "", "");
+      closeCategoryModal();
     });
   }
+
+  const catAddParentBtn = document.getElementById("catAddParentBtn");
+  if (catAddParentBtn) {
+    catAddParentBtn.addEventListener("click", () => openCategoryAdd("", "Ana kategori ekle"));
+  }
+  document.querySelectorAll("[data-close-category-modal]").forEach((el) => {
+    el.addEventListener("click", () => closeCategoryModal());
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && isCategoryModalOpen()) closeCategoryModal();
+  });
 
   if (catDeleteBtn) {
     catDeleteBtn.addEventListener("click", async () => {
@@ -8692,8 +8664,9 @@
         }
         await persistCategoryTree(next, "Kategori silindi.");
         resetCategoryForm();
+        closeCategoryModal();
       } catch (err) {
-        note(categoryTreeNote, "err", err.message);
+        note(categoryFormNote, "err", err.message);
       }
     });
   }

@@ -185,13 +185,34 @@ test("admin categories tab manages the site category tree", () => {
   assert.match(css, /\.admin-cat-handle/);
   assert.match(html, /id="catExpandAllBtn"/);
   assert.match(html, /id="catCollapseAllBtn"/);
-  assert.match(css, /\.admin-cat-parent\.is-collapsed/);
   assert.match(script, /expandedCategorySlugs/);
   assert.match(script, /catSlug\.readOnly/);
   assert.match(html, /id="productPoolBody"/);
   assert.match(html, /Ürün havuzu/);
   assert.match(script, /status=pool|status: "pool"/);
   assert.match(script, /Yayına al/);
+});
+
+test("category tree is a full-width row list; add/edit opens in a modal", () => {
+  const tab = html.slice(html.indexOf('id="adminTabCategories"'), html.indexOf('id="adminTabXml"'));
+  assert.doesNotMatch(tab, /admin-overview-grid-2/, "the tree does not share its row with the form");
+  assert.match(tab, /class="admin-cat-grid" role="table"[\s\S]*?class="admin-cat-row admin-cat-head" role="row"/);
+  for (const column of ["Kategori", "Adres kodu", "Alt", "Webde", "İşlem"]) {
+    assert.match(tab, new RegExp('role="columnheader"[^>]*>' + column + "<"), column + " sütunu");
+  }
+  assert.match(tab, /id="catAddParentBtn"/);
+  assert.match(tab, /id="categoryFormModal" class="admin-modal" hidden[\s\S]*?id="categoryForm"/);
+  assert.match(tab, /data-close-category-modal/);
+  assert.match(tab, /id="categoryFormNote"/);
+  assert.match(script, /function buildCategoryRow\(options\)/);
+  assert.match(script, /"admin-cat-row admin-cat-level-" \+ options\.level/);
+  assert.match(script, /openCategoryEdit\(midKey \+ "\/" \+ leaf\.slug, midKey, leaf, "Alt kategori düzenle"\)/);
+  assert.match(script, /openCategoryAdd\(midKey, "Alt kategori ekle"\)/);
+  assert.match(script, /openCategoryAdd\("", "Ana kategori ekle"\)/);
+  assert.match(script, /ev\.key === "Escape" && isCategoryModalOpen\(\)/);
+  assert.match(script, /closeCategoryModal\(\);\s*\} catch \(err\) \{\s*note\(categoryFormNote/);
+  assert.match(css, /\.admin-cat-row \{[^}]*grid-template-columns: 28px 28px minmax\(220px, 1\.4fr\)/);
+  assert.match(css, /\.admin-cat-level-2 \.admin-cat-name \{ padding-left: 44px; \}/);
 });
 
 test("order detail is a summary strip plus tabs, keeping every action id wired", () => {
@@ -572,7 +593,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-30/);
+  assert.match(html, /admin\.css\?v=siparis-32/);
 });
 
 test("admin panel exposes dark theme toggle in the top bar", () => {
