@@ -257,6 +257,9 @@ test("product page offers the alert form with consent; KVKK lists purpose and re
   const detail = read("assets/js/urun-detay.js");
   const main = read("assets/js/main.js");
   const kvkk = read("kvkk.html");
+  assert.match(detail, /function hasServerRenderedProduct\(/);
+  assert.match(detail, /function renderMissingProduct\(/);
+  assert.match(detail, /if \(hasServerRenderedProduct\(\)\) return;/);
   assert.match(detail, /buyRow\.appendChild\(buildPriceAlert\(product, "price"\)\)/);
   assert.match(detail, /stockRow\.appendChild\(buildPriceAlert\(product, "stock"\)\)/, "tükenen üründe stok formu");
   assert.match(detail, /fetch\("\/api\/price-alerts"/);

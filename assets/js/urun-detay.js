@@ -825,13 +825,29 @@
   // render() runs again when fresher data arrives; GA counts one view per product.
   let gaViewedId = "";
 
-  function render(product, categories) {
+  /** SSR already painted the product; a late API timeout must not wipe it with "bulunamadı". */
+  function hasServerRenderedProduct() {
+    return Boolean(
+      root &&
+        (root.querySelector(".detail-ssr") ||
+          document.getElementById("product-jsonld") ||
+          (root.dataset && root.dataset.ssrProduct === "1"))
+    );
+  }
+
+  function renderMissingProduct() {
+    if (hasServerRenderedProduct()) return;
     root.textContent = "";
+    root.innerHTML =
+      '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürün kataloğuna dön</a></p>';
+  }
+
+  function render(product, categories) {
     if (!product) {
-      root.innerHTML =
-        '<p style="color:var(--muted)">Ürün bulunamadı. <a href="/urunler" style="color:var(--brand)">Ürün kataloğuna dön</a></p>';
+      renderMissingProduct();
       return;
     }
+    root.textContent = "";
     loadSimilar(product);
     const soldOut = product.soldOut === true;
 
@@ -1356,10 +1372,10 @@
             .catch(() => {});
         }
       } else if (!cached) {
-        render(null, cats);
+        renderMissingProduct();
       }
     } catch (_) {
-      if (!cached) render(null, cats);
+      if (!cached) renderMissingProduct();
     }
 
     if (typeof window.PatygoCatalog.loadCategories === "function") {

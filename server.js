@@ -984,6 +984,8 @@ function loadProducts() {
 function saveProducts(list) {
   fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), "utf8");
   invalidateStorefrontCatalog();
+  rebuildStorefrontCatalogNow(false);
+  warmStorefrontCatalog();
 }
 
 function slugify(input) {
@@ -1111,10 +1113,12 @@ function writeLegacyRedirectConf(routeIndex) {
 function clearCatalogBootstrapSnapshots() {
   try {
     if (!fs.existsSync(CATALOG_BOOTSTRAP_DIR)) return;
-    const keep = new Set(["categories.json", "all.json", "home-featured.json"]);
+    // Keep categories.json only: nginx serves it with no Node fallback and invalidate
+    // rewrites it immediately. all.json / leaf listings / home-featured must drop so
+    // /api/products does not return a pre-invalidate order (e.g. restock still last).
     for (const name of fs.readdirSync(CATALOG_BOOTSTRAP_DIR)) {
       if (!name.endsWith(".json")) continue;
-      if (keep.has(name)) continue;
+      if (name === "categories.json") continue;
       fs.unlinkSync(path.join(CATALOG_BOOTSTRAP_DIR, name));
     }
   } catch (_) {}
@@ -1122,14 +1126,18 @@ function clearCatalogBootstrapSnapshots() {
 
 function invalidateStorefrontCatalog() {
   akakceFeedSummaryMemo = { products: null, summary: null };
-  storefrontCatalogMemo.active = null;
-  storefrontCatalogMemo.all = null;
+  // Keep the last warm index until rebuildStorefrontCatalogNow swaps a fresh one in.
+  // Nulling it left every product page without SSR while 17k rows re-indexed on the
+  // event loop (panel margin save → client timeout → "Ürün bulunamadı").
+  if (storefrontCatalogMemo.active) storefrontCatalogMemo.active.stale = true;
+  if (storefrontCatalogMemo.all) storefrontCatalogMemo.all.stale = true;
   soldOutCatalogMemo.index = null;
   akakceXmlMemo = null;
   if (warmCatalogTimer) {
     clearTimeout(warmCatalogTimer);
     warmCatalogTimer = null;
   }
+  clearCatalogBootstrapSnapshots();
   // nginx serves /listing/categories.json straight from disk with no Node fallback,
   // so the file must be replaced atomically, never deleted.
   try {
@@ -1261,6 +1269,8 @@ function readHomeFeaturedSnapshot() {
 function mergedProducts(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
   const hit = storefrontCatalogMemo[key];
+  // Stale product lists still serve HTML/SSR; scheduleWarm / rebuildStorefrontCatalogNow
+  // swaps a fresh list in without ever nulling the memo under a concurrent reader.
   if (hit && Array.isArray(hit.products)) return hit.products;
   const products = mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
     includeInactiveManual,
@@ -1268,28 +1278,39 @@ function mergedProducts(includeInactiveManual) {
     categoryDefaults: CATEGORY_FEED_DEFAULTS,
     ...catalogImageContext(),
   });
-  storefrontCatalogMemo[key] = { products, index: null };
+  storefrontCatalogMemo[key] = { products, index: null, stale: false };
   return products;
+}
+
+/** Fresh merge + index, then atomic swap so readers never see a cleared memo. */
+function rebuildStorefrontCatalogNow(includeInactiveManual) {
+  const key = includeInactiveManual ? "all" : "active";
+  const day = new Date().toISOString().slice(0, 10);
+  const products = mergeCatalogProducts(loadProducts(), supplierManager.listProducts(), {
+    includeInactiveManual,
+    normalizeProduct,
+    categoryDefaults: CATEGORY_FEED_DEFAULTS,
+    ...catalogImageContext(),
+  });
+  if (!includeInactiveManual) recordPriceHistory(products);
+  const index = buildStorefrontIndex(products, catalogImageContext());
+  storefrontCatalogMemo[key] = { products, index, day, stale: false };
+  if (!includeInactiveManual) {
+    recordPublishedProductPaths(index);
+    warmSearchIndex(index);
+  }
+  return index;
 }
 
 setPublicCategoryLeafKeysLoader(() => buildStorefrontLeafKeys(storefrontIndex(false)));
 
 function storefrontIndex(includeInactiveManual) {
   const key = includeInactiveManual ? "all" : "active";
-  const products = mergedProducts(includeInactiveManual);
   const memo = storefrontCatalogMemo[key];
   // compareAtPrice depends on the calendar day (30-day window), so the index is rebuilt daily.
   const day = new Date().toISOString().slice(0, 10);
-  if (!memo.index || memo.day !== day) {
-    if (!includeInactiveManual) recordPriceHistory(products);
-    memo.index = buildStorefrontIndex(products, catalogImageContext());
-    memo.day = day;
-    if (!includeInactiveManual) {
-      recordPublishedProductPaths(memo.index);
-      warmSearchIndex(memo.index);
-    }
-  }
-  return memo.index;
+  if (memo && memo.index && memo.day === day) return memo.index;
+  return rebuildStorefrontCatalogNow(includeInactiveManual);
 }
 
 /** The first shopper search after a catalog rebuild should not pay for the word index. */
@@ -1532,13 +1553,13 @@ function writeCategoriesBootstrapSnapshot(payload) {
   if (payload && Array.isArray(payload.categories)) {
     categories = payload.categories;
   } else {
-    // Prefer a warm storefront index for empty-leaf filtering. Never call storefrontIndex()
-    // here: panel category saves used to rebuild the whole catalog before answering and
-    // the admin UI timed out (12s), then rolled the input back even when the save succeeded.
+    // Prefer a fresh warm index for empty-leaf filtering. Never call storefrontIndex() here
+    // (that rebuilt the whole catalog on every panel save). A stale memo's leaf keys would
+    // hide brand-new categories until products exist in the old index — write unfiltered then.
     let leafKeys = null;
     try {
-      const warm = storefrontCatalogMemo.active && storefrontCatalogMemo.active.index;
-      if (warm) leafKeys = buildStorefrontLeafKeys(warm);
+      const memo = storefrontCatalogMemo.active;
+      if (memo && memo.index && !memo.stale) leafKeys = buildStorefrontLeafKeys(memo.index);
     } catch (_) {}
     categories = publicCategories(categoryStore.list(), { leafKeys });
   }
@@ -1577,13 +1598,17 @@ function bootstrapSnapshotsReady() {
 
 function scheduleWarmStorefrontCatalog() {
   if (warmCatalogTimer) clearTimeout(warmCatalogTimer);
+  // Swap a fresh index as soon as the current request finishes, without ever nulling the
+  // warm memo under shoppers (that hole made product pages time out → "Ürün bulunamadı").
   warmCatalogTimer = setTimeout(() => {
     warmCatalogTimer = null;
     try {
-      storefrontIndex(false);
+      if (!storefrontCatalogMemo.active || storefrontCatalogMemo.active.stale) {
+        rebuildStorefrontCatalogNow(false);
+      }
       writeCatalogBootstrapSnapshots();
     } catch (_) {}
-  }, 400);
+  }, 0);
   if (typeof warmCatalogTimer.unref === "function") warmCatalogTimer.unref();
 }
 
@@ -4658,8 +4683,12 @@ async function handleApi(req, res, urlPath) {
         } catch (_) {}
         scheduleAkakceFeedSummaryWarm();
       }
-      // Menu bootstrap + listing snapshots refresh after the response; do not block the panel.
+      // Keep the previous warm index visible; swap a fresh one without a null hole.
       invalidateStorefrontCatalog();
+      if (pricingChanges.length) {
+        // Prices must match the impact we just reported before the next storefront read.
+        rebuildStorefrontCatalogNow(false);
+      }
       warmStorefrontCatalog();
       return json(res, 200, { ok: true, categories, pricing });
     } catch (err) {
@@ -5080,6 +5109,8 @@ async function handleApi(req, res, urlPath) {
       }
       supplierManager.updateProducts(updates);
       invalidateStorefrontCatalog();
+      // Barcode / active / category patches must hit Akakçe and product pages on the next read.
+      rebuildStorefrontCatalogNow(false);
       warmStorefrontCatalog();
       scheduleAkakceFeedSummaryWarm();
       // A product newly placed in the menu has never been a storefront candidate, so its
@@ -5321,6 +5352,9 @@ function catalogBootstrapSnapshotName(params) {
 }
 
 function readCatalogBootstrapSnapshot(requestUrl) {
+  // While the warm index is marked stale, disk snapshots are from the previous catalog
+  // generation — fall through to the live query against the (still-serving) memo.
+  if (storefrontCatalogMemo.active && storefrontCatalogMemo.active.stale) return null;
   const name = catalogBootstrapSnapshotName(requestUrl.searchParams);
   if (!name) return null;
   const file = path.join(CATALOG_BOOTSTRAP_DIR, name);

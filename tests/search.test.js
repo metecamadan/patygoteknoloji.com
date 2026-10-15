@@ -187,7 +187,7 @@ test("storefront search builds its word index once per catalog index and the ser
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   const body = (name) => server.slice(server.indexOf("function " + name + "("), server.indexOf("\n}\n", server.indexOf("function " + name + "(")));
-  assert.match(body("storefrontIndex"), /warmSearchIndex\(memo\.index\)/);
+  assert.match(body("storefrontIndex"), /warmSearchIndex\(index\)/);
   assert.match(body("soldOutIndex"), /warmSearchIndex\(index\)/);
   assert.match(body("warmSearchIndex"), /setImmediate[\s\S]*storefrontSearchIndex\(index\)/);
 });

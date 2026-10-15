@@ -153,8 +153,13 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   );
   assert.match(
     serverJs,
-    /Never call storefrontIndex\(\)[\s\S]*?here: panel category saves/
+    /Never call storefrontIndex\(\)[\s\S]*?rebuilt the whole catalog on every panel save/
   );
+  assert.match(serverJs, /function rebuildStorefrontCatalogNow\(/);
+  assert.match(serverJs, /storefrontCatalogMemo\.active\.stale = true/);
+  assert.match(serverJs, /Keep the last warm index until rebuildStorefrontCatalogNow/);
+  assert.match(serverJs, /clearCatalogBootstrapSnapshots\(\)/);
+  assert.match(serverJs, /all\.json \/ leaf listings \/ home-featured must drop/);
   assert.match(serverJs, /ensureCategoriesBootstrapSnapshot/);
   assert.match(serverJs, /scheduleWarmStorefrontCatalog/);
   assert.match(serverJs, /bootstrapSnapshotsReady/);
