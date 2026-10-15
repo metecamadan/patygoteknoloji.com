@@ -2,8 +2,8 @@
   "version": 1,
   "files": {
     "/assets/css/admin.css": {
-      "v": "siparis-42",
-      "sha256": "034e27df2e70bedfd6ceca4a59b166f1ced65d44af24e1fd1147e40b57a8cc7d"
+      "v": "siparis-43",
+      "sha256": "161eba92e3ea28c0b3b4518bbc51d0286c6a972c83f2fe4b747c402fd8c5e8f6"
     },
     "/assets/css/style.css": {
       "v": "storefront-p44",
@@ -14,12 +14,12 @@
       "sha256": "a1b4184976a8465dea908da2b5021db4f17994faa2bbc52f66a530966b539958"
     },
     "/assets/js/admin-login.js": {
-      "v": "siparis-44",
-      "sha256": "8344ae8a1ea2439d11803b65b42d7a1ef8ebce4c518d998fb5960014fa8206bb"
+      "v": "siparis-45",
+      "sha256": "0d4dc10b2b91b41000f1b7ea056406759745095e9cefe2d63b977c716d6e7af2"
     },
     "/assets/js/admin-panel.js": {
-      "v": "siparis-44",
-      "sha256": "8422e81300e2a254a19567ac5bf1bbb7595341083cff431a4c538ce3026a5fda"
+      "v": "siparis-45",
+      "sha256": "c2c3a94d7228e6f56b478bfede2a12111515e6b8dbced448e25502f738b87b3c"
     },
     "/assets/js/cargo-label.js": {
       "v": "cargo-1",
@@ -30,8 +30,8 @@
       "sha256": "dde7f911644916b53acbd00fd34224daf2048c726aa3b7ecb6ab847dec09ad99"
     },
     "/assets/js/catalog.js": {
-      "v": "storefront-p45",
-      "sha256": "5a08a1f61bcda96bd203cb99da4399d09e9e89f36cc93ad296a729d90c8419f6"
+      "v": "storefront-p46",
+      "sha256": "b4f453f19c7ccb646e945ccb00e834a3f7f86a30d850c052a33d48607ddb2c9a"
     },
     "/assets/js/checkout.js": {
       "v": "checkout-p12",

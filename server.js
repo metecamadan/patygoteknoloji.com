@@ -1157,6 +1157,7 @@ function flattenCategoryPricing(tree) {
         label: pathNames.join(" › "),
         marginPercent: Number.isFinite(node.marginPercent) ? node.marginPercent : null,
         criticalStockQty: Number.isFinite(node.criticalStockQty) ? node.criticalStockQty : null,
+        basamak: Number.isFinite(node.basamak) ? node.basamak : null,
       });
       walk(node.children, pathSlugs, pathNames);
     });
@@ -1168,16 +1169,18 @@ function flattenCategoryPricing(tree) {
 function categoryPricingChanges(before, after) {
   const prev = flattenCategoryPricing(before);
   const next = flattenCategoryPricing(after);
+  const fields = ["marginPercent", "criticalStockQty", "basamak"];
+  const empty = { marginPercent: null, criticalStockQty: null, basamak: null };
   const changes = [];
   next.forEach((row, key) => {
-    const old = prev.get(key) || { marginPercent: null, criticalStockQty: null };
-    ["marginPercent", "criticalStockQty"].forEach((field) => {
+    const old = prev.get(key) || empty;
+    fields.forEach((field) => {
       if (old[field] !== row[field]) changes.push({ path: key, label: row.label, field, from: old[field], to: row[field] });
     });
   });
   prev.forEach((row, key) => {
     if (next.has(key)) return;
-    ["marginPercent", "criticalStockQty"].forEach((field) => {
+    fields.forEach((field) => {
       if (row[field] !== null) changes.push({ path: key, label: row.label, field, from: row[field], to: null });
     });
   });

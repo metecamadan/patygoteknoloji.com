@@ -8647,40 +8647,60 @@
   function inheritCategoryPricing(node, inherited) {
     const margin = ownCategoryValue(node, "marginPercent");
     const critical = ownCategoryValue(node, "criticalStockQty");
+    const basamak = ownCategoryValue(node, "basamak");
     return {
       margin: margin !== null ? margin : inherited.margin,
       marginFrom: margin !== null ? node.name : inherited.marginFrom,
       critical: critical !== null ? critical : inherited.critical,
       criticalFrom: critical !== null ? node.name : inherited.criticalFrom,
+      basamak: basamak !== null ? basamak : inherited.basamak,
+      basamakFrom: basamak !== null ? node.name : inherited.basamakFrom,
     };
+  }
+
+  function categoryPricingFieldMeta(field) {
+    if (field === "marginPercent") {
+      return { kind: "margin", label: "Ek marj %", className: "admin-cat-margin", max: "500", step: "0.1", decimal: true };
+    }
+    if (field === "basamak") {
+      return { kind: "basamak", label: "Basamak", className: "admin-cat-basamak", max: "9", step: "1", decimal: false };
+    }
+    return { kind: "critical", label: "Kritik stok", className: "admin-cat-critical", max: "9999", step: "1", decimal: false };
   }
 
   function makeCategoryPricingCell(options) {
     const base = categoryPricingBase();
-    const isMargin = options.field === "marginPercent";
+    const meta = categoryPricingFieldMeta(options.field);
+    const isMargin = meta.kind === "margin";
+    const isBasamak = meta.kind === "basamak";
     const cell = document.createElement("label");
-    cell.className = "admin-cat-pricing " + (isMargin ? "admin-cat-margin" : "admin-cat-critical");
+    cell.className = "admin-cat-pricing " + meta.className;
     cell.setAttribute("role", "cell");
     const caption = document.createElement("span");
     caption.className = "admin-cat-pricing-label";
-    caption.textContent = isMargin ? "Ek marj %" : "Kritik stok";
+    caption.textContent = meta.label;
     cell.appendChild(caption);
     const input = document.createElement("input");
     input.type = "number";
     input.min = "0";
-    input.max = isMargin ? "500" : "9999";
-    input.step = isMargin ? "0.1" : "1";
-    input.inputMode = isMargin ? "decimal" : "numeric";
+    input.max = meta.max;
+    input.step = meta.step;
+    input.inputMode = meta.decimal ? "decimal" : "numeric";
     const own = ownCategoryValue(options.node, options.field);
-    const inheritedValue = isMargin ? options.inherited.margin : options.inherited.critical;
-    const inheritedFrom = isMargin ? options.inherited.marginFrom : options.inherited.criticalFrom;
-    const fallback = inheritedValue !== null ? inheritedValue : isMargin ? 0 : base.critical;
+    const inheritedValue = isMargin
+      ? options.inherited.margin
+      : isBasamak
+        ? options.inherited.basamak
+        : options.inherited.critical;
+    const inheritedFrom = isMargin
+      ? options.inherited.marginFrom
+      : isBasamak
+        ? options.inherited.basamakFrom
+        : options.inherited.criticalFrom;
+    const fallback = inheritedValue !== null ? inheritedValue : isMargin ? 0 : isBasamak ? null : base.critical;
     input.value = own === null ? "" : String(own);
     input.placeholder = fallback === null ? "" : String(fallback);
-    input.setAttribute(
-      "aria-label",
-      options.node.name + (isMargin ? " ek marjı (%)" : " kritik stok")
-    );
+    input.setAttribute("aria-label", options.node.name + " " + meta.label);
     const effective = own !== null ? own : fallback;
     if (isMargin) {
       input.title =
@@ -8696,6 +8716,13 @@
             formatPercent(effective || 0) +
             "). Ürüne özel kâr oranı girilen ürünlerde yalnızca o oran kullanılır."
           : "");
+    } else if (isBasamak) {
+      input.title =
+        own === null
+          ? inheritedValue !== null
+            ? "Boş: " + inheritedFrom + " kategorisinden basamak " + inheritedValue + "."
+            : "Boş: basamak uygulanmaz; fiyat marj sonrası olduğu gibi kalır."
+          : "KDV dahil fiyat her 1.000 ₺ diliminde …" + own + "99,99’a yukarı yuvarlanır.";
     } else {
       input.title =
         own === null
@@ -8712,10 +8739,11 @@
       if (raw === "") delete target[options.field];
       else target[options.field] = Number(raw);
       input.disabled = true;
+      const fieldWord = isMargin ? " ek marjı " : isBasamak ? " basamağı " : " kritik stoğu ";
       try {
         const data = await persistCategoryTree(
           next,
-          options.node.name + (isMargin ? " ek marjı " : " kritik stoğu ") +
+          options.node.name + fieldWord +
             (raw === "" ? "kaldırıldı; üst kategoriden devralır." : "kaydedildi.")
         );
         if (data && data.pricing) {
@@ -8723,8 +8751,12 @@
             categoryTreeNote,
             "ok",
             options.node.name +
-              (isMargin ? " ek marjı " : " kritik stoğu ") +
-              (raw === "" ? "kaldırıldı; üst kategoriden devralır." : isMargin ? "%" + formatPercent(raw) + " oldu." : raw + " oldu.") +
+              fieldWord +
+              (raw === ""
+                ? "kaldırıldı; üst kategoriden devralır."
+                : isMargin
+                  ? "%" + formatPercent(raw) + " oldu."
+                  : raw + " oldu.") +
               pricingImpactText(data.pricing)
           );
         }
@@ -8984,6 +9016,9 @@
     slug.setAttribute("role", "cell");
     slug.textContent = options.node.slug;
     row.appendChild(slug);
+    row.appendChild(
+      makeCategoryPricingCell({ node: options.node, locate: options.locate, inherited: options.inherited, field: "basamak" })
+    );
     const products = document.createElement("span");
     products.className = "admin-cat-products";
     products.setAttribute("role", "cell");
@@ -9025,7 +9060,14 @@
       categoryTreeList.appendChild(empty);
       return;
     }
-    const rootPricing = { margin: null, marginFrom: "", critical: null, criticalFrom: "" };
+    const rootPricing = {
+      margin: null,
+      marginFrom: "",
+      critical: null,
+      criticalFrom: "",
+      basamak: null,
+      basamakFrom: "",
+    };
     categoryTree.forEach((parent, parentIndex) => {
       const expanded = expandedCategorySlugs.has(parent.slug);
       const locateParent = (next) => next[parentIndex];

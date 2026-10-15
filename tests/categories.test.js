@@ -462,6 +462,8 @@ test("category margin and critical stock persist, inherit leaf → mid → paren
       marginCategory: "Notebook",
       criticalStockQty: 5,
       criticalCategory: "Oyun",
+      basamak: null,
+      basamakCategory: "",
     });
     assert.equal(at("notebook", "is").marginPercent, 0, "an explicit 0 stops inheritance");
     assert.equal(at("masaustu", "mini").marginPercent, 8);
@@ -471,16 +473,48 @@ test("category margin and critical stock persist, inherit leaf → mid → paren
       marginCategory: "",
       criticalStockQty: null,
       criticalCategory: "",
+      basamak: null,
+      basamakCategory: "",
     });
 
     assert.throws(() => store.save([{ name: "X", slug: "x", marginPercent: -1 }]), /0 ile 500/);
     assert.throws(() => store.save([{ name: "X", slug: "x", criticalStockQty: 1.5 }]), /tam sayı/);
     assert.throws(() => store.save([{ name: "X", slug: "x", marginPercent: "abc" }]), /sayı olmalı/);
+    assert.throws(() => store.save([{ name: "X", slug: "x", basamak: 10 }]), /0 ile 9/);
     assert.equal(store.list()[0].marginPercent, 8, "a rejected save leaves the tree untouched");
+
+    const withBasamak = store.save([
+      {
+        name: "Bilgisayar",
+        slug: "bilgisayar",
+        marginPercent: 8,
+        criticalStockQty: 2,
+        basamak: 9,
+        children: [
+          {
+            name: "Notebook",
+            slug: "notebook",
+            marginPercent: 12.5,
+            children: [
+              { name: "Oyun", slug: "oyun", criticalStockQty: 5, basamak: 7 },
+              { name: "İş", slug: "is", marginPercent: 0 },
+            ],
+          },
+          { name: "Masaüstü", slug: "masaustu", children: [{ name: "Mini", slug: "mini" }] },
+        ],
+      },
+    ]);
+    assert.equal(withBasamak[0].basamak, 9);
+    const tree2 = store.list();
+    const at2 = (mid, leaf) =>
+      resolveCategoryPricing(assignedSiteCategory({ siteParent: "bilgisayar", siteMid: mid, siteChild: leaf }, tree2));
+    assert.equal(at2("notebook", "oyun").basamak, 7, "leaf basamak wins");
+    assert.equal(at2("masaustu", "mini").basamak, 9, "parent basamak is inherited");
+    assert.equal(at2("notebook", "is").basamak, 9, "mid without own basamak inherits parent");
 
     const publicJson = JSON.stringify(store.publicList({ leafKeys: null }));
     assert.match(publicJson, /Bilgisayar/);
-    assert.doesNotMatch(publicJson, /marginPercent|criticalStockQty/);
+    assert.doesNotMatch(publicJson, /marginPercent|criticalStockQty|basamak/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

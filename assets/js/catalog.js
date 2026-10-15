@@ -74,18 +74,30 @@
       const n = Number(value);
       return this.ALLOWED_VAT.includes(n) ? n : 20;
     },
-    /** Stored price is KDV hariç; returns KDV dahil tutar. */
+    /** Stored price is KDV hariç; returns KDV dahil tutar (basamak varsa X99,99’a yukarı). */
     priceInclVat(productOrPrice, vatPercent) {
       let net;
       let vat;
+      let basamak = null;
       if (productOrPrice && typeof productOrPrice === "object") {
         net = Number(productOrPrice.price) || 0;
         vat = this.normalizeVatPercent(productOrPrice.vatPercent);
+        basamak = productOrPrice.basamak;
       } else {
         net = Number(productOrPrice) || 0;
         vat = this.normalizeVatPercent(vatPercent);
       }
-      return Math.round(net * (1 + vat / 100) * 100) / 100;
+      const gross = Math.round(net * (1 + vat / 100) * 100) / 100;
+      if (basamak === null || basamak === undefined || basamak === "") return gross;
+      const digit = Number(basamak);
+      if (!Number.isInteger(digit) || digit < 0 || digit > 9) return gross;
+      const cents = Math.round(gross * 100);
+      const mod = 100000;
+      const target = digit * 10000 + 9999;
+      const rem = ((cents % mod) + mod) % mod;
+      let next = cents - rem + target;
+      if (next < cents) next += mod;
+      return next / 100;
     },
     /** Server sends compareAtPrice only for a real drop vs the lowest price of the prior 30 days. */
     discountInfo(product) {
