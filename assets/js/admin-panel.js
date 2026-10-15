@@ -3021,13 +3021,13 @@
     return Number(value).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
   }
 
-  /** Server's before/after count of published XML products, shown after a margin or critical stock change. */
+  /** Server's before/after count of published XML products (KDV dahil + basamak), after margin/critical/basamak. */
   function pricingImpactText(pricing) {
     if (!pricing) return "";
     const parts = [];
     if (pricing.changed) {
       parts.push(
-        "Fiyatı değişen ürün: " +
+        "KDV dahil vitrin fiyatı değişen ürün: " +
           pricing.changed +
           " (" +
           pricing.up +

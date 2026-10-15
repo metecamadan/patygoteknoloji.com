@@ -659,6 +659,11 @@ test("category rows edit their own margin and critical stock; inherited values a
   assert.match(script, /if \(raw === ""\) delete target\[options\.field\];/, "clearing a value makes the category inherit again");
   assert.match(script, /pricingImpactText\(data\.pricing\)/);
   assert.match(script, /pricingImpactText\(saved && saved\.pricing\)/);
+  assert.match(script, /KDV dahil vitrin fiyatı değişen ürün/);
+  assert.match(
+    fs.readFileSync(path.join(root, "server.js"), "utf8"),
+    /priceInclVat\(net, item\.vatPercent, item\.basamak\)/
+  );
   assert.match(script, /isAdminCategories[\s\S]{0,40}\? 60000/);
   assert.match(script, /timeout: 60000/);
   assert.match(script, /await loadCategoryTree\(\)/);
@@ -696,8 +701,8 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
   assert.match(script, /fetch\("\/api\/admin\/export"/);
   assert.match(script, /Authorization: "Bearer " \+ token/);
   assert.match(script, /URL\.revokeObjectURL\(url\)/);
-  assert.match(loginScript, /admin-panel\.js\?v=siparis-45/);
-  assert.match(html, /admin-login\.js\?v=siparis-45/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-46/);
+  assert.match(html, /admin-login\.js\?v=siparis-46/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {

@@ -188,6 +188,14 @@ test("category margin and critical stock reprice the live storefront and report 
   assert.equal(row.marginSource, "category");
   assert.equal(row.marginCategory, "İşlemciler");
 
+  mid.basamak = 9;
+  saved = await saveTree();
+  assert.ok(saved.pricing && saved.pricing.changed >= 1, "basamak KDV dahil vitrin fiyatını değiştirir");
+  assert.ok(saved.pricing.up >= 1, "basamak yukarı yuvarlar");
+  const withBasamak = await (await fetch(baseUrl + "/api/products?id=sup-cpu-1")).json();
+  assert.equal(withBasamak.products[0].basamak, 9);
+  assert.equal(withBasamak.products[0].price, 3108, "net salePrice aynı kalır; basamak KDV dahil tarafta");
+
   mid.children.find((leaf) => leaf.slug === "intel-islemciler").criticalStockQty = 4;
   saved = await saveTree();
   assert.equal(saved.pricing.closed, 1, "stock 4 at a category critical stock of 4 leaves the storefront");
@@ -213,6 +221,7 @@ test("category margin and critical stock reprice the live storefront and report 
   assert.equal(settingsBody.pricing.changed, 0);
 
   mid.children.find((leaf) => leaf.slug === "intel-islemciler").criticalStockQty = null;
+  mid.basamak = null;
   await saveTree();
   assert.equal(await publicPrice(), 3108);
   const putSettings = (patch) =>

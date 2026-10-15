@@ -1187,13 +1187,18 @@ function categoryPricingChanges(before, after) {
   return changes;
 }
 
-/** Sale price and sale visibility of every published XML product, for before/after reporting. */
+/** Shopper-facing (KDV dahil + basamak) price and sale visibility, for before/after reporting. */
 function supplierPriceSnapshot() {
   const { isSupplierOfferLive } = require("./lib/stock-visibility");
+  const { priceInclVat } = require("./lib/product-fields");
   const snapshot = new Map();
   supplierManager.listProducts().forEach((item) => {
     if (!item || item.active !== true || item.unlisted === true || item.siteCategoryAssigned !== true) return;
-    snapshot.set(item.id, { price: Number(item.salePrice) || 0, live: isSupplierOfferLive(item) });
+    const net = Number(item.salePrice) || 0;
+    snapshot.set(item.id, {
+      price: priceInclVat(net, item.vatPercent, item.basamak),
+      live: isSupplierOfferLive(item),
+    });
   });
   return snapshot;
 }
