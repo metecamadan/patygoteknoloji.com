@@ -186,8 +186,14 @@ test("storefront search builds its word index once per catalog index and the ser
   assert.equal(storefrontSearchIndex(index), built, "dizin yeniden kurulmaz");
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
-  const body = (name) => server.slice(server.indexOf("function " + name + "("), server.indexOf("\n}\n", server.indexOf("function " + name + "(")));
-  assert.match(body("storefrontIndex"), /warmSearchIndex\(index\)/);
+  // CRLF-safe: Windows checkouts use \r\n; slicing on \n}\n alone swallowed half the file.
+  const body = (name) => {
+    const start = server.indexOf("function " + name + "(");
+    const end = server.indexOf("\n}", start);
+    return end < 0 ? "" : server.slice(start, end + 2);
+  };
+  assert.match(body("rebuildStorefrontCatalogNow"), /warmSearchIndex\(index\)/);
+  assert.match(body("storefrontIndex"), /rebuildStorefrontCatalogNow\(/);
   assert.match(body("soldOutIndex"), /warmSearchIndex\(index\)/);
   assert.match(body("warmSearchIndex"), /setImmediate[\s\S]*storefrontSearchIndex\(index\)/);
 });
