@@ -42,6 +42,28 @@ Agent'ta resmî doküman yok; açık kaynaklar çelişiyor (eski Sendeo `LoginAE
 - Etiket: kendi barkodları/etiket PDF'i mi, bizim barkodumuz mu.
 - Durum bildirimi: webhook mu, sorgulama mı.
 
+### 3. Tedarikçi ↔ satış durum tablosu — tekrar bakılacak (15 Eki 2026)
+
+Kullanıcı "not et, daha sonra tekrar bakacağız" dedi. İlk rutin kontrol (15 Eki 13:10, kritik stok henüz 3, yeni kategoriler henüz uygulanmadı):
+
+| Durum | Ürün |
+|---|---|
+| Tedarikçide stokta | 7.789 |
+| Akakçe XML'inde | 4.725 |
+| Kritik stok eşiğinde | 1.857 |
+| Kategorisi menüde yok | 1.000 |
+| Kategori eşleşmedi | 64 |
+| Sitede ama barkod eksik (Akakçe'ye gitmiyor) | 115 |
+| Görsel kullanılamıyor | 7 |
+| Panelde kapatılmış | 20 |
+| Listeden kaldırılmış | 1 |
+
+Tekrar bakarken: panel XML Yönetimi → "Stokta ama satışta olmayanlar" kartındaki güncel sayılarla karşılaştır.
+
+- Beklenen: 16:00 okumasından sonra "menüde yok / eşleşmedi" belirgin düşer (29 yeni yaprak + stok kodu grubu kuralı), Akakçe sayısı artar.
+- Kritik stok panelde 2 yapılınca "kritik stok" ~1.470'e iner (stok 3 olan ~370 ürün açılır).
+- Kalanlar için karar: 115 barkodsuz ürün, tedarikçinin yanlış grupladığı ürünler (VGA → Kablo Bağı, HDMI → USB Kablolar, çakmak → Ses Kabloları), 5 stoklu Asonic sinek öldürücü (bilinçli dışarıda).
+
 ## Kapandı
 
 (yok)
