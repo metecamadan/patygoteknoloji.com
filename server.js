@@ -86,8 +86,12 @@ const {
   categoryQueryToPath,
   categoryHref,
   loadCategories,
+  assignedSiteCategory,
 } = require("./lib/categories");
 const { buildStorefrontSitemap } = require("./lib/sitemap");
+const { buildXlsx, XLSX_MIME } = require("./lib/xlsx");
+const { ensureListedProductCopy } = require("./lib/product-description");
+const { EXPORT_TABS, columnsForTab, buildExportRows, exportFileName, manualAsListed } = require("./lib/product-export");
 const {
   reconcileSupplierCatalog,
   createReconcileStore,
@@ -396,6 +400,55 @@ function soldOutAlertProduct(productId) {
 
 function alertProductInfo(productId) {
   return priceAlertProduct(productId) || soldOutAlertProduct(productId);
+}
+
+/** Panel "Fiyat Alarm / Stoğu Biten Ürün Talepleri": requests grouped per product, busiest first. */
+function adminAlertGroups(kind) {
+  const groups = new Map();
+  priceAlertStore.adminList(kind).forEach((alert) => {
+    let group = groups.get(alert.productId);
+    if (!group) {
+      const live = priceAlertProduct(alert.productId);
+      const soldOut = live ? null : soldOutAlertProduct(alert.productId);
+      const info = live || soldOut;
+      group = {
+        productId: alert.productId,
+        name: (info && info.name) || alert.productName || alert.productId,
+        urlPath: info ? info.urlPath : null,
+        image: info ? info.image : "",
+        state: live ? "live" : soldOut ? "soldout" : "gone",
+        priceIncl: live ? live.priceIncl : null,
+        lastRequestAt: alert.createdAt,
+        requests: [],
+      };
+      groups.set(alert.productId, group);
+    }
+    group.requests.push({
+      id: alert.id,
+      email: alert.email,
+      createdAt: alert.createdAt,
+      basePrice: alert.basePrice,
+      targetPrice: alert.targetPrice,
+      status: alert.status,
+      notifyCount: alert.notifyCount,
+      lastNotifiedAt: alert.lastNotifiedAt,
+    });
+  });
+  return Array.from(groups.values()).sort(
+    (a, b) => b.requests.length - a.requests.length || String(b.lastRequestAt).localeCompare(String(a.lastRequestAt))
+  );
+}
+
+/** Storefront state of a product for the Excel export: on sale, sold out with an open page, or absent. */
+function exportSiteState(productId) {
+  const id = String(productId || "");
+  if (!id) return { state: "", path: "" };
+  const index = storefrontIndex(false);
+  if (!index.compactById) index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
+  const item = index.compactById.get(id);
+  if (item) return { state: item.soldOut === true ? "soldout" : "live", path: item.urlPath || "" };
+  const soldOut = soldOutCompact(id);
+  return soldOut ? { state: "soldout", path: soldOut.urlPath || "" } : { state: "", path: "" };
 }
 
 let priceAlertRun = null;
@@ -2083,6 +2136,171 @@ function enrichSupplierProducts(products, categories) {
   });
 }
 
+/**
+ * XML Ürünleri / Listelenmeyen / Görselsiz list query. `all` returns every filtered row (Excel
+ * export) so the download matches the screen's filter, search and sort.
+ */
+function querySupplierProductsForAdmin(params, options) {
+  const all = Boolean(options && options.all);
+  const categories = loadCategories();
+  const feedReadyOf = (item) =>
+    analyzeSupplierFeedIssues(item, { siteBaseUrl: SITE_BASE_URL, categories }).length === 0;
+  const status = params.get("status") || "";
+  // "feedmissing" = in stock, published, Export badge "Eksik".
+  const feedMissing = status === "feedmissing";
+  const noImage = status === "noimage";
+  let match = null;
+  if (feedMissing) match = (item) => item.active === true && !feedReadyOf(item);
+  const imageState = noImage ? supplierXmlImageStateReader() : null;
+  if (noImage) {
+    const manual = params.get("image") || "";
+    match = (item) => {
+      if (item.unlisted) return false;
+      if (manual === "waiting" && item.imageOverride) return false;
+      if (manual === "added" && !item.imageOverride) return false;
+      const state = imageState(item);
+      return state === "missing" || state === "broken";
+    };
+  }
+  const queried = supplierManager.queryProducts({
+    q: params.get("q") || "",
+    status: feedMissing ? "stock" : noImage ? "" : status,
+    match,
+    reason: params.get("reason") || "",
+    inStock: params.get("stock") === "1",
+    slot: params.get("slot") || "",
+    page: params.get("page") || 1,
+    limit: params.get("limit") || 50,
+    all,
+    sort: params.get("sort") || "",
+    dir: params.get("dir") || "",
+    sortValues: {
+      // Mirrors the Export badge: Eksik (0) < "—" (1) < Hazır (2).
+      feed: (item) => (feedReadyOf(item) ? 2 : item.active ? 0 : 1),
+    },
+  });
+  if (all) return { queried, categories, imageState };
+  const products = enrichSupplierProducts(queried.products, categories);
+  if (imageState) {
+    products.forEach((item) => {
+      item.xmlImageState = imageState(item);
+    });
+  }
+  return { queried, products };
+}
+
+/** Every filtered row, enriched in batches so the storefront keeps answering during an export. */
+async function exportSupplierProducts(params) {
+  const { queried, categories, imageState } = querySupplierProductsForAdmin(params, { all: true });
+  const out = new Array(queried.products.length);
+  for (let i = 0; i < queried.products.length; i += 1) {
+    const [item] = enrichSupplierProducts([ensureListedProductCopy(queried.products[i])], categories);
+    if (imageState) item.xmlImageState = imageState(item);
+    out[i] = item;
+    if (i % 200 === 199) await new Promise((resolve) => setImmediate(resolve));
+  }
+  return out;
+}
+
+/** Beyaz Zemin Görselleri list (white background or official image decisions), newest first. */
+function imageDecisionRows(official, params) {
+  const wanted = params.get("status") || "";
+  const allowed = official ? ["applied", "reverted"] : ["whitened", "rejected", "reverted"];
+  const status = allowed.includes(wanted) ? wanted : allowed[0];
+  const q = String(params.get("q") || "").trim().toLocaleLowerCase("tr");
+  const byFile = productsByImageFile(supplierManager.listProducts(), loadMirrorIndex(DATA_ROOT), SITE_BASE_URL);
+  const index = official ? loadOfficialIndex(DATA_ROOT) : loadBackgroundIndex(DATA_ROOT);
+  const rows = [];
+  for (const [file, entry] of Object.entries(index)) {
+    if (!entry || entry.status !== status) continue;
+    // Images whose product left the XML are not on the site; nothing to review.
+    const products = (byFile.get(file) || []).map((p) => ({
+      id: p.id,
+      sku: p.supplierSku || "",
+      name: p.name || "",
+      active: p.active === true,
+    }));
+    if (!products.length) continue;
+    if (q && !products.some((p) => (p.name + " " + p.sku).toLocaleLowerCase("tr").includes(q))) continue;
+    const row = {
+      file,
+      status: entry.status,
+      at: entry.decidedAt || entry.at || "",
+      decidedBy: entry.decidedBy || "",
+      original: "/media/catalog/" + file,
+      products,
+    };
+    if (official) {
+      row.source = entry.source || "";
+      row.pageUrl = /^https:\/\//.test(String(entry.pageUrl || "")) ? entry.pageUrl : "";
+      row.official = entry.officialFile ? "/media/catalog/" + entry.officialFile : "";
+    } else {
+      row.white = entry.whiteFile ? "/media/catalog/" + entry.whiteFile : "";
+    }
+    rows.push(row);
+  }
+  rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return { status, rows };
+}
+
+const ADMIN_EXPORT_MAX_ROWS = 50000;
+let adminExportRunning = false;
+
+/** Items for one Ürünler tab, filtered exactly like the panel list (all pages). */
+async function adminExportItems(tab, params, ids) {
+  const categories = loadCategories();
+  const enrichOne = (product) => (product ? enrichSupplierProducts([product], categories)[0] : null);
+  if (tab === "manual") {
+    const wanted = new Set((Array.isArray(ids) ? ids : []).map(String));
+    return loadProducts().filter((p) => wanted.has(String(p.id)));
+  }
+  if (tab === "xml" || tab === "unlisted" || tab === "noimage") {
+    const scoped = new URLSearchParams(params);
+    if (tab === "unlisted") scoped.set("status", "unlisted");
+    if (tab === "noimage") scoped.set("status", "noimage");
+    if (tab === "xml" && ["unlisted", "noimage"].includes(scoped.get("status") || "")) scoped.delete("status");
+    return exportSupplierProducts(scoped);
+  }
+  if (tab === "whitebg") {
+    const official = params.get("official") === "1";
+    const out = [];
+    imageDecisionRows(official, params).rows.forEach((image) => {
+      image.products.forEach((ref) => {
+        const full = enrichOne(supplierManager.getProductById(ref.id));
+        out.push({ image, product: full || { id: ref.id, supplierSku: ref.sku, name: ref.name, active: ref.active } });
+      });
+    });
+    return out;
+  }
+  if (tab === "alerts-price" || tab === "alerts-stock") {
+    if (!priceAlertStore) throw new Error("Alarm modülü kullanılamıyor.");
+    const manualById = new Map(loadProducts().map((p) => [String(p.id), p]));
+    const out = [];
+    adminAlertGroups(tab === "alerts-stock" ? "stock" : "price").forEach((group) => {
+      const supplier = supplierManager.getProductById(group.productId);
+      const manual = supplier ? null : manualById.get(String(group.productId));
+      const product = supplier ? enrichOne(supplier) : manual ? manualAsListed(manual) : null;
+      group.requests.forEach((request) => out.push({ group, request, product }));
+    });
+    return out;
+  }
+  return null;
+}
+
+function exportCategoryLabel(categories) {
+  return (product) => {
+    const assigned = assignedSiteCategory(
+      {
+        siteParent: product.siteParent || product.category,
+        siteMid: product.siteMid,
+        siteChild: product.siteChild,
+      },
+      categories
+    );
+    return assigned ? assigned.label : "";
+  };
+}
+
 function akakceFeedPublicMeta() {
   return {
     path: "/api/feeds/akakce.xml",
@@ -3490,40 +3708,7 @@ async function handleApi(req, res, urlPath) {
           return json(res, 200, { ok: true, counts: priceAlertStore.adminCounts() });
         }
         const kind = requestUrl.searchParams.get("kind") === "stock" ? "stock" : "price";
-        const groups = new Map();
-        priceAlertStore.adminList(kind).forEach((alert) => {
-          let group = groups.get(alert.productId);
-          if (!group) {
-            const live = priceAlertProduct(alert.productId);
-            const soldOut = live ? null : soldOutAlertProduct(alert.productId);
-            const info = live || soldOut;
-            group = {
-              productId: alert.productId,
-              name: (info && info.name) || alert.productName || alert.productId,
-              urlPath: info ? info.urlPath : null,
-              image: info ? info.image : "",
-              state: live ? "live" : soldOut ? "soldout" : "gone",
-              priceIncl: live ? live.priceIncl : null,
-              lastRequestAt: alert.createdAt,
-              requests: [],
-            };
-            groups.set(alert.productId, group);
-          }
-          group.requests.push({
-            id: alert.id,
-            email: alert.email,
-            createdAt: alert.createdAt,
-            basePrice: alert.basePrice,
-            targetPrice: alert.targetPrice,
-            status: alert.status,
-            notifyCount: alert.notifyCount,
-            lastNotifiedAt: alert.lastNotifiedAt,
-          });
-        });
-        const products = Array.from(groups.values()).sort(
-          (a, b) => b.requests.length - a.requests.length || String(b.lastRequestAt).localeCompare(String(a.lastRequestAt))
-        );
-        return json(res, 200, { ok: true, kind, counts: priceAlertStore.adminCounts(), products });
+        return json(res, 200, { ok: true, kind, counts: priceAlertStore.adminCounts(), products: adminAlertGroups(kind) });
       }
       if (req.method === "DELETE" && idParam) {
         const alert = priceAlertStore.remove(idParam);
@@ -4618,48 +4803,7 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "GET" && urlPath === "/api/admin/supplier/products") {
     const requestUrl = new URL(req.url || urlPath, `http://${req.headers.host || "localhost"}`);
     const slots = supplierManager.listSlots();
-    const categories = loadCategories();
-    const feedReadyOf = (item) =>
-      analyzeSupplierFeedIssues(item, { siteBaseUrl: SITE_BASE_URL, categories }).length === 0;
-    const status = requestUrl.searchParams.get("status") || "";
-    // "feedmissing" = in stock, published, Export badge "Eksik".
-    const feedMissing = status === "feedmissing";
-    const noImage = status === "noimage";
-    let match = null;
-    if (feedMissing) match = (item) => item.active === true && !feedReadyOf(item);
-    const imageState = noImage ? supplierXmlImageStateReader() : null;
-    if (noImage) {
-      const manual = requestUrl.searchParams.get("image") || "";
-      match = (item) => {
-        if (item.unlisted) return false;
-        if (manual === "waiting" && item.imageOverride) return false;
-        if (manual === "added" && !item.imageOverride) return false;
-        const state = imageState(item);
-        return state === "missing" || state === "broken";
-      };
-    }
-    const queried = supplierManager.queryProducts({
-      q: requestUrl.searchParams.get("q") || "",
-      status: feedMissing ? "stock" : noImage ? "" : status,
-      match,
-      reason: requestUrl.searchParams.get("reason") || "",
-      inStock: requestUrl.searchParams.get("stock") === "1",
-      slot: requestUrl.searchParams.get("slot") || "",
-      page: requestUrl.searchParams.get("page") || 1,
-      limit: requestUrl.searchParams.get("limit") || 50,
-      sort: requestUrl.searchParams.get("sort") || "",
-      dir: requestUrl.searchParams.get("dir") || "",
-      sortValues: {
-        // Mirrors the Export badge: Eksik (0) < "—" (1) < Hazır (2).
-        feed: (item) => (feedReadyOf(item) ? 2 : item.active ? 0 : 1),
-      },
-    });
-    const products = enrichSupplierProducts(queried.products, categories);
-    if (imageState) {
-      products.forEach((item) => {
-        item.xmlImageState = imageState(item);
-      });
-    }
+    const { queried, products } = querySupplierProductsForAdmin(requestUrl.searchParams);
     return json(res, 200, {
       products,
       total: queried.total,
@@ -4676,36 +4820,69 @@ async function handleApi(req, res, urlPath) {
     });
   }
 
+  if (req.method === "POST" && urlPath === "/api/admin/export") {
+    let body;
+    try {
+      body = JSON.parse((await readBody(req, 512 * 1024)).toString("utf8") || "{}");
+    } catch (_) {
+      return json(res, 400, { ok: false, error: "Geçersiz istek." });
+    }
+    const tab = String((body && body.tab) || "");
+    if (!Object.prototype.hasOwnProperty.call(EXPORT_TABS, tab)) {
+      return json(res, 422, { ok: false, error: "Bilinmeyen sekme." });
+    }
+    if (adminExportRunning) {
+      return json(res, 429, { ok: false, error: "Başka bir Excel dışa aktarması sürüyor. Birkaç saniye sonra tekrar deneyin." });
+    }
+    adminExportRunning = true;
+    try {
+      const params = new URLSearchParams(String(body.query || "").slice(0, 2000));
+      const items = await adminExportItems(tab, params, body.ids);
+      if (items.length > ADMIN_EXPORT_MAX_ROWS) {
+        return json(res, 422, { ok: false, error: "Liste çok büyük (" + items.length + " satır). Filtreyle daraltın." });
+      }
+      const ctx = {
+        siteBaseUrl: SITE_BASE_URL,
+        siteState: (product) => exportSiteState(product && product.id),
+        categoryLabel: exportCategoryLabel(loadCategories()),
+      };
+      const columns = columnsForTab(tab, { official: params.get("official") === "1" });
+      const rows = await buildExportRows(columns, items, ctx);
+      const buffer = await buildXlsx({ sheetName: EXPORT_TABS[tab].title, columns, rows });
+      try {
+        const session = getSession(req);
+        auditStore.record({
+          actorType: "admin_user",
+          actorId: session && session.userId,
+          action: "products.export",
+          entityType: "admin_export",
+          entityId: tab,
+          detail: { rows: items.length, query: params.toString().slice(0, 300) },
+          ip: clientIp(req),
+        });
+      } catch (_) {}
+      res.writeHead(
+        200,
+        securityHeaders({
+          "Content-Type": XLSX_MIME,
+          "Content-Disposition": 'attachment; filename="' + exportFileName(tab) + '"',
+          "Content-Length": buffer.length,
+          "Cache-Control": "no-store",
+          "X-Export-Rows": String(items.length),
+        })
+      );
+      return res.end(buffer);
+    } catch (err) {
+      return json(res, 500, { ok: false, error: (err && err.message) || "Excel hazırlanamadı." });
+    } finally {
+      adminExportRunning = false;
+    }
+  }
+
   if (req.method === "GET" && urlPath === "/api/admin/image-backgrounds") {
     const requestUrl = new URL(req.url || urlPath, "http://localhost");
-    const wanted = requestUrl.searchParams.get("status") || "";
-    const status = ["whitened", "rejected", "reverted"].includes(wanted) ? wanted : "whitened";
-    const q = String(requestUrl.searchParams.get("q") || "").trim().toLocaleLowerCase("tr");
     const limit = Math.min(100, Math.max(1, Number(requestUrl.searchParams.get("limit")) || 40));
-    const byFile = productsByImageFile(supplierManager.listProducts(), loadMirrorIndex(DATA_ROOT), SITE_BASE_URL);
-    const rows = [];
-    for (const [file, entry] of Object.entries(loadBackgroundIndex(DATA_ROOT))) {
-      if (!entry || entry.status !== status) continue;
-      // Images whose product left the XML are not on the site; nothing to review.
-      const products = (byFile.get(file) || []).map((p) => ({
-        id: p.id,
-        sku: p.supplierSku || "",
-        name: p.name || "",
-        active: p.active === true,
-      }));
-      if (!products.length) continue;
-      if (q && !products.some((p) => (p.name + " " + p.sku).toLocaleLowerCase("tr").includes(q))) continue;
-      rows.push({
-        file,
-        status: entry.status,
-        at: entry.decidedAt || entry.at || "",
-        decidedBy: entry.decidedBy || "",
-        original: "/media/catalog/" + file,
-        white: entry.whiteFile ? "/media/catalog/" + entry.whiteFile : "",
-        products,
-      });
-    }
-    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const { status, rows } = imageDecisionRows(false, requestUrl.searchParams);
     const totalPages = Math.max(1, Math.ceil(rows.length / limit));
     const page = Math.min(totalPages, Math.max(1, Number(requestUrl.searchParams.get("page")) || 1));
     return json(res, 200, {
@@ -4757,35 +4934,8 @@ async function handleApi(req, res, urlPath) {
 
   if (req.method === "GET" && urlPath === "/api/admin/official-images") {
     const requestUrl = new URL(req.url || urlPath, "http://localhost");
-    const wanted = requestUrl.searchParams.get("status") || "";
-    const status = ["applied", "reverted"].includes(wanted) ? wanted : "applied";
-    const q = String(requestUrl.searchParams.get("q") || "").trim().toLocaleLowerCase("tr");
     const limit = Math.min(100, Math.max(1, Number(requestUrl.searchParams.get("limit")) || 40));
-    const byFile = productsByImageFile(supplierManager.listProducts(), loadMirrorIndex(DATA_ROOT), SITE_BASE_URL);
-    const rows = [];
-    for (const [file, entry] of Object.entries(loadOfficialIndex(DATA_ROOT))) {
-      if (!entry || entry.status !== status) continue;
-      const products = (byFile.get(file) || []).map((p) => ({
-        id: p.id,
-        sku: p.supplierSku || "",
-        name: p.name || "",
-        active: p.active === true,
-      }));
-      if (!products.length) continue;
-      if (q && !products.some((p) => (p.name + " " + p.sku).toLocaleLowerCase("tr").includes(q))) continue;
-      rows.push({
-        file,
-        status: entry.status,
-        at: entry.decidedAt || entry.at || "",
-        decidedBy: entry.decidedBy || "",
-        source: entry.source || "",
-        pageUrl: /^https:\/\//.test(String(entry.pageUrl || "")) ? entry.pageUrl : "",
-        original: "/media/catalog/" + file,
-        official: entry.officialFile ? "/media/catalog/" + entry.officialFile : "",
-        products,
-      });
-    }
-    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const { status, rows } = imageDecisionRows(true, requestUrl.searchParams);
     const totalPages = Math.max(1, Math.ceil(rows.length / limit));
     const page = Math.min(totalPages, Math.max(1, Number(requestUrl.searchParams.get("page")) || 1));
     return json(res, 200, {

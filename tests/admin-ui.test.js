@@ -619,6 +619,34 @@ test("category rows edit their own margin and critical stock; inherited values a
   assert.doesNotMatch(html, /Genel kâr oranı/);
 });
 
+test("every Ürünler tab has an Excel export button wired to its on-screen filter", () => {
+  const buttons = {
+    manualExportBtn: '"manual"',
+    supplierExportBtn: '"xml"',
+    adminUnlistedExport: '"unlisted"',
+    adminNoImageExport: '"noimage"',
+    adminWhiteBgExport: '"whitebg"',
+    alertRequestsExport: '"alerts-stock"',
+  };
+  for (const [id, tab] of Object.entries(buttons)) {
+    assert.match(html, new RegExp('id="' + id + '"[^>]*>Excel\'e aktar</button>'), id);
+    const binding = script.indexOf('bindAdminExport("' + id + '"');
+    assert.ok(binding > 0, id + " is bound");
+    assert.ok(script.slice(binding, binding + 500).includes(tab), id + " exports " + tab);
+  }
+  assert.match(script, /ids: manualProductEntries\(\)\.visible\.map\(\(\{ product \}\) => product\.id\)/);
+  assert.match(script, /query: supplierQueryString\(\)/);
+  assert.match(script, /unlistedSort\.apply\(qs\);\s*return \{ tab: "unlisted"/);
+  assert.match(script, /noImageSort\.apply\(qs\);\s*return \{ tab: "noimage"/);
+  assert.match(script, /if \(official\) qs\.set\("official", "1"\);/);
+  assert.match(script, /const \{ entries, visible \} = manualProductEntries\(\);/, "the list and the export share one filter");
+  assert.match(script, /fetch\("\/api\/admin\/export"/);
+  assert.match(script, /Authorization: "Bearer " \+ token/);
+  assert.match(script, /URL\.revokeObjectURL\(url\)/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-39/);
+  assert.match(html, /admin-login\.js\?v=siparis-39/);
+});
+
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {
   assert.match(html, /id="supplierFxHint"/);
   assert.match(script, /renderFxHint\(results\[0\]\.fx\)/);

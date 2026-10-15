@@ -400,6 +400,7 @@
                   <p class="admin-card-lead">Sitede, ürün sayfasında, ödemede ve Akakçe XML'inde görünmeyen XML ürünleri: XML Ürünleri'nde “Listeden çıkar” denenler, site kategorisi menü ağacında artık bulunmayanlar ve tedarikçi kategorisi hiçbir menü kategorisiyle eşleşmeyenler. Menüdeki bir kategoriye taşınan ürün yayına alınır, buradan çıkar; stok ve görsel uygunsa sitede görünür.</p>
                 </div>
                 <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminUnlistedExport" title="Ekrandaki filtreyle eşleşen tüm ürünleri (tüm sayfalar) Excel dosyası olarak indirir">Excel'e aktar</button>
                   <button type="button" class="btn btn-outline btn-sm" id="adminUnlistedRefresh">Yenile</button>
                 </div>
               </div>
@@ -438,6 +439,7 @@
                   <p class="admin-card-lead">Tedarikçi XML'inde görseli olmayan veya görseli açılmayan (bulunamadı, boş görsel) ürünler. Sitede ve Akakçe'de görselsiz ürün gösterilmez. Görsel yükleyin, site kategorisini seçin ve yayına alın; stok ve fiyat uygunsa ürün sitede görünür.</p>
                 </div>
                 <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminNoImageExport" title="Ekrandaki filtreyle eşleşen tüm ürünleri (tüm sayfalar) Excel dosyası olarak indirir">Excel'e aktar</button>
                   <button type="button" class="btn btn-outline btn-sm" id="adminNoImageRefresh">Yenile</button>
                 </div>
               </div>
@@ -472,6 +474,7 @@
                   <p class="admin-note" id="adminWhiteBgTool" role="status"></p>
                 </div>
                 <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminWhiteBgExport" title="Ekrandaki filtreyle eşleşen tüm görselleri ve ürünlerini Excel dosyası olarak indirir">Excel'e aktar</button>
                   <button type="button" class="btn btn-outline btn-sm" id="adminWhiteBgRefresh">Yenile</button>
                 </div>
               </div>
@@ -772,6 +775,9 @@
       <section class="admin-card admin-catalog-card">
         <div class="admin-card-head">
           <div><h2>Ürün kataloğu</h2><span class="admin-list-count" id="productCount"></span></div>
+          <div class="admin-card-head-actions">
+            <button type="button" class="btn btn-outline btn-sm" id="manualExportBtn" title="Ekrandaki arama ve filtreyle eşleşen tüm manuel ürünleri Excel dosyası olarak indirir">Excel'e aktar</button>
+          </div>
         </div>
         <div id="productList" class="admin-list"></div>
         <p class="admin-note" id="catalogNote" role="status"></p>
@@ -926,6 +932,7 @@
                     <p class="admin-card-lead" id="alertRequestsLead"></p>
                   </div>
                   <div class="admin-card-head-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="alertRequestsExport" title="Tüm talepleri müşteri e-postalarıyla birlikte Excel dosyası olarak indirir">Excel'e aktar</button>
                     <button type="button" class="btn btn-outline btn-sm" id="alertRequestsRefresh">Yenile</button>
                   </div>
                 </div>
@@ -939,6 +946,7 @@
                 <div class="admin-card-head">
                   <div><span class="admin-eyebrow">XML ÜRÜNLERİ</span><h2>Tedarikçi ürün havuzu</h2><span class="admin-list-count" id="supplierVisibleCount">0 ürün</span></div>
                   <div class="admin-bulk-actions">
+                    <button type="button" class="btn btn-outline" id="supplierExportBtn" title="Ekrandaki arama, filtre ve sıralamayla eşleşen tüm ürünleri (tüm sayfalar) Excel dosyası olarak indirir">Excel'e aktar</button>
                     <button type="button" class="btn btn-outline" id="supplierBulkEnable">Seçilenleri Aktif Et</button>
                     <button type="button" class="btn btn-ghost" id="supplierBulkDisable">Pasif Et</button>
                   </div>
@@ -1324,6 +1332,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-38"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-39"></script>
 </body>
 </html>

@@ -1391,8 +1391,7 @@
     syncSaveButtonState();
   }
 
-  function renderList() {
-    productList.textContent = "";
+  function manualProductEntries() {
     const query = String(productSearch && productSearch.value ? productSearch.value : "")
       .trim()
       .toLocaleLowerCase("tr-TR");
@@ -1413,6 +1412,12 @@
         if (status === "inactive" && product.active !== false) return false;
         return true;
       });
+    return { entries, visible };
+  }
+
+  function renderList() {
+    productList.textContent = "";
+    const { entries, visible } = manualProductEntries();
     productCount.textContent = visible.length + " / " + entries.length + " ürün";
     if (!visible.length) {
       const empty = document.createElement("div");
@@ -3915,6 +3920,101 @@
       loadWhiteBgImages().catch(() => {});
     });
   }
+
+  // Excel export: the server applies the same filter, search and sort as the list on screen.
+  async function downloadAdminExport(tab, query, ids, button, noteEl) {
+    if (!token) return;
+    const label = button ? button.textContent : "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Hazırlanıyor…";
+    }
+    note(noteEl, "", "Excel hazırlanıyor…");
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 115000);
+    try {
+      const res = await fetch("/api/admin/export", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ tab: tab, query: query || "", ids: ids }),
+        signal: ctrl.signal,
+      });
+      if (res.status === 401) {
+        endSession("Oturum süresi doldu. Tekrar giriş yapın.");
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Excel hazırlanamadı (" + res.status + ")");
+      }
+      const blob = await res.blob();
+      const named = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = named ? named[1] : "patygo-urunler.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      touchActivity();
+      note(noteEl, "ok", (Number(res.headers.get("X-Export-Rows")) || 0) + " satır Excel'e aktarıldı.");
+    } catch (err) {
+      note(
+        noteEl,
+        "err",
+        err && err.name === "AbortError"
+          ? "Excel hazırlanırken zaman aşımı oldu. Listeyi filtreyle daraltıp tekrar deneyin."
+          : (err && err.message) || "Excel hazırlanamadı."
+      );
+    } finally {
+      clearTimeout(timer);
+      if (button) {
+        button.disabled = false;
+        button.textContent = label;
+      }
+    }
+  }
+
+  function bindAdminExport(buttonId, noteId, build) {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    button.addEventListener("click", () => {
+      const request = build();
+      downloadAdminExport(request.tab, request.query, request.ids, button, document.getElementById(noteId));
+    });
+  }
+
+  bindAdminExport("manualExportBtn", "catalogNote", () => ({
+    tab: "manual",
+    ids: manualProductEntries().visible.map(({ product }) => product.id),
+  }));
+  bindAdminExport("supplierExportBtn", "supplierProductsNote", () => ({
+    tab: "xml",
+    query: supplierQueryString(),
+  }));
+  bindAdminExport("adminUnlistedExport", "adminUnlistedNote", () => {
+    const qs = new URLSearchParams({ reason: unlistedReason, stock: unlistedInStock, q: unlistedQuery });
+    unlistedSort.apply(qs);
+    return { tab: "unlisted", query: qs.toString() };
+  });
+  bindAdminExport("adminNoImageExport", "adminNoImageNote", () => {
+    const qs = new URLSearchParams({ image: noImageFilter, q: noImageQuery });
+    noImageSort.apply(qs);
+    return { tab: "noimage", query: qs.toString() };
+  });
+  bindAdminExport("adminWhiteBgExport", "adminWhiteBgNote", () => {
+    const official = isOfficialFilter(whiteBgFilter);
+    const qs = new URLSearchParams({
+      status: official ? OFFICIAL_FILTER_STATUS[whiteBgFilter] : whiteBgFilter,
+      q: whiteBgQuery,
+    });
+    if (official) qs.set("official", "1");
+    return { tab: "whitebg", query: qs.toString() };
+  });
+  bindAdminExport("alertRequestsExport", "alertRequestsNote", () => ({
+    tab: alertRequestsKind === "stock" ? "alerts-stock" : "alerts-price",
+  }));
 
   let productsLoaded = false;
   // Stock as last read from the server; an unchanged field lets the server keep sales made meanwhile.
