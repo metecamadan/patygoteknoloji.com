@@ -73,7 +73,6 @@ test("mobile cart lines stack controls on narrow screens", () => {
 
 test("admin mobile keeps ops health label and sticky modal actions", () => {
   assert.match(adminHtml, /id="adminOpsHealth"/);
-  assert.match(adminJs, /dark \? "Açık" : "Koyu"/);
   assert.match(adminJs, /function renderOpsHealth/);
   assert.doesNotMatch(
     adminCss,

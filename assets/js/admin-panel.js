@@ -2,7 +2,6 @@
   "use strict";
 
   const TOKEN_KEY = "patygo_admin_token";
-  const THEME_KEY = "patygo_admin_theme";
   const IDLE_MS = 30 * 60 * 1000;
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
   let products = [];
@@ -22,40 +21,6 @@
   const MAX_PRODUCT_IMAGES = 10;
   const imageCountHint = document.getElementById("imageCountHint");
   const saveProductBtn = document.getElementById("saveProductBtn");
-
-  function isDarkTheme() {
-    return document.documentElement.classList.contains("admin-theme-dark");
-  }
-
-  function applyAdminTheme(dark) {
-    document.documentElement.classList.toggle("admin-theme-dark", !!dark);
-    document.body.classList.toggle("admin-theme-dark", !!dark);
-    const toggle = document.getElementById("adminThemeToggle");
-    if (toggle) {
-      toggle.setAttribute("aria-pressed", String(!!dark));
-      const label = toggle.querySelector(".admin-theme-toggle-label");
-      if (label) label.textContent = dark ? "Açık" : "Koyu";
-      toggle.title = dark ? "Açık temaya geç" : "Koyu temaya geç";
-    }
-    try {
-      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
-    } catch (_) {}
-  }
-
-  applyAdminTheme(isDarkTheme() || (function () {
-    try {
-      return localStorage.getItem(THEME_KEY) === "dark";
-    } catch (_) {
-      return false;
-    }
-  })());
-
-  const themeToggle = document.getElementById("adminThemeToggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      applyAdminTheme(!isDarkTheme());
-    });
-  }
 
   /** /admin is served no-store; a different admin-login.js token there means this tab runs an older panel build. */
   const PANEL_BUILD = (function () {

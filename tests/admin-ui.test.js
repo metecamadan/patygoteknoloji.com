@@ -593,18 +593,15 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-32/);
+  assert.match(html, /admin\.css\?v=siparis-33/);
 });
 
-test("admin panel exposes dark theme toggle in the top bar", () => {
-  assert.match(html, /id="adminThemeToggle"/);
-  assert.match(html, /admin-theme-toggle/);
-  assert.match(html, /patygo_admin_theme/);
-  assert.match(css, /html\.admin-theme-dark/);
-  assert.match(css, /\.admin-theme-toggle/);
-  assert.match(script, /THEME_KEY/);
-  assert.match(script, /applyAdminTheme/);
-  assert.match(script, /adminThemeToggle/);
+test("admin panel has a single dark theme: no light theme, no theme toggle", () => {
+  assert.doesNotMatch(html, /adminThemeToggle|admin-theme|patygo_admin_theme/);
+  assert.doesNotMatch(css, /admin-theme/);
+  assert.doesNotMatch(script, /THEME_KEY|applyAdminTheme|adminThemeToggle|admin-theme-dark/);
+  assert.match(css, /^:root \{\s*color-scheme: dark;[\s\S]*?--bg: #0b1220;/);
+  assert.match(css, /\.admin-body \{\s*background: #0b1220;/);
 });
 
 test("admin ops health badge is hidden until XML or POS reports a real issue", () => {
@@ -929,8 +926,8 @@ test("leads tab lets the admin reply with attachments and stays readable in dark
   assert.match(script, /data\.replyEnabled === true/);
   assert.match(script, /Yanıt bekliyor/);
   assert.match(script, /Yanıtlandı/);
-  assert.match(css, /html\.admin-theme-dark \.admin-item,\s*html\.admin-theme-dark \.admin-list-item/);
-  assert.match(css, /html\.admin-theme-dark \.admin-lead-badge\.is-waiting/);
+  assert.match(css, /\.admin-list-item \{[\s\S]*?background: #121a2a;/);
+  assert.match(css, /\.admin-lead-badge\.is-waiting \{ background: #3b2a12; color: #fcd34d; \}/);
 });
 
 test("long leads stay in page flow: no inner scroll box, top-aligned reply, collapsible message", () => {
@@ -945,7 +942,7 @@ test("long leads stay in page flow: no inner scroll box, top-aligned reply, coll
   assert.match(css, /\.admin-form \.admin-file-input,\s*\.admin-od \.admin-file-input \{[\s\S]*?width: 1px;[\s\S]*?opacity: 0;/);
   assert.match(css, /\.admin-file-input:focus-visible \+ label \{ outline/);
   assert.match(css, /#leadReplyForm > \.admin-form-actions \{\s*position: sticky;/);
-  assert.match(css, /html\.admin-theme-dark #leadReplyForm > \.admin-form-actions \{ background: #121a2a; \}/);
+  assert.match(css, /#leadReplyForm > \.admin-form-actions \{[^}]*background: #121a2a;/);
 });
 
 test("leads nav item blinks a red dot while a lead waits for a reply", () => {
@@ -960,7 +957,7 @@ test("leads nav item blinks a red dot while a lead waits for a reply", () => {
   assert.match(script, /visibilitychange/);
 });
 
-test("every light surface or dark text color in admin.css has a dark theme override", () => {
+test("admin.css has no light surfaces or dark text (single dark theme)", () => {
   const source = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const luminance = (hex) => {
     let h = hex.replace("#", "").toLowerCase();
@@ -979,39 +976,38 @@ test("every light surface or dark text color in admin.css has a dark theme overr
     selector: m[1].replace(/\s+/g, " ").trim(),
     body: m[2],
   }));
-  const darkCovered = new Set();
+  // The switch knob is white by design; product photos (white-background previews, alert
+  // product thumbs) keep a light backdrop; brand-filled buttons carry dark text.
+  const allowed = new Set([
+    ".admin-switch span::after",
+    ".admin-whitebg-figure img",
+    ".admin-alert-product-head img",
+    ".admin-body .btn-primary",
+    '.admin-period-preset[aria-pressed="true"]',
+    ".admin-pager button.is-current",
+  ]);
+  const light = [];
   for (const rule of rules) {
-    for (const part of rule.selector.split(",").map((p) => p.trim())) {
-      if (part.startsWith("html.admin-theme-dark ")) darkCovered.add(part.replace(/^html\.admin-theme-dark\s+/, ""));
-    }
-  }
-  // The switch knob stays white on both themes by design; white-background previews must look
-  // exactly like the storefront card, so their image backdrop stays white too.
-  const allowed = new Set([".admin-switch span::after", ".admin-whitebg-figure img"]);
-  const missing = [];
-  for (const rule of rules) {
-    if (rule.selector.includes("admin-theme-dark")) continue;
     const decls = rule.body.split(";").map((d) => d.split(":")).filter((d) => d.length > 1);
-    const needsDark = decls.some(([prop, ...rest]) => {
+    const isLight = decls.some(([prop, ...rest]) => {
       const name = prop.trim().toLowerCase();
       const value = rest.join(":");
       if (name === "background" || name === "background-color") return tokens(value).some((l) => l > 0.75);
       if (name === "color") return tokens(value).some((l) => l < 0.12);
       return false;
     });
-    if (!needsDark) continue;
+    if (!isLight) continue;
     for (const part of rule.selector.split(",").map((p) => p.trim())) {
-      if (!darkCovered.has(part) && !allowed.has(part)) missing.push(part);
+      if (!allowed.has(part)) light.push(part);
     }
   }
-  assert.deepEqual(missing, []);
+  assert.deepEqual(light, []);
 });
 
-test("unlisted toolbar and table rows are styled for both themes", () => {
-  assert.match(css, /\.admin-toolbar input,\s*\.admin-toolbar select \{[\s\S]*?min-height: 40px;/);
-  assert.match(css, /html\.admin-theme-dark \.admin-toolbar input,\s*html\.admin-theme-dark \.admin-toolbar select,/);
-  assert.match(css, /html\.admin-theme-dark \.admin-table tr:hover td \{ background: #16213a; \}/);
-  assert.match(css, /html\.admin-theme-dark \.field input,\s*html\.admin-theme-dark \.field select,\s*html\.admin-theme-dark \.field textarea,/);
+test("unlisted toolbar and table rows use the dark panel surfaces", () => {
+  assert.match(css, /\.admin-toolbar input,\s*\.admin-toolbar select \{[\s\S]*?min-height: 40px;[\s\S]*?background: #121a2a;/);
+  assert.match(css, /\.admin-table tr:hover td \{ background: #16213a; \}/);
+  assert.match(css, /\.admin-body \.field input,\s*\.admin-body \.field select,\s*\.admin-body \.field textarea \{\s*background: #121a2a;/);
 });
 
 test("admin tables expose click-to-sort headers wired to whitelisted server sort", () => {
