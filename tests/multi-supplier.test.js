@@ -143,6 +143,11 @@ test("three supplier slots keep configuration, products and overrides isolated",
     );
     assert.equal(unmatched.categoryUnmatchedCount, 2);
     assert.equal(manager.queryProducts({ page: 1, limit: 50 }).unlistedCount, 1);
+    assert.deepEqual(
+      manager.queryProducts({ status: "stockinactive", page: 1, limit: 50 }).products.map((item) => item.supplierSlot),
+      ["supplier-1", "supplier-3"],
+      "in stock and not published; unlisted rows stay in their own tab"
+    );
 
     manager.updateProducts([
       {

@@ -1033,6 +1033,8 @@ test("admin tables expose click-to-sort headers wired to whitelisted server sort
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /sortValues: \{[\s\S]{0,200}feed: \(item\) =>/, "Export sort key is provided by the products endpoint");
   assert.match(html, /<option value="feedmissing">Stokta · Export eksik<\/option>/);
+  assert.match(html, /<option value="stockinactive">Stokta · Yayında değil<\/option>/);
+  assert.match(html, /<option value="stockinactive">Stokta · Yayında değil<\/option>/);
 
   assert.match(js, /function setupSortableHeader\(head, name, onChange\)/);
   assert.match(js, /SORT_STORAGE_PREFIX = "patygo_sort_"/);
