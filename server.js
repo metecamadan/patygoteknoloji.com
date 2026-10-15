@@ -2137,8 +2137,8 @@ function enrichSupplierProducts(products, categories) {
 }
 
 /**
- * XML Ürünleri / Listelenmeyen / Görselsiz list query. `all` returns every filtered row (Excel
- * export) so the download matches the screen's filter, search and sort.
+ * XML Ürünleri / Listelenmeyen / Görselsiz / Barkodsuz list query. `all` returns every filtered
+ * row (Excel export) so the download matches the screen's filter, search and sort.
  */
 function querySupplierProductsForAdmin(params, options) {
   const all = Boolean(options && options.all);
@@ -2149,8 +2149,22 @@ function querySupplierProductsForAdmin(params, options) {
   // "feedmissing" = in stock, published, Export badge "Eksik".
   const feedMissing = status === "feedmissing";
   const noImage = status === "noimage";
+  const noBarcode = status === "nobarcode";
   let match = null;
   if (feedMissing) match = (item) => item.active === true && !feedReadyOf(item);
+  if (noBarcode) {
+    // The XML has no barcode; "added" rows got one from the panel and now carry it to Akakçe.
+    const entered = params.get("barcode") || "";
+    const stocked = params.get("stock") === "1";
+    match = (item) => {
+      if (item.unlisted || String(item.xmlBarcode || "").trim()) return false;
+      if (stocked && !(Number(item.stockQty) > 0)) return false;
+      const has = Boolean(String(item.barcode || "").trim());
+      if (entered === "waiting") return !has;
+      if (entered === "added") return has;
+      return true;
+    };
+  }
   const imageState = noImage ? supplierXmlImageStateReader() : null;
   if (noImage) {
     const manual = params.get("image") || "";
@@ -2164,7 +2178,7 @@ function querySupplierProductsForAdmin(params, options) {
   }
   const queried = supplierManager.queryProducts({
     q: params.get("q") || "",
-    status: feedMissing ? "stock" : noImage ? "" : status,
+    status: feedMissing ? "stock" : noImage || noBarcode ? "" : status,
     match,
     reason: params.get("reason") || "",
     inStock: params.get("stock") === "1",
@@ -2172,8 +2186,9 @@ function querySupplierProductsForAdmin(params, options) {
     page: params.get("page") || 1,
     limit: params.get("limit") || 50,
     all,
-    sort: params.get("sort") || "",
-    dir: params.get("dir") || "",
+    // Barkodsuz: biggest stock first, those are the Akakçe sales a missing barcode costs most.
+    sort: params.get("sort") || (noBarcode ? "stock" : ""),
+    dir: params.get("dir") || (noBarcode && !params.get("sort") ? "desc" : ""),
     sortValues: {
       // Mirrors the Export badge: Eksik (0) < "—" (1) < Hazır (2).
       feed: (item) => (feedReadyOf(item) ? 2 : item.active ? 0 : 1),
@@ -2254,11 +2269,12 @@ async function adminExportItems(tab, params, ids) {
     const wanted = new Set((Array.isArray(ids) ? ids : []).map(String));
     return loadProducts().filter((p) => wanted.has(String(p.id)));
   }
-  if (tab === "xml" || tab === "unlisted" || tab === "noimage") {
+  if (tab === "xml" || tab === "unlisted" || tab === "noimage" || tab === "nobarcode") {
     const scoped = new URLSearchParams(params);
     if (tab === "unlisted") scoped.set("status", "unlisted");
     if (tab === "noimage") scoped.set("status", "noimage");
-    if (tab === "xml" && ["unlisted", "noimage"].includes(scoped.get("status") || "")) scoped.delete("status");
+    if (tab === "nobarcode") scoped.set("status", "nobarcode");
+    if (tab === "xml" && ["unlisted", "noimage", "nobarcode"].includes(scoped.get("status") || "")) scoped.delete("status");
     return exportSupplierProducts(scoped);
   }
   if (tab === "whitebg") {

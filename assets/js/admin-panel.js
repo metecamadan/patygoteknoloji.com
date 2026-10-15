@@ -169,6 +169,10 @@
     noImagePage = 1;
     loadNoImageProducts().catch(() => {});
   });
+  const noBarcodeSort = setupSortableHeader(document.getElementById("adminNoBarcodeHead"), "nobarcode", () => {
+    noBarcodePage = 1;
+    loadNoBarcodeProducts().catch(() => {});
+  });
   const orderSort = setupSortableHeader(document.getElementById("adminOrderListHead"), "orders", () => {
     loadAdminOrders().catch(() => {});
   });
@@ -932,8 +936,8 @@
     }
   }
 
-  // "unlisted", "noimage" and "whitebg" are their own tabs but their nav entries sit under Ürünler.
-  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted", "noimage", "whitebg"]);
+  // "unlisted", "noimage", "nobarcode" and "whitebg" are their own tabs but their nav entries sit under Ürünler.
+  const PRODUCTS_GROUP_TABS = new Set(["products", "unlisted", "noimage", "nobarcode", "whitebg"]);
   let activeAdminTab = "overview";
 
   const PRODUCTS_VIEW_META = {
@@ -971,6 +975,7 @@
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
       unlisted: ["Listelenmeyen Ürünler", "Sitede ve Akakçe XML'inde gösterilmeyen XML ürünleri."],
       noimage: ["Görselsiz Ürünler", "Tedarikçiden görselsiz gelen ürünlere görsel ekleyip yayına alın."],
+      nobarcode: ["Barkodsuz Ürünler", "Tedarikçiden barkodsuz gelen ürünlere barkod girip Akakçe'ye açın."],
       whitebg: ["Beyaz Zemin Görselleri", "Zemini beyaza çevrilen tedarikçi görsellerini kontrol edin; beğenmediğinizi orijinale döndürün."],
     };
     const productsMeta = PRODUCTS_VIEW_META;
@@ -1029,6 +1034,7 @@
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
     if (name === "unlisted" && token) loadUnlistedProducts().catch(() => {});
     if (name === "noimage" && token) loadNoImageProducts().catch(() => {});
+    if (name === "nobarcode" && token) loadNoBarcodeProducts().catch(() => {});
     if (name === "whitebg" && token) loadWhiteBgImages().catch(() => {});
     try {
       sessionStorage.setItem("patygo_admin_tab", name);
@@ -2252,6 +2258,17 @@
           small.className = "admin-reconcile-reasons";
           small.textContent = reasons.map(([reason, count]) => reason + ": " + count).join(" · ");
           label.appendChild(small);
+        }
+        if ((latest.siteOnlyReasons || {})["Barkod eksik"]) {
+          const link = document.createElement("button");
+          link.type = "button";
+          link.className = "btn btn-ghost btn-xs";
+          link.textContent = "Barkodsuzları listele";
+          link.addEventListener("click", () => {
+            const tab = document.getElementById("noBarcodeTab");
+            if (tab) tab.click();
+          });
+          label.appendChild(link);
         }
       }
       tr.appendChild(label);
@@ -3650,6 +3667,260 @@
     });
   }
 
+  let noBarcodePage = 1;
+  let noBarcodeQuery = "";
+  let noBarcodeFilter = "waiting";
+  let noBarcodeInStock = "1";
+
+  // EAN-8, UPC-A, EAN-13 and GTIN-14 share the GS1 mod-10 check digit.
+  function isValidGtin(code) {
+    if (!/^(\d{8}|\d{12,14})$/.test(code)) return false;
+    const digits = code.split("").map(Number);
+    const check = digits.pop();
+    const sum = digits.reverse().reduce((acc, digit, i) => acc + digit * (i % 2 === 0 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === check;
+  }
+
+  function renderNoBarcodePager(totalPages) {
+    const pager = document.getElementById("adminNoBarcodePager");
+    if (!pager) return;
+    pager.textContent = "";
+    pager.hidden = totalPages <= 1;
+    if (totalPages <= 1) return;
+    const addBtn = (label, page, opts) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (opts && opts.current) btn.className = "is-current";
+      btn.disabled = !!(opts && opts.disabled);
+      btn.addEventListener("click", () => {
+        noBarcodePage = page;
+        loadNoBarcodeProducts().catch(() => {});
+      });
+      pager.appendChild(btn);
+    };
+    addBtn("‹", noBarcodePage - 1, { disabled: noBarcodePage <= 1 });
+    addBtn(noBarcodePage + " / " + totalPages, noBarcodePage, { current: true, disabled: true });
+    addBtn("›", noBarcodePage + 1, { disabled: noBarcodePage >= totalPages });
+  }
+
+  function renderNoBarcodeNavCount(count) {
+    const badge = document.getElementById("noBarcodeNavCount");
+    if (!badge) return;
+    const value = Number(count) || 0;
+    badge.hidden = value <= 0;
+    badge.textContent = value > 0 ? String(value) : "";
+  }
+
+  function renderNoBarcodeRow(item, noteEl) {
+    const tr = document.createElement("tr");
+
+    const nameTd = document.createElement("td");
+    const title = document.createElement("strong");
+    title.textContent = item.name || item.supplierSku;
+    const meta = document.createElement("small");
+    meta.className = "admin-noimage-meta";
+    meta.textContent = [
+      item.supplierSku,
+      item.brand,
+      item.manufacturerCode ? "Üretici kodu: " + item.manufacturerCode : "",
+      [item.xmlMainCategory, item.xmlMidCategory, item.xmlSubCategory].filter(Boolean).join(" › "),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    nameTd.append(title, document.createElement("br"), meta);
+    tr.appendChild(nameTd);
+
+    const stockTd = document.createElement("td");
+    stockTd.textContent = item.stockQty == null ? "—" : String(item.stockQty);
+    tr.appendChild(stockTd);
+    const priceTd = document.createElement("td");
+    priceTd.textContent = Number(item.salePrice) > 0 ? moneyTr(item.salePrice) : "—";
+    tr.appendChild(priceTd);
+
+    const barcodeTd = document.createElement("td");
+    const barcodeInput = document.createElement("input");
+    barcodeInput.type = "text";
+    barcodeInput.inputMode = "numeric";
+    barcodeInput.autocomplete = "off";
+    barcodeInput.maxLength = 14;
+    barcodeInput.className = "admin-barcode-input";
+    barcodeInput.placeholder = "EAN / GTIN";
+    barcodeInput.value = item.barcode || "";
+    barcodeInput.setAttribute("aria-label", (item.name || item.supplierSku) + " barkodu");
+    barcodeTd.appendChild(barcodeInput);
+    tr.appendChild(barcodeTd);
+
+    const catTd = document.createElement("td");
+    const selects = document.createElement("div");
+    selects.className = "admin-cat-selects";
+    const parentSelect = document.createElement("select");
+    const midSelect = document.createElement("select");
+    const childSelect = document.createElement("select");
+    [parentSelect, midSelect, childSelect].forEach((select, i) => {
+      select.setAttribute("aria-label", ["Ana kategori", "Ara kategori", "Alt kategori"][i]);
+    });
+    fillSiteParentSelect(parentSelect, item.siteParent || "");
+    fillSiteMidSelect(midSelect, item.siteParent || "", item.siteMid || "");
+    fillSiteChildSelect(childSelect, item.siteParent || "", item.siteMid || "", item.siteChild || "");
+    parentSelect.addEventListener("change", () => {
+      fillSiteMidSelect(midSelect, parentSelect.value, "");
+      fillSiteChildSelect(childSelect, parentSelect.value, "", "");
+    });
+    midSelect.addEventListener("change", () => {
+      fillSiteChildSelect(childSelect, parentSelect.value, midSelect.value, "");
+    });
+    selects.append(parentSelect, midSelect, childSelect);
+    catTd.appendChild(selects);
+    tr.appendChild(catTd);
+
+    const statusTd = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = "admin-status " + (item.active ? "on" : "pending");
+    badge.textContent = item.active ? "Aktif" : "Pasif";
+    statusTd.appendChild(badge);
+    const otherIssues = (Array.isArray(item.feedIssues) ? item.feedIssues : []).filter(
+      (issue) => issue !== "Barkod eksik" && issue !== "Feed uygun değil"
+    );
+    const feed = document.createElement("small");
+    feed.className = "admin-noimage-meta";
+    feed.textContent = item.feedReady
+      ? "Export: Hazır"
+      : String(item.barcode || "").trim()
+        ? "Export eksik: " + (otherIssues.join(", ") || "bilgi eksik")
+        : "Barkod bekliyor" + (otherIssues.length ? "; ayrıca " + otherIssues.join(", ") : "");
+    statusTd.append(document.createElement("br"), feed);
+    tr.appendChild(statusTd);
+
+    const actionTd = document.createElement("td");
+    const actions = document.createElement("div");
+    actions.className = "admin-noimage-actions";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "btn btn-primary btn-xs";
+    save.textContent = item.active ? "Kaydet" : "Kaydet ve yayına al";
+    save.addEventListener("click", async () => {
+      const barcode = barcodeInput.value.replace(/\s+/g, "");
+      if (!isValidGtin(barcode)) {
+        note(noteEl, "err", "Barkod 8, 12, 13 veya 14 haneli geçerli bir EAN/GTIN olmalı (son hane kontrol hanesi).");
+        barcodeInput.focus();
+        return;
+      }
+      const fields = { barcode };
+      const categoryChanged =
+        parentSelect.value !== (item.siteParent || "") ||
+        midSelect.value !== (item.siteMid || "") ||
+        childSelect.value !== (item.siteChild || "");
+      if (categoryChanged || !item.siteCategoryAssigned) {
+        if (!parentSelect.value || !midSelect.value || !childSelect.value) {
+          note(noteEl, "err", "ANA, ARA ve ALT kategori seçin.");
+          return;
+        }
+        Object.assign(fields, { siteParent: parentSelect.value, siteMid: midSelect.value, siteChild: childSelect.value, siteCategoryManual: true });
+      }
+      if (!item.active) fields.active = true;
+      save.disabled = true;
+      try {
+        await patchNoImageProduct(item, fields);
+        note(
+          noteEl,
+          "ok",
+          (item.name || item.supplierSku) +
+            ": barkod kaydedildi" +
+            (fields.active ? " ve ürün yayına alındı" : "") +
+            ". Görsel, stok ve kategori uygunsa Akakçe XML'ine girer."
+        );
+        await loadNoBarcodeProducts(true);
+      } catch (err) {
+        save.disabled = false;
+        note(noteEl, "err", err.message || "Kaydedilemedi");
+      }
+    });
+    barcodeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") save.click();
+    });
+    actions.appendChild(save);
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "btn btn-ghost btn-xs";
+    edit.textContent = "Detaylı düzenle";
+    edit.addEventListener("click", () => openSupplierFeedModal(item));
+    actions.appendChild(edit);
+    actionTd.appendChild(actions);
+    tr.appendChild(actionTd);
+    return tr;
+  }
+
+  async function loadNoBarcodeProducts(keepNote) {
+    const rows = document.getElementById("adminNoBarcodeRows");
+    const noteEl = document.getElementById("adminNoBarcodeNote");
+    if (!rows) return;
+    try {
+      if (!siteCategories.length) await loadSiteCategories();
+      const qs = new URLSearchParams({
+        status: "nobarcode",
+        barcode: noBarcodeFilter,
+        stock: noBarcodeInStock,
+        q: noBarcodeQuery,
+        page: String(noBarcodePage),
+        limit: "50",
+      });
+      noBarcodeSort.apply(qs);
+      const data = await api("/api/admin/supplier/products?" + qs.toString());
+      const list = Array.isArray(data.products) ? data.products : [];
+      noBarcodePage = Number(data.page) || 1;
+      if (noBarcodeFilter === "waiting" && noBarcodeInStock === "1" && !noBarcodeQuery) renderNoBarcodeNavCount(data.total);
+      renderNoBarcodePager(Number(data.totalPages) || 1);
+      rows.textContent = "";
+      if (!list.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 7;
+        td.className = "admin-table-empty";
+        td.textContent = noBarcodeQuery ? "Aramaya uyan ürün yok." : "Bu filtrede barkodsuz ürün yok.";
+        tr.appendChild(td);
+        rows.appendChild(tr);
+      }
+      list.forEach((item) => rows.appendChild(renderNoBarcodeRow(item, noteEl)));
+      if (!keepNote) note(noteEl, "", "Toplam " + (Number(data.total) || 0) + " ürün");
+    } catch (err) {
+      note(noteEl, "err", err.message || "Liste yüklenemedi");
+    }
+  }
+
+  const noBarcodeRefreshBtn = document.getElementById("adminNoBarcodeRefresh");
+  if (noBarcodeRefreshBtn) {
+    noBarcodeRefreshBtn.addEventListener("click", () => loadNoBarcodeProducts().catch(() => {}));
+  }
+  const noBarcodeSearch = document.getElementById("adminNoBarcodeSearch");
+  if (noBarcodeSearch) {
+    let noBarcodeSearchTimer = null;
+    noBarcodeSearch.addEventListener("input", () => {
+      clearTimeout(noBarcodeSearchTimer);
+      noBarcodeSearchTimer = setTimeout(() => {
+        noBarcodeQuery = noBarcodeSearch.value.trim();
+        noBarcodePage = 1;
+        loadNoBarcodeProducts().catch(() => {});
+      }, 280);
+    });
+  }
+  const noBarcodeFilterSelect = document.getElementById("adminNoBarcodeFilter");
+  if (noBarcodeFilterSelect) {
+    noBarcodeFilterSelect.addEventListener("change", () => {
+      noBarcodeFilter = noBarcodeFilterSelect.value;
+      noBarcodePage = 1;
+      loadNoBarcodeProducts().catch(() => {});
+    });
+  }
+  const noBarcodeStockSelect = document.getElementById("adminNoBarcodeStock");
+  if (noBarcodeStockSelect) {
+    noBarcodeStockSelect.addEventListener("change", () => {
+      noBarcodeInStock = noBarcodeStockSelect.value;
+      noBarcodePage = 1;
+      loadNoBarcodeProducts().catch(() => {});
+    });
+  }
+
   let whiteBgPage = 1;
   let whiteBgQuery = "";
   let whiteBgFilter = "whitened";
@@ -4022,6 +4293,11 @@
     noImageSort.apply(qs);
     return { tab: "noimage", query: qs.toString() };
   });
+  bindAdminExport("adminNoBarcodeExport", "adminNoBarcodeNote", () => {
+    const qs = new URLSearchParams({ barcode: noBarcodeFilter, stock: noBarcodeInStock, q: noBarcodeQuery });
+    noBarcodeSort.apply(qs);
+    return { tab: "nobarcode", query: qs.toString() };
+  });
   bindAdminExport("adminWhiteBgExport", "adminWhiteBgNote", () => {
     const official = isOfficialFilter(whiteBgFilter);
     const qs = new URLSearchParams({
@@ -4297,6 +4573,7 @@
         notifySite();
         closeSupplierFeedModal();
         if (activeAdminTab === "noimage") loadNoImageProducts().catch(() => {});
+        if (activeAdminTab === "nobarcode") loadNoBarcodeProducts().catch(() => {});
         note(
           document.getElementById("supplierProductsNote"),
           "ok",

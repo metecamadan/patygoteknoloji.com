@@ -2340,6 +2340,21 @@ body.admin-modal-open {
 .admin-noimage-upload { position: relative; cursor: pointer; }
 .admin-noimage-upload:focus-within { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
 .admin-noimage-actions { display: grid; gap: 6px; min-width: 120px; }
+.admin-barcode-input {
+  width: 100%;
+  min-width: 140px;
+  max-width: 170px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  background: #182234;
+  color: var(--ink);
+}
+.admin-barcode-input:focus { outline: 2px solid var(--accent, #2563eb); outline-offset: 1px; }
 
 .admin-whitebg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .admin-whitebg-card { display: grid; gap: 6px; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }

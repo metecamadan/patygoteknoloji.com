@@ -37,7 +37,7 @@ test("sidebar has an unlisted products tab wired to the supplier API", () => {
     "Listelenmeyen Ürünler, Ürünler menüsünün altında"
   );
   assert.equal((html.match(/id="unlistedTab"/g) || []).length, 1);
-  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted", "noimage", "whitebg"\]\)/);
+  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\["products", "unlisted", "noimage", "nobarcode", "whitebg"\]\)/);
   assert.match(script, /querySelectorAll\("\.admin-nav \[data-admin-tab\]\[aria-controls\]"\)/);
   assert.match(html, /id="adminTabUnlisted"/);
   assert.match(html, /id="adminUnlistedRows"/);
@@ -105,6 +105,38 @@ test("Görselsiz Ürünler tab sits under Ürünler with upload, category and pu
   assert.match(script, /openSupplierFeedModal\(Object\.assign\(\{\}, item, \{ images: noImageOwnImages\(item\)/);
   assert.doesNotMatch(script, /adminNoImageRows[^\n]*innerHTML/);
   assert.match(css, /\.admin-noimage-gallery \{/);
+});
+
+test("Barkodsuz Ürünler tab sits under Görselsiz Ürünler with barcode entry, category and publish", () => {
+  const productsChildren = html.match(/<div class="admin-nav-children" id="productsNavChildren"[^>]*>([\s\S]*?)<\/div>/)[1];
+  assert.match(
+    productsChildren,
+    /id="noImageTab"[^\n]*\n\s*<button type="button" class="admin-nav-subitem" id="noBarcodeTab" aria-controls="adminTabNoBarcode" data-admin-tab="nobarcode">Barkodsuz Ürünler/
+  );
+  assert.match(html, /id="adminTabNoBarcode"[^>]*aria-labelledby="noBarcodeTab"/);
+  assert.match(html, /id="adminNoBarcodeFilter"[\s\S]*?value="waiting"[\s\S]*?value="added"/);
+  assert.match(html, /id="adminNoBarcodeStock"[\s\S]*?value="1" selected/);
+  assert.match(html, /<th scope="col">Barkod<\/th>/);
+  assert.match(script, /PRODUCTS_GROUP_TABS = new Set\(\[[^\]]*"nobarcode"/);
+  assert.match(script, /name === "nobarcode" && token\) loadNoBarcodeProducts\(\)/);
+  assert.match(script, /status: "nobarcode",\s*barcode: noBarcodeFilter,\s*stock: noBarcodeInStock/);
+  assert.match(script, /noBarcodeSort\.apply\(qs\)/);
+  assert.match(script, /if \(!isValidGtin\(barcode\)\)/);
+  assert.match(script, /if \(categoryChanged \|\| !item\.siteCategoryAssigned\)/, "an unchanged category is not pinned as a manual choice");
+  assert.match(script, /if \(!item\.active\) fields\.active = true;/);
+  assert.match(script, /edit\.addEventListener\("click", \(\) => openSupplierFeedModal\(item\)\)/);
+  assert.match(script, /link\.textContent = "Barkodsuzları listele"/);
+  assert.doesNotMatch(script, /adminNoBarcodeRows[^\n]*innerHTML/);
+  assert.match(css, /\.admin-barcode-input \{/);
+
+  const start = script.indexOf("function isValidGtin");
+  const isValidGtin = new Function(script.slice(start, script.indexOf("\n  }\n", start) + 4) + "; return isValidGtin;")();
+  ["4006381333931", "8690627001034", "96385074", "036000291452", "10012345678902"].forEach((code) =>
+    assert.equal(isValidGtin(code), true, code)
+  );
+  ["4006381333932", "8690000000001", "123", "40063813339310", "ABC6381333931", "869062700103"].forEach((code) =>
+    assert.equal(isValidGtin(code), false, code)
+  );
 });
 
 test("products tab separates manual and XML product areas", () => {
@@ -596,7 +628,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-38/);
+  assert.match(html, /admin\.css\?v=siparis-41/);
 });
 
 test("category rows edit their own margin and critical stock; inherited values are placeholders", () => {
@@ -625,6 +657,7 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
     supplierExportBtn: '"xml"',
     adminUnlistedExport: '"unlisted"',
     adminNoImageExport: '"noimage"',
+    adminNoBarcodeExport: '"nobarcode"',
     adminWhiteBgExport: '"whitebg"',
     alertRequestsExport: '"alerts-stock"',
   };
@@ -643,8 +676,8 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
   assert.match(script, /fetch\("\/api\/admin\/export"/);
   assert.match(script, /Authorization: "Bearer " \+ token/);
   assert.match(script, /URL\.revokeObjectURL\(url\)/);
-  assert.match(loginScript, /admin-panel\.js\?v=siparis-40/);
-  assert.match(html, /admin-login\.js\?v=siparis-40/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-42/);
+  assert.match(html, /admin-login\.js\?v=siparis-42/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p44" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-38" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-41" />
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
@@ -72,6 +72,7 @@
             <button type="button" class="admin-nav-subitem" id="xmlProductsNav" data-admin-tab="products" data-products-view="xml">XML Ürünleri</button>
             <button type="button" class="admin-nav-subitem" id="unlistedTab" aria-controls="adminTabUnlisted" data-admin-tab="unlisted">Listelenmeyen Ürünler <span class="admin-nav-count" id="unlistedNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="noImageTab" aria-controls="adminTabNoImage" data-admin-tab="noimage">Görselsiz Ürünler <span class="admin-nav-count" id="noImageNavCount" hidden></span></button>
+            <button type="button" class="admin-nav-subitem" id="noBarcodeTab" aria-controls="adminTabNoBarcode" data-admin-tab="nobarcode">Barkodsuz Ürünler <span class="admin-nav-count" id="noBarcodeNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="whiteBgTab" aria-controls="adminTabWhiteBg" data-admin-tab="whitebg">Beyaz Zemin Görselleri</button>
             <button type="button" class="admin-nav-subitem" id="priceAlertsNav" data-admin-tab="products" data-products-view="alerts-price">Fiyat Alarm Talepleri <span class="admin-nav-count" id="priceAlertsNavCount" hidden></span></button>
             <button type="button" class="admin-nav-subitem" id="stockAlertsNav" data-admin-tab="products" data-products-view="alerts-stock">Stoğu Biten Ürün Talepleri <span class="admin-nav-count" id="stockAlertsNavCount" hidden></span></button>
@@ -459,6 +460,44 @@
               </div>
               <nav id="adminNoImagePager" class="admin-pager" aria-label="Görselsiz ürün sayfaları" hidden></nav>
               <p class="admin-note" id="adminNoImageNote" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section id="adminTabNoBarcode" class="admin-tab-panel" aria-labelledby="noBarcodeTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">KATALOG</span>
+                  <h2>Barkodsuz ürünler</h2>
+                  <p class="admin-card-lead">Tedarikçi XML'inde barkodu olmayan ürünler. Barkodsuz ürün Akakçe XML'ine gönderilmez; görseli, kategorisi ve stoğu uygunsa sitede satılır. Ürünün kutusundaki veya üretici sitesindeki barkodu (EAN/GTIN, 8, 12, 13 ya da 14 hane) girin, gerekirse site kategorisini seçin ve kaydedin; diğer bilgiler tamamsa ürün Akakçe'ye de girer. Girdiğiniz barkod XML okumalarında korunur.</p>
+                </div>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="adminNoBarcodeExport" title="Ekrandaki filtreyle eşleşen tüm ürünleri (tüm sayfalar) Excel dosyası olarak indirir">Excel'e aktar</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="adminNoBarcodeRefresh">Yenile</button>
+                </div>
+              </div>
+              <div class="admin-toolbar">
+                <input id="adminNoBarcodeSearch" type="search" placeholder="Ürün, stok kodu veya marka ara" />
+                <select id="adminNoBarcodeFilter" aria-label="Barkod durumu">
+                  <option value="waiting">Barkod bekleyen</option>
+                  <option value="added">Barkod eklenen</option>
+                  <option value="">Tümü</option>
+                </select>
+                <select id="adminNoBarcodeStock" aria-label="Stok durumu">
+                  <option value="1" selected>Stokta olanlar</option>
+                  <option value="">Stoksuzlar dahil</option>
+                </select>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table admin-noimage-table">
+                  <thead id="adminNoBarcodeHead"><tr><th scope="col" data-sort-key="name">Ürün</th><th scope="col" data-sort-key="stock">Stok</th><th scope="col" data-sort-key="price">Fiyat</th><th scope="col">Barkod</th><th scope="col" data-sort-key="siteCategory">Site kategorisi</th><th scope="col" data-sort-key="active">Durum</th><th scope="col">İşlem</th></tr></thead>
+                  <tbody id="adminNoBarcodeRows"><tr><td colspan="7" class="admin-table-empty">Yükleniyor…</td></tr></tbody>
+                </table>
+              </div>
+              <nav id="adminNoBarcodePager" class="admin-pager" aria-label="Barkodsuz ürün sayfaları" hidden></nav>
+              <p class="admin-note" id="adminNoBarcodeNote" role="status"></p>
             </section>
           </div>
         </section>
@@ -1335,6 +1374,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-40"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-42"></script>
 </body>
 </html>

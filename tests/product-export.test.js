@@ -28,6 +28,7 @@ test("every Ürünler tab has an export definition with unique headers", () => {
     "xml",
     "unlisted",
     "noimage",
+    "nobarcode",
     "whitebg",
     "alerts-price",
     "alerts-stock",
