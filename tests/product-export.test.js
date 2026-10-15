@@ -54,6 +54,8 @@ test("XML product row carries pricing, margin sources, stock rules, site state a
     criticalStockCategory: "Notebooklar",
     sourceCostPrice: 70,
     sourceCurrency: "USD",
+    tcmbCostTry: 2772.28,
+    fxBufferPercent: 1,
     costPrice: 2800,
     fxReady: true,
     marginBasePercent: 3,
@@ -84,6 +86,8 @@ test("XML product row carries pricing, margin sources, stock rules, site state a
   assert.equal(row["Kritik stok"], 4);
   assert.equal(row["Kritik stok kaynağı"], "Kategori: Notebooklar");
   assert.equal(row["Maliyet (XML)"], 70);
+  assert.equal(row["Maliyet (TCMB kuruyla)"], 2772.28);
+  assert.equal(row["Kur payı %"], 1);
   assert.equal(row["Maliyet (TL)"], 2800);
   assert.equal(row["Taban marj %"], 3);
   assert.equal(row["Kategori ek marj %"], 8);

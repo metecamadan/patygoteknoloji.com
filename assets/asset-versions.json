@@ -14,12 +14,12 @@
       "sha256": "a1b4184976a8465dea908da2b5021db4f17994faa2bbc52f66a530966b539958"
     },
     "/assets/js/admin-login.js": {
-      "v": "siparis-39",
-      "sha256": "8497f9b89909545a58a070b858b6051bba3f88cc55fa1b50a39db9d09fac59d6"
+      "v": "siparis-40",
+      "sha256": "658d75113176c17b1e3d967a8fcf3d8dacae1ea80de4c3a0bb96d209d52d5435"
     },
     "/assets/js/admin-panel.js": {
-      "v": "siparis-39",
-      "sha256": "912bb89d9b2bb55e3642b4a769013610cdeb5685a27acdef1220c4f67b2e71d9"
+      "v": "siparis-40",
+      "sha256": "05bc4ee331b7b5812c06a6ea8df7414bdf7d3f7557f97bb2e2f137f3b26c77cf"
     },
     "/assets/js/cargo-label.js": {
       "v": "cargo-1",

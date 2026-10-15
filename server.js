@@ -4994,6 +4994,7 @@ async function handleApi(req, res, urlPath) {
       const settings = supplierManager.setSettings(slotId, {
         globalMarginPercent: body.globalMarginPercent,
         criticalStockQty: body.criticalStockQty,
+        fxBufferPercent: body.fxBufferPercent,
       });
       const pricing = supplierPriceImpact(pricesBefore);
       invalidateStorefrontCatalog();
@@ -5001,7 +5002,8 @@ async function handleApi(req, res, urlPath) {
       scheduleAkakceFeedSummaryWarm();
       if (
         previous.globalMarginPercent !== settings.globalMarginPercent ||
-        previous.criticalStockQty !== settings.criticalStockQty
+        previous.criticalStockQty !== settings.criticalStockQty ||
+        previous.fxBufferPercent !== settings.fxBufferPercent
       ) {
         try {
           const session = getSession(req);
@@ -5014,6 +5016,7 @@ async function handleApi(req, res, urlPath) {
             detail: {
               globalMarginPercent: { from: previous.globalMarginPercent, to: settings.globalMarginPercent },
               criticalStockQty: { from: previous.criticalStockQty, to: settings.criticalStockQty },
+              fxBufferPercent: { from: previous.fxBufferPercent, to: settings.fxBufferPercent },
               impact: pricing,
             },
             ip: clientIp(req),

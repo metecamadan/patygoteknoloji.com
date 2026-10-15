@@ -643,14 +643,27 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
   assert.match(script, /fetch\("\/api\/admin\/export"/);
   assert.match(script, /Authorization: "Bearer " \+ token/);
   assert.match(script, /URL\.revokeObjectURL\(url\)/);
-  assert.match(loginScript, /admin-panel\.js\?v=siparis-39/);
-  assert.match(html, /admin-login\.js\?v=siparis-39/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-40/);
+  assert.match(html, /admin-login\.js\?v=siparis-40/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {
   assert.match(html, /id="supplierFxHint"/);
   assert.match(script, /renderFxHint\(results\[0\]\.fx\)/);
   assert.match(script, /Her gün 15:45'ten sonra yenilenir/);
+});
+
+test("every XML slot has an FX buffer field saved with the pricing settings", () => {
+  for (const slot of [1, 2, 3]) {
+    assert.match(
+      html,
+      new RegExp('<label for="supplierFxBuffer' + slot + '">Kur payı \\(%\\)</label>[\\s\\S]{0,120}<input id="supplierFxBuffer' + slot + '" type="number" min="0" max="10"[^>]*data-slot-input="fxBuffer"'),
+      "slot " + slot
+    );
+  }
+  assert.match(script, /input\("fxBuffer"\)\.value = String\(slot\.fxBufferPercent \|\| 0\)/);
+  assert.match(script, /fxBufferEl && fxBufferEl\.value !== "" \? Number\(fxBufferEl\.value\) : undefined/);
+  assert.match(script, /kur payı/i);
 });
 
 test("admin panel has a single dark theme: no light theme, no theme toggle", () => {

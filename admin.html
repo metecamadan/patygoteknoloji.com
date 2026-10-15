@@ -1215,6 +1215,7 @@
                 <form class="admin-form supplier-settings-form" data-slot-id="supplier-1">
                   <div class="field"><label for="supplierMargin1">Taban kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin1" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Tüm XML ürünlerine uygulanır. Kategoriler sekmesindeki ek marj bunun üstüne eklenir.</p></div>
                   <div class="field"><label for="supplierCriticalStock1">Varsayılan kritik stok</label><div class="admin-input-action compact"><input id="supplierCriticalStock1" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Kategoride kritik stok girilmemişse bu kullanılır. Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
+                  <div class="field"><label for="supplierFxBuffer1">Kur payı (%)</label><div class="admin-input-action compact"><input id="supplierFxBuffer1" type="number" min="0" max="10" step="0.05" value="0" data-slot-input="fxBuffer" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">USD/EUR maliyetli ürünlerde TCMB satış kuruna eklenir; tedarikçi kendi kuruyla faturalar. 0 yazılırsa TCMB kuru aynen kullanılır.</p></div>
                   <div class="field">
                     <label>Otomatik XML okuma</label>
                     <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00 — günde 4 kez (İstanbul). Saatler kilitlidir.</p>
@@ -1243,6 +1244,7 @@
                 <form class="admin-form supplier-settings-form" data-slot-id="supplier-2">
                   <div class="field"><label for="supplierMargin2">Taban kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin2" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Tüm XML ürünlerine uygulanır. Kategoriler sekmesindeki ek marj bunun üstüne eklenir.</p></div>
                   <div class="field"><label for="supplierCriticalStock2">Varsayılan kritik stok</label><div class="admin-input-action compact"><input id="supplierCriticalStock2" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Kategoride kritik stok girilmemişse bu kullanılır. Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
+                  <div class="field"><label for="supplierFxBuffer2">Kur payı (%)</label><div class="admin-input-action compact"><input id="supplierFxBuffer2" type="number" min="0" max="10" step="0.05" value="0" data-slot-input="fxBuffer" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">USD/EUR maliyetli ürünlerde TCMB satış kuruna eklenir; tedarikçi kendi kuruyla faturalar. 0 yazılırsa TCMB kuru aynen kullanılır.</p></div>
                   <div class="field">
                     <label>Otomatik XML okuma</label>
                     <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00 — günde 4 kez (İstanbul). Saatler kilitlidir.</p>
@@ -1271,6 +1273,7 @@
                 <form class="admin-form supplier-settings-form" data-slot-id="supplier-3">
                   <div class="field"><label for="supplierMargin3">Taban kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin3" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Tüm XML ürünlerine uygulanır. Kategoriler sekmesindeki ek marj bunun üstüne eklenir.</p></div>
                   <div class="field"><label for="supplierCriticalStock3">Varsayılan kritik stok</label><div class="admin-input-action compact"><input id="supplierCriticalStock3" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Kategoride kritik stok girilmemişse bu kullanılır. Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
+                  <div class="field"><label for="supplierFxBuffer3">Kur payı (%)</label><div class="admin-input-action compact"><input id="supplierFxBuffer3" type="number" min="0" max="10" step="0.05" value="0" data-slot-input="fxBuffer" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">USD/EUR maliyetli ürünlerde TCMB satış kuruna eklenir; tedarikçi kendi kuruyla faturalar. 0 yazılırsa TCMB kuru aynen kullanılır.</p></div>
                   <div class="field">
                     <label>Otomatik XML okuma</label>
                     <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00 — günde 4 kez (İstanbul). Saatler kilitlidir.</p>
@@ -1332,6 +1335,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-39"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-40"></script>
 </body>
 </html>

@@ -2072,6 +2072,9 @@
       if (input("criticalStock")) {
         input("criticalStock").value = String(slot.criticalStockQty || 0);
       }
+      if (input("fxBuffer")) {
+        input("fxBuffer").value = String(slot.fxBufferPercent || 0);
+      }
       if (field("scheduleHelp")) {
         field("scheduleHelp").textContent = formatSchedulePreview(
           "",
@@ -2643,6 +2646,11 @@
       sourceCell.textContent = item.supplierName || item.supplierSlot;
       const costCell = document.createElement("td");
       costCell.textContent = money(item.costPrice);
+      if (item.sourceCurrency && item.sourceCurrency !== "TRY" && item.tcmbCostTry != null) {
+        costCell.title =
+          item.sourceCostPrice + " " + item.sourceCurrency + " × TCMB kuru = " + money(item.tcmbCostTry) +
+          (Number(item.fxBufferPercent) > 0 ? " + %" + formatPercent(item.fxBufferPercent) + " kur payı" : "");
+      }
       const marginCell = document.createElement("td");
       const marginInput = document.createElement("input");
       marginInput.className = "admin-margin-input";
@@ -3029,6 +3037,8 @@
     }
     const rate = (value) =>
       Number(value).toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    const slot = supplierSlots.find((item) => item && item.id === "supplier-1") || supplierSlots[0] || {};
+    const buffer = Number(slot.fxBufferPercent) || 0;
     el.hidden = false;
     el.textContent =
       "Döviz kuru (TCMB satış" +
@@ -3037,7 +3047,16 @@
       rate(fx.USD) +
       " · EUR " +
       rate(fx.EUR) +
-      ". Her gün 15:45'ten sonra yenilenir; USD/EUR maliyetli ürünler bu kurla fiyatlanır.";
+      ". Her gün 15:45'ten sonra yenilenir; USD/EUR maliyetli ürünler bu kurla fiyatlanır." +
+      (buffer > 0
+        ? " Kur payı %" +
+          formatPercent(buffer) +
+          " ile maliyette kullanılan: USD " +
+          rate(fx.USD * (1 + buffer / 100)) +
+          " · EUR " +
+          rate(fx.EUR * (1 + buffer / 100)) +
+          "."
+        : "");
   }
 
   async function updateSupplierProducts(updates) {
@@ -4215,6 +4234,8 @@
       const margin = Number(form.querySelector('[data-slot-input="margin"]').value);
       const criticalStockEl = form.querySelector('[data-slot-input="criticalStock"]');
       const criticalStockQty = criticalStockEl ? Number(criticalStockEl.value) : undefined;
+      const fxBufferEl = form.querySelector('[data-slot-input="fxBuffer"]');
+      const fxBufferPercent = fxBufferEl && fxBufferEl.value !== "" ? Number(fxBufferEl.value) : undefined;
       const button = ev.submitter || form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
@@ -4224,6 +4245,7 @@
             slotId,
             globalMarginPercent: margin,
             criticalStockQty,
+            fxBufferPercent,
           }),
         });
         await loadSupplierData();

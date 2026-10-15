@@ -230,6 +230,50 @@ test("a new exchange rate reprices USD products without a restart", async () => 
   }
 });
 
+test("FX buffer raises USD costs above the TCMB rate and leaves TRY costs alone", async () => {
+  const { writeCachedRates } = require("../lib/fx");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-store-"));
+  let currency = "USD";
+  const store = createSupplierStore(root, {
+    allowedHosts: ["supplier.example"],
+    defaultMarginPercent: 10,
+    validateUrl: async (raw) => new URL(raw),
+    fetchXml: async () =>
+      SAMPLE_XML.replace("<Fiyat>100</Fiyat>", "<Fiyat>100</Fiyat><DovizTuru>" + currency + "</DovizTuru>"),
+  });
+  try {
+    installTestSiteCategories(root);
+    writeCachedRates(root, { USD: 40, EUR: 46, fetchedAt: new Date().toISOString() });
+    await store.saveUrl("https://supplier.example/feed.xml?token=secret");
+    await store.refresh();
+    assert.equal(store.status().fxBufferPercent, 0, "default is plain TCMB");
+    assert.equal(store.listProducts()[0].costPrice, 4000);
+
+    store.setSettings({ fxBufferPercent: 0.5 });
+    let product = store.listProducts()[0];
+    assert.equal(product.tcmbCostTry, 4000);
+    assert.equal(product.fxBufferPercent, 0.5);
+    assert.equal(product.costPrice, 4020);
+    assert.equal(product.salePrice, 4422);
+    assert.equal(store.getProductById(product.id).salePrice, 4422);
+
+    assert.throws(() => store.setSettings({ fxBufferPercent: 11 }), /Kur payı/);
+    assert.throws(() => store.setSettings({ fxBufferPercent: -1 }), /Kur payı/);
+    store.setSettings({ fxBufferPercent: "" });
+    assert.equal(store.status().fxBufferPercent, 0.5, "an empty field keeps the saved buffer");
+
+    currency = "TRY";
+    await store.refresh();
+    product = store.listProducts()[0];
+    assert.equal(product.fxBufferPercent, 0);
+    assert.equal(product.costPrice, 100);
+    assert.equal(product.salePrice, 110);
+  } finally {
+    clearTestSiteCategories();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("category margin is added to the base margin; product margin replaces both; category critical stock wins", async () => {
   const { productStock } = require("../lib/akakce");
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-store-"));

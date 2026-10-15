@@ -211,6 +211,27 @@ test("category margin and critical stock reprice the live storefront and report 
   const settingsBody = await settings.json();
   assert.equal(settings.status, 200);
   assert.equal(settingsBody.pricing.changed, 0);
+
+  mid.children.find((leaf) => leaf.slug === "intel-islemciler").criticalStockQty = null;
+  await saveTree();
+  assert.equal(await publicPrice(), 3108);
+  const putSettings = (patch) =>
+    fetch(baseUrl + "/api/admin/supplier/settings", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(Object.assign({ slotId: "supplier-1" }, patch)),
+    });
+  const buffered = await putSettings({ fxBufferPercent: 1 });
+  const bufferedBody = await buffered.json();
+  assert.equal(buffered.status, 200, bufferedBody.error);
+  assert.equal(bufferedBody.settings.fxBufferPercent, 1);
+  assert.equal(bufferedBody.pricing.changed, 1);
+  assert.equal(bufferedBody.pricing.up, 1);
+  assert.equal(await publicPrice(), 3139.08, "70 USD × 40 × 1.01 kur payı × 1.11");
+
+  const tooHigh = await putSettings({ fxBufferPercent: 12 });
+  assert.equal(tooHigh.status, 422);
+  assert.match((await tooHigh.json()).error, /Kur payı/);
 });
 
 test("XML products endpoint sorts by Export badge across the whole catalog", async (t) => {
