@@ -204,6 +204,32 @@ test("atomic JSON writes leave one complete target and no temp file", () => {
   }
 });
 
+test("a new exchange rate reprices USD products without a restart", async () => {
+  const { writeCachedRates } = require("../lib/fx");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-store-"));
+  const store = createSupplierStore(root, {
+    allowedHosts: ["supplier.example"],
+    defaultMarginPercent: 10,
+    validateUrl: async (raw) => new URL(raw),
+    fetchXml: async () => SAMPLE_XML.replace("<Fiyat>100</Fiyat>", "<Fiyat>100</Fiyat><DovizTuru>USD</DovizTuru>"),
+  });
+  try {
+    installTestSiteCategories(root);
+    writeCachedRates(root, { USD: 40, EUR: 46, fetchedAt: "2026-08-15T12:00:00.000Z" });
+    await store.saveUrl("https://supplier.example/feed.xml?token=secret");
+    await store.refresh();
+    assert.equal(store.listProducts()[0].salePrice, 4400);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    writeCachedRates(root, { USD: 50, EUR: 55, fetchedAt: new Date().toISOString() });
+    assert.equal(store.listProducts()[0].salePrice, 5500);
+    assert.equal(store.getProductById(store.listProducts()[0].id).salePrice, 5500);
+  } finally {
+    clearTestSiteCategories();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("supplier store stages products as passive and applies margin overrides", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-store-"));
   const store = createSupplierStore(root, {

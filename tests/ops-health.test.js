@@ -62,6 +62,26 @@ test("ops health warns when POS is off or in test mode", () => {
   assert.equal(testMode.label, "POS test modu");
 });
 
+test("ops health flags an exchange rate that stopped refreshing", () => {
+  const stale = resolveOpsHealth({
+    slots: [{ lastFetchStatus: "ok" }],
+    pos: { enabled: true, testMode: false },
+    fx: { ready: true, stale: true, rateDate: "15.08.2026", fetchedAt: "2026-08-15T13:00:00.000Z" },
+  });
+  assert.equal(stale.label, "Döviz kuru eski");
+  assert.equal(stale.tone, "err");
+  assert.match(stale.title, /15\.08\.2026/);
+
+  assert.equal(
+    resolveOpsHealth({
+      slots: [{ lastFetchStatus: "ok" }],
+      pos: { enabled: true, testMode: false },
+      fx: { ready: true, stale: false },
+    }),
+    null
+  );
+});
+
 test("ops health never reports a fake ready/online state", () => {
   const rows = [
     resolveOpsHealth({ slots: [], pos: { enabled: false } }),

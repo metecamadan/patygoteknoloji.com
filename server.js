@@ -187,6 +187,7 @@ const {
 } = require("./lib/admin-security");
 const { createXmlFetchDigestStore } = require("./lib/xml-fetch-digest");
 const { resolveOpsHealth } = require("./lib/ops-health");
+const { readCachedRates, refreshRates, ratesDueForRefresh, ratesAreStale } = require("./lib/fx");
 const {
   attachProductUrlFields,
   parseProductRoutePath,
@@ -4400,16 +4401,19 @@ async function handleApi(req, res, urlPath) {
     const slots = supplierManager.listSlots();
     const primary = slots[0] || {};
     const yesterdayXmlAlert = xmlFetchDigest.getYesterdayAlert(new Date());
+    const fx = fxStatus();
     return json(res, 200, {
       slots,
       status: slots[0],
       schedule: primary.schedule || scheduleSummary(),
       nextScheduled: primary.nextScheduled || getNextScheduledAt(new Date()),
       yesterdayXmlAlert,
+      fx,
       opsHealth: resolveOpsHealth({
         slots,
         yesterdayAlert: yesterdayXmlAlert,
         pos: publicPosStatus(akbankConfig),
+        fx: slots.some((slot) => slot.configured) ? fx : null,
       }),
       feed: includeFeed ? akakceFeedFullSummary() : akakceFeedPublicMeta(),
     });
@@ -5503,6 +5507,59 @@ const priceAlertTimer = setInterval(() => {
   runPriceAlertCheck().catch(() => {});
 }, 60 * 60 * 1000);
 if (typeof priceAlertTimer.unref === "function") priceAlertTimer.unref();
+
+const FX_AUTO_REFRESH = process.env.FX_AUTO_REFRESH !== "0";
+const FX_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+let fxRefreshRunning = false;
+
+function fxStatus() {
+  const rates = readCachedRates(DATA_ROOT);
+  if (!rates) return { ready: false, stale: true, autoRefresh: FX_AUTO_REFRESH };
+  return {
+    ready: true,
+    USD: rates.USD,
+    EUR: rates.EUR,
+    rateDate: rates.rateDate || "",
+    fetchedAt: rates.fetchedAt || "",
+    stale: ratesAreStale(rates),
+    autoRefresh: FX_AUTO_REFRESH,
+  };
+}
+
+/** Daily TCMB refresh; USD/EUR supplier costs are priced with the cached rate. */
+async function refreshFxRatesIfDue() {
+  if (fxRefreshRunning) return;
+  if (!supplierManager.listSlots().some((slot) => slot.configured)) return;
+  const cached = readCachedRates(DATA_ROOT);
+  if (!ratesDueForRefresh(cached)) return;
+  fxRefreshRunning = true;
+  try {
+    const next = await refreshRates(DATA_ROOT);
+    console.log(
+      "Döviz kuru güncellendi (TCMB " + (next.rateDate || "?") + "):",
+      "USD", next.USD, "EUR", next.EUR,
+      cached ? "(önceki USD " + cached.USD + " EUR " + cached.EUR + ")" : ""
+    );
+    invalidateStorefrontCatalog();
+    warmStorefrontCatalog();
+    scheduleAkakceFeedSummaryWarm();
+  } catch (err) {
+    console.warn("Döviz kuru alınamadı:", String((err && err.message) || err).slice(0, 200));
+  } finally {
+    fxRefreshRunning = false;
+  }
+}
+
+if (FX_AUTO_REFRESH) {
+  const fxTimer = setInterval(() => {
+    refreshFxRatesIfDue().catch(() => {});
+  }, FX_CHECK_INTERVAL_MS);
+  if (typeof fxTimer.unref === "function") fxTimer.unref();
+  const fxStartTimer = setTimeout(() => {
+    refreshFxRatesIfDue().catch(() => {});
+  }, 60 * 1000);
+  if (typeof fxStartTimer.unref === "function") fxStartTimer.unref();
+}
 
 const supplierScheduler = createSupplierScheduler({
   manager: supplierManager,

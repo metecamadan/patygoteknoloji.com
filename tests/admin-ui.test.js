@@ -596,6 +596,12 @@ test("admin buttons do not shift on hover (no translateY from storefront btn)", 
   assert.match(html, /admin\.css\?v=siparis-34/);
 });
 
+test("XML Yönetimi shows the TCMB rate prices are built with", () => {
+  assert.match(html, /id="supplierFxHint"/);
+  assert.match(script, /renderFxHint\(results\[0\]\.fx\)/);
+  assert.match(script, /Her gün 15:45'ten sonra yenilenir/);
+});
+
 test("admin panel has a single dark theme: no light theme, no theme toggle", () => {
   assert.doesNotMatch(html, /adminThemeToggle|admin-theme|patygo_admin_theme/);
   assert.doesNotMatch(css, /admin-theme/);
@@ -1033,7 +1039,6 @@ test("admin tables expose click-to-sort headers wired to whitelisted server sort
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /sortValues: \{[\s\S]{0,200}feed: \(item\) =>/, "Export sort key is provided by the products endpoint");
   assert.match(html, /<option value="feedmissing">Stokta · Export eksik<\/option>/);
-  assert.match(html, /<option value="stockinactive">Stokta · Yayında değil<\/option>/);
   assert.match(html, /<option value="stockinactive">Stokta · Yayında değil<\/option>/);
 
   assert.match(js, /function setupSortableHeader\(head, name, onChange\)/);

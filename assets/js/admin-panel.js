@@ -2951,6 +2951,7 @@
         results[0].nextScheduled.timezone +
         ").";
     }
+    renderFxHint(results[0].fx);
     renderSupplierStatus();
     renderSupplierProducts();
     renderList();
@@ -2965,6 +2966,27 @@
         }
       })
       .catch(() => {});
+  }
+
+  function renderFxHint(fx) {
+    const el = document.getElementById("supplierFxHint");
+    if (!el) return;
+    if (!fx || !fx.ready) {
+      el.hidden = !fx;
+      el.textContent = fx ? "Döviz kuru (TCMB): henüz alınmadı." : "";
+      return;
+    }
+    const rate = (value) =>
+      Number(value).toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    el.hidden = false;
+    el.textContent =
+      "Döviz kuru (TCMB satış" +
+      (fx.rateDate ? ", " + fx.rateDate : "") +
+      "): USD " +
+      rate(fx.USD) +
+      " · EUR " +
+      rate(fx.EUR) +
+      ". Her gün 15:45'ten sonra yenilenir; USD/EUR maliyetli ürünler bu kurla fiyatlanır.";
   }
 
   async function updateSupplierProducts(updates) {
