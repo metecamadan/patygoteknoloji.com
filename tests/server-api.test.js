@@ -137,13 +137,13 @@ test("admin supplier APIs require authentication and return feed status", async 
   for (const slug of [
     "bilgisayar-tablet",
     "bilgisayar-bilesenleri",
-    "kartus-toner",
     "baski-cozumleri",
     "yapi-gerecleri",
     "ofis-urunleri",
   ]) {
     assert.ok(Array.isArray(featuredPayload.byParent[slug]), slug);
   }
+  assert.equal(featuredPayload.byParent["kartus-toner"], undefined);
 
   const feed = await fetch(baseUrl + "/api/feeds/akakce.xml");
   assert.equal(feed.status, 200);
@@ -433,7 +433,7 @@ test("admin category tree API publishes only active categories to the public fee
   const current = await fetch(baseUrl + "/api/admin/categories", { headers: auth });
   assert.equal(current.status, 200);
   const seeded = await current.json();
-  assert.equal(seeded.categories.length, 6);
+  assert.equal(seeded.categories.length, 5);
   assert.ok(seeded.categories.some((row) => row.slug === "baski-cozumleri"));
 
   const saved = await fetch(baseUrl + "/api/admin/categories", {

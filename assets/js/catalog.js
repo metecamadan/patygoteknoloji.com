@@ -20,6 +20,10 @@
     "tuketici-elektronigi": "bilgisayar-bilesenleri",
     "kurumsal-ag-urunleri": "bilgisayar-tablet",
   };
+  /* Mirrors MOVED_PARENTS in lib/site-category-schema.js for links the server never sees. */
+  const MOVED_PARENTS = {
+    "kartus-toner": { into: "baski-cozumleri", landingMid: "yazici-tuketim-urunleri-orj" },
+  };
   const BRAND_DISPLAY_OVERRIDES = {
     hp: "HP",
     msi: "MSI",
@@ -292,25 +296,31 @@
     grid.appendChild(empty);
   }
 
+  function categoryFromParts(rawParent, mid, child) {
+    const moved = MOVED_PARENTS[rawParent];
+    if (moved) {
+      return { parent: moved.into, mid: mid || (child ? "" : moved.landingMid), child: child };
+    }
+    return { parent: CATEGORY_QUERY_ALIASES[rawParent] || rawParent, mid: mid, child: child };
+  }
+
   function readCategoryQuery() {
     const params = new URLSearchParams(location.search || "");
     const pathMatch = String(location.pathname || "").match(
       /^\/urunler(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?\/?$/i
     );
     if (pathMatch && (pathMatch[1] || pathMatch[2] || pathMatch[3])) {
-      const rawParent = String(pathMatch[1] || "").trim();
-      return {
-        parent: CATEGORY_QUERY_ALIASES[rawParent] || rawParent,
-        mid: String(pathMatch[2] || "").trim(),
-        child: String(pathMatch[3] || "").trim(),
-      };
+      return categoryFromParts(
+        String(pathMatch[1] || "").trim(),
+        String(pathMatch[2] || "").trim(),
+        String(pathMatch[3] || "").trim()
+      );
     }
-    const rawParent = String(params.get("kategori") || "").trim();
-    return {
-      parent: CATEGORY_QUERY_ALIASES[rawParent] || rawParent,
-      mid: String(params.get("ara") || "").trim(),
-      child: String(params.get("alt") || "").trim(),
-    };
+    return categoryFromParts(
+      String(params.get("kategori") || "").trim(),
+      String(params.get("ara") || "").trim(),
+      String(params.get("alt") || "").trim()
+    );
   }
 
   function readListingPageNumber() {
@@ -1592,7 +1602,6 @@
   const FEATURED_PARENTS = [
     "bilgisayar-tablet",
     "bilgisayar-bilesenleri",
-    "kartus-toner",
     "baski-cozumleri",
     "yapi-gerecleri",
     "ofis-urunleri",

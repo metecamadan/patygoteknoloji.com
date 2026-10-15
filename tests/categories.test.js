@@ -27,21 +27,125 @@ const SAMPLE_TREE = [
 
 test("seed category file falls back to the canonical ANA-ARA-ALT schema", () => {
   const cats = loadCategories();
-  assert.equal(cats.length, 6);
+  assert.equal(cats.length, 5);
   assert.deepEqual(
     cats.map((row) => row.slug),
-    [
-      "bilgisayar-tablet",
-      "bilgisayar-bilesenleri",
-      "kartus-toner",
-      "baski-cozumleri",
-      "yapi-gerecleri",
-      "ofis-urunleri",
-    ]
+    ["bilgisayar-tablet", "bilgisayar-bilesenleri", "baski-cozumleri", "yapi-gerecleri", "ofis-urunleri"]
   );
   const cpu = cats.find((row) => row.slug === "bilgisayar-bilesenleri");
   const processors = cpu.children.find((row) => row.slug === "islemciler");
   assert.ok(processors.children.some((row) => row.slug === "intel-islemciler"));
+  const print = cats.find((row) => row.slug === "baski-cozumleri");
+  assert.deepEqual(
+    print.children.map((row) => row.slug),
+    [
+      "yazici-tarayici",
+      "yazici-tuketim-urunleri-orj",
+      "yazici-tuketim-urunleri-muadil",
+      "fotokopi-tuketim",
+      "faks-tuketim-urunleri",
+      "barkod-urunleri",
+      "ups-kesintisiz-guc-kaynagi",
+    ]
+  );
+  assert.ok(print.xmlNames.includes("TÜKETİM ÜRÜNLERİ"));
+});
+
+function legacyTonerTree() {
+  return [
+    {
+      name: "KARTUŞ TONER",
+      slug: "kartus-toner",
+      xmlNames: ["TÜKETİM ÜRÜNLERİ"],
+      children: [
+        {
+          name: "Yazıcı Tüketim Ürünleri (Orj.)",
+          slug: "yazici-tuketim-urunleri-orj",
+          marginPercent: 4,
+          children: [{ name: "Laser Tonerler", slug: "laser-tonerler", criticalStockQty: 2 }],
+        },
+        { name: "Faks Tüketim Ürünleri", slug: "faks-tuketim-urunleri", children: [{ name: "Faks Tonerler", slug: "faks-tonerler" }] },
+      ],
+    },
+    {
+      name: "BASKI ÇÖZÜMLERİ",
+      slug: "baski-cozumleri",
+      xmlNames: ["ÇEVRE & BASKI BİRİMLERİ"],
+      marginPercent: 2,
+      children: [
+        { name: "Barkod Ürünleri", slug: "barkod-urunleri", children: [{ name: "Barkod Okuyucular", slug: "barkod-okuyucular" }] },
+        { name: "Yazıcı - Tarayıcı", slug: "yazici-tarayici", children: [{ name: "Mono Laser", slug: "mono-laser" }] },
+        { name: "Panelde eklenen", slug: "panel-ara", children: [{ name: "Yaprak", slug: "yaprak" }] },
+        {
+          name: "UPS (Kesintisiz Güç Kaynağı)",
+          slug: "ups-kesintisiz-guc-kaynagi",
+          children: [{ name: "Online UPS", slug: "online-ups" }],
+        },
+      ],
+    },
+  ];
+}
+
+test("foldMovedParents moves KARTUŞ TONER under BASKI ÇÖZÜMLERİ keeping panel values", () => {
+  const { foldMovedParents } = require("../lib/categories");
+  const folded = foldMovedParents(legacyTonerTree());
+  assert.deepEqual(folded.map((row) => row.slug), ["baski-cozumleri"]);
+  const print = folded[0];
+  assert.equal(print.marginPercent, 2);
+  assert.deepEqual(
+    print.children.map((row) => row.slug),
+    [
+      "yazici-tarayici",
+      "yazici-tuketim-urunleri-orj",
+      "faks-tuketim-urunleri",
+      "barkod-urunleri",
+      "ups-kesintisiz-guc-kaynagi",
+      "panel-ara",
+    ]
+  );
+  assert.deepEqual(print.xmlNames, ["ÇEVRE & BASKI BİRİMLERİ", "TÜKETİM ÜRÜNLERİ", "KARTUŞ TONER"]);
+  const orj = print.children[1];
+  assert.equal(orj.marginPercent, 4);
+  assert.equal(orj.children[0].criticalStockQty, 2);
+  assert.deepEqual(foldMovedParents(folded), folded);
+});
+
+test("foldMovedParents merges a moved mid into a same-slug copy already under the target", () => {
+  const { foldMovedParents } = require("../lib/categories");
+  const tree = legacyTonerTree();
+  tree[1].children.push({
+    name: "Yazıcı Tüketim Ürünleri (Orj.)",
+    slug: "yazici-tuketim-urunleri-orj",
+    children: [{ name: "Inkjet Kartuşlar", slug: "inkjet-kartuslar" }],
+  });
+  const print = foldMovedParents(tree)[0];
+  const orj = print.children.filter((row) => row.slug === "yazici-tuketim-urunleri-orj");
+  assert.equal(orj.length, 1);
+  assert.equal(orj[0].marginPercent, 4);
+  assert.deepEqual(orj[0].children.map((row) => row.slug), ["inkjet-kartuslar", "laser-tonerler"]);
+});
+
+test("category store folds a live KARTUŞ TONER tree on read and on a stale panel save", () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { createCategoryStore, SCHEMA_VERSION } = require("../lib/categories");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-fold-"));
+  try {
+    fs.mkdirSync(path.join(root, ".runtime"), { recursive: true });
+    const file = path.join(root, ".runtime", "categories.json");
+    fs.writeFileSync(file, JSON.stringify({ version: SCHEMA_VERSION, categories: legacyTonerTree() }));
+    const store = createCategoryStore(root);
+    assert.deepEqual(store.list().map((row) => row.slug), ["baski-cozumleri"]);
+    const persisted = JSON.parse(fs.readFileSync(file, "utf8"));
+    assert.equal(persisted.version, SCHEMA_VERSION);
+    assert.deepEqual(persisted.categories.map((row) => row.slug), ["baski-cozumleri"]);
+    assert.equal(persisted.categories[0].children[1].marginPercent, 4);
+    const saved = store.save(legacyTonerTree());
+    assert.deepEqual(saved.map((row) => row.slug), ["baski-cozumleri"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("findCategory and href helpers", () => {
@@ -53,8 +157,8 @@ test("findCategory and href helpers", () => {
     "/urunler/oem-cevre-birimleri/islemciler"
   );
   assert.equal(
-    categoryHref("kartus-toner", "faks-tuketim-urunleri", "faks-tonerler"),
-    "/urunler/kartus-toner/faks-tuketim-urunleri/faks-tonerler"
+    categoryHref("baski-cozumleri", "faks-tuketim-urunleri", "faks-tonerler"),
+    "/urunler/baski-cozumleri/faks-tuketim-urunleri/faks-tonerler"
   );
   assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "usb-bellek"), true);
   assert.equal(isValidCategoryPair(SAMPLE_TREE, "oem-cevre-birimleri", "yok"), false);
@@ -233,7 +337,7 @@ test("category store seeds from site tree and persists display-name edits", () =
   try {
     const store = createCategoryStore(root);
     const seeded = store.list();
-    assert.equal(seeded.length, 6);
+    assert.equal(seeded.length, 5);
     assert.ok(seeded.some((row) => row.slug === "baski-cozumleri"));
     const saved = store.save([
       {

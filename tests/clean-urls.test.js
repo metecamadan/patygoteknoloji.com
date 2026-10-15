@@ -39,18 +39,19 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   assert.equal(trailing.status, 301);
   assert.equal(trailing.headers.get("location"), "/markalar");
 
-  const categoryPath = await fetch(baseUrl + "/urunler/kartus-toner");
+  const categoryPath = await fetch(baseUrl + "/urunler/baski-cozumleri/faks-tuketim-urunleri");
   assert.equal(categoryPath.status, 200);
   assert.match(await categoryPath.text(), /Ürünler|Faks|Kartuş|catalog/i);
 
-  const bareCategory = await fetch(baseUrl + "/kartus-toner", { redirect: "manual" });
+  const bareCategory = await fetch(baseUrl + "/baski-cozumleri", { redirect: "manual" });
   assert.equal(bareCategory.status, 301);
-  assert.equal(bareCategory.headers.get("location"), "/urunler/kartus-toner");
+  assert.equal(bareCategory.headers.get("location"), "/urunler/baski-cozumleri");
 
   const sitemap = await fetch(baseUrl + "/sitemap");
   assert.equal(sitemap.status, 200);
   const sitemapXml = await sitemap.text();
-  assert.match(sitemapXml, /urunler\/kartus-toner/);
+  assert.match(sitemapXml, /urunler\/baski-cozumleri/);
+  assert.doesNotMatch(sitemapXml, /urunler\/kartus-toner/);
   assert.doesNotMatch(sitemapXml, /\/sepet/);
 
   const sitemapIndex = await fetch(baseUrl + "/sitemap.xml");
@@ -64,6 +65,29 @@ test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   assert.equal(legacyQuery.status, 301);
   assert.equal(
     legacyQuery.headers.get("location"),
-    "/urunler/kartus-toner/faks-tuketim-urunleri/faks-tonerler"
+    "/urunler/baski-cozumleri/faks-tuketim-urunleri/faks-tonerler"
   );
+});
+
+test("old KARTUŞ TONER links 301 to the same mids under BASKI ÇÖZÜMLERİ", async (t) => {
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: "test-admin-password" });
+  const cases = [
+    ["/urunler/kartus-toner", "/urunler/baski-cozumleri/yazici-tuketim-urunleri-orj"],
+    ["/urunler/kartus-toner/", "/urunler/baski-cozumleri/yazici-tuketim-urunleri-orj"],
+    ["/urunler/kartus-toner?marka=HP", "/urunler/baski-cozumleri/yazici-tuketim-urunleri-orj?marka=HP"],
+    [
+      "/urunler/kartus-toner/yazici-tuketim-urunleri-muadil",
+      "/urunler/baski-cozumleri/yazici-tuketim-urunleri-muadil",
+    ],
+    [
+      "/urunler/kartus-toner/fotokopi-tuketim/fotokopi-tonerler?sayfa=2",
+      "/urunler/baski-cozumleri/fotokopi-tuketim/fotokopi-tonerler?sayfa=2",
+    ],
+    ["/kartus-toner", "/urunler/baski-cozumleri/yazici-tuketim-urunleri-orj"],
+  ];
+  for (const [from, to] of cases) {
+    const res = await fetch(baseUrl + from, { redirect: "manual" });
+    assert.equal(res.status, 301, from);
+    assert.equal(res.headers.get("location"), to, from);
+  }
 });

@@ -13,7 +13,6 @@ const { buildStorefrontSitemap } = require("../lib/sitemap");
 const ANA = [
   "bilgisayar-tablet",
   "bilgisayar-bilesenleri",
-  "kartus-toner",
   "baski-cozumleri",
   "yapi-gerecleri",
   "ofis-urunleri",
@@ -23,6 +22,11 @@ test("footer and homepage expose crawlable ANA category hrefs", () => {
   for (const slug of ANA) {
     const href = 'href="/urunler/' + slug + '"';
     assert.match(indexHtml, new RegExp(href), slug);
+  }
+  const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html"));
+  for (const page of pages) {
+    const html = fs.readFileSync(path.join(root, page), "utf8");
+    assert.doesNotMatch(html, /href="\/urunler\/kartus-toner/, page + " links a moved parent (301 hop)");
   }
   assert.match(indexHtml, /<h4>Kategoriler<\/h4>/);
   assert.doesNotMatch(indexHtml, /href=["']javascript:/i);

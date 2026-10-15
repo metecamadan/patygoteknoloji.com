@@ -93,8 +93,28 @@ test("buildSpecFacets only lists groups relevant to the category with enough cov
   ]);
   assert.ok(groups.some((group) => group.key === "islemci"));
   assert.equal(groups.some((group) => group.key === "renk"), false);
-  assert.deepEqual(buildSpecFacets(rows, "kartus-toner"), []);
+  assert.deepEqual(buildSpecFacets(rows, "baski-cozumleri"), []);
   assert.deepEqual(buildSpecFacets(rows.slice(0, 3), "bilgisayar-tablet"), []);
+});
+
+test("toner filters follow the toner mids under BASKI ÇÖZÜMLERİ", () => {
+  const toners = [
+    { id: "t1", name: "HP 85A Orijinal Siyah Toner" },
+    { id: "t2", name: "Canon 737 Muadil Siyah Toner" },
+    { id: "t3", name: "Epson T6641 Orijinal Cyan Mürekkep" },
+    { id: "t4", name: "Brother TN-2456 Muadil Toner Siyah" },
+  ];
+  const keys = (groups) => groups.map((group) => group.key).sort();
+  assert.deepEqual(keys(buildSpecFacets(toners, "baski-cozumleri")), ["renk", "tur"]);
+  assert.deepEqual(keys(buildSpecFacets(toners, "baski-cozumleri", "yazici-tuketim-urunleri-orj")), ["renk", "tur"]);
+  assert.deepEqual(keys(buildSpecFacets(toners, "baski-cozumleri", "fotokopi-tuketim")), ["renk", "tur"]);
+  assert.deepEqual(buildSpecFacets(toners, "baski-cozumleri", "yazici-tarayici"), []);
+  assert.deepEqual(buildSpecFacets(toners, "kartus-toner"), []);
+  const result = queryPublicCatalog(
+    toners.map((row) => Object.assign({ category: "baski-cozumleri", mid: "yazici-tuketim-urunleri-muadil", price: 100, active: true }, row)),
+    { kategori: "baski-cozumleri", ara: "yazici-tuketim-urunleri-muadil", limit: 48 }
+  );
+  assert.ok(result.facets.specs.some((group) => group.key === "tur"));
 });
 
 test("queryPublicCatalog filters by ozellik and keeps spec facets from the unfiltered list", () => {

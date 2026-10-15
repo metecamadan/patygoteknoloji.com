@@ -154,7 +154,11 @@ test("printer category beats a 'toner' word in a bundle title", () => {
     "printer"
   );
   assert.equal(
-    detectProductKind({ name: "HP 85A Orijinal Toner", siteParent: "kartus-toner", siteMid: "yazici-tuketim-urunleri-orj" }),
+    detectProductKind({ name: "HP 85A Orijinal Toner", siteParent: "baski-cozumleri", siteMid: "yazici-tuketim-urunleri-orj" }),
+    "toner"
+  );
+  assert.equal(
+    detectProductKind({ name: "Kyocera TK-435 Muadil", siteParent: "baski-cozumleri", siteMid: "fotokopi-tuketim" }),
     "toner"
   );
 });

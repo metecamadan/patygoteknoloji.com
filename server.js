@@ -88,6 +88,7 @@ const {
   loadCategories,
   assignedSiteCategory,
 } = require("./lib/categories");
+const { MOVED_PARENTS, movedCategoryPath } = require("./lib/site-category-schema");
 const { buildStorefrontSitemap } = require("./lib/sitemap");
 const { buildXlsx, XLSX_MIME } = require("./lib/xlsx");
 const { ensureListedProductCopy } = require("./lib/product-description");
@@ -502,6 +503,10 @@ const installmentSettingsStore = createInstallmentSettingsStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
 setCategoryListLoader(() => categoryStore.list(), () => categoryStore.stamp());
+{
+  const moved = supplierManager.moveSiteParents(MOVED_PARENTS);
+  if (Object.keys(moved).length) console.log("[categories] taşınan ana kategori ürünleri:", JSON.stringify(moved));
+}
 const adminUserStore = createAdminUserStore(DATA_ROOT);
 const consentStore = createConsentStore(DATA_ROOT);
 const auditStore = createAuditStore(DATA_ROOT);
@@ -1376,6 +1381,10 @@ function productSegmentCategories() {
   try {
     saved = JSON.parse(fs.readFileSync(SEGMENT_CATEGORY_FILE, "utf8")) || {};
   } catch (_) {}
+  const map = {};
+  Object.keys(saved).forEach((segment) => {
+    map[segment] = movedCategoryPath(saved[segment]) || saved[segment];
+  });
   const counts = Object.create(null);
   live.compactAll.concat(soldOutIndex().compactAll).forEach((item) => {
     const segment = String((item && item.urlPath) || "").split("/")[1];
@@ -1389,7 +1398,6 @@ function productSegmentCategories() {
     const bucket = counts[segment] || (counts[segment] = Object.create(null));
     bucket[target] = (bucket[target] || 0) + 1;
   });
-  const map = Object.assign({}, saved);
   Object.keys(counts).forEach((segment) => {
     map[segment] = Object.entries(counts[segment]).sort((a, b) => b[1] - a[1])[0][0];
   });
@@ -5605,6 +5613,8 @@ const server = http.createServer(async (req, res) => {
 
   // SEO: /urunler/ana[/ara[/alt]] listing pages
   if (/^\/urunler\/[^/]+/i.test(urlPath)) {
+    const movedPath = movedCategoryPath(urlPath);
+    if (movedPath) return permanentRedirect(res, movedPath + search);
     if (urlPath.endsWith("/")) {
       return permanentRedirect(res, urlPath.replace(/\/+$/, "") + search);
     }
@@ -5674,6 +5684,9 @@ const server = http.createServer(async (req, res) => {
       "sitemap.xml",
       "favicon.ico",
     ]);
+    if (Object.prototype.hasOwnProperty.call(MOVED_PARENTS, slug)) {
+      return permanentRedirect(res, movedCategoryPath("/urunler/" + slug) + search);
+    }
     if (!reserved.has(slug) && !slug.includes(".")) {
       const parent = categoryStore
         .list()

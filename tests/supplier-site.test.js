@@ -150,7 +150,7 @@ test("stocked XML groups without a site leaf map onto the cable, phone, alarm an
     ["OEM & ÇEVRE BİRİMLERİ", "Optik Sürücü", "External DVD Yazıcılar", "Harici Dvdrw Slim", "bilgisayar-bilesenleri/optik-suruculer/dvd-yazicilar"],
     [NET, "Veri Yedekleme ve Depolama", "Veri Depolama Sistemleri", "QNAP NAS 8 Yuva", "bilgisayar-tablet/diskler/nas-depolama"],
     ["TÜKETİCİ ELEKTRONİĞİ", "Hobi ve Oyuncak", "Oyuncaklar", "USB Oyun Kolu", "bilgisayar-tablet/klavye-mouse-urunleri/oyun-kollari-ve-konsollar"],
-    ["TÜKETİM ÜRÜNLERİ", "Fotokopi Tüketim (Muadil)", "Muadil Fotokopi Tonerler", "Kyocera TK-435 Muadil Toner", "kartus-toner/fotokopi-tuketim/muadil-fotokopi-tonerler"],
+    ["TÜKETİM ÜRÜNLERİ", "Fotokopi Tüketim (Muadil)", "Muadil Fotokopi Tonerler", "Kyocera TK-435 Muadil Toner", "baski-cozumleri/fotokopi-tuketim/muadil-fotokopi-tonerler"],
     ["YAPI GEREÇLERİ", "Hırdavat Ürünleri", "Hırdavat Ürünleri", "Hızlı Yapıştırıcı 400ml", "yapi-gerecleri/hirdavat-urunleri/diger-hirdavat"],
   ];
   for (const [main, mid, sub, name, expected] of cases) {
@@ -292,7 +292,7 @@ test("XML sync opens new matched products but never reopens one closed in the pa
       },
       extra
     );
-  const placed = { siteParent: "kartus-toner", siteMid: "yazici-tuketim-urunleri-orj", siteChild: "seritler", siteCategoryAssigned: true };
+  const placed = { siteParent: "baski-cozumleri", siteMid: "yazici-tuketim-urunleri-orj", siteChild: "seritler", siteCategoryAssigned: true };
   const products = [
     row("NEW-1"),
     row("SEEN-1", placed),
@@ -340,7 +340,7 @@ test("XML sub-category without a counterpart is not dropped into a sibling leaf"
     const tree = store.list();
     const ribbon = suggestSiteCategory(xml(toner, orj, "Şeritler", "Epson ERC-38 Şerit"), tree);
     assert.deepEqual(ribbon, {
-      siteParent: "kartus-toner",
+      siteParent: "baski-cozumleri",
       siteMid: "yazici-tuketim-urunleri-orj",
       siteChild: "seritler",
     });
@@ -646,7 +646,6 @@ test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
   const parents = [
     "bilgisayar-tablet",
     "bilgisayar-bilesenleri",
-    "kartus-toner",
     "baski-cozumleri",
     "yapi-gerecleri",
     "ofis-urunleri",
@@ -714,7 +713,7 @@ test("homeFeaturedCatalog Tümü list ranks global popularity before category mi
       name: "HP Muadil Toner",
       brand: "NO-NAME",
       price: 100,
-      category: "kartus-toner",
+      category: "baski-cozumleri",
       active: true,
     },
     {

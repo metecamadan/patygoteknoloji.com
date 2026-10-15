@@ -46,7 +46,7 @@ test("home popular mix covers tabbed parents only and prefers orderable prices",
     product("cheap-cable", "bilgisayar-bilesenleri", 50),
     product("ssd", "bilgisayar-bilesenleri", 1500),
     product("notebook", "bilgisayar-tablet", 25000),
-    product("toner", "kartus-toner", 900),
+    product("toner", "baski-cozumleri", 900),
   ];
   const home = homeFeaturedCatalog(products, { limit: 4, minPriceInclVat: 750 });
   const ids = home.products.map((row) => row.id);
