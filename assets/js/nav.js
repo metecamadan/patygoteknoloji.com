@@ -357,19 +357,34 @@
 
   function findChildBySlugs(categories, slugs, used) {
     const want = slugs || [];
+    // Prefer real leaves first. Matching a mid slug (e.g. tasinabilir-bilgisayarlar)
+    // before notebooklar produced /mid/mid URLs and empty category pages.
     for (let i = 0; i < want.length; i += 1) {
       const alias = want[i];
       for (const parent of categories || []) {
         for (const mid of parent.children || []) {
-          if (mid.slug === alias) {
-            const key = childKey(parent, mid, mid);
-            if (!used.has(key)) return { parent, mid, child: mid, key };
-          }
           const leaf = (mid.children || []).find((row) => row.slug === alias);
           if (!leaf) continue;
           const key = childKey(parent, mid, leaf);
           if (used.has(key)) continue;
           return { parent, mid, child: leaf, key };
+        }
+      }
+    }
+    for (let i = 0; i < want.length; i += 1) {
+      const alias = want[i];
+      for (const parent of categories || []) {
+        for (const mid of parent.children || []) {
+          if (mid.slug !== alias) continue;
+          const leaves = mid.children || [];
+          if (leaves.length) {
+            const leaf = leaves[0];
+            const key = childKey(parent, mid, leaf);
+            if (used.has(key)) continue;
+            return { parent, mid, child: leaf, key };
+          }
+          const key = childKey(parent, mid, mid);
+          if (!used.has(key)) return { parent, mid, child: mid, key };
         }
       }
     }
@@ -448,7 +463,12 @@
       const slot = item.slot;
       const link = document.createElement("a");
       link.className = "hero-orbit-chip";
-      link.href = categoryHref(item.parent.slug, item.mid && item.mid.slug, item.child.slug);
+      const midSlug = item.mid && item.mid.slug;
+      const childSlug = item.child && item.child.slug;
+      link.href =
+        midSlug && childSlug && midSlug === childSlug
+          ? categoryHref(item.parent.slug, midSlug)
+          : categoryHref(item.parent.slug, midSlug, childSlug);
       link.style.setProperty("--chip-top", slot.top + "%");
       link.style.setProperty("--chip-left", slot.left + "%");
       link.style.setProperty("--float-delay", slot.delay + "s");

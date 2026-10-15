@@ -159,7 +159,12 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /storefrontCatalogMemo\.active\.stale = true/);
   assert.match(serverJs, /Keep the last warm index until rebuildStorefrontCatalogNow/);
   assert.match(serverJs, /clearCatalogBootstrapSnapshots\(\)/);
-  assert.match(serverJs, /all\.json \/ leaf listings \/ home-featured must drop/);
+  assert.match(serverJs, /Do not delete listing\/home bootstrap JSON here/);
+  assert.match(serverJs, /writeCatalogBootstrapSnapshots overwrites atomically/);
+  assert.doesNotMatch(
+    serverJs,
+    /if \(pricingChanges\.length\) \{\s*\/\/ Prices must match[\s\S]*?rebuildStorefrontCatalogNow\(false\);/
+  );
   assert.match(serverJs, /ensureCategoriesBootstrapSnapshot/);
   assert.match(serverJs, /scheduleWarmStorefrontCatalog/);
   assert.match(serverJs, /bootstrapSnapshotsReady/);

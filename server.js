@@ -1112,17 +1112,11 @@ function writeLegacyRedirectConf(routeIndex) {
 }
 
 function clearCatalogBootstrapSnapshots() {
-  try {
-    if (!fs.existsSync(CATALOG_BOOTSTRAP_DIR)) return;
-    // Keep categories.json only: nginx serves it with no Node fallback and invalidate
-    // rewrites it immediately. all.json / leaf listings / home-featured must drop so
-    // /api/products does not return a pre-invalidate order (e.g. restock still last).
-    for (const name of fs.readdirSync(CATALOG_BOOTSTRAP_DIR)) {
-      if (!name.endsWith(".json")) continue;
-      if (name === "categories.json") continue;
-      fs.unlinkSync(path.join(CATALOG_BOOTSTRAP_DIR, name));
-    }
-  } catch (_) {}
+  // Do not delete listing/home bootstrap JSON here. nginx serves /listing/*.json from
+  // disk with no Node fallback; wiping them before the async rewrite left shoppers on
+  // 404 + skeletons while the event loop rebuilt ~17k rows (panel basamak/margin save
+  // → upstream timeout). writeCatalogBootstrapSnapshots overwrites atomically instead.
+  // categories.json is rewritten immediately in invalidateStorefrontCatalog.
 }
 
 function invalidateStorefrontCatalog() {
@@ -4701,12 +4695,10 @@ async function handleApi(req, res, urlPath) {
         } catch (_) {}
         scheduleAkakceFeedSummaryWarm();
       }
-      // Keep the previous warm index visible; swap a fresh one without a null hole.
+      // Mark stale and warm off the request path. A sync rebuildStorefrontCatalogNow
+      // here blocked nginx for seconds (timeouts / connection reset) while basamak or
+      // margin saved; impact already used a fresh supplierPriceSnapshot.
       invalidateStorefrontCatalog();
-      if (pricingChanges.length) {
-        // Prices must match the impact we just reported before the next storefront read.
-        rebuildStorefrontCatalogNow(false);
-      }
       warmStorefrontCatalog();
       return json(res, 200, { ok: true, categories, pricing });
     } catch (err) {

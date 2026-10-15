@@ -97,6 +97,8 @@ test("nav renders animated hero orbit icons from live site categories", () => {
   assert.match(navJs, /tasinabilir-bilgisayarlar/);
   assert.match(navJs, /notebooklar/);
   assert.match(navJs, /islemciler/);
+  assert.match(navJs, /Prefer real leaves first/);
+  assert.match(navJs, /midSlug === childSlug/);
   assert.match(navJs, /published\.forEach\(\(cat\) => root\.appendChild\(buildMegaItem\(cat\)\)\)/);
 });
 
