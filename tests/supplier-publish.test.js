@@ -79,15 +79,6 @@ test("publishing XML slot 1 assigns site categories and lists products on the st
   assert.equal(published.status, 200, payload.error || "publish");
   assert.equal(payload.result.assigned, 1);
 
-  // active + kategori atanmış ürün havuzda kalmaz; aktif listeden doğrula.
-  const pool = await fetch(baseUrl + "/api/admin/supplier/products?status=pool", { headers });
-  const poolBody = await pool.json();
-  assert.equal(
-    poolBody.products.find((item) => item.supplierSku === "CPU-1"),
-    undefined,
-    "yayınlanan ürün havuzda kalmamalı"
-  );
-
   const mapped = await fetch(baseUrl + "/api/admin/supplier/products?status=active", { headers });
   const mappedBody = await mapped.json();
   const mappedCpu = mappedBody.products.find((item) => item.supplierSku === "CPU-1");

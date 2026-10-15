@@ -187,9 +187,9 @@ test("admin categories tab manages the site category tree", () => {
   assert.match(html, /id="catCollapseAllBtn"/);
   assert.match(script, /expandedCategorySlugs/);
   assert.match(script, /catSlug\.readOnly/);
-  assert.match(html, /id="productPoolBody"/);
-  assert.match(html, /Ürün havuzu/);
-  assert.match(script, /status=pool|status: "pool"/);
+  // Stocked-but-unpublished products are handled under Ürünler (XML Ürünleri, Listelenmeyen).
+  assert.doesNotMatch(html, /productPool|Ürün havuzu<\/h2>/);
+  assert.doesNotMatch(script, /productPool|status: "pool"/);
   assert.match(script, /Yayına al/);
 });
 
@@ -593,7 +593,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-33/);
+  assert.match(html, /admin\.css\?v=siparis-34/);
 });
 
 test("admin panel has a single dark theme: no light theme, no theme toggle", () => {
@@ -1020,14 +1020,13 @@ test("admin tables expose click-to-sort headers wired to whitelisted server sort
   };
   assert.deepEqual(headKeys("supplierProductHead"), ["name", "sku", "source", "cost", "margin", "price", "stock", "siteCategory", "feed", "active"]);
   assert.deepEqual(headKeys("adminUnlistedHead"), ["name", "sku", "stock", "xmlCategory", "reason"]);
-  assert.deepEqual(headKeys("productPoolHead"), ["name", "stock", "xmlCategory"]);
   assert.deepEqual(headKeys("adminOrderListHead"), ["id", "date", "customer", "payment", "status", "total"]);
   assert.deepEqual(headKeys("couponTableHead"), ["code", "discount", "minOrder", "used", "active"]);
   assert.doesNotMatch(html, /class="admin-order-list-head"[^>]*aria-hidden/, "sortable order head stays reachable");
 
   const serverSortKeys = fs.readFileSync(path.join(__dirname, "..", "lib", "multi-supplier.js"), "utf8")
     .match(/const PRODUCT_SORT_VALUES = \{([\s\S]*?)\n  \};/)[1];
-  new Set([...headKeys("supplierProductHead"), ...headKeys("adminUnlistedHead"), ...headKeys("productPoolHead")]).forEach((key) => {
+  new Set([...headKeys("supplierProductHead"), ...headKeys("adminUnlistedHead")]).forEach((key) => {
     if (key === "feed") return;
     assert.match(serverSortKeys, new RegExp("\\n    " + key + ":"), key + " is a server sort key");
   });
@@ -1040,7 +1039,6 @@ test("admin tables expose click-to-sort headers wired to whitelisted server sort
   assert.match(js, /aria-sort/);
   assert.match(js, /supplierSort\.apply\(qs\)/);
   assert.match(js, /unlistedSort\.apply\(qs\)/);
-  assert.match(js, /productPoolSort\.apply\(qs\)/);
   assert.match(js, /orderSort\.apply\(params\)/);
   assert.match(js, /couponSort\s*\.sortList\(coupons, COUPON_SORT_VALUES\)/);
 });

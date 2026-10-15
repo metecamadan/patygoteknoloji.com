@@ -142,8 +142,6 @@ test("three supplier slots keep configuration, products and overrides isolated",
       "inactive rows the mapper could not place are listed for a manual move"
     );
     assert.equal(unmatched.categoryUnmatchedCount, 2);
-    const pool = manager.queryProducts({ status: "pool", page: 1, limit: 50 });
-    assert.ok(pool.products.every((item) => !item.unlisted));
     assert.equal(manager.queryProducts({ page: 1, limit: 50 }).unlistedCount, 1);
 
     manager.updateProducts([

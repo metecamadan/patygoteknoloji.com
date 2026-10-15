@@ -169,10 +169,6 @@
     noImagePage = 1;
     loadNoImageProducts().catch(() => {});
   });
-  const productPoolSort = setupSortableHeader(document.getElementById("productPoolHead"), "pool", () => {
-    productPoolPage = 1;
-    loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
-  });
   const orderSort = setupSortableHeader(document.getElementById("adminOrderListHead"), "orders", () => {
     loadAdminOrders().catch(() => {});
   });
@@ -8156,7 +8152,6 @@
     renderCategoryTree();
     notifySite();
     note(categoryTreeNote, "ok", message || "Kategori ağacı kaydedildi. Site menüsü güncellendi.");
-    loadProductPool().catch(() => {});
   }
 
   function cloneCategoryTree(tree) {
@@ -8495,7 +8490,6 @@
     categoryTree = Array.isArray(data.categories) ? data.categories : [];
     siteCategories = categoryTree;
     renderCategoryTree();
-    loadProductPool().catch(() => {});
   }
 
   const catExpandAllBtn = document.getElementById("catExpandAllBtn");
@@ -8633,167 +8627,6 @@
       } catch (err) {
         note(categoryFormNote, "err", err.message);
       }
-    });
-  }
-
-  let productPoolPage = 1;
-  let productPoolQuery = "";
-
-  function xmlCategoryLabel(item) {
-    return [item.xmlMainCategory || item.mainCategory, item.xmlMidCategory || item.midCategory, item.xmlSubCategory || item.subCategory]
-      .map((part) => String(part || "").trim())
-      .filter(Boolean)
-      .join(" › ") || "—";
-  }
-
-  function renderProductPoolPager(totalPages) {
-    const pager = document.getElementById("productPoolPager");
-    if (!pager) return;
-    pager.textContent = "";
-    if (totalPages <= 1) {
-      pager.hidden = true;
-      return;
-    }
-    pager.hidden = false;
-    const addBtn = (label, page, options) => {
-      const opts = options || {};
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      if (opts.current) btn.className = "is-current";
-      btn.disabled = !!opts.disabled;
-      btn.addEventListener("click", () => {
-        productPoolPage = page;
-        loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
-      });
-      pager.appendChild(btn);
-    };
-    addBtn("‹", productPoolPage - 1, { disabled: productPoolPage <= 1 });
-    addBtn(String(productPoolPage), productPoolPage, { current: true, disabled: true });
-    addBtn("›", productPoolPage + 1, { disabled: productPoolPage >= totalPages });
-  }
-
-  function renderProductPoolRow(item) {
-    const tr = document.createElement("tr");
-    const nameCell = document.createElement("td");
-    const strong = document.createElement("strong");
-    strong.textContent = item.name || item.supplierSku;
-    const meta = document.createElement("span");
-    meta.className = "admin-cat-slug";
-    meta.textContent = [item.brand, item.supplierSku].filter(Boolean).join(" · ");
-    nameCell.appendChild(strong);
-    nameCell.appendChild(meta);
-
-    const stockCell = document.createElement("td");
-    stockCell.textContent = item.stockQty == null ? "—" : String(item.stockQty);
-
-    const xmlCell = document.createElement("td");
-    xmlCell.textContent = xmlCategoryLabel(item);
-
-    const catCell = document.createElement("td");
-    const catWrap = document.createElement("div");
-    catWrap.className = "admin-cat-selects";
-    const parentSelect = document.createElement("select");
-    const midSelect = document.createElement("select");
-    const childSelect = document.createElement("select");
-    fillSiteParentSelect(parentSelect, item.siteParent || "");
-    fillSiteMidSelect(midSelect, item.siteParent || "", item.siteMid || "");
-    fillSiteChildSelect(childSelect, item.siteParent || "", item.siteMid || "", item.siteChild || "");
-    parentSelect.addEventListener("change", () => {
-      fillSiteMidSelect(midSelect, parentSelect.value, "");
-      fillSiteChildSelect(childSelect, parentSelect.value, "", "");
-    });
-    midSelect.addEventListener("change", () => {
-      fillSiteChildSelect(childSelect, parentSelect.value, midSelect.value, "");
-    });
-    catWrap.appendChild(parentSelect);
-    catWrap.appendChild(midSelect);
-    catWrap.appendChild(childSelect);
-    catCell.appendChild(catWrap);
-
-    const actionCell = document.createElement("td");
-    const publishBtn = document.createElement("button");
-    publishBtn.type = "button";
-    publishBtn.className = "btn btn-primary btn-xs";
-    publishBtn.textContent = "Yayına al";
-    publishBtn.addEventListener("click", async () => {
-      const parentSlug = parentSelect.value;
-      const midSlug = midSelect.value;
-      const childSlug = childSelect.value;
-      if (!parentSlug || !midSlug || !childSlug) {
-        note(document.getElementById("productPoolNote"), "err", "ANA, ARA ve ALT kategori seçin.");
-        return;
-      }
-      publishBtn.disabled = true;
-      try {
-        await updateSupplierProducts([
-          {
-            supplierSku: item.supplierSku,
-            supplierSlot: item.supplierSlot,
-            siteParent: parentSlug,
-            siteMid: midSlug,
-            siteChild: childSlug,
-            active: true,
-          },
-        ]);
-        notifySite();
-        note(document.getElementById("productPoolNote"), "ok", item.name + " yayına alındı.");
-        await loadProductPool();
-      } catch (err) {
-        note(document.getElementById("productPoolNote"), "err", err.message);
-        publishBtn.disabled = false;
-      }
-    });
-    actionCell.appendChild(publishBtn);
-
-    [nameCell, stockCell, xmlCell, catCell, actionCell].forEach((cell) => tr.appendChild(cell));
-    return tr;
-  }
-
-  async function loadProductPool() {
-    const body = document.getElementById("productPoolBody");
-    const poolNote = document.getElementById("productPoolNote");
-    if (!body) return;
-    const qs = new URLSearchParams({
-      status: "pool",
-      q: productPoolQuery,
-      page: String(productPoolPage || 1),
-      limit: "50",
-    });
-    productPoolSort.apply(qs);
-    const data = await api("/api/admin/supplier/products?" + qs.toString());
-    const rows = Array.isArray(data.products) ? data.products : [];
-    body.textContent = "";
-    if (!rows.length) {
-      const empty = document.createElement("tr");
-      const cell = document.createElement("td");
-      cell.colSpan = 5;
-      cell.className = "admin-table-empty";
-      cell.textContent = "Stoklu ve yayında olmayan ürün yok.";
-      empty.appendChild(cell);
-      body.appendChild(empty);
-    } else {
-      rows.forEach((item) => body.appendChild(renderProductPoolRow(item)));
-    }
-    const total = Number(data.total) || 0;
-    const totalPages = Math.max(1, Number(data.totalPages) || 1);
-    productPoolPage = Math.min(totalPages, Number(data.page) || 1);
-    renderProductPoolPager(totalPages);
-    if (poolNote && poolNote.className.indexOf("err") < 0) {
-      note(poolNote, "", total ? total + " stoklu ürün sitede yayında değil." : "");
-    }
-  }
-
-  const productPoolSearch = document.getElementById("productPoolSearch");
-  if (productPoolSearch) {
-    let poolSearchTimer = null;
-    productPoolSearch.addEventListener("input", () => {
-      clearTimeout(poolSearchTimer);
-      poolSearchTimer = setTimeout(() => {
-        productPoolQuery = productPoolSearch.value.trim();
-        productPoolPage = 1;
-        loadProductPool().catch((err) => note(document.getElementById("productPoolNote"), "err", err.message));
-      }, 280);
     });
   }
 

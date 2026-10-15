@@ -2360,9 +2360,6 @@ body.admin-modal-open {
   overflow-x: auto;
 }
 .admin-cat-tree { display: grid; min-width: 760px; }
-.admin-product-pool-card {
-  margin-top: 18px;
-}
 .admin-cat-toggle {
   width: 28px;
   height: 28px;
