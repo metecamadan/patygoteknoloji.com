@@ -13,6 +13,7 @@ const {
   syncXmlSiteCategoriesAsync,
   ensureCanonicalSiteTree,
   markPanelCategoryChoice,
+  inferEmptyXmlCategories,
 } = require("../lib/supplier-site");
 const { createCategoryStore, slugifyCategory } = require("../lib/categories");
 const { queryPublicCatalog } = require("../lib/catalog");
@@ -402,6 +403,67 @@ test("sync withdraws automatic placements the mapper no longer suggests", () => 
     assert.deepEqual(updates, [
       { supplierSlot: "supplier-1", supplierSku: "AUTO", siteParent: "", siteMid: "", siteChild: "" },
     ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rows with only the main XML group take the category of a clear majority of their stock-code group", () => {
+  const OEM = "OEM & ÇEVRE BİRİMLERİ";
+  const row = (sku, mid, sub, extra) =>
+    Object.assign({ supplierSlot: "supplier-1", supplierSku: sku, xmlMainCategory: OEM, xmlMidCategory: mid, xmlSubCategory: sub }, extra || {});
+  const speakers = Array.from({ length: 9 }, (_, i) => row("550.20.20.000" + i, "Ses Sistemleri", "Bluetooth Speaker"));
+  const cases = Array.from({ length: 4 }, (_, i) => row("100.40.10.000" + i, "Kasalar", "ATX Kasalar"));
+  const mixed = [
+    ...Array.from({ length: 3 }, (_, i) => row("300.10.10.000" + i, "Kablo Çeşitleri", "USB Kablolar")),
+    ...Array.from({ length: 3 }, (_, i) => row("300.10.10.001" + i, "Kablo Çeşitleri", "HDMI Kablolar")),
+  ];
+  const radio = row("550.20.20.0041", "", "", { name: "Everton Rt-557 Bluetooth Fm-Usb" });
+  const lonelyCase = row("100.40.10.0137", "", "");
+  const mixedCable = row("300.10.10.0099", "", "");
+  const otherMain = row("550.20.20.0099", "", "", { xmlMainCategory: "TÜKETİCİ ELEKTRONİĞİ" });
+  const out = inferEmptyXmlCategories([...speakers, ...cases, ...mixed, radio, lonelyCase, mixedCable, otherMain]);
+  const bySku = new Map(out.map((item) => [item.supplierSku, item]));
+
+  const inferred = bySku.get("550.20.20.0041");
+  assert.equal(inferred.xmlMidCategory, "Ses Sistemleri");
+  assert.equal(inferred.xmlSubCategory, "Bluetooth Speaker");
+  assert.equal(inferred.name, "Everton Rt-557 Bluetooth Fm-Usb");
+  assert.equal(radio.xmlSubCategory, "", "input rows are not mutated");
+  assert.equal(bySku.get("100.40.10.0137").xmlSubCategory, "", "fewer than 5 categorised siblings");
+  assert.equal(bySku.get("300.10.10.0099").xmlSubCategory, "", "no 80 % majority");
+  assert.equal(bySku.get("550.20.20.0099").xmlSubCategory, "", "a different main group is not borrowed");
+  assert.equal(bySku.get("550.20.20.0001"), speakers[1], "categorised rows pass through untouched");
+});
+
+test("XML sync places an empty-category radio next to its stock-code siblings", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-sync-skugroup-"));
+  const store = createCategoryStore(root);
+  const speaker = (sku, mid, sub) => ({
+    supplierSlot: "supplier-1",
+    supplierSku: sku,
+    xmlMainCategory: "OEM & ÇEVRE BİRİMLERİ",
+    xmlMidCategory: mid,
+    xmlSubCategory: sub,
+    active: false,
+  });
+  const updates = [];
+  const manager = {
+    listProducts: () => [
+      ...Array.from({ length: 6 }, (_, i) => speaker("550.20.20.000" + i, "Ses Sistemleri", "Bluetooth Speaker")),
+      speaker("550.20.20.0041", "", ""),
+    ],
+    updateProducts: (rows) => updates.push(...rows),
+  };
+  try {
+    syncXmlSiteCategories({ manager, categoryStore: store, slotId: "supplier-1", activate: true });
+    const radio = updates.find((row) => row.supplierSku === "550.20.20.0041");
+    const sibling = updates.find((row) => row.supplierSku === "550.20.20.0000");
+    assert.ok(sibling && sibling.siteChild, "siblings map onto a site leaf");
+    assert.deepEqual(
+      radio && [radio.siteParent, radio.siteMid, radio.siteChild, radio.active],
+      [sibling.siteParent, sibling.siteMid, sibling.siteChild, true]
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
