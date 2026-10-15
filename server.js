@@ -87,6 +87,7 @@ const {
   categoryHref,
   loadCategories,
   assignedSiteCategory,
+  publicCategories,
 } = require("./lib/categories");
 const { MOVED_PARENTS, movedCategoryPath } = require("./lib/site-category-schema");
 const { buildStorefrontSitemap } = require("./lib/sitemap");
@@ -1527,13 +1528,23 @@ function readCategoriesBootstrapSnapshot() {
 
 function writeCategoriesBootstrapSnapshot(payload) {
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
-  const body = payload || {
-    version: 5,
-    categories: categoryStore.publicList(),
-  };
+  let categories;
+  if (payload && Array.isArray(payload.categories)) {
+    categories = payload.categories;
+  } else {
+    // Prefer a warm storefront index for empty-leaf filtering. Never call storefrontIndex()
+    // here: panel category saves used to rebuild the whole catalog before answering and
+    // the admin UI timed out (12s), then rolled the input back even when the save succeeded.
+    let leafKeys = null;
+    try {
+      const warm = storefrontCatalogMemo.active && storefrontCatalogMemo.active.index;
+      if (warm) leafKeys = buildStorefrontLeafKeys(warm);
+    } catch (_) {}
+    categories = publicCategories(categoryStore.list(), { leafKeys });
+  }
   atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "categories.json"), {
-    version: body.version || 5,
-    categories: Array.isArray(body.categories) ? body.categories : [],
+    version: (payload && payload.version) || 5,
+    categories,
   });
 }
 
@@ -4624,18 +4635,15 @@ async function handleApi(req, res, urlPath) {
     try {
       const body = JSON.parse((await readBody(req, 256 * 1024)).toString("utf8") || "{}");
       const before = categoryStore.list();
-      const pricesBefore = supplierPriceSnapshot();
+      // Price snapshot only when margin / critical stock actually changes — listing 17k
+      // products twice otherwise made every rename/reorder wait on the same slow path.
+      const pricingPreview = categoryPricingChanges(before, body.categories || []);
+      const pricesBefore = pricingPreview.length ? supplierPriceSnapshot() : null;
       const categories = categoryStore.save(body.categories);
-      try {
-        writeCategoriesBootstrapSnapshot();
-      } catch (_) {}
       const pricingChanges = categoryPricingChanges(before, categories);
       let pricing = null;
       if (pricingChanges.length) {
         pricing = supplierPriceImpact(pricesBefore);
-        invalidateStorefrontCatalog();
-        warmStorefrontCatalog();
-        scheduleAkakceFeedSummaryWarm();
         try {
           const session = getSession(req);
           auditStore.record({
@@ -4648,7 +4656,11 @@ async function handleApi(req, res, urlPath) {
             ip: clientIp(req),
           });
         } catch (_) {}
+        scheduleAkakceFeedSummaryWarm();
       }
+      // Menu bootstrap + listing snapshots refresh after the response; do not block the panel.
+      invalidateStorefrontCatalog();
+      warmStorefrontCatalog();
       return json(res, 200, { ok: true, categories, pricing });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Kategori ağacı kaydedilemedi" });
@@ -5729,8 +5741,17 @@ const server = http.createServer(async (req, res) => {
     const wantsHtml =
       !accept || /\btext\/html\b/i.test(accept) || accept.includes("*/*");
     // Warm index: crawler-ready head + h1; cold: disk shell (client resolves via /listing).
+    // Invalidate no longer rebuilds the catalog inside writeCategoriesBootstrapSnapshot, so
+    // the index can be cold here — still 301 gone products and 404 junk segments.
     if (wantsHtml && htmlPath && fs.existsSync(htmlPath)) {
       if (warmIndex) return sendProductHtml(res, req, htmlPath, urlPath, warmIndex);
+      const gonePath = goneProductCategoryPath(urlPath);
+      if (gonePath) return goneProductRedirect(res, gonePath);
+      const segmentKey = String(productRoute.segment || "").toLowerCase();
+      const knownSegment = Boolean(productSegmentCategories()[segmentKey]);
+      if (!knownSegment && !publishedPaths.has(urlPath)) {
+        return serveNotFound(res, req.method);
+      }
       return sendFile(res, htmlPath, req.method);
     }
     const routeIndex = storefrontIndex(false).routeIndex;

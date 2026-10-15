@@ -698,6 +698,7 @@
     const isOrderPatch = /\/api\/admin\/orders\/[^/?]+$/.test(path) && String(opts.method || "GET").toUpperCase() === "PATCH";
     const isAdminLogin = path.includes("/api/admin/login");
     const isAdminMe = path.includes("/api/admin/me");
+    const isAdminCategories = path.includes("/api/admin/categories");
     const timer = setTimeout(
       () => ctrl.abort(),
       Number(opts.timeout) ||
@@ -711,7 +712,9 @@
                 ? 60000
                 : isAdminMe
                   ? 30000
-                  : 12000)
+                  : isAdminCategories
+                    ? 60000
+                    : 12000)
     );
     try {
       const res = await fetch(path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
@@ -8613,6 +8616,7 @@
     const data = await api("/api/admin/categories", {
       method: "PUT",
       body: JSON.stringify({ categories: next }),
+      timeout: 60000,
     });
     categoryTree = Array.isArray(data.categories) ? data.categories : next;
     siteCategories = categoryTree;
@@ -8724,9 +8728,15 @@
           );
         }
       } catch (err) {
-        input.value = own === null ? "" : String(own);
-        input.disabled = false;
         note(categoryTreeNote, "err", err.message);
+        // Save may have finished on the server after a client timeout; reload the tree
+        // instead of rolling the field back to the stale value from when the cell was drawn.
+        try {
+          await loadCategoryTree();
+        } catch (_) {
+          input.value = own === null ? "" : String(own);
+          input.disabled = false;
+        }
       }
     });
     cell.appendChild(input);

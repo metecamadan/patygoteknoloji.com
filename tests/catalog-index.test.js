@@ -147,6 +147,14 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /readCatalogBootstrapSnapshot/);
   assert.match(serverJs, /writeCatalogBootstrapSnapshots/);
   assert.match(serverJs, /writeCategoriesBootstrapSnapshot/);
+  assert.match(
+    serverJs,
+    /function writeCategoriesBootstrapSnapshot\([\s\S]*?leafKeys = null[\s\S]*?publicCategories\(categoryStore\.list\(\), \{ leafKeys \}\)/
+  );
+  assert.match(
+    serverJs,
+    /Never call storefrontIndex\(\)[\s\S]*?here: panel category saves/
+  );
   assert.match(serverJs, /ensureCategoriesBootstrapSnapshot/);
   assert.match(serverJs, /scheduleWarmStorefrontCatalog/);
   assert.match(serverJs, /bootstrapSnapshotsReady/);

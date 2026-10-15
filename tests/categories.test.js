@@ -11,6 +11,8 @@ const {
   hasSiteCategory,
   dropRetiredParents,
   applyCategoryDrag,
+  publicCategories,
+  setPublicCategoryLeafKeysLoader,
 } = require("../lib/categories");
 
 const SAMPLE_TREE = [
@@ -145,6 +147,31 @@ test("category store folds a live KARTUŞ TONER tree on read and on a stale pane
     assert.deepEqual(saved.map((row) => row.slug), ["baski-cozumleri"]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("publicCategories leafKeys:null skips the product-index loader", () => {
+  let loads = 0;
+  setPublicCategoryLeafKeysLoader(() => {
+    loads += 1;
+    throw new Error("storefront index must not load for an explicit leafKeys:null");
+  });
+  try {
+    const published = publicCategories(
+      [
+        {
+          slug: "a",
+          name: "A",
+          active: true,
+          children: [{ slug: "b", name: "B", active: true }],
+        },
+      ],
+      { leafKeys: null }
+    );
+    assert.equal(loads, 0);
+    assert.equal(published[0].children[0].slug, "b");
+  } finally {
+    setPublicCategoryLeafKeysLoader(null);
   }
 });
 
