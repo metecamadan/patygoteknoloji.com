@@ -328,6 +328,28 @@ test("buildStorefrontLeafKeys maps compact catalog rows to leaf keys", () => {
   assert.equal(keys.size, 3);
 });
 
+test("buildStorefrontCategoryProductCounts aggregates parent mid and leaf paths", () => {
+  const { buildStorefrontCategoryProductCounts } = require("../lib/catalog");
+  const counts = buildStorefrontCategoryProductCounts({
+    compactAll: [
+      { category: "ana", mid: "ara", alt: "dolu" },
+      { category: "ana", mid: "ara", alt: "dolu" },
+      { category: "ana", mid: "ara", alt: "baska" },
+      { category: "ana", mid: "terminal" },
+      { category: "ana", alt: "legacy" },
+      { category: "diger", mid: "x", alt: "y" },
+    ],
+  });
+  assert.equal(counts.ana, 5);
+  assert.equal(counts["ana/ara"], 3);
+  assert.equal(counts["ana/ara/dolu"], 2);
+  assert.equal(counts["ana/ara/baska"], 1);
+  assert.equal(counts["ana/terminal"], 1);
+  assert.equal(counts["ana/legacy"], 1);
+  assert.equal(counts.diger, 1);
+  assert.equal(counts["diger/x/y"], 1);
+});
+
 test("slugifyCategory and publicCategories hide unpublished nodes", () => {
   const { slugifyCategory, publicCategories, normalizeTree } = require("../lib/categories");
   assert.equal(slugifyCategory("USB Bellekler"), "usb-bellekler");

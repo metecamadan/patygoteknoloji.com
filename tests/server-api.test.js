@@ -435,6 +435,13 @@ test("admin category tree API publishes only active categories to the public fee
   const seeded = await current.json();
   assert.equal(seeded.categories.length, 5);
   assert.ok(seeded.categories.some((row) => row.slug === "baski-cozumleri"));
+  assert.equal(typeof seeded.productCounts, "object");
+  assert.ok(seeded.productCounts);
+  assert.ok(
+    Number(seeded.productCounts["bilgisayar-tablet"]) > 0 ||
+      Object.keys(seeded.productCounts).length === 0,
+    "warm katalog varsa ana kategori ürün sayısı gelir"
+  );
 
   const saved = await fetch(baseUrl + "/api/admin/categories", {
     method: "PUT",

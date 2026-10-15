@@ -70,6 +70,7 @@ const {
   buildBrandCounts,
   buildStorefrontIndex,
   buildStorefrontLeafKeys,
+  buildStorefrontCategoryProductCounts,
   homeFeaturedCatalog,
   isHomeFeaturedSnapshotValid,
   listingSnapshotFileName,
@@ -4653,7 +4654,16 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/admin/categories") {
-    return json(res, 200, { ok: true, categories: categoryStore.list() });
+    // Prefer the warm memo (even if stale) so the panel can show live product counts
+    // without rebuilding 17k rows on every categories tab open.
+    let productCounts = {};
+    try {
+      const memo = storefrontCatalogMemo.active;
+      if (memo && memo.index) {
+        productCounts = buildStorefrontCategoryProductCounts(memo.index);
+      }
+    } catch (_) {}
+    return json(res, 200, { ok: true, categories: categoryStore.list(), productCounts });
   }
 
   if (req.method === "PUT" && urlPath === "/api/admin/categories") {

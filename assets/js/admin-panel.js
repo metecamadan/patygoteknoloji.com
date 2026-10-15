@@ -8535,6 +8535,7 @@
   }
 
   let categoryTree = [];
+  let categoryProductCounts = Object.create(null);
   const expandedCategorySlugs = new Set();
   const expandedMidKeys = new Set();
   const categoryTreeList = document.getElementById("categoryTreeList");
@@ -8944,6 +8945,12 @@
     return btn;
   }
 
+  function formatCategoryProductCount(pathKey) {
+    const n = categoryProductCounts[pathKey];
+    if (!Number.isFinite(n)) return { text: "—", empty: true };
+    return { text: String(n), empty: n === 0 };
+  }
+
   /** One row per category; every level shares the same columns so new columns line up. */
   function buildCategoryRow(options) {
     const row = document.createElement("div");
@@ -8977,6 +8984,16 @@
     slug.setAttribute("role", "cell");
     slug.textContent = options.node.slug;
     row.appendChild(slug);
+    const products = document.createElement("span");
+    products.className = "admin-cat-products";
+    products.setAttribute("role", "cell");
+    const productCount = formatCategoryProductCount(options.productCountKey || "");
+    products.textContent = productCount.text;
+    if (productCount.empty) products.classList.add("is-empty");
+    products.title = options.productCountKey
+      ? "Yayında: " + productCount.text
+      : "Katalog henüz hazır değil";
+    row.appendChild(products);
     const count = document.createElement("span");
     count.className = "admin-cat-count";
     count.setAttribute("role", "cell");
@@ -9019,6 +9036,7 @@
           node: parent,
           locate: locateParent,
           inherited: rootPricing,
+          productCountKey: parent.slug,
           drop: { kind: "parent", index: parentIndex },
           toggle: makeCategoryToggle(expanded, parent.name, () => {
             if (expandedCategorySlugs.has(parent.slug)) expandedCategorySlugs.delete(parent.slug);
@@ -9049,6 +9067,7 @@
             node: child,
             locate: locateMid,
             inherited: parentPricing,
+            productCountKey: midKey,
             drop: { kind: "child", parentIndex: parentIndex, childIndex: childIndex },
             toggle: makeCategoryToggle(midExpanded, child.name, () => {
               if (expandedMidKeys.has(midKey)) expandedMidKeys.delete(midKey);
@@ -9078,6 +9097,7 @@
                 return mid && mid.children[grandIndex];
               },
               inherited: midPricing,
+              productCountKey: midKey + "/" + leaf.slug,
               drop: { kind: "grandchild", parentIndex: parentIndex, childIndex: childIndex, grandIndex: grandIndex },
               toggle: null,
               countText: "—",
@@ -9104,6 +9124,8 @@
     if (!categoryTreeList) return;
     const data = await api("/api/admin/categories");
     categoryTree = Array.isArray(data.categories) ? data.categories : [];
+    categoryProductCounts =
+      data.productCounts && typeof data.productCounts === "object" ? data.productCounts : Object.create(null);
     siteCategories = categoryTree;
     renderCategoryTree();
   }
