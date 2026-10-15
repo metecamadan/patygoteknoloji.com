@@ -99,6 +99,15 @@ test("?sayfa=N listing pages get their own canonical and title suffix", () => {
   assert.match(html, /og:url" content="https:\/\/patygoteknoloji\.com\/urunler\?sayfa=3"/);
   assert.equal(withListingPage(catalogShell, 1), catalogShell);
   assert.equal(priceInclVat({ price: 99.99, vatPercent: 20 }), 119.99);
+  assert.equal(priceInclVat({ price: 16738.7, vatPercent: 20, basamak: 9 }), 20999.99);
+  const withBasamak = renderProductHtml(detailShell, {
+    ...product,
+    price: 16738.7,
+    vatPercent: 20,
+    basamak: 9,
+  });
+  assert.match(withBasamak, /20[.\u00a0]?999,99/);
+  assert.match(withBasamak, /"price"\s*:\s*"20999\.99"/);
 });
 
 test("sitemap lists product images with the image namespace", () => {
