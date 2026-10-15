@@ -268,6 +268,71 @@ test("category store seeds from site tree and persists display-name edits", () =
   }
 });
 
+test("category margin and critical stock persist, inherit leaf → mid → parent and stay private", () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { createCategoryStore, resolveCategoryPricing } = require("../lib/categories");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-cats-"));
+  try {
+    const store = createCategoryStore(root);
+    const saved = store.save([
+      {
+        name: "Bilgisayar",
+        slug: "bilgisayar",
+        marginPercent: 8,
+        criticalStockQty: 2,
+        children: [
+          {
+            name: "Notebook",
+            slug: "notebook",
+            marginPercent: 12.5,
+            children: [
+              { name: "Oyun", slug: "oyun", criticalStockQty: 5 },
+              { name: "İş", slug: "is", marginPercent: 0 },
+            ],
+          },
+          { name: "Masaüstü", slug: "masaustu", children: [{ name: "Mini", slug: "mini" }] },
+        ],
+      },
+    ]);
+    assert.equal(saved[0].marginPercent, 8);
+    assert.equal(store.list()[0].children[0].marginPercent, 12.5);
+    assert.equal(store.list()[0].children[0].children[0].criticalStockQty, 5);
+    assert.equal("marginPercent" in store.list()[0].children[1], false, "empty means inherit");
+
+    const tree = store.list();
+    const at = (mid, leaf) =>
+      resolveCategoryPricing(assignedSiteCategory({ siteParent: "bilgisayar", siteMid: mid, siteChild: leaf }, tree));
+    assert.deepEqual(at("notebook", "oyun"), {
+      marginPercent: 12.5,
+      marginCategory: "Notebook",
+      criticalStockQty: 5,
+      criticalCategory: "Oyun",
+    });
+    assert.equal(at("notebook", "is").marginPercent, 0, "an explicit 0 stops inheritance");
+    assert.equal(at("masaustu", "mini").marginPercent, 8);
+    assert.equal(at("masaustu", "mini").criticalStockQty, 2);
+    assert.deepEqual(resolveCategoryPricing(null), {
+      marginPercent: null,
+      marginCategory: "",
+      criticalStockQty: null,
+      criticalCategory: "",
+    });
+
+    assert.throws(() => store.save([{ name: "X", slug: "x", marginPercent: -1 }]), /0 ile 500/);
+    assert.throws(() => store.save([{ name: "X", slug: "x", criticalStockQty: 1.5 }]), /tam sayı/);
+    assert.throws(() => store.save([{ name: "X", slug: "x", marginPercent: "abc" }]), /sayı olmalı/);
+    assert.equal(store.list()[0].marginPercent, 8, "a rejected save leaves the tree untouched");
+
+    const publicJson = JSON.stringify(store.publicList({ leafKeys: null }));
+    assert.match(publicJson, /Bilgisayar/);
+    assert.doesNotMatch(publicJson, /marginPercent|criticalStockQty/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("applyCategoryDrag reorders parents and sibling children", () => {
   const tree = [
     {

@@ -230,6 +230,63 @@ test("a new exchange rate reprices USD products without a restart", async () => 
   }
 });
 
+test("category margin is added to the base margin; product margin replaces both; category critical stock wins", async () => {
+  const { productStock } = require("../lib/akakce");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-store-"));
+  const store = createSupplierStore(root, {
+    allowedHosts: ["supplier.example"],
+    defaultMarginPercent: 3,
+    validateUrl: async (raw) => new URL(raw),
+    fetchXml: async () => SAMPLE_XML,
+  });
+  try {
+    const categories = installTestSiteCategories(root);
+    await store.saveUrl("https://supplier.example/feed.xml?token=secret");
+    await store.refresh();
+    store.setSettings({ criticalStockQty: 1 });
+    store.updateOverrides([
+      { supplierSku: "SKU-1", active: true, siteParent: "oem-cevre-birimleri", siteChild: "notebook" },
+    ]);
+    let product = store.listProducts()[0];
+    assert.equal(product.salePrice, 103, "no category value: base only");
+    assert.equal(product.marginSource, "global");
+    assert.equal(product.criticalStockQty, 1);
+
+    const tree = categories.list();
+    tree[0].marginPercent = 5;
+    categories.save(tree);
+    product = store.listProducts()[0];
+    assert.equal(product.salePrice, 108, "parent margin is inherited by the leaf");
+    assert.equal(product.marginSource, "category");
+    assert.equal(product.marginCategory, "OEM & ÇEVRE BİRİMLERİ");
+
+    tree[0].children[0].marginPercent = 8;
+    tree[0].children[0].criticalStockQty = 4;
+    categories.save(tree);
+    product = store.listProducts()[0];
+    assert.equal(product.marginPercent, 11);
+    assert.equal(product.marginBasePercent, 3);
+    assert.equal(product.categoryMarginPercent, 8);
+    assert.equal(product.salePrice, 111, "3% base + 8% leaf");
+    assert.equal(product.criticalStockQty, 4);
+    assert.equal(product.criticalStockSource, "category");
+    assert.equal(productStock(Object.assign({}, product, { source: "supplier" })), 0, "stock 4 is at the category's critical level");
+
+    store.updateOverrides([{ supplierSku: "SKU-1", marginPercent: 20 }]);
+    product = store.listProducts()[0];
+    assert.equal(product.salePrice, 120, "a product margin is the whole margin");
+    assert.equal(product.marginSource, "product");
+    assert.equal(product.marginOverride, 20);
+
+    store.updateOverrides([{ supplierSku: "SKU-1", marginPercent: null }]);
+    store.setSettings({ globalMarginPercent: 30 });
+    assert.equal(store.listProducts()[0].salePrice, 138, "raising the base raises every category");
+  } finally {
+    clearTestSiteCategories();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("supplier store stages products as passive and applies margin overrides", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-store-"));
   const store = createSupplierStore(root, {

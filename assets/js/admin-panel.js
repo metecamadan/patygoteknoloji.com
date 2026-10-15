@@ -883,6 +883,9 @@
         if (data.feed && data.feed.publicUrl && !feedStatus) feedStatus = data.feed;
         updateDashboard();
         renderSupplierStatus();
+        if (categoryTree.length && categoryTreeList && !categoryTreeList.contains(document.activeElement)) {
+          renderCategoryTree();
+        }
       })
       .catch(() => {});
     const tab = currentAdminTab();
@@ -2644,8 +2647,18 @@
       marginInput.step = "0.1";
       marginInput.value =
         item.marginOverride === null ? "" : String(item.marginOverride);
-      marginInput.placeholder = String(item.marginPercent);
-      marginInput.title = "Boş bırakırsanız genel kâr oranı kullanılır";
+      const inheritedMargin =
+        Number(item.marginBasePercent) + (Number(item.categoryMarginPercent) || 0);
+      marginInput.placeholder = formatPercent(
+        item.marginSource === "product" && Number.isFinite(inheritedMargin) ? inheritedMargin : item.marginPercent
+      );
+      marginInput.title =
+        "Boş: taban %" +
+        formatPercent(item.marginBasePercent) +
+        (item.categoryMarginPercent !== null && item.categoryMarginPercent !== undefined
+          ? " + " + (item.marginCategory || "kategori") + " %" + formatPercent(item.categoryMarginPercent)
+          : "") +
+        ". Yazarsanız bu ürün yalnızca yazdığınız oranla fiyatlanır.";
       marginInput.addEventListener("change", async () => {
         marginInput.disabled = true;
         try {
@@ -2675,7 +2688,7 @@
       saleInput.min = "0";
       saleInput.step = "0.01";
       saleInput.value = String(item.salePrice);
-      saleInput.title = "Boş bırakırsanız genel kâr oranı kullanılır";
+      saleInput.title = "Boş bırakırsanız taban + kategori kâr oranıyla hesaplanır";
       saleInput.addEventListener("change", async () => {
         saleInput.disabled = true;
         try {
@@ -2711,6 +2724,9 @@
         stockCell.title =
           "Kritik stok eşiği (" +
           critical +
+          (item.criticalStockSource === "category" && item.criticalStockCategory
+            ? ", " + item.criticalStockCategory
+            : "") +
           ") altında; site ve Akakçe feed’de stoksuz sayılır." +
           (fetchedAt ? " Son XML okuma: " + fetchedAt : "");
         stockCell.classList.add("is-critical-stock");
@@ -2966,6 +2982,36 @@
         }
       })
       .catch(() => {});
+  }
+
+  function formatPercent(value) {
+    return Number(value).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+  }
+
+  /** Server's before/after count of published XML products, shown after a margin or critical stock change. */
+  function pricingImpactText(pricing) {
+    if (!pricing) return "";
+    const parts = [];
+    if (pricing.changed) {
+      parts.push(
+        "Fiyatı değişen ürün: " +
+          pricing.changed +
+          " (" +
+          pricing.up +
+          " arttı, " +
+          pricing.down +
+          " azaldı, ortalama " +
+          (pricing.averagePercent > 0 ? "+" : "") +
+          "%" +
+          formatPercent(pricing.averagePercent) +
+          ")."
+      );
+    }
+    if (pricing.opened || pricing.closed) {
+      parts.push("Satışa açılan: " + pricing.opened + ", satıştan kalkan: " + pricing.closed + ".");
+    }
+    if (!parts.length) parts.push("Yayındaki ürünlerin fiyatı ve satış durumu değişmedi.");
+    return " " + parts.join(" ");
   }
 
   function renderFxHint(fx) {
@@ -4072,7 +4118,7 @@
       const button = ev.submitter || form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
-        await api("/api/admin/supplier/settings", {
+        const saved = await api("/api/admin/supplier/settings", {
           method: "PUT",
           body: JSON.stringify({
             slotId,
@@ -4082,7 +4128,7 @@
         });
         await loadSupplierData();
         notifySite();
-        note(statusNote, "ok", "Bu XML kaynağının ayarları güncellendi.");
+        note(statusNote, "ok", "Bu XML kaynağının ayarları güncellendi." + pricingImpactText(saved && saved.pricing));
       } catch (err) {
         note(statusNote, "err", err.message);
       } finally {
@@ -8174,6 +8220,125 @@
     renderCategoryTree();
     notifySite();
     note(categoryTreeNote, "ok", message || "Kategori ağacı kaydedildi. Site menüsü güncellendi.");
+    return data;
+  }
+
+  /** Slot-level values a category without its own margin / critical stock falls back to. */
+  function categoryPricingBase() {
+    const slot = supplierSlots.find((row) => row && row.configured) || supplierSlots[0] || {};
+    return {
+      margin: Number.isFinite(Number(slot.globalMarginPercent)) ? Number(slot.globalMarginPercent) : null,
+      critical: Number.isFinite(Number(slot.criticalStockQty)) ? Number(slot.criticalStockQty) : null,
+    };
+  }
+
+  function ownCategoryValue(node, field) {
+    const value = node && node[field];
+    return value === undefined || value === null || value === "" || !Number.isFinite(Number(value))
+      ? null
+      : Number(value);
+  }
+
+  /** What a child sees when it has no value of its own: the nearest ancestor's, with its name. */
+  function inheritCategoryPricing(node, inherited) {
+    const margin = ownCategoryValue(node, "marginPercent");
+    const critical = ownCategoryValue(node, "criticalStockQty");
+    return {
+      margin: margin !== null ? margin : inherited.margin,
+      marginFrom: margin !== null ? node.name : inherited.marginFrom,
+      critical: critical !== null ? critical : inherited.critical,
+      criticalFrom: critical !== null ? node.name : inherited.criticalFrom,
+    };
+  }
+
+  function makeCategoryPricingCell(options) {
+    const base = categoryPricingBase();
+    const isMargin = options.field === "marginPercent";
+    const cell = document.createElement("label");
+    cell.className = "admin-cat-pricing " + (isMargin ? "admin-cat-margin" : "admin-cat-critical");
+    cell.setAttribute("role", "cell");
+    const caption = document.createElement("span");
+    caption.className = "admin-cat-pricing-label";
+    caption.textContent = isMargin ? "Ek marj %" : "Kritik stok";
+    cell.appendChild(caption);
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = isMargin ? "500" : "9999";
+    input.step = isMargin ? "0.1" : "1";
+    input.inputMode = isMargin ? "decimal" : "numeric";
+    const own = ownCategoryValue(options.node, options.field);
+    const inheritedValue = isMargin ? options.inherited.margin : options.inherited.critical;
+    const inheritedFrom = isMargin ? options.inherited.marginFrom : options.inherited.criticalFrom;
+    const fallback = inheritedValue !== null ? inheritedValue : isMargin ? 0 : base.critical;
+    input.value = own === null ? "" : String(own);
+    input.placeholder = fallback === null ? "" : String(fallback);
+    input.setAttribute(
+      "aria-label",
+      options.node.name + (isMargin ? " ek marjı (%)" : " kritik stok")
+    );
+    const effective = own !== null ? own : fallback;
+    if (isMargin) {
+      input.title =
+        (own === null
+          ? inheritedValue !== null
+            ? "Boş: " + inheritedFrom + " kategorisinden +%" + formatPercent(inheritedValue) + ". "
+            : "Boş: ek marj yok. "
+          : "") +
+        (base.margin !== null
+          ? "Satış fiyatı = maliyet × (taban %" +
+            formatPercent(base.margin) +
+            " + ek %" +
+            formatPercent(effective || 0) +
+            "). Ürüne özel kâr oranı girilen ürünlerde yalnızca o oran kullanılır."
+          : "");
+    } else {
+      input.title =
+        own === null
+          ? inheritedValue !== null
+            ? "Boş: " + inheritedFrom + " kategorisinden " + inheritedValue + "."
+            : "Boş: XML Yönetimi'ndeki varsayılan kritik stok" + (base.critical !== null ? " (" + base.critical + ")" : "") + "."
+          : "Bu kategoride stoğu " + own + " ve altında olan ürün satışta görünmez.";
+    }
+    input.addEventListener("change", async () => {
+      const raw = input.value.trim();
+      const next = cloneCategoryTree(categoryTree);
+      const target = options.locate(next);
+      if (!target) return;
+      if (raw === "") delete target[options.field];
+      else target[options.field] = Number(raw);
+      input.disabled = true;
+      try {
+        const data = await persistCategoryTree(
+          next,
+          options.node.name + (isMargin ? " ek marjı " : " kritik stoğu ") +
+            (raw === "" ? "kaldırıldı; üst kategoriden devralır." : "kaydedildi.")
+        );
+        if (data && data.pricing) {
+          note(
+            categoryTreeNote,
+            "ok",
+            options.node.name +
+              (isMargin ? " ek marjı " : " kritik stoğu ") +
+              (raw === "" ? "kaldırıldı; üst kategoriden devralır." : isMargin ? "%" + formatPercent(raw) + " oldu." : raw + " oldu.") +
+              pricingImpactText(data.pricing)
+          );
+        }
+      } catch (err) {
+        input.value = own === null ? "" : String(own);
+        input.disabled = false;
+        note(categoryTreeNote, "err", err.message);
+      }
+    });
+    cell.appendChild(input);
+    if (isMargin && base.margin !== null) {
+      const total = document.createElement("span");
+      total.className = "admin-cat-total";
+      total.textContent = "= %" + formatPercent(base.margin + (effective || 0));
+      total.title = "Bu kategorideki ürünlerin toplam kâr oranı";
+      cell.appendChild(total);
+    }
+    return cell;
   }
 
   function cloneCategoryTree(tree) {
@@ -8407,6 +8572,12 @@
     count.className = "admin-cat-count";
     count.setAttribute("role", "cell");
     count.textContent = options.countText;
+    row.appendChild(
+      makeCategoryPricingCell({ node: options.node, locate: options.locate, inherited: options.inherited, field: "marginPercent" })
+    );
+    row.appendChild(
+      makeCategoryPricingCell({ node: options.node, locate: options.locate, inherited: options.inherited, field: "criticalStockQty" })
+    );
     row.appendChild(count);
     row.appendChild(options.publish);
     const actions = document.createElement("div");
@@ -8428,12 +8599,17 @@
       categoryTreeList.appendChild(empty);
       return;
     }
+    const rootPricing = { margin: null, marginFrom: "", critical: null, criticalFrom: "" };
     categoryTree.forEach((parent, parentIndex) => {
       const expanded = expandedCategorySlugs.has(parent.slug);
+      const locateParent = (next) => next[parentIndex];
+      const parentPricing = inheritCategoryPricing(parent, rootPricing);
       categoryTreeList.appendChild(
         buildCategoryRow({
           level: 0,
           node: parent,
+          locate: locateParent,
+          inherited: rootPricing,
           drop: { kind: "parent", index: parentIndex },
           toggle: makeCategoryToggle(expanded, parent.name, () => {
             if (expandedCategorySlugs.has(parent.slug)) expandedCategorySlugs.delete(parent.slug);
@@ -8456,10 +8632,14 @@
       (parent.children || []).forEach((child, childIndex) => {
         const midKey = parent.slug + "/" + child.slug;
         const midExpanded = expandedMidKeys.has(midKey);
+        const locateMid = (next) => next[parentIndex] && next[parentIndex].children[childIndex];
+        const midPricing = inheritCategoryPricing(child, parentPricing);
         categoryTreeList.appendChild(
           buildCategoryRow({
             level: 1,
             node: child,
+            locate: locateMid,
+            inherited: parentPricing,
             drop: { kind: "child", parentIndex: parentIndex, childIndex: childIndex },
             toggle: makeCategoryToggle(midExpanded, child.name, () => {
               if (expandedMidKeys.has(midKey)) expandedMidKeys.delete(midKey);
@@ -8484,6 +8664,11 @@
             buildCategoryRow({
               level: 2,
               node: leaf,
+              locate: (next) => {
+                const mid = locateMid(next);
+                return mid && mid.children[grandIndex];
+              },
+              inherited: midPricing,
               drop: { kind: "grandchild", parentIndex: parentIndex, childIndex: childIndex, grandIndex: grandIndex },
               toggle: null,
               countText: "—",

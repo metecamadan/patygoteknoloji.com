@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p44" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-34" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-38" />
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
@@ -208,7 +208,7 @@
                 <dl class="admin-xml-meta">
                   <div><dt>Son senkron</dt><dd id="dashboardLastSync">Henüz yok</dd></div>
                   <div><dt>Kaynak</dt><dd id="dashboardXmlHost">Tanımlanmadı</dd></div>
-                  <div><dt>Genel kâr oranı</dt><dd id="dashboardMargin">—</dd></div>
+                  <div><dt>Taban kâr oranı</dt><dd id="dashboardMargin">—</dd></div>
                   <div><dt>Son hata</dt><dd id="dashboardXmlError">—</dd></div>
                 </dl>
                 <p class="admin-note" id="dashboardXmlNote" role="status"></p>
@@ -1098,6 +1098,7 @@
                   <span class="admin-eyebrow">WEB MENÜSÜ</span>
                   <h2>Kategori ağacı</h2>
                   <p class="admin-field-help">Sitede görünen adı buradan değiştirin. Ağaç ANA → ARA → ALT şeklindedir. Tutamacı sürükleyerek sıra değiştirin.</p>
+                  <p class="admin-field-help">Ek marj taban kâr oranının üstüne eklenir; kritik stok XML Yönetimi'ndeki varsayılanın yerine geçer. Boş bırakılan kategori üst kategorisinden devralır (soluk değer). Değişiklik kaydedilince site ve Akakçe fiyatları hemen güncellenir.</p>
                 </div>
                 <div class="admin-card-head-actions">
                   <button type="button" class="btn btn-primary btn-sm" id="catAddParentBtn">+ Ana kategori</button>
@@ -1113,6 +1114,8 @@
                   <span role="columnheader" class="admin-cat-head-spacer"><span class="sr-only">Aç / kapat</span></span>
                   <span role="columnheader">Kategori</span>
                   <span role="columnheader" class="admin-cat-slug">Adres kodu</span>
+                  <span role="columnheader" class="admin-cat-pricing-head" title="Taban kâr oranının üstüne eklenir. Boş bırakılan kategori üst kategorisinden devralır.">Ek marj %</span>
+                  <span role="columnheader" class="admin-cat-pricing-head" title="Stoğu bu sayı ve altında olan ürün satışta görünmez. Boş bırakılan kategori üst kategoriden ya da XML Yönetimi'ndeki varsayılandan devralır.">Kritik stok</span>
                   <span role="columnheader" class="admin-cat-count">Alt</span>
                   <span role="columnheader">Webde</span>
                   <span role="columnheader" class="admin-cat-actions">İşlem</span>
@@ -1202,8 +1205,8 @@
                   <div><dt>Son otomatik okuma</dt><dd data-slot-field="lastAutoSync">Henüz yok</dd></div>
                 </dl>
                 <form class="admin-form supplier-settings-form" data-slot-id="supplier-1">
-                  <div class="field"><label for="supplierMargin1">Genel kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin1" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div></div>
-                  <div class="field"><label for="supplierCriticalStock1">Kritik stok sayısı</label><div class="admin-input-action compact"><input id="supplierCriticalStock1" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
+                  <div class="field"><label for="supplierMargin1">Taban kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin1" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Tüm XML ürünlerine uygulanır. Kategoriler sekmesindeki ek marj bunun üstüne eklenir.</p></div>
+                  <div class="field"><label for="supplierCriticalStock1">Varsayılan kritik stok</label><div class="admin-input-action compact"><input id="supplierCriticalStock1" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Kategoride kritik stok girilmemişse bu kullanılır. Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
                   <div class="field">
                     <label>Otomatik XML okuma</label>
                     <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00 — günde 4 kez (İstanbul). Saatler kilitlidir.</p>
@@ -1230,8 +1233,8 @@
                   <div><dt>Son otomatik okuma</dt><dd data-slot-field="lastAutoSync">Henüz yok</dd></div>
                 </dl>
                 <form class="admin-form supplier-settings-form" data-slot-id="supplier-2">
-                  <div class="field"><label for="supplierMargin2">Genel kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin2" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div></div>
-                  <div class="field"><label for="supplierCriticalStock2">Kritik stok sayısı</label><div class="admin-input-action compact"><input id="supplierCriticalStock2" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
+                  <div class="field"><label for="supplierMargin2">Taban kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin2" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Tüm XML ürünlerine uygulanır. Kategoriler sekmesindeki ek marj bunun üstüne eklenir.</p></div>
+                  <div class="field"><label for="supplierCriticalStock2">Varsayılan kritik stok</label><div class="admin-input-action compact"><input id="supplierCriticalStock2" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Kategoride kritik stok girilmemişse bu kullanılır. Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
                   <div class="field">
                     <label>Otomatik XML okuma</label>
                     <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00 — günde 4 kez (İstanbul). Saatler kilitlidir.</p>
@@ -1258,8 +1261,8 @@
                   <div><dt>Son otomatik okuma</dt><dd data-slot-field="lastAutoSync">Henüz yok</dd></div>
                 </dl>
                 <form class="admin-form supplier-settings-form" data-slot-id="supplier-3">
-                  <div class="field"><label for="supplierMargin3">Genel kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin3" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div></div>
-                  <div class="field"><label for="supplierCriticalStock3">Kritik stok sayısı</label><div class="admin-input-action compact"><input id="supplierCriticalStock3" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
+                  <div class="field"><label for="supplierMargin3">Taban kâr oranı (%)</label><div class="admin-input-action compact"><input id="supplierMargin3" type="number" min="0" max="500" step="0.1" value="15" data-slot-input="margin" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Tüm XML ürünlerine uygulanır. Kategoriler sekmesindeki ek marj bunun üstüne eklenir.</p></div>
+                  <div class="field"><label for="supplierCriticalStock3">Varsayılan kritik stok</label><div class="admin-input-action compact"><input id="supplierCriticalStock3" type="number" min="0" step="1" value="0" data-slot-input="criticalStock" /><button type="submit" class="btn btn-outline">Uygula</button></div><p class="admin-field-help">Kategoride kritik stok girilmemişse bu kullanılır. Yalnızca taze XML okumasında uygulanır. Okuma yoksa son stok dondurulur; ürün stoksuz işaretlenmez.</p></div>
                   <div class="field">
                     <label>Otomatik XML okuma</label>
                     <p class="admin-field-help" data-slot-field="scheduleHelp">08:00, 11:00, 16:00, 21:00 — günde 4 kez (İstanbul). Saatler kilitlidir.</p>
@@ -1321,6 +1324,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-36"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-38"></script>
 </body>
 </html>

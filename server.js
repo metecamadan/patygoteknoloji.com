@@ -1078,6 +1078,86 @@ function invalidateStorefrontCatalog() {
   } catch (_) {}
 }
 
+function flattenCategoryPricing(tree) {
+  const rows = new Map();
+  const walk = (list, slugs, names) => {
+    (Array.isArray(list) ? list : []).forEach((node) => {
+      if (!node || !node.slug) return;
+      const pathSlugs = slugs.concat(node.slug);
+      const pathNames = names.concat(node.name || node.slug);
+      rows.set(pathSlugs.join("/"), {
+        label: pathNames.join(" › "),
+        marginPercent: Number.isFinite(node.marginPercent) ? node.marginPercent : null,
+        criticalStockQty: Number.isFinite(node.criticalStockQty) ? node.criticalStockQty : null,
+      });
+      walk(node.children, pathSlugs, pathNames);
+    });
+  };
+  walk(tree, [], []);
+  return rows;
+}
+
+function categoryPricingChanges(before, after) {
+  const prev = flattenCategoryPricing(before);
+  const next = flattenCategoryPricing(after);
+  const changes = [];
+  next.forEach((row, key) => {
+    const old = prev.get(key) || { marginPercent: null, criticalStockQty: null };
+    ["marginPercent", "criticalStockQty"].forEach((field) => {
+      if (old[field] !== row[field]) changes.push({ path: key, label: row.label, field, from: old[field], to: row[field] });
+    });
+  });
+  prev.forEach((row, key) => {
+    if (next.has(key)) return;
+    ["marginPercent", "criticalStockQty"].forEach((field) => {
+      if (row[field] !== null) changes.push({ path: key, label: row.label, field, from: row[field], to: null });
+    });
+  });
+  return changes;
+}
+
+/** Sale price and sale visibility of every published XML product, for before/after reporting. */
+function supplierPriceSnapshot() {
+  const { isSupplierOfferLive } = require("./lib/stock-visibility");
+  const snapshot = new Map();
+  supplierManager.listProducts().forEach((item) => {
+    if (!item || item.active !== true || item.unlisted === true || item.siteCategoryAssigned !== true) return;
+    snapshot.set(item.id, { price: Number(item.salePrice) || 0, live: isSupplierOfferLive(item) });
+  });
+  return snapshot;
+}
+
+function supplierPriceImpact(before) {
+  const after = supplierPriceSnapshot();
+  let changed = 0;
+  let up = 0;
+  let down = 0;
+  let ratioSum = 0;
+  let opened = 0;
+  let closed = 0;
+  after.forEach((row, id) => {
+    const old = before.get(id);
+    if (!old) return;
+    if (old.live !== row.live) {
+      if (row.live) opened += 1;
+      else closed += 1;
+    }
+    if (!(old.price > 0) || Math.abs(row.price - old.price) < 0.005) return;
+    changed += 1;
+    if (row.price > old.price) up += 1;
+    else down += 1;
+    ratioSum += (row.price - old.price) / old.price;
+  });
+  return {
+    changed,
+    up,
+    down,
+    averagePercent: changed ? Math.round((ratioSum / changed) * 1000) / 10 : 0,
+    opened,
+    closed,
+  };
+}
+
 /** Mirror index with white copies and official pictures swapped in; only for reading, never saved back. */
 function storefrontMirror() {
   return storefrontImageIndex(DATA_ROOT, loadMirrorIndex(DATA_ROOT));
@@ -4334,11 +4414,33 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "PUT" && urlPath === "/api/admin/categories") {
     try {
       const body = JSON.parse((await readBody(req, 256 * 1024)).toString("utf8") || "{}");
+      const before = categoryStore.list();
+      const pricesBefore = supplierPriceSnapshot();
       const categories = categoryStore.save(body.categories);
       try {
         writeCategoriesBootstrapSnapshot();
       } catch (_) {}
-      return json(res, 200, { ok: true, categories });
+      const pricingChanges = categoryPricingChanges(before, categories);
+      let pricing = null;
+      if (pricingChanges.length) {
+        pricing = supplierPriceImpact(pricesBefore);
+        invalidateStorefrontCatalog();
+        warmStorefrontCatalog();
+        scheduleAkakceFeedSummaryWarm();
+        try {
+          const session = getSession(req);
+          auditStore.record({
+            actorType: "admin_user",
+            actorId: session && session.userId,
+            action: "category.pricing_update",
+            entityType: "category",
+            entityId: pricingChanges.map((row) => row.path).slice(0, 5).join(","),
+            detail: { changes: pricingChanges.slice(0, 50), impact: pricing },
+            ip: clientIp(req),
+          });
+        } catch (_) {}
+      }
+      return json(res, 200, { ok: true, categories, pricing });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Kategori ağacı kaydedilemedi" });
     }
@@ -4736,15 +4838,42 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "PUT" && urlPath === "/api/admin/supplier/settings") {
     try {
       const body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8") || "{}");
-      const settings = supplierManager.setSettings(body.slotId || "supplier-1", {
+      const slotId = body.slotId || "supplier-1";
+      const previous = supplierManager.listSlots().find((slot) => slot.id === slotId) || {};
+      const pricesBefore = supplierPriceSnapshot();
+      const settings = supplierManager.setSettings(slotId, {
         globalMarginPercent: body.globalMarginPercent,
         criticalStockQty: body.criticalStockQty,
       });
+      const pricing = supplierPriceImpact(pricesBefore);
       invalidateStorefrontCatalog();
       warmStorefrontCatalog();
+      scheduleAkakceFeedSummaryWarm();
+      if (
+        previous.globalMarginPercent !== settings.globalMarginPercent ||
+        previous.criticalStockQty !== settings.criticalStockQty
+      ) {
+        try {
+          const session = getSession(req);
+          auditStore.record({
+            actorType: "admin_user",
+            actorId: session && session.userId,
+            action: "supplier.pricing_update",
+            entityType: "supplier",
+            entityId: slotId,
+            detail: {
+              globalMarginPercent: { from: previous.globalMarginPercent, to: settings.globalMarginPercent },
+              criticalStockQty: { from: previous.criticalStockQty, to: settings.criticalStockQty },
+              impact: pricing,
+            },
+            ip: clientIp(req),
+          });
+        } catch (_) {}
+      }
       return json(res, 200, {
         ok: true,
         settings,
+        pricing,
       });
     } catch (err) {
       return json(res, 422, { ok: false, error: err.message || "Ayar kaydedilemedi" });

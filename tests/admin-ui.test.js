@@ -212,6 +212,9 @@ test("category tree is a full-width row list; add/edit opens in a modal", () => 
   assert.match(script, /ev\.key === "Escape" && isCategoryModalOpen\(\)/);
   assert.match(script, /closeCategoryModal\(\);\s*\} catch \(err\) \{\s*note\(categoryFormNote/);
   assert.match(css, /\.admin-cat-row \{[^}]*grid-template-columns: 28px 28px minmax\(220px, 1\.4fr\)/);
+  const headCells = html.match(/<div class="admin-cat-row admin-cat-head" role="row">([\s\S]*?)<\/div>/)[1].match(/role="columnheader"/g);
+  const columns = css.match(/\.admin-cat-row \{[^}]*grid-template-columns: ([^;]+);/)[1].replace(/minmax\([^)]*\)/g, "m").trim().split(/\s+/);
+  assert.equal(headCells.length, columns.length, "every category column has a header");
   assert.match(css, /\.admin-cat-level-2 \.admin-cat-name \{ padding-left: 44px; \}/);
 });
 
@@ -593,7 +596,27 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-34/);
+  assert.match(html, /admin\.css\?v=siparis-38/);
+});
+
+test("category rows edit their own margin and critical stock; inherited values are placeholders", () => {
+  assert.match(html, /role="columnheader" class="admin-cat-pricing-head"[^>]*>Ek marj %</);
+  assert.match(html, /role="columnheader" class="admin-cat-pricing-head"[^>]*>Kritik stok</);
+  assert.match(
+    html,
+    />Adres kodu<\/span>\s*<span[^>]*>Ek marj %<\/span>\s*<span[^>]*>Kritik stok<\/span>\s*<span[^>]*>Alt<\/span>/,
+    "margin and critical stock sit between Adres kodu and Alt"
+  );
+  assert.match(script, /row\.appendChild\(slug\);[\s\S]{0,600}field: "marginPercent"[\s\S]{0,300}field: "criticalStockQty"[\s\S]{0,100}row\.appendChild\(count\);/);
+  assert.match(script, /makeCategoryPricingCell\(\{ node: options\.node, locate: options\.locate, inherited: options\.inherited, field: "marginPercent" \}\)/);
+  assert.match(script, /makeCategoryPricingCell\(\{ node: options\.node, locate: options\.locate, inherited: options\.inherited, field: "criticalStockQty" \}\)/);
+  assert.match(script, /input\.placeholder = fallback === null \? "" : String\(fallback\)/);
+  assert.match(script, /if \(raw === ""\) delete target\[options\.field\];/, "clearing a value makes the category inherit again");
+  assert.match(script, /pricingImpactText\(data\.pricing\)/);
+  assert.match(script, /pricingImpactText\(saved && saved\.pricing\)/);
+  assert.match(html, />Taban kâr oranı \(%\)</);
+  assert.match(html, />Varsayılan kritik stok</);
+  assert.doesNotMatch(html, /Genel kâr oranı/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {

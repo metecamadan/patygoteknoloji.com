@@ -2387,7 +2387,7 @@ body.admin-modal-open {
 }
 .admin-cat-row {
   display: grid;
-  grid-template-columns: 28px 28px minmax(220px, 1.4fr) minmax(160px, 1fr) 64px 64px 230px;
+  grid-template-columns: 28px 28px minmax(220px, 1.4fr) minmax(130px, 1fr) 128px 84px 56px 64px 230px;
   gap: 10px;
   align-items: center;
   min-height: 46px;
@@ -2396,7 +2396,7 @@ body.admin-modal-open {
 }
 .admin-cat-tree .admin-cat-row:last-child { border-bottom: 0; }
 .admin-cat-head {
-  min-width: 760px;
+  min-width: 980px;
   min-height: 36px;
   color: var(--muted);
   font-size: 0.72rem;
@@ -2423,13 +2423,52 @@ body.admin-modal-open {
 }
 .admin-cat-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .admin-cat-toggle-spacer { width: 28px; }
+.admin-cat-pricing { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.admin-cat-pricing-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.admin-cat-pricing input {
+  width: 64px;
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: right;
+}
+.admin-cat-pricing input::placeholder { color: var(--muted); opacity: 0.75; }
+.admin-cat-pricing input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.admin-cat-total { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
 @media (max-width: 760px) {
   .admin-cat-tree,
   .admin-cat-head { min-width: 0; }
   .admin-cat-row { grid-template-columns: 28px 28px minmax(0, 1fr) 52px; row-gap: 4px; }
   .admin-cat-row > .admin-cat-slug,
   .admin-cat-row > .admin-cat-count,
+  .admin-cat-head > .admin-cat-pricing-head,
   .admin-cat-head > .admin-cat-actions { display: none; }
+  .admin-cat-row > .admin-switch { grid-column: 4; grid-row: 1; }
+  .admin-cat-row > .admin-cat-pricing { grid-column: 3 / -1; }
+  .admin-cat-pricing-label {
+    position: static;
+    width: 84px;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
   .admin-cat-row > .admin-cat-actions { grid-column: 3 / -1; justify-content: flex-start; }
   .admin-cat-level-1 .admin-cat-name { padding-left: 10px; }
   .admin-cat-level-2 .admin-cat-name { padding-left: 20px; }
