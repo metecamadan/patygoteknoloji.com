@@ -72,7 +72,7 @@
       '<a class="btn btn-primary btn-lg" href="' +
       escapeAttr(productHref(slide.urlPath)) +
       '">Ürüne git</a>' +
-      '<a class="btn btn-ghost btn-lg" href="/urunler">Tüm katalog</a>' +
+      '<a class="btn btn-outline btn-lg" href="/urunler">Tüm katalog</a>' +
       "</div></div></div>";
     return article;
   }
