@@ -42,9 +42,20 @@
     article.dataset.tone = slide.tone || "navy";
     article.setAttribute("aria-roledescription", "slide");
     article.setAttribute("aria-label", index + 1 + " / " + total);
+    /* Sol 4:3 görsel + sağ ürün paneli (grid 4fr / 1fr) */
     article.innerHTML =
       '<div class="hero-slide-inner">' +
-      '<div class="hero-slide-copy">' +
+      '<div class="hero-slide-media" data-slot="visual-4x3">' +
+      '<div class="hero-slide-frame">' +
+      '<img src="' +
+      escapeAttr(slide.image) +
+      '" alt="' +
+      escapeAttr(slide.name || "") +
+      '" loading="' +
+      (index === 0 ? "eager" : "lazy") +
+      '" decoding="async" />' +
+      "</div></div>" +
+      '<div class="hero-slide-copy" data-slot="product-rail">' +
       '<p class="hero-slide-eyebrow">' +
       escapeHtml(slide.eyebrow || "Öne çıkan") +
       "</p>" +
@@ -62,15 +73,6 @@
       escapeAttr(productHref(slide.urlPath)) +
       '">Ürüne git</a>' +
       '<a class="btn btn-ghost btn-lg" href="/urunler">Tüm katalog</a>' +
-      "</div></div>" +
-      '<div class="hero-slide-media"><div class="hero-slide-frame">' +
-      '<img src="' +
-      escapeAttr(slide.image) +
-      '" alt="' +
-      escapeAttr(slide.name || "") +
-      '" loading="' +
-      (index === 0 ? "eager" : "lazy") +
-      '" decoding="async" />' +
       "</div></div></div>";
     return article;
   }

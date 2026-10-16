@@ -31,6 +31,10 @@ test("homepage includes product slider shell that stays hidden until API slides 
   const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
   assert.match(css, /\.hero-slider\s*\{/);
   assert.match(css, /\.hero--slider\s*\{/);
+  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*4fr\)\s+minmax\(0,\s*1fr\)/);
+  assert.match(css, /aspect-ratio:\s*4\s*\/\s*3/);
+  assert.match(sliderJs, /data-slot="visual-4x3"/);
+  assert.match(sliderJs, /data-slot="product-rail"/);
 });
 
 test("brand strip shows sized logos that exist on disk", () => {

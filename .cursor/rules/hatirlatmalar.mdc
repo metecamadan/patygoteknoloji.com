@@ -66,13 +66,13 @@ Tekrar bakarken: panel XML Yönetimi → "Stokta ama satışta olmayanlar" kart�
 
 ### 4. Ana sayfa ürün slider — görsel + canlı slaytlar (16 Eki 2026)
 
-Panel hazır: **Vitrin → Ana sayfa slider** (ürün ara, sıra, aktif/pasif, eyebrow, ton, özel görsel URL). Aktif slayt varsa ana sayfada klasik hero’nun yerine; yoksa hero kalır.
+Panel hazır: **Vitrin → Ana sayfa slider**. Sahne düzeni: sol **4:3** görsel + sağ ürün paneli (grid **4fr / 1fr**). Aktif slayt yoksa klasik hero kalır.
 
-Kullanıcı görsel çalışmasına bakıyor. Sonra:
+Kullanıcı 4:3 görsel konumlandırması yapıyor. Sonra:
 
-- Panelden gerçek ürün slaytları ekle / özel AI görselleri `imageOverride` ile bağla.
-- Canlı smoke: `https://patygoteknoloji.com` — slider veya klasik hero.
-- Önizleme (`preview/`) yalnızca yerel deneme; canlıya gitmez.
+- 4:3 kompozisyonları panelde `imageOverride` ile bağla; sağ panele metin basma (site ürün bilgisi basar).
+- Yerel kılavuz: `preview/home-slider.html` (etiketli 4:3 / ürün paneli).
+- Canlı smoke: `https://patygoteknoloji.com`.
 
 ## Kapandı
 
