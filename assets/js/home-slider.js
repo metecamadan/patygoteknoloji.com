@@ -11,10 +11,11 @@
     );
   }
 
-  function shortName(name) {
+  function shortName(name, max) {
+    const limit = max || 72;
     const text = String(name || "").trim();
-    if (text.length <= 78) return text;
-    return text.slice(0, 75).trimEnd() + "…";
+    if (text.length <= limit) return text;
+    return text.slice(0, limit - 1).trimEnd() + "…";
   }
 
   function escapeHtml(value) {
@@ -36,127 +37,178 @@
     return path.startsWith("/") ? path : "/" + path;
   }
 
-  function renderSlide(slide, index, total) {
-    const article = document.createElement("article");
-    article.className = "hero-slide" + (index === 0 ? " is-active" : "");
-    article.dataset.tone = slide.tone || "navy";
-    article.setAttribute("aria-roledescription", "slide");
-    article.setAttribute("aria-label", index + 1 + " / " + total);
-    /* Sol 4:3 görsel + sağ ürün paneli (grid 4fr / 1fr) */
-    article.innerHTML =
-      '<div class="hero-slide-inner">' +
-      '<div class="hero-slide-media" data-slot="visual-4x3">' +
-      '<div class="hero-slide-frame">' +
-      '<img src="' +
-      escapeAttr(slide.image) +
-      '" alt="' +
-      escapeAttr(slide.name || "") +
-      '" loading="' +
-      (index === 0 ? "eager" : "lazy") +
-      '" decoding="async" />' +
-      "</div></div>" +
-      '<div class="hero-slide-copy" data-slot="product-rail">' +
-      '<p class="hero-slide-eyebrow">' +
-      escapeHtml(slide.eyebrow || "Öne çıkan") +
-      "</p>" +
-      '<p class="hero-slide-brand">' +
-      escapeHtml(slide.brand || "") +
-      "</p>" +
-      '<h2 class="hero-slide-title">' +
-      escapeHtml(shortName(slide.name)) +
-      "</h2>" +
-      '<div class="hero-slide-price"><strong>' +
-      escapeHtml(formatTry(slide.priceIncl)) +
-      "</strong><span>KDV dahil</span></div>" +
-      '<div class="hero-slide-actions">' +
-      '<a class="btn btn-primary btn-lg" href="' +
-      escapeAttr(productHref(slide.urlPath)) +
-      '">Ürüne git</a>' +
-      '<a class="btn btn-outline btn-lg" href="/urunler">Tüm katalog</a>' +
-      "</div></div></div>";
-    return article;
-  }
-
-  function mountSlider(slides) {
-    const wrap = document.querySelector("[data-hero-slider-wrap]");
-    const classic = document.querySelector("[data-classic-hero]");
-    const root = document.querySelector("[data-hero-slider]");
-    const track = root && root.querySelector("[data-slider-track]");
-    const dotsWrap = root && root.querySelector("[data-slider-dots]");
-    const live = root && root.querySelector("[data-slider-live]");
-    if (!wrap || !root || !track || !dotsWrap || !slides.length) return false;
-
-    track.innerHTML = "";
-    dotsWrap.innerHTML = "";
-    slides.forEach((slide, index) => {
-      track.appendChild(renderSlide(slide, index, slides.length));
-      const dot = document.createElement("button");
-      dot.type = "button";
-      dot.setAttribute("role", "tab");
-      dot.setAttribute("aria-label", "Slayt " + (index + 1));
-      dot.setAttribute("aria-selected", index === 0 ? "true" : "false");
-      dot.addEventListener("click", () => go(index, true));
-      dotsWrap.appendChild(dot);
-    });
-
+  function makeCarousel(opts) {
+    const { track, dotsWrap, prevBtn, nextBtn, count, autoMs, onPaint, reduceMotion } = opts;
     let index = 0;
     let timer = null;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const AUTO_MS = 5500;
 
     function paint() {
-      track.style.transform = "translateX(-" + index * 100 + "%)";
-      track.querySelectorAll(".hero-slide").forEach((el, i) => {
-        el.classList.toggle("is-active", i === index);
-      });
-      dotsWrap.querySelectorAll("button").forEach((el, i) => {
-        el.setAttribute("aria-selected", i === index ? "true" : "false");
-      });
-      if (live) {
-        const s = slides[index];
-        live.textContent =
-          "Slayt " + (index + 1) + ": " + (s.brand || "") + " " + shortName(s.name);
+      if (track) track.style.transform = "translateX(-" + index * 100 + "%)";
+      if (dotsWrap) {
+        dotsWrap.querySelectorAll("button").forEach((el, i) => {
+          el.setAttribute("aria-selected", i === index ? "true" : "false");
+        });
       }
+      if (typeof onPaint === "function") onPaint(index);
     }
 
     function go(next, user) {
-      index = ((next % slides.length) + slides.length) % slides.length;
+      if (count < 1) return;
+      index = ((next % count) + count) % count;
       paint();
       if (user) restart();
     }
 
     function restart() {
-      if (reduceMotion || slides.length < 2) return;
+      if (reduceMotion || count < 2 || !autoMs) return;
       clearInterval(timer);
-      timer = setInterval(() => go(index + 1, false), AUTO_MS);
+      timer = setInterval(() => go(index + 1, false), autoMs);
     }
 
-    const prev = root.querySelector("[data-slider-prev]");
-    const next = root.querySelector("[data-slider-next]");
-    if (prev) prev.addEventListener("click", () => go(index - 1, true));
-    if (next) next.addEventListener("click", () => go(index + 1, true));
-    if (slides.length < 2) {
-      if (prev) prev.hidden = true;
-      if (next) next.hidden = true;
-      dotsWrap.hidden = true;
+    function stop() {
+      clearInterval(timer);
     }
 
-    root.addEventListener("keydown", (ev) => {
-      if (ev.key === "ArrowLeft") go(index - 1, true);
-      if (ev.key === "ArrowRight") go(index + 1, true);
+    if (dotsWrap) {
+      dotsWrap.querySelectorAll("button").forEach((dot, i) => {
+        dot.addEventListener("click", () => go(i, true));
+      });
+    }
+    if (prevBtn) prevBtn.addEventListener("click", () => go(index - 1, true));
+    if (nextBtn) nextBtn.addEventListener("click", () => go(index + 1, true));
+    if (count < 2) {
+      if (prevBtn) prevBtn.hidden = true;
+      if (nextBtn) nextBtn.hidden = true;
+      if (dotsWrap) dotsWrap.hidden = true;
+    }
+
+    paint();
+    restart();
+    return { go, restart, stop, getIndex: () => index };
+  }
+
+  function renderBannerSlide(slide, index) {
+    const article = document.createElement("article");
+    article.className = "home-banner-slide" + (index === 0 ? " is-active" : "");
+    article.setAttribute("aria-roledescription", "slide");
+    const href = productHref(slide.urlPath);
+    article.innerHTML =
+      '<a class="home-banner-link" href="' +
+      escapeAttr(href) +
+      '">' +
+      '<img src="' +
+      escapeAttr(slide.image) +
+      '" alt="' +
+      escapeAttr(slide.eyebrow ? slide.eyebrow + " — " + (slide.name || "") : slide.name || "Kampanya") +
+      '" loading="' +
+      (index === 0 ? "eager" : "lazy") +
+      '" decoding="async" />' +
+      "</a>";
+    return article;
+  }
+
+  function renderDealSlide(slide, index) {
+    const article = document.createElement("article");
+    article.className = "home-deal-slide" + (index === 0 ? " is-active" : "");
+    article.setAttribute("aria-roledescription", "slide");
+    const thumb = slide.productImage || slide.image;
+    article.innerHTML =
+      '<a class="home-deal-card" href="' +
+      escapeAttr(productHref(slide.urlPath)) +
+      '">' +
+      '<span class="home-deal-eyebrow">' +
+      escapeHtml(slide.eyebrow || "Fırsat") +
+      "</span>" +
+      '<div class="home-deal-media">' +
+      '<img src="' +
+      escapeAttr(thumb) +
+      '" alt="" loading="' +
+      (index === 0 ? "eager" : "lazy") +
+      '" decoding="async" />' +
+      "</div>" +
+      '<p class="home-deal-brand">' +
+      escapeHtml(slide.brand || "") +
+      "</p>" +
+      '<h3 class="home-deal-title">' +
+      escapeHtml(shortName(slide.name, 64)) +
+      "</h3>" +
+      '<div class="home-deal-price"><strong>' +
+      escapeHtml(formatTry(slide.priceIncl)) +
+      "</strong><span>KDV dahil</span></div>" +
+      '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
+      "</a>";
+    return article;
+  }
+
+  function mountDuo(slides) {
+    const wrap = document.querySelector("[data-hero-slider-wrap]");
+    const classic = document.querySelector("[data-classic-hero]");
+    const duo = document.querySelector("[data-home-duo]");
+    const bannerTrack = duo && duo.querySelector("[data-banner-track]");
+    const dealTrack = duo && duo.querySelector("[data-deal-track]");
+    const dealDots = duo && duo.querySelector("[data-deal-dots]");
+    const live = duo && duo.querySelector("[data-duo-live]");
+    if (!wrap || !duo || !bannerTrack || !dealTrack || !dealDots || !slides.length) return false;
+
+    bannerTrack.innerHTML = "";
+    dealTrack.innerHTML = "";
+    dealDots.innerHTML = "";
+
+    slides.forEach((slide, index) => {
+      bannerTrack.appendChild(renderBannerSlide(slide, index));
+      dealTrack.appendChild(renderDealSlide(slide, index));
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.setAttribute("role", "tab");
+      dot.setAttribute("aria-label", "Ürün " + (index + 1));
+      dot.setAttribute("aria-selected", index === 0 ? "true" : "false");
+      dealDots.appendChild(dot);
     });
-    root.tabIndex = 0;
-    root.addEventListener("mouseenter", () => clearInterval(timer));
-    root.addEventListener("mouseleave", restart);
-    root.addEventListener("focusin", () => clearInterval(timer));
-    root.addEventListener("focusout", (ev) => {
-      if (!root.contains(ev.relatedTarget)) restart();
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const banner = makeCarousel({
+      track: bannerTrack,
+      prevBtn: duo.querySelector("[data-banner-prev]"),
+      nextBtn: duo.querySelector("[data-banner-next]"),
+      count: slides.length,
+      autoMs: 6000,
+      reduceMotion,
+      onPaint: function (i) {
+        bannerTrack.querySelectorAll(".home-banner-slide").forEach((el, n) => {
+          el.classList.toggle("is-active", n === i);
+        });
+      },
+    });
+
+    const deal = makeCarousel({
+      track: dealTrack,
+      dotsWrap: dealDots,
+      count: slides.length,
+      autoMs: 4500,
+      reduceMotion,
+      onPaint: function (i) {
+        dealTrack.querySelectorAll(".home-deal-slide").forEach((el, n) => {
+          el.classList.toggle("is-active", n === i);
+        });
+        if (live) {
+          const s = slides[i];
+          live.textContent = "Ürün " + (i + 1) + ": " + (s.brand || "") + " " + shortName(s.name, 40);
+        }
+      },
+    });
+
+    duo.addEventListener("mouseenter", () => {
+      banner.stop();
+      deal.stop();
+    });
+    duo.addEventListener("mouseleave", () => {
+      banner.restart();
+      deal.restart();
     });
 
     if (classic) classic.hidden = true;
     wrap.hidden = false;
-    paint();
-    restart();
     return true;
   }
 
@@ -168,7 +220,7 @@
       if (!res.ok) return;
       const data = await res.json();
       const slides = data && Array.isArray(data.slides) ? data.slides : [];
-      if (slides.length) mountSlider(slides);
+      if (slides.length) mountDuo(slides);
     } catch (_) {}
   }
 

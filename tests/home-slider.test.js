@@ -129,6 +129,7 @@ test("public home-slider empty by default; admin save enriches live product", as
   assert.equal(pub2Body.slides[0].tone, "blue");
   assert.equal(pub2Body.slides[0].name, "Test başlık");
   assert.ok(pub2Body.slides[0].image);
+  assert.ok(pub2Body.slides[0].productImage);
   assert.ok(pub2Body.slides[0].urlPath);
   assert.ok(pub2Body.slides[0].priceIncl > 0);
 });

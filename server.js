@@ -417,10 +417,13 @@ function publicHomeSliderSlides() {
       productId: slide.productId,
       brand: String(item.brand || "").trim(),
       name: slide.titleOverride || String(item.name || "").trim(),
+      /** Sol banner (özel görsel varsa o, yoksa katalog). */
       image,
+      /** Sağ ürün kartı her zaman katalog görseli. */
+      productImage: catalogImage || image,
       urlPath,
       priceIncl: priceInclVatAmount(item),
-      eyebrow: slide.eyebrow || "Öne çıkan",
+      eyebrow: slide.eyebrow || "Fırsat",
       tone: slide.tone || "navy",
     });
   }

@@ -20,24 +20,23 @@ test("homepage keeps teklif form and e-commerce hero", () => {
   assert.match(indexHtml, /<strong>Hızlı<\/strong><span>Teslimat<\/span>/);
 });
 
-test("homepage includes product slider shell that stays hidden until API slides exist", () => {
+test("homepage includes duo slider shell: banner left + product deal right", () => {
   assert.match(indexHtml, /data-classic-hero/);
   assert.match(indexHtml, /data-hero-slider-wrap[^>]*hidden/);
-  assert.match(indexHtml, /data-hero-slider/);
+  assert.match(indexHtml, /data-home-duo/);
+  assert.match(indexHtml, /data-home-banner/);
+  assert.match(indexHtml, /data-home-deal/);
   assert.match(indexHtml, /home-slider\.js\?v=/);
   const sliderJs = fs.readFileSync(path.join(root, "assets", "js", "home-slider.js"), "utf8");
   assert.match(sliderJs, /\/api\/home-slider/);
   assert.match(sliderJs, /data-classic-hero/);
+  assert.match(sliderJs, /mountDuo/);
+  assert.match(sliderJs, /home-deal-card/);
   const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
-  assert.match(css, /\.hero-slider\s*\{/);
-  assert.match(css, /\.hero--slider\s*\{/);
-  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*4fr\)\s+minmax\(220px,\s*1fr\)/);
-  assert.match(css, /aspect-ratio:\s*4\s*\/\s*3/);
-  assert.match(css, /\.hero-slide-copy[\s\S]*?background:\s*#fff/);
-  assert.match(css, /\.hero-slide-frame[\s\S]*?border:\s*1px solid var\(--line\)/);
-  assert.match(sliderJs, /data-slot="visual-4x3"/);
-  assert.match(sliderJs, /data-slot="product-rail"/);
-  assert.match(sliderJs, /btn-outline/);
+  assert.match(css, /\.home-duo\s*\{/);
+  assert.match(css, /\.home-banner\s*\{/);
+  assert.match(css, /\.home-deal\s*\{/);
+  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s+minmax\(220px,\s*1fr\)/);
 });
 
 test("brand strip shows sized logos that exist on disk", () => {
