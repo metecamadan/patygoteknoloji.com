@@ -20,6 +20,19 @@ test("homepage keeps teklif form and e-commerce hero", () => {
   assert.match(indexHtml, /<strong>Hızlı<\/strong><span>Teslimat<\/span>/);
 });
 
+test("homepage includes product slider shell that stays hidden until API slides exist", () => {
+  assert.match(indexHtml, /data-classic-hero/);
+  assert.match(indexHtml, /data-hero-slider-wrap[^>]*hidden/);
+  assert.match(indexHtml, /data-hero-slider/);
+  assert.match(indexHtml, /home-slider\.js\?v=/);
+  const sliderJs = fs.readFileSync(path.join(root, "assets", "js", "home-slider.js"), "utf8");
+  assert.match(sliderJs, /\/api\/home-slider/);
+  assert.match(sliderJs, /data-classic-hero/);
+  const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
+  assert.match(css, /\.hero-slider\s*\{/);
+  assert.match(css, /\.hero--slider\s*\{/);
+});
+
 test("brand strip shows sized logos that exist on disk", () => {
   const track = indexHtml.match(/<div class="partners-track">([\s\S]*?)<\/div>/);
   assert.ok(track);

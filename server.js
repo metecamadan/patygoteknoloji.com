@@ -207,6 +207,7 @@ const {
   computeShippingFee,
   minimumOrderError,
 } = require("./lib/shipping-settings");
+const { createHomeSliderStore } = require("./lib/home-slider");
 const { createInstallmentSettingsStore, resolveInstallment } = require("./lib/installment-settings");
 const {
   renderProductHtml,
@@ -393,6 +394,76 @@ function priceAlertProduct(productId) {
   return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath, image };
 }
 
+/** Active home-slider slides enriched with live catalog fields; missing/OOS products omitted. */
+function publicHomeSliderSlides() {
+  const config = homeSliderStore.getConfig();
+  const index = storefrontIndex(false);
+  if (!index.compactById) {
+    index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
+  }
+  const slides = [];
+  for (const slide of config.slides) {
+    if (!slide.active) continue;
+    const item = index.compactById.get(String(slide.productId || ""));
+    if (!item || item.soldOut === true) continue;
+    const catalogImage =
+      item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
+    const image = slide.imageOverride || catalogImage;
+    if (!image) continue;
+    let urlPath = String(item.urlPath || "").trim();
+    if (urlPath && !urlPath.startsWith("/")) urlPath = "/" + urlPath;
+    slides.push({
+      id: slide.id,
+      productId: slide.productId,
+      brand: String(item.brand || "").trim(),
+      name: slide.titleOverride || String(item.name || "").trim(),
+      image,
+      urlPath,
+      priceIncl: priceInclVatAmount(item),
+      eyebrow: slide.eyebrow || "Öne çıkan",
+      tone: slide.tone || "navy",
+    });
+  }
+  return slides;
+}
+
+/** Admin listing: config slides plus catalog snapshot (may be sold out / missing). */
+function adminHomeSliderPayload() {
+  const config = homeSliderStore.getConfig();
+  const index = storefrontIndex(false);
+  if (!index.compactById) {
+    index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
+  }
+  const slides = config.slides.map((slide) => {
+    const item = index.compactById.get(String(slide.productId || ""));
+    const catalogImage = item
+      ? item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || ""
+      : "";
+    let urlPath = item ? String(item.urlPath || "").trim() : "";
+    if (urlPath && !urlPath.startsWith("/")) urlPath = "/" + urlPath;
+    return Object.assign({}, slide, {
+      product: item
+        ? {
+            id: item.id,
+            name: item.name,
+            brand: item.brand || "",
+            image: catalogImage,
+            urlPath,
+            priceIncl: priceInclVatAmount(item),
+            soldOut: item.soldOut === true,
+          }
+        : null,
+    });
+  });
+  return {
+    ok: true,
+    slides,
+    updatedAt: config.updatedAt,
+    maxSlides: homeSliderStore.MAX_SLIDES,
+    tones: homeSliderStore.TONES,
+  };
+}
+
 /** Published but sold-out product (stock alert target), or null. priceIncl is the last known price. */
 function soldOutAlertProduct(productId) {
   const item = soldOutCompact(productId);
@@ -501,6 +572,7 @@ function priceReferenceFor(id, price) {
   }
 }
 const shippingSettingsStore = createShippingSettingsStore(DATA_ROOT);
+const homeSliderStore = createHomeSliderStore(DATA_ROOT);
 const installmentSettingsStore = createInstallmentSettingsStore(DATA_ROOT);
 const calendarStore = createCalendarStore(DATA_ROOT);
 const categoryStore = createCategoryStore(DATA_ROOT);
@@ -2870,6 +2942,15 @@ async function handleApi(req, res, urlPath) {
     return json(res, 200, shippingSettingsStore.getPublic());
   }
 
+  if (req.method === "GET" && urlPath === "/api/home-slider") {
+    return json(
+      res,
+      200,
+      { ok: true, slides: publicHomeSliderSlides() },
+      { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" }
+    );
+  }
+
   if (req.method === "POST" && urlPath === "/api/price-alerts") {
     const ip = clientIp(req);
     if (rateLimited(priceAlertAttempts, ip, 6, 15 * 60 * 1000)) {
@@ -3696,6 +3777,20 @@ async function handleApi(req, res, urlPath) {
       } catch (err) {
         return json(res, 400, { ok: false, error: (err && err.message) || "Silinemedi" });
       }
+    }
+  }
+
+  if (req.method === "GET" && urlPath === "/api/admin/home-slider") {
+    return json(res, 200, adminHomeSliderPayload());
+  }
+
+  if (req.method === "PUT" && urlPath === "/api/admin/home-slider") {
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
+      const saved = homeSliderStore.setConfig({ slides: body.slides });
+      return json(res, 200, Object.assign(adminHomeSliderPayload(), { updatedAt: saved.updatedAt }));
+    } catch (err) {
+      return json(res, 422, { ok: false, error: (err && err.message) || "Slider kaydedilemedi." });
     }
   }
 

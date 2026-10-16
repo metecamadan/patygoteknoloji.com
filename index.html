@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p44" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p45" />
 </head>
 <body class="home">
   <header class="site-header">
@@ -70,8 +70,8 @@
   </noscript>
 
   <main>
-    <!-- HERO -->
-    <section class="hero">
+    <!-- HERO (klasik; aktif slider yoksa görünür) -->
+    <section class="hero" data-classic-hero>
       <div class="container hero-grid">
         <div class="hero-copy reveal">
           <h1>Elektronik alışverişin <em>güvenilir adresi.</em></h1>
@@ -93,6 +93,25 @@
             <div class="hero-orbit-ring hero-orbit-ring--inner" aria-hidden="true"></div>
             <div class="hero-orbit-track" data-hero-orbit></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ürün slider (panelden aktif slayt varsa klasik hero’nun yerine) -->
+    <section class="hero hero--slider" data-hero-slider-wrap hidden>
+      <div class="container">
+        <div class="hero-slider" aria-roledescription="carousel" aria-label="Öne çıkan ürünler" data-hero-slider>
+          <div class="hero-slider-viewport">
+            <div class="hero-slider-track" data-slider-track></div>
+          </div>
+          <button type="button" class="hero-slider-nav hero-slider-nav--prev" data-slider-prev aria-label="Önceki slayt">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button type="button" class="hero-slider-nav hero-slider-nav--next" data-slider-next aria-label="Sonraki slayt">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="hero-slider-dots" data-slider-dots role="tablist" aria-label="Slayt seçimi"></div>
+          <p class="hero-slider-live" data-slider-live aria-live="polite"></p>
         </div>
       </div>
     </section>
@@ -291,6 +310,7 @@
   <script defer src="/assets/js/cart.js"></script>
   <script defer src="/assets/js/shipping.js?v=storefront-ship-6"></script>
   <script defer src="/assets/js/catalog.js?v=storefront-p46"></script>
+  <script defer src="/assets/js/home-slider.js?v=slider-1"></script>
   <script defer src="/assets/js/nav.js?v=nav-d43-3"></script>
   <script defer src="/assets/js/main.js?v=main-ga-1"></script>
 </body>

@@ -64,6 +64,16 @@ Tekrar bakarken: panel XML Yönetimi → "Stokta ama satışta olmayanlar" kart�
 - Kritik stok panelde 2 yapılınca "kritik stok" ~1.470'e iner (stok 3 olan ~370 ürün açılır).
 - Kalanlar için karar: 115 barkodsuz ürün, tedarikçinin yanlış grupladığı ürünler (VGA → Kablo Bağı, HDMI → USB Kablolar, çakmak → Ses Kabloları), 5 stoklu Asonic sinek öldürücü (bilinçli dışarıda).
 
+### 4. Ana sayfa ürün slider — görsel + canlı slaytlar (16 Eki 2026)
+
+Panel hazır: **Vitrin → Ana sayfa slider** (ürün ara, sıra, aktif/pasif, eyebrow, ton, özel görsel URL). Aktif slayt varsa ana sayfada klasik hero’nun yerine; yoksa hero kalır.
+
+Kullanıcı görsel çalışmasına bakıyor. Sonra:
+
+- Panelden gerçek ürün slaytları ekle / özel AI görselleri `imageOverride` ile bağla.
+- Canlı smoke: `https://patygoteknoloji.com` — slider veya klasik hero.
+- Önizleme (`preview/`) yalnızca yerel deneme; canlıya gitmez.
+
 ## Kapandı
 
 (yok)

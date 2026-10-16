@@ -976,6 +976,7 @@
       products: ["Ürünler", "Sol menüden Manuel veya XML ürünlerine geçin."],
       xml: ["XML Yönetimi", "Tedarikçi ürünlerini ve Akakçe yayınını yönetin."],
       categories: ["Kategoriler", "Web sitesi kategori ağacını oluşturun ve yayına alın."],
+      vitrin: ["Vitrin", "Ana sayfa ürün slider ve vitrin ayarları."],
       unlisted: ["Listelenmeyen Ürünler", "Sitede ve Akakçe XML'inde gösterilmeyen XML ürünleri."],
       noimage: ["Görselsiz Ürünler", "Tedarikçiden görselsiz gelen ürünlere görsel ekleyip yayına alın."],
       nobarcode: ["Barkodsuz Ürünler", "Tedarikçiden barkodsuz gelen ürünlere barkod girip Akakçe'ye açın."],
@@ -1035,6 +1036,7 @@
     if (name === "orders" && token) loadAdminOrders().catch(() => {});
     if (name === "reviews" && token) loadAdminReviews(true).catch(() => {});
     if (name === "categories" && token) loadCategoryTree().catch(() => {});
+    if (name === "vitrin" && token) loadAdminHomeSlider().catch(() => {});
     if (name === "unlisted" && token) loadUnlistedProducts().catch(() => {});
     if (name === "noimage" && token) loadNoImageProducts().catch(() => {});
     if (name === "nobarcode" && token) loadNoBarcodeProducts().catch(() => {});
@@ -8286,6 +8288,416 @@
         note(adminInstallmentNote, "err", err.message || "Kaydedilemedi");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const homeSliderList = document.getElementById("homeSliderList");
+  const homeSliderNote = document.getElementById("homeSliderNote");
+  const homeSliderAddBtn = document.getElementById("homeSliderAddBtn");
+  const homeSliderSaveBtn = document.getElementById("homeSliderSaveBtn");
+  const homeSliderHint = document.getElementById("homeSliderHint");
+  let homeSliderDraft = [];
+  let homeSliderMax = 8;
+  let homeSliderTones = ["navy", "blue", "indigo", "teal", "slate"];
+  const HOME_SLIDER_TONE_LABELS = {
+    navy: "Lacivert",
+    blue: "Mavi",
+    indigo: "Indigo",
+    teal: "Turkuaz",
+    slate: "Gri",
+  };
+
+  function escapeHomeSliderHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function homeSliderNewId() {
+    return "hs_" + Math.random().toString(16).slice(2, 10) + Date.now().toString(16).slice(-4);
+  }
+
+  function readHomeSliderCard(card) {
+    if (!card) return null;
+    return {
+      id: card.dataset.slideId || homeSliderNewId(),
+      productId: String((card.querySelector("[data-field=productId]") || {}).value || "").trim(),
+      eyebrow: String((card.querySelector("[data-field=eyebrow]") || {}).value || "").trim(),
+      titleOverride: String((card.querySelector("[data-field=titleOverride]") || {}).value || "").trim(),
+      imageOverride: String((card.querySelector("[data-field=imageOverride]") || {}).value || "").trim(),
+      tone: String((card.querySelector("[data-field=tone]") || {}).value || "navy").trim(),
+      active: Boolean(card.querySelector("[data-field=active]") && card.querySelector("[data-field=active]").checked),
+      sort: Number(card.dataset.sort || 0) || 0,
+      product: null,
+    };
+  }
+
+  function collectHomeSliderDraft() {
+    if (!homeSliderList) return homeSliderDraft.slice();
+    return Array.from(homeSliderList.querySelectorAll("[data-home-slide]")).map((card, index) => {
+      const slide = readHomeSliderCard(card);
+      slide.sort = index;
+      const preview = card.querySelector("[data-product-preview]");
+      if (preview && preview.dataset.productName) {
+        slide.product = {
+          name: preview.dataset.productName,
+          brand: preview.dataset.productBrand || "",
+          image: preview.dataset.productImage || "",
+          priceIncl: Number(preview.dataset.productPrice || 0) || 0,
+          soldOut: preview.dataset.productSoldOut === "1",
+        };
+      }
+      return slide;
+    });
+  }
+
+  function renderHomeSliderList() {
+    if (!homeSliderList) return;
+    if (!homeSliderDraft.length) {
+      homeSliderList.innerHTML =
+        '<p class="admin-table-empty">Henüz slayt yok. “Slayt ekle” ile katalogdan ürün seçin.</p>';
+      if (homeSliderHint) {
+        homeSliderHint.textContent =
+          "En fazla " + homeSliderMax + " slayt. Aktif slayt yoksa ana sayfada klasik hero kalır.";
+      }
+      return;
+    }
+    homeSliderList.innerHTML = homeSliderDraft
+      .map((slide, index) => {
+        const product = slide.product || {};
+        const name = product.name || (slide.productId ? "Ürün bulunamadı / stokta değil" : "Ürün seçilmedi");
+        const brand = product.brand || "";
+        const image = product.image || "";
+        const price = product.priceIncl ? formatMoney(product.priceIncl) : "";
+        const soldOut = product.soldOut === true;
+        const toneOpts = homeSliderTones
+          .map((tone) => {
+            const label = HOME_SLIDER_TONE_LABELS[tone] || tone;
+            return (
+              '<option value="' +
+              escapeHomeSliderHtml(tone) +
+              '"' +
+              (slide.tone === tone ? " selected" : "") +
+              ">" +
+              escapeHomeSliderHtml(label) +
+              "</option>"
+            );
+          })
+          .join("");
+        return (
+          '<article class="admin-home-slide" data-home-slide data-slide-id="' +
+          escapeHomeSliderHtml(slide.id) +
+          '" data-sort="' +
+          index +
+          '">' +
+          '<div class="admin-home-slide-head">' +
+          "<strong>Slayt " +
+          (index + 1) +
+          "</strong>" +
+          '<div class="admin-home-slide-actions">' +
+          '<button type="button" class="btn btn-ghost btn-xs" data-slide-up' +
+          (index === 0 ? " disabled" : "") +
+          '>Yukarı</button>' +
+          '<button type="button" class="btn btn-ghost btn-xs" data-slide-down' +
+          (index >= homeSliderDraft.length - 1 ? " disabled" : "") +
+          '>Aşağı</button>' +
+          '<button type="button" class="btn btn-ghost btn-xs" data-slide-remove>Sil</button>' +
+          "</div></div>" +
+          '<div class="admin-home-slide-body">' +
+          '<div class="admin-home-slide-preview" data-product-preview' +
+          ' data-product-name="' +
+          escapeHomeSliderHtml(product.name || "") +
+          '" data-product-brand="' +
+          escapeHomeSliderHtml(brand) +
+          '" data-product-image="' +
+          escapeHomeSliderHtml(image) +
+          '" data-product-price="' +
+          escapeHomeSliderHtml(product.priceIncl || "") +
+          '" data-product-sold-out="' +
+          (soldOut ? "1" : "0") +
+          '">' +
+          (image
+            ? '<img src="' + escapeHomeSliderHtml(image) + '" alt="" width="72" height="72" loading="lazy" />'
+            : '<span class="admin-home-slide-ph">Görsel yok</span>') +
+          "<div><p class=\"admin-home-slide-name\">" +
+          escapeHomeSliderHtml(name) +
+          "</p>" +
+          (brand || price
+            ? '<p class="admin-home-slide-meta">' +
+              escapeHomeSliderHtml([brand, price].filter(Boolean).join(" · ")) +
+              (soldOut ? " · Tükendi" : "") +
+              "</p>"
+            : "") +
+          "</div></div>" +
+          '<div class="admin-home-slide-fields">' +
+          '<div class="field"><label>Ürün ara</label>' +
+          '<input type="search" data-field="productSearch" placeholder="Ad veya marka…" autocomplete="off" />' +
+          '<div class="admin-home-slide-suggest" data-suggest hidden></div></div>' +
+          '<input type="hidden" data-field="productId" value="' +
+          escapeHomeSliderHtml(slide.productId || "") +
+          '" />' +
+          '<div class="field"><label>Üst etiket (eyebrow)</label>' +
+          '<input type="text" data-field="eyebrow" maxlength="80" value="' +
+          escapeHomeSliderHtml(slide.eyebrow || "") +
+          '" placeholder="ör. Notebook fırsatları" /></div>' +
+          '<div class="field"><label>Başlık (boş = ürün adı)</label>' +
+          '<input type="text" data-field="titleOverride" maxlength="160" value="' +
+          escapeHomeSliderHtml(slide.titleOverride || "") +
+          '" placeholder="Kısa başlık (isteğe bağlı)" /></div>' +
+          '<div class="field"><label>Özel görsel URL (boş = katalog)</label>' +
+          '<input type="url" data-field="imageOverride" maxlength="500" value="' +
+          escapeHomeSliderHtml(slide.imageOverride || "") +
+          '" placeholder="https://… veya /media/…" /></div>' +
+          '<div class="admin-home-slide-row">' +
+          '<div class="field"><label>Ton</label><select data-field="tone">' +
+          toneOpts +
+          "</select></div>" +
+          '<label class="admin-check admin-home-slide-active"><input type="checkbox" data-field="active"' +
+          (slide.active !== false ? " checked" : "") +
+          " /><span>Aktif</span></label>" +
+          "</div></div></div></article>"
+        );
+      })
+      .join("");
+    if (homeSliderHint) {
+      const activeCount = homeSliderDraft.filter((s) => s.active !== false).length;
+      homeSliderHint.textContent =
+        homeSliderDraft.length +
+        " / " +
+        homeSliderMax +
+        " slayt · " +
+        activeCount +
+        " aktif. Stokta olmayan ürünler sitede atlanır.";
+    }
+  }
+
+  async function searchHomeSliderProducts(query) {
+    const q = String(query || "").trim();
+    if (q.length < 2) return [];
+    const res = await fetch(
+      "/api/products?q=" + encodeURIComponent(q) + "&limit=8&page=1",
+      { credentials: "same-origin" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.products) ? data.products : [];
+  }
+
+  function bindHomeSliderCardEvents(card) {
+    const searchInput = card.querySelector("[data-field=productSearch]");
+    const suggest = card.querySelector("[data-suggest]");
+    let searchTimer = null;
+    if (searchInput && suggest) {
+      searchInput.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        const q = searchInput.value;
+        if (String(q || "").trim().length < 2) {
+          suggest.hidden = true;
+          suggest.innerHTML = "";
+          return;
+        }
+        searchTimer = setTimeout(async () => {
+          try {
+            const products = await searchHomeSliderProducts(q);
+            if (!products.length) {
+              suggest.innerHTML = '<p class="admin-field-help">Sonuç yok</p>';
+              suggest.hidden = false;
+              return;
+            }
+            suggest.innerHTML = products
+              .map((product) => {
+                const img =
+                  product.image ||
+                  (Array.isArray(product.images) ? product.images.find(Boolean) : "") ||
+                  "";
+                return (
+                  '<button type="button" class="admin-home-slide-suggest-item" data-pick-id="' +
+                  escapeHomeSliderHtml(product.id) +
+                  '" data-pick-name="' +
+                  escapeHomeSliderHtml(product.name || "") +
+                  '" data-pick-brand="' +
+                  escapeHomeSliderHtml(product.brand || "") +
+                  '" data-pick-image="' +
+                  escapeHomeSliderHtml(img) +
+                  '" data-pick-price="' +
+                  escapeHomeSliderHtml(product.priceIncl || product.price || "") +
+                  '">' +
+                  (img
+                    ? '<img src="' + escapeHomeSliderHtml(img) + '" alt="" width="40" height="40" />'
+                    : "") +
+                  "<span>" +
+                  escapeHomeSliderHtml(product.name || product.id) +
+                  "</span></button>"
+                );
+              })
+              .join("");
+            suggest.hidden = false;
+          } catch (_) {
+            suggest.hidden = true;
+          }
+        }, 280);
+      });
+      suggest.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-pick-id]");
+        if (!btn) return;
+        const idInput = card.querySelector("[data-field=productId]");
+        if (idInput) idInput.value = btn.dataset.pickId || "";
+        const preview = card.querySelector("[data-product-preview]");
+        if (preview) {
+          preview.dataset.productName = btn.dataset.pickName || "";
+          preview.dataset.productBrand = btn.dataset.pickBrand || "";
+          preview.dataset.productImage = btn.dataset.pickImage || "";
+          preview.dataset.productPrice = btn.dataset.pickPrice || "";
+          preview.dataset.productSoldOut = "0";
+          const imgEl = preview.querySelector("img");
+          const ph = preview.querySelector(".admin-home-slide-ph");
+          if (btn.dataset.pickImage) {
+            if (imgEl) {
+              imgEl.src = btn.dataset.pickImage;
+            } else if (ph) {
+              ph.outerHTML =
+                '<img src="' +
+                escapeHomeSliderHtml(btn.dataset.pickImage) +
+                '" alt="" width="72" height="72" loading="lazy" />';
+            }
+          }
+          const nameEl = preview.querySelector(".admin-home-slide-name");
+          if (nameEl) nameEl.textContent = btn.dataset.pickName || "";
+          let meta = preview.querySelector(".admin-home-slide-meta");
+          const metaText = [btn.dataset.pickBrand, btn.dataset.pickPrice ? formatMoney(Number(btn.dataset.pickPrice)) : ""]
+            .filter(Boolean)
+            .join(" · ");
+          if (metaText) {
+            if (!meta) {
+              meta = document.createElement("p");
+              meta.className = "admin-home-slide-meta";
+              preview.appendChild(meta);
+            }
+            meta.textContent = metaText;
+          }
+        }
+        searchInput.value = "";
+        suggest.hidden = true;
+        suggest.innerHTML = "";
+      });
+    }
+    const up = card.querySelector("[data-slide-up]");
+    const down = card.querySelector("[data-slide-down]");
+    const remove = card.querySelector("[data-slide-remove]");
+    if (up) {
+      up.addEventListener("click", () => {
+        homeSliderDraft = collectHomeSliderDraft();
+        const i = Number(card.dataset.sort || 0);
+        if (i <= 0) return;
+        const tmp = homeSliderDraft[i - 1];
+        homeSliderDraft[i - 1] = homeSliderDraft[i];
+        homeSliderDraft[i] = tmp;
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+      });
+    }
+    if (down) {
+      down.addEventListener("click", () => {
+        homeSliderDraft = collectHomeSliderDraft();
+        const i = Number(card.dataset.sort || 0);
+        if (i >= homeSliderDraft.length - 1) return;
+        const tmp = homeSliderDraft[i + 1];
+        homeSliderDraft[i + 1] = homeSliderDraft[i];
+        homeSliderDraft[i] = tmp;
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+      });
+    }
+    if (remove) {
+      remove.addEventListener("click", () => {
+        homeSliderDraft = collectHomeSliderDraft().filter((_, idx) => idx !== Number(card.dataset.sort || 0));
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+      });
+    }
+  }
+
+  function bindAllHomeSliderCards() {
+    if (!homeSliderList) return;
+    homeSliderList.querySelectorAll("[data-home-slide]").forEach(bindHomeSliderCardEvents);
+  }
+
+  async function loadAdminHomeSlider() {
+    if (!homeSliderList || !token) return;
+    note(homeSliderNote, "", "");
+    try {
+      const data = await api("/api/admin/home-slider");
+      homeSliderMax = Number(data.maxSlides) || 8;
+      homeSliderTones = Array.isArray(data.tones) && data.tones.length ? data.tones : homeSliderTones;
+      homeSliderDraft = Array.isArray(data.slides) ? data.slides : [];
+      renderHomeSliderList();
+      bindAllHomeSliderCards();
+    } catch (err) {
+      note(homeSliderNote, "err", err.message || "Slider yüklenemedi");
+    }
+  }
+
+  if (homeSliderAddBtn) {
+    homeSliderAddBtn.addEventListener("click", () => {
+      homeSliderDraft = collectHomeSliderDraft();
+      if (homeSliderDraft.length >= homeSliderMax) {
+        note(homeSliderNote, "err", "En fazla " + homeSliderMax + " slayt eklenebilir.");
+        return;
+      }
+      homeSliderDraft.push({
+        id: homeSliderNewId(),
+        productId: "",
+        eyebrow: "",
+        titleOverride: "",
+        imageOverride: "",
+        tone: "navy",
+        active: true,
+        sort: homeSliderDraft.length,
+        product: null,
+      });
+      renderHomeSliderList();
+      bindAllHomeSliderCards();
+      note(homeSliderNote, "", "");
+    });
+  }
+
+  if (homeSliderSaveBtn) {
+    homeSliderSaveBtn.addEventListener("click", async () => {
+      homeSliderDraft = collectHomeSliderDraft();
+      const missing = homeSliderDraft.find((s) => !s.productId);
+      if (missing) {
+        note(homeSliderNote, "err", "Her slayt için ürün seçin veya boş slaytı silin.");
+        return;
+      }
+      homeSliderSaveBtn.disabled = true;
+      try {
+        const saved = await api("/api/admin/home-slider", {
+          method: "PUT",
+          timeout: 20000,
+          body: JSON.stringify({
+            slides: homeSliderDraft.map((slide, index) => ({
+              id: slide.id,
+              productId: slide.productId,
+              eyebrow: slide.eyebrow,
+              titleOverride: slide.titleOverride,
+              imageOverride: slide.imageOverride,
+              tone: slide.tone,
+              active: slide.active !== false,
+              sort: index,
+            })),
+          }),
+        });
+        homeSliderDraft = Array.isArray(saved.slides) ? saved.slides : homeSliderDraft;
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+        note(homeSliderNote, "ok", "Ana sayfa slider kaydedildi.");
+      } catch (err) {
+        note(homeSliderNote, "err", err.message || "Kaydedilemedi");
+      } finally {
+        homeSliderSaveBtn.disabled = false;
       }
     });
   }

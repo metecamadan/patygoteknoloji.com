@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p44" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-43" />
+  <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p45" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-47" />
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
@@ -78,6 +78,7 @@
             <button type="button" class="admin-nav-subitem" id="stockAlertsNav" data-admin-tab="products" data-products-view="alerts-stock">Stoğu Biten Ürün Talepleri <span class="admin-nav-count" id="stockAlertsNavCount" hidden></span></button>
           </div>
           <button type="button" class="admin-nav-item" id="categoriesTab" aria-controls="adminTabCategories" data-admin-tab="categories"><span class="admin-nav-icon">▤</span>Kategoriler</button>
+          <button type="button" class="admin-nav-item" id="vitrinTab" aria-controls="adminTabVitrin" data-admin-tab="vitrin"><span class="admin-nav-icon">▣</span>Vitrin</button>
           <button type="button" class="admin-nav-item" id="xmlTab" aria-controls="adminTabXml" data-admin-tab="xml"><span class="admin-nav-icon">↕</span>XML Yönetimi</button>
           <button type="button" class="admin-nav-item" id="calendarTab" aria-controls="adminTabCalendar" data-admin-tab="calendar"><span class="admin-nav-icon">▦</span>Takvim</button>
           <button type="button" class="admin-nav-item" id="shippingTab" aria-controls="adminTabShipping" data-admin-tab="shipping"><span class="admin-nav-icon">⛟</span>Kargo</button>
@@ -1211,6 +1212,27 @@
           </div>
         </section>
 
+        <section id="adminTabVitrin" class="admin-tab-panel" aria-labelledby="vitrinTab" hidden>
+          <div class="admin-page">
+            <section class="admin-card">
+              <div class="admin-card-head">
+                <div>
+                  <span class="admin-eyebrow">ANA SAYFA</span>
+                  <h2>Ürün slider</h2>
+                  <p class="admin-card-lead">Aktif slayt varsa ana sayfada klasik hero’nun yerine gösterilir. Boş veya tümü pasifse mevcut hero kalır. Görsel boş bırakılırsa katalog görseli kullanılır.</p>
+                </div>
+                <div class="admin-card-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="homeSliderAddBtn">+ Slayt ekle</button>
+                  <button type="button" class="btn btn-primary btn-sm" id="homeSliderSaveBtn">Kaydet</button>
+                </div>
+              </div>
+              <p class="admin-field-help" id="homeSliderHint">En fazla 8 slayt. Ürün stokta değilse sitede o slayt atlanır.</p>
+              <div id="homeSliderList" class="admin-home-slider-list" aria-live="polite"></div>
+              <p class="admin-note" id="homeSliderNote" role="status"></p>
+            </section>
+          </div>
+        </section>
+
         <section id="adminTabXml" class="admin-tab-panel" aria-labelledby="xmlTab" hidden>
           <div class="admin-page">
             <div class="admin-page-head">
@@ -1376,6 +1398,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-46"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-47"></script>
 </body>
 </html>
