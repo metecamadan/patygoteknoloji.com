@@ -10,14 +10,16 @@ const nav = read("assets/js/nav.js");
 const detail = read("assets/js/urun-detay.js");
 const catalog = read("assets/js/catalog.js");
 
-test("D43/D44: mobile menu has 'Tümünü gör' links plus pages and contact", () => {
-  assert.match(nav, /allLi\.className = "nav-mega-all"/);
-  assert.match(nav, /"Tümünü gör: " \+ category\.name/);
+test("D43/D44: mobile menu keeps pages/contact; 'Tümünü gör' stays hidden", () => {
   assert.match(nav, /root\.appendChild\(buildMobileNavExtras\(\)\)/);
   for (const href of ["/markalar", "/kurumsal", "/iletisim", "tel:+905555070724", "https://wa.me/905555070724"]) {
     assert.ok(nav.includes('href="' + href + '"'), "mobile menu links " + href);
   }
   assert.match(css, /\.nav-mega-all,\s*\.nav-mega-all-parent,\s*\.nav-mobile-extras,[\s\S]*?\{\s*display:\s*none;\s*\}/);
+  assert.match(
+    css,
+    /@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.nav-mega-all,\s*\.nav-mega-all-parent\s*\{\s*display:\s*none\s*!important/s
+  );
 });
 
 test("D42: product page has a mobile sticky add-to-cart bar driven by the main button", () => {

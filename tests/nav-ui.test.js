@@ -7,13 +7,20 @@ const root = path.resolve(__dirname, "..");
 const navJs = fs.readFileSync(path.join(root, "assets", "js", "nav.js"), "utf8");
 const navCss = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
 
-test("category mega menu does not render Tümü parent link on desktop; 'Tümünü gör' is mobile-only", () => {
+test("category mega menu hides 'Tümünü gör' links (desktop and mobile)", () => {
   assert.doesNotMatch(navJs, /Tümü:/);
   assert.doesNotMatch(navJs, /nav-mega-parent/);
   assert.doesNotMatch(navJs, /nav-mega-list-browse/);
   assert.match(navJs, /"Tüm " \+ child\.name/);
   assert.match(navCss, /\.nav-mega-all,\s*\.nav-mega-all-parent,[\s\S]*?\{\s*display:\s*none;\s*\}/);
-  assert.match(navCss, /@media \(max-width: 1023px\)\s*\{\s*\.nav-mega-all \{ display: block; \}/);
+  assert.match(
+    navCss,
+    /@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.nav-mega-all,\s*\.nav-mega-all-parent\s*\{\s*display:\s*none\s*!important/s
+  );
+  assert.doesNotMatch(
+    navCss,
+    /@media \(max-width:\s*1023px\)\s*\{\s*\.nav-mega-all\s*\{\s*display:\s*block/
+  );
 });
 
 test("mega menu keeps hover bridge for submenu access", () => {
