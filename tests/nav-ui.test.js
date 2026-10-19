@@ -85,6 +85,25 @@ test("main nav categories render as two-line labels", () => {
   assert.match(navCss, /\.nav-mega-mobile-label/);
 });
 
+test("mobile hamburger shows Ana/Ara/Alt type hierarchy", () => {
+  assert.match(
+    navCss,
+    /@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.nav-mega-mobile-label\s*\{[^}]*font-size:\s*1\.0625rem[^}]*font-weight:\s*700/s
+  );
+  assert.match(
+    navCss,
+    /@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.nav-mega-group-toggle\s*\{[^}]*padding:[^;]*28px[^}]*font-size:\s*0\.9375rem[^}]*font-weight:\s*500[^}]*#64748b/s
+  );
+  assert.match(
+    navCss,
+    /@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\.nav-mega-list a\s*\{[^}]*padding:[^;]*40px[^}]*font-size:\s*0\.875rem[^}]*font-weight:\s*400[^}]*#94a3b8/s
+  );
+  assert.match(
+    navCss,
+    /\.nav-mega-group\.open > \.nav-mega-list\s*\{[^}]*background:\s*#f8fafc/s
+  );
+});
+
 test("mobile category tab opens sheet below header", () => {
   const mainJs = fs.readFileSync(path.join(root, "assets", "js", "main.js"), "utf8");
   assert.match(mainJs, /function initCategoryNav/);

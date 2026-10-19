@@ -2969,19 +2969,23 @@ h1, h2, h3, h4 {
   .nav-mega-label {
     display: none;
   }
+  /* Ana kategori — en güçlü seviye */
   .nav-mega-mobile-label {
     display: block;
     flex: 1 1 auto;
     min-width: 0;
     text-align: left;
-    font-size: 0.92rem;
-    font-weight: 600;
+    font-size: 1.0625rem; /* ~17px */
+    font-weight: 700;
     line-height: 1.25;
     color: var(--ink);
   }
   .nav-mega.open > .nav-mega-toggle,
   .nav-mega-toggle:hover {
     background: #fff;
+    color: var(--ink);
+  }
+  .nav-mega.open > .nav-mega-toggle .nav-mega-mobile-label {
     color: var(--brand);
   }
   .nav-mega {
@@ -3002,21 +3006,22 @@ h1, h2, h3, h4 {
   .nav-mega-heading {
     display: none;
   }
+  /* Ara kategori — orta seviye: gri + girinti */
   .nav-mega-group-toggle {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     width: 100%;
-    padding: 12px 16px;
+    padding: 12px 16px 12px 28px;
     border: 0;
     border-bottom: 1px solid var(--line-soft);
     border-radius: 0;
     background: #fff;
     font: inherit;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: var(--ink-2);
+    font-size: 0.9375rem; /* ~15px */
+    font-weight: 500;
+    color: #64748b;
     text-align: left;
     cursor: pointer;
   }
@@ -3033,7 +3038,8 @@ h1, h2, h3, h4 {
   }
   .nav-mega-group.open > .nav-mega-list {
     display: grid;
-    margin-top: 4px;
+    margin-top: 0;
+    background: #f8fafc;
   }
   .nav-mega-panel {
     position: static;
@@ -3072,12 +3078,19 @@ h1, h2, h3, h4 {
     grid-template-columns: 1fr;
     gap: 0;
   }
+  /* Alt kategori — en zayıf seviye: açık gri + daha fazla girinti */
   .nav-mega-list a {
-    padding: 11px 16px 11px 16px;
+    padding: 11px 16px 11px 40px;
     border-bottom: 1px solid var(--line-soft);
     border-radius: 0;
-    font-size: 0.84rem;
+    font-size: 0.875rem; /* ~14px */
+    font-weight: 400;
+    color: #94a3b8;
     text-align: left;
+  }
+  .nav-mega-list a:hover {
+    color: var(--brand);
+    background: #f1f5f9;
   }
   .nav-actions { gap: 8px; }
   .nav-actions .btn-outline:not(.cart-link) { display: none; }
@@ -4572,12 +4585,17 @@ h1, h2, h3, h4 {
 
 @media (max-width: 1023px) {
   .nav-mega-all { display: block; }
-  .nav-mega-all a { font-weight: 700; color: var(--brand); }
+  .nav-mega-all a {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--brand);
+    padding-left: 28px;
+  }
   .nav-mega-all-parent {
     display: block;
-    padding: 13px 16px;
-    font-size: 0.88rem;
-    font-weight: 700;
+    padding: 12px 16px 12px 28px;
+    font-size: 0.875rem;
+    font-weight: 600;
     color: var(--brand);
     border-bottom: 1px solid var(--line-soft);
   }
