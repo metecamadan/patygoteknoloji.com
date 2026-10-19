@@ -8,12 +8,13 @@ const html = fs.readFileSync(path.join(root, "urun-detay.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
 const script = fs.readFileSync(path.join(root, "assets", "js", "urun-detay.js"), "utf8");
 
-test("product detail caps image size and disables enlarge/drag", () => {
+test("product detail caps image size and disables drag (hover zoom is separate)", () => {
   assert.match(css, /\.detail-media\s*\{[^}]*max-width:\s*420px/s);
   assert.match(css, /\.detail-media img\s*\{[^}]*pointer-events:\s*none/s);
   assert.match(css, /\.detail-media img\s*\{[^}]*-webkit-user-drag:\s*none/s);
   assert.match(script, /protectMedia/);
   assert.match(script, /draggable["']?,\s*["']false/);
+  assert.match(script, /bindHoverZoom/);
 });
 
 test("product detail allows copying name and description", () => {

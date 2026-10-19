@@ -42,15 +42,80 @@
   }
 
   let lightbox = null;
+  const hoverZoomMq =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(hover: hover) and (min-width: 900px)")
+      : { matches: false };
+
+  /** Desktop: Trendyol/Amazon-style side zoom pane that follows the cursor. */
+  function bindHoverZoom(gallery, stage, getSrc) {
+    const pane = document.createElement("div");
+    pane.className = "detail-zoom-pane";
+    pane.setAttribute("aria-hidden", "true");
+    gallery.appendChild(pane);
+
+    const lens = document.createElement("div");
+    lens.className = "detail-zoom-lens";
+    lens.hidden = true;
+    stage.appendChild(lens);
+
+    const ZOOM = 2.4;
+
+    function hide() {
+      pane.classList.remove("is-active");
+      lens.hidden = true;
+      lens.style.width = "";
+      lens.style.height = "";
+      lens.style.transform = "";
+    }
+
+    function onMove(ev) {
+      if (!hoverZoomMq.matches) {
+        hide();
+        return;
+      }
+      const src = getSrc();
+      if (!src) {
+        hide();
+        return;
+      }
+      const rect = stage.getBoundingClientRect();
+      if (rect.width < 40 || rect.height < 40) return;
+      const x = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+      const y = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
+      const lensW = rect.width / ZOOM;
+      const lensH = rect.height / ZOOM;
+      const lensX = Math.max(0, Math.min(rect.width - lensW, x * rect.width - lensW / 2));
+      const lensY = Math.max(0, Math.min(rect.height - lensH, y * rect.height - lensH / 2));
+      lens.hidden = false;
+      lens.style.width = lensW + "px";
+      lens.style.height = lensH + "px";
+      lens.style.transform = "translate(" + lensX + "px," + lensY + "px)";
+
+      pane.style.backgroundImage = 'url("' + String(src).replace(/"/g, "%22") + '")';
+      pane.style.backgroundSize = ZOOM * 100 + "%";
+      const posX = (lensX / Math.max(rect.width - lensW, 1)) * 100;
+      const posY = (lensY / Math.max(rect.height - lensH, 1)) * 100;
+      pane.style.backgroundPosition = posX + "% " + posY + "%";
+      pane.classList.add("is-active");
+    }
+
+    stage.addEventListener("mousemove", onMove);
+    stage.addEventListener("mouseleave", hide);
+    stage.addEventListener("blur", hide, true);
+  }
 
   function ensureLightbox() {
     if (lightbox) return lightbox;
     const dialog = document.createElement("dialog");
     dialog.className = "detail-lightbox";
     dialog.setAttribute("aria-label", "Ürün görseli");
+    const frame = document.createElement("div");
+    frame.className = "detail-lightbox-frame";
     const img = document.createElement("img");
     img.referrerPolicy = "no-referrer";
     protectMedia(img);
+    frame.appendChild(img);
     const close = document.createElement("button");
     close.type = "button";
     close.className = "detail-lightbox-close";
@@ -68,7 +133,7 @@
     next.textContent = "›";
     const counter = document.createElement("p");
     counter.className = "detail-lightbox-counter";
-    dialog.append(img, close, prev, next, counter);
+    dialog.append(frame, close, prev, next, counter);
     document.body.appendChild(dialog);
 
     const state = { images: [], index: 0 };
@@ -82,8 +147,9 @@
     close.addEventListener("click", () => dialog.close());
     prev.addEventListener("click", () => show(state.index - 1));
     next.addEventListener("click", () => show(state.index + 1));
+    img.addEventListener("click", (ev) => ev.stopPropagation());
     dialog.addEventListener("click", (ev) => {
-      if (ev.target === dialog) dialog.close();
+      if (ev.target === dialog || ev.target === frame) dialog.close();
     });
     dialog.addEventListener("keydown", (ev) => {
       if (ev.key === "ArrowLeft") show(state.index - 1);
@@ -904,6 +970,7 @@
       });
       media.appendChild(zoom);
       gallery.appendChild(media);
+      bindHoverZoom(gallery, media, () => mainImage.currentSrc || mainImage.src);
       const showImage = (index) => {
         activeIndex = (index + images.length) % images.length;
         mainImage.src = images[activeIndex];

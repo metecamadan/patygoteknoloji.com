@@ -6,8 +6,8 @@
       "sha256": "4ab20ae7e1580158e262a229ffb826cdb37eac598605086c354926a941476667"
     },
     "/assets/css/style.css": {
-      "v": "storefront-p51",
-      "sha256": "d45aef94535b08689b8ff54507d84d03bbf077d7ddf563fcf90c0530c7a879de"
+      "v": "storefront-p52",
+      "sha256": "4e5ae51f7d9c6221e6edcd52e5a2694a3a5af5864f0f19df5067d07e815b993e"
     },
     "/assets/geo/tr-districts.json": {
       "v": "ilce-1",
@@ -82,8 +82,8 @@
       "sha256": "c730ae0eb2254d7f0327cd24f6bb3920aaf5d081cda46273e4634da4ea48a44f"
     },
     "/assets/js/urun-detay.js": {
-      "v": "storefront-p46",
-      "sha256": "c4c8aeda32f35ed4ca66a51329a081a3d8f10928bba34618cdcca47b065ac7d4"
+      "v": "storefront-p47",
+      "sha256": "c245efe65b6938f9fea19634484503bd2286e3c34cf691dc03f957cba13d3ae7"
     }
   }
 }
