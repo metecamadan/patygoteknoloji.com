@@ -102,7 +102,12 @@
 
     stage.addEventListener("mousemove", onMove);
     stage.addEventListener("mouseleave", hide);
+    stage.addEventListener("pointerdown", hide);
     stage.addEventListener("blur", hide, true);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) hide();
+    });
+    return { hide };
   }
 
   function ensureLightbox() {
@@ -964,13 +969,15 @@
       zoom.className = "detail-zoom";
       zoom.setAttribute("aria-label", "Görseli büyüt");
       zoom.appendChild(mainImage);
-      zoom.addEventListener("click", () => {
-        if (zoom.dataset.swiped === "1") return;
-        ensureLightbox().open(images, activeIndex, product.name);
-      });
       media.appendChild(zoom);
       gallery.appendChild(media);
-      bindHoverZoom(gallery, media, () => mainImage.currentSrc || mainImage.src);
+      const hoverZoom = bindHoverZoom(gallery, media, () => mainImage.currentSrc || mainImage.src);
+      zoom.addEventListener("click", () => {
+        if (zoom.dataset.swiped === "1") return;
+        if (hoverZoom && hoverZoom.hide) hoverZoom.hide();
+        zoom.blur();
+        ensureLightbox().open(images, activeIndex, product.name);
+      });
       const showImage = (index) => {
         activeIndex = (index + images.length) % images.length;
         mainImage.src = images[activeIndex];

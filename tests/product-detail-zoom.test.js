@@ -12,9 +12,12 @@ test("product detail uses desktop hover zoom pane like standard e-com", () => {
   assert.match(script, /detail-zoom-pane/);
   assert.match(script, /detail-zoom-lens/);
   assert.match(script, /hover:\s*hover/);
+  assert.match(script, /pointerdown.*hide|hide\(\).*blur/s);
+  assert.match(script, /hoverZoom\.hide|hoverZoom && hoverZoom\.hide/);
   assert.match(css, /\.detail-zoom-pane\s*\{/);
   assert.match(css, /\.detail-zoom-pane\.is-active/);
   assert.match(css, /\.detail-zoom-lens\s*\{/);
+  assert.match(css, /\.detail-zoom-lens\[hidden\]/);
 });
 
 test("product detail lightbox is fullscreen dark overlay not white card", () => {
