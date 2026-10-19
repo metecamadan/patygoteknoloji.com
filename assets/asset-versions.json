@@ -2,8 +2,8 @@
   "version": 1,
   "files": {
     "/assets/css/admin.css": {
-      "v": "siparis-47",
-      "sha256": "f60949e81f89bb184211c24282e905352f966aff7b5fe628d847476e7d5d6645"
+      "v": "siparis-48",
+      "sha256": "4ab20ae7e1580158e262a229ffb826cdb37eac598605086c354926a941476667"
     },
     "/assets/css/style.css": {
       "v": "storefront-p51",
@@ -14,12 +14,12 @@
       "sha256": "a1b4184976a8465dea908da2b5021db4f17994faa2bbc52f66a530966b539958"
     },
     "/assets/js/admin-login.js": {
-      "v": "siparis-47",
-      "sha256": "e10a1b915dd1cc2ff6eb2b537e63dd6769b95aff4208e343236dd084b03480e4"
+      "v": "siparis-48",
+      "sha256": "a720891885a18c3622fffa468dd9358d6864b392458f39bf6ae0af7bfe644e74"
     },
     "/assets/js/admin-panel.js": {
-      "v": "siparis-47",
-      "sha256": "68071c2a42d1c98def3ce9906efbba825af1a571d6f207b5c1f1e0bb4e4eb3a6"
+      "v": "siparis-48",
+      "sha256": "5794cce443c3123ee4397d270a529e6fe26a9a3fdd78d2ea9d0dbd16891e266f"
     },
     "/assets/js/cargo-label.js": {
       "v": "cargo-1",

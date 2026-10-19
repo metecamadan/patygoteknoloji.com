@@ -2724,6 +2724,26 @@ body.admin-modal-open {
   filter: brightness(1.08) contrast(1.05);
 }
 
+.admin-home-slider-specs {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.08);
+}
+.admin-home-slider-spec-list {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.admin-home-slider-spec-list li {
+  margin: 4px 0;
+}
+.admin-home-slider-spec-list strong {
+  color: var(--ink);
+}
 .admin-home-slider-list {
   display: flex;
   flex-direction: column;

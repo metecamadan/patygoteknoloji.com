@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p51" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-47" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-48" />
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
@@ -1219,12 +1219,21 @@
                 <div>
                   <span class="admin-eyebrow">ANA SAYFA</span>
                   <h2>Ürün slider</h2>
-                  <p class="admin-card-lead">Aktif slayt varsa klasik hero’nun yerine: <strong>sol</strong> kampanya görseli (özel görsel URL), <strong>sağ</strong> ürün kartı (katalog görseli + fiyat). İkisi ayrı kayar.</p>
+                  <p class="admin-card-lead">Aktif slayt varsa klasik hero’nun yerine gelir. <strong>Sol</strong> = kampanya görseli (özel URL). <strong>Sağ</strong> = ürün kartı (katalog görseli + fiyat). İkisi ayrı kayar.</p>
                 </div>
                 <div class="admin-card-head-actions">
                   <button type="button" class="btn btn-outline btn-sm" id="homeSliderAddBtn">+ Slayt ekle</button>
                   <button type="button" class="btn btn-primary btn-sm" id="homeSliderSaveBtn">Kaydet</button>
                 </div>
+              </div>
+              <div class="admin-home-slider-specs" id="homeSliderSpecs">
+                <p class="admin-field-help" style="margin:0"><strong>Sol görsel ölçüleri (hazırlık):</strong></p>
+                <ul class="admin-home-slider-spec-list">
+                  <li><strong>Masaüstü:</strong> 1200×350 px (2x: 2400×700) — sitede ~1008×350</li>
+                  <li><strong>Tablet / mobil (≤900px):</strong> 800×220 px (2x: 1600×440) — tam genişlik × 220</li>
+                  <li>Tek görsel kullanıyorsan masaüstü master üret; önemli içerik ortada kalsın (<code>object-fit: cover</code> mobil üst/alt kırpar).</li>
+                  <li>Sağ ürün kartı için ayrı görsel gerekmez — katalog görseli kullanılır.</li>
+                </ul>
               </div>
               <p class="admin-field-help" id="homeSliderHint">En fazla 8 slayt. Ürün stokta değilse sitede o slayt atlanır.</p>
               <div id="homeSliderList" class="admin-home-slider-list" aria-live="polite"></div>
@@ -1398,6 +1407,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-47"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-48"></script>
 </body>
 </html>

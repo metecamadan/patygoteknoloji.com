@@ -8447,10 +8447,11 @@
           '<input type="text" data-field="titleOverride" maxlength="160" value="' +
           escapeHomeSliderHtml(slide.titleOverride || "") +
           '" placeholder="Kısa başlık (isteğe bağlı)" /></div>' +
-          '<div class="field"><label>Özel görsel URL (boş = katalog)</label>' +
+          '<div class="field"><label>Sol kampanya görseli URL (boş = katalog)</label>' +
           '<input type="url" data-field="imageOverride" maxlength="500" value="' +
           escapeHomeSliderHtml(slide.imageOverride || "") +
-          '" placeholder="https://… veya /media/…" /></div>' +
+          '" placeholder="https://… veya /media/…" />' +
+          '<p class="admin-field-help">Önerilen: 1200×350 (masaüstü). Mobilde 220px yüksekliğe cover ile sığar.</p></div>' +
           '<div class="admin-home-slide-row">' +
           '<div class="field"><label>Ton</label><select data-field="tone">' +
           toneOpts +
