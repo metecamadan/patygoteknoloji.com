@@ -4700,39 +4700,41 @@ h1, h2, h3, h4 {
   .products-page .product-qty-row { grid-template-columns: 40px 1fr 40px; }
 }
 
-/* Ana sayfa duo: sol kampanya görseli (~3/4) + sağ ürün kartı (~1/4)
-   Referans: geniş banner slider | dar flash-deal ürün slider */
+/* Ana sayfa duo: sol kampanya (~3/4) + sağ ürün kartı (~1/4)
+   Yükseklik sabit — klasik hero yerine sığar; sağ kart içeriği şişirmez. */
 .hero--slider {
-  padding: clamp(36px, 5vw, 56px) 0 clamp(44px, 6vw, 68px);
+  padding: clamp(28px, 4vw, 40px) 0 clamp(32px, 4.5vw, 48px);
 }
 .home-duo {
-  --duo-h: clamp(280px, 32vw, 420px);
+  --duo-h: 300px;
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
-  gap: clamp(14px, 1.8vw, 22px);
+  grid-template-columns: minmax(0, 3fr) minmax(200px, 1fr);
+  gap: 16px;
   align-items: stretch;
+  height: var(--duo-h);
   color: var(--ink);
 }
 
-/* —— Sol: görsel banner slider —— */
+/* —— Sol: görsel banner —— */
 .home-banner {
   position: relative;
-  min-height: var(--duo-h);
+  height: 100%;
+  min-height: 0;
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
   background: #f1f5f9;
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-.home-banner-viewport {
+.home-banner-viewport,
+.home-banner-track,
+.home-banner-slide,
+.home-banner-link {
   height: 100%;
-  min-height: var(--duo-h);
-  overflow: hidden;
 }
+.home-banner-viewport { overflow: hidden; }
 .home-banner-track {
   display: flex;
-  height: 100%;
-  min-height: var(--duo-h);
   transition: transform 0.55s var(--ease);
   will-change: transform;
 }
@@ -4740,20 +4742,12 @@ h1, h2, h3, h4 {
   flex: 0 0 100%;
   width: 100%;
   min-width: 100%;
-  height: 100%;
-  min-height: var(--duo-h);
 }
-.home-banner-link {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: var(--duo-h);
-}
+.home-banner-link { display: block; }
 .home-banner-link img {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: var(--duo-h);
   object-fit: cover;
   object-position: center;
 }
@@ -4762,8 +4756,8 @@ h1, h2, h3, h4 {
   top: 50%;
   transform: translateY(-50%);
   z-index: 3;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: #fff;
@@ -4779,15 +4773,16 @@ h1, h2, h3, h4 {
   border-color: var(--brand);
   color: #fff;
 }
-.home-banner-nav--prev { left: 12px; }
-.home-banner-nav--next { right: 12px; }
+.home-banner-nav--prev { left: 10px; }
+.home-banner-nav--next { right: 10px; }
 
-/* —— Sağ: ürün / fırsat kartı slider —— */
+/* —— Sağ: ürün kartı (aynı 300px kutu içine sığar) —— */
 .home-deal {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: var(--duo-h);
+  height: 100%;
+  min-height: 0;
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
   background: #fff;
@@ -4795,15 +4790,16 @@ h1, h2, h3, h4 {
   overflow: hidden;
 }
 .home-deal-heading {
+  flex: 0 0 auto;
   margin: 0;
-  padding: 14px 16px 8px;
+  padding: 10px 12px 4px;
   text-align: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: var(--ink);
 }
 .home-deal-viewport {
-  flex: 1;
+  flex: 1 1 auto;
   overflow: hidden;
   min-height: 0;
 }
@@ -4817,38 +4813,42 @@ h1, h2, h3, h4 {
   flex: 0 0 100%;
   width: 100%;
   min-width: 100%;
+  height: 100%;
   box-sizing: border-box;
 }
 .home-deal-card {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  gap: 6px;
+  gap: 4px;
   height: 100%;
-  padding: 4px 16px 12px;
+  padding: 2px 12px 6px;
   color: inherit;
   text-decoration: none;
   box-sizing: border-box;
 }
 .home-deal-eyebrow {
   display: inline-flex;
-  padding: 3px 8px;
-  border-radius: 6px;
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 5px;
   background: #fef2f2;
   color: #b91c1c;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 .home-deal-media {
+  flex: 1 1 auto;
   width: 100%;
-  max-width: 180px;
-  aspect-ratio: 1;
+  max-width: 120px;
+  max-height: 110px;
+  min-height: 0;
   display: grid;
   place-items: center;
-  margin: 4px 0;
 }
 .home-deal-media img {
   max-width: 100%;
@@ -4856,17 +4856,19 @@ h1, h2, h3, h4 {
   object-fit: contain;
 }
 .home-deal-brand {
+  flex: 0 0 auto;
   margin: 0;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .home-deal-title {
+  flex: 0 0 auto;
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.3;
+  font-size: 0.82rem;
+  line-height: 1.25;
   font-weight: 700;
   color: var(--ink);
   display: -webkit-box;
@@ -4876,39 +4878,43 @@ h1, h2, h3, h4 {
   max-width: 100%;
 }
 .home-deal-price {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  margin-top: 4px;
+  gap: 0;
 }
 .home-deal-price strong {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--brand-deep);
   letter-spacing: -0.02em;
 }
 .home-deal-price span {
-  font-size: 11.5px;
+  font-size: 10.5px;
   color: var(--muted);
 }
 .home-deal-cta {
-  margin-top: 8px;
-  min-height: 40px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+  min-height: 34px;
+  padding: 6px 12px;
   width: 100%;
-  max-width: 200px;
+  max-width: 160px;
   justify-content: center;
+  font-size: 0.82rem;
   pointer-events: none;
 }
 .home-deal-dots {
+  flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  gap: 7px;
-  padding: 0 12px 14px;
+  gap: 6px;
+  padding: 0 10px 10px;
 }
 .home-deal-dots button {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   border: 0;
   padding: 0;
@@ -4917,7 +4923,7 @@ h1, h2, h3, h4 {
   transition: width 0.25s var(--ease), background 0.25s var(--ease);
 }
 .home-deal-dots button[aria-selected="true"] {
-  width: 22px;
+  width: 18px;
   background: var(--brand);
 }
 .home-duo-live {
@@ -4931,13 +4937,14 @@ h1, h2, h3, h4 {
 @media (max-width: 900px) {
   .home-duo {
     grid-template-columns: 1fr;
-    --duo-h: clamp(220px, 58vw, 320px);
+    height: auto;
+    --duo-h: 220px;
+  }
+  .home-banner {
+    height: var(--duo-h);
   }
   .home-deal {
-    min-height: auto;
-  }
-  .home-deal-media {
-    max-width: 160px;
+    height: 280px;
   }
 }
 
