@@ -4706,7 +4706,7 @@ h1, h2, h3, h4 {
   padding: clamp(28px, 4vw, 40px) 0 clamp(32px, 4.5vw, 48px);
 }
 .home-duo {
-  --duo-h: 300px;
+  --duo-h: 350px;
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(200px, 1fr);
   gap: 16px;
@@ -4776,7 +4776,7 @@ h1, h2, h3, h4 {
 .home-banner-nav--prev { left: 10px; }
 .home-banner-nav--next { right: 10px; }
 
-/* —— Sağ: ürün kartı (aynı 300px kutu içine sığar) —— */
+/* —— Sağ: ürün kartı (aynı 350px kutu içine sığar) —— */
 .home-deal {
   position: relative;
   display: flex;

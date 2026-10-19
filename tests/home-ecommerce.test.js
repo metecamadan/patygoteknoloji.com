@@ -37,7 +37,7 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
   assert.match(css, /\.home-banner\s*\{/);
   assert.match(css, /\.home-deal\s*\{/);
   assert.match(css, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s+minmax\(200px,\s*1fr\)/);
-  assert.match(css, /--duo-h:\s*300px/);
+  assert.match(css, /--duo-h:\s*350px/);
 });
 
 test("brand strip shows sized logos that exist on disk", () => {
