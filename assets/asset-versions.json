@@ -14,12 +14,12 @@
       "sha256": "a1b4184976a8465dea908da2b5021db4f17994faa2bbc52f66a530966b539958"
     },
     "/assets/js/admin-login.js": {
-      "v": "siparis-48",
-      "sha256": "a720891885a18c3622fffa468dd9358d6864b392458f39bf6ae0af7bfe644e74"
+      "v": "siparis-49",
+      "sha256": "7a1cf177b110ff8d0566f6f8788f82673b1f8f6cadc3eaff0c6e1e059858cd78"
     },
     "/assets/js/admin-panel.js": {
-      "v": "siparis-48",
-      "sha256": "5794cce443c3123ee4397d270a529e6fe26a9a3fdd78d2ea9d0dbd16891e266f"
+      "v": "siparis-49",
+      "sha256": "91787971dc4eee1ae725353d2860c9f734bfe1f15392be4b559c3449fe1ff170"
     },
     "/assets/js/cargo-label.js": {
       "v": "cargo-1",
@@ -78,12 +78,12 @@
       "sha256": "428508a7b2ec67dfbe17bdd4bb47638cbc0da41a1d5c455016c251301ff98bf0"
     },
     "/assets/js/shipping.js": {
-      "v": "storefront-ship-6",
-      "sha256": "c730ae0eb2254d7f0327cd24f6bb3920aaf5d081cda46273e4634da4ea48a44f"
+      "v": "storefront-ship-7",
+      "sha256": "dbb55af88618c43d8c9ef7978f43812017463350e808e218de7bd190b3fe798a"
     },
     "/assets/js/urun-detay.js": {
-      "v": "storefront-p48",
-      "sha256": "7c2a87fb2c038f2af4dc938e0f5c9c15acdfe667805f0e50a2956a348270c80a"
+      "v": "storefront-p49",
+      "sha256": "58505121c7dfca66c246f5bb52831ccc26a3796f743d7c64d70f186e286ca1cf"
     }
   }
 }

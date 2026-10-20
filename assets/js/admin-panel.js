@@ -8015,7 +8015,7 @@
       (threshold > 0 ? formatMoney(threshold) + " ve üzeri" : "Yok (her siparişe kargo uygulanır)") +
       "</dd></div>" +
       "<div><dt>Minimum sepet tutarı</dt><dd>" +
-      (minOrder > 0 ? formatMoney(minOrder) + " (KDV dahil, kargo hariç)" : "Yok") +
+      (minOrder > 0 ? formatMoney(minOrder) + " (KDV dahil, kargo dahil)" : "Yok") +
       "</dd></div>" +
       "<div><dt>Kargoya veriliş</dt><dd>" +
       escapeHtml(String((settings && settings.dispatchBusinessDays) || 2)) +

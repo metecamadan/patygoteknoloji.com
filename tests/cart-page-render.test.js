@@ -160,7 +160,7 @@ test("cart repaints with catalog images once the catalog arrives after shipping"
 
 test("cart below the minimum order blocks checkout and says how much is missing", async () => {
   const page = bootCartPage(
-    [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 500, vatPercent: 20 }],
+    [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 400, vatPercent: 20 }],
     { shippingFee: 199, freeShippingThreshold: 1500, minOrderAmount: 750, enabled: true }
   );
   page.catalogReady.resolve([]);
@@ -171,7 +171,8 @@ test("cart below the minimum order blocks checkout and says how much is missing"
   const checkout = page.ids.cartCheckout;
   assert.equal(hint.hidden, false);
   assert.match(hint.textContent, /Minimum sepet tutarı ₺?750/);
-  assert.match(hint.textContent, /150 daha ürün ekleyin/);
+  assert.match(hint.textContent, /kargo dahil/);
+  assert.match(hint.textContent, /71 daha ürün ekleyin/);
   assert.equal(checkout.attrs["aria-disabled"], "true");
 
   page.window.PatygoCart.setQty("sup-1", 2);
@@ -184,7 +185,7 @@ test("cart below the minimum order blocks checkout and says how much is missing"
 
 test("phone checkout bar mirrors the total and the minimum-order block", async () => {
   const page = bootCartPage(
-    [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 500, vatPercent: 20 }],
+    [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 400, vatPercent: 20 }],
     { shippingFee: 199, freeShippingThreshold: 1500, minOrderAmount: 750, enabled: true }
   );
   page.catalogReady.resolve([]);

@@ -128,11 +128,12 @@
     };
   }
 
-  /** Kargo hariç, KDV dahil ürün tutarı; sunucu aynı kuralla siparişi reddeder. */
+  /** Ürün + kargo (KDV dahil); sunucu aynı kuralla siparişi reddeder. */
   function minimumOrderInfo(merchandiseTotal, settings) {
     const cfg = normalize(settings || cached || {});
     if (cfg.minOrderAmount <= 0) return null;
-    const shortfall = Math.max(0, round2(cfg.minOrderAmount - round2(merchandiseTotal)));
+    const comparable = round2(round2(merchandiseTotal) + feeForMerchandise(merchandiseTotal, cfg));
+    const shortfall = Math.max(0, round2(cfg.minOrderAmount - comparable));
     return {
       met: shortfall <= 0,
       minimum: cfg.minOrderAmount,
@@ -141,7 +142,7 @@
         shortfall > 0
           ? "Minimum sepet tutarı " +
             formatMoney(cfg.minOrderAmount) +
-            " (KDV dahil, kargo hariç). Ödemeye geçmek için " +
+            " (KDV dahil, kargo dahil). Ödemeye geçmek için " +
             formatMoney(shortfall) +
             " daha ürün ekleyin."
           : "",

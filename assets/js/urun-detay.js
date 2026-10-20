@@ -380,7 +380,7 @@
       payItems.push(
         "Minimum sepet tutarı " +
           window.PatygoShipping.formatMoney(minimumInfo.minimum) +
-          " (kargo hariç)." +
+          " (kargo dahil)." +
           (minimumInfo.met ? "" : " Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz.")
       );
     }

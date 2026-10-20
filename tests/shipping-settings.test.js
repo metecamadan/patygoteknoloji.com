@@ -48,12 +48,15 @@ test("shipping settings store persists admin values", () => {
 
 test("minimum order: shortfall below the floor, none at or above it, off when unset", () => {
   const settings = normalizeShippingSettings({ minOrderAmount: 750, shippingFee: 199 });
-  assert.equal(minimumOrderShortfall(500, settings), 250);
+  assert.equal(minimumOrderShortfall(500, settings), 51);
+  assert.equal(minimumOrderShortfall(551, settings), 0);
   assert.equal(minimumOrderShortfall(750, settings), 0);
   assert.equal(minimumOrderShortfall(1200, settings), 0);
   assert.equal(minimumOrderError(750, settings), null);
   assert.match(minimumOrderError(500, settings), /Minimum sepet tutarı ₺750,00/);
-  assert.match(minimumOrderError(500, settings), /₺250,00 daha/);
+  assert.match(minimumOrderError(500, settings), /kargo dahil/);
+  assert.match(minimumOrderError(500, settings), /₺51,00 daha/);
+  assert.equal(minimumOrderShortfall(479.24, normalizeShippingSettings({ minOrderAmount: 500, shippingFee: 199 })), 0);
   assert.equal(minimumOrderShortfall(10, normalizeShippingSettings({ shippingFee: 199 })), 0);
 });
 
@@ -242,7 +245,8 @@ test("admin shipping API and payment total include kargo bedeli", async (t) => {
   const belowBody = await below.json();
   assert.equal(belowBody.ok, false);
   assert.match(belowBody.error, /Minimum sepet tutarı ₺500,00/);
-  assert.match(belowBody.error, /₺380,00 daha/);
+  assert.match(belowBody.error, /kargo dahil/);
+  assert.match(belowBody.error, /₺305,00 daha/);
 
   const above = await fetch(baseUrl + "/api/payment/start", {
     method: "POST",

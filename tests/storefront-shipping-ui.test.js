@@ -44,7 +44,7 @@ test("checkout and product detail surface the minimum order rule", () => {
   assert.doesNotMatch(detail, /detail-minimum-order|minimumLine/);
   assert.match(
     detail,
-    /payItems\.push\(\s*"Minimum sepet tutarı " \+[\s\S]*?" \(kargo hariç\)\." \+\s*\(minimumInfo\.met \? "" : " Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz\."\)/
+    /payItems\.push\(\s*"Minimum sepet tutarı " \+[\s\S]*?" \(kargo dahil\)\." \+\s*\(minimumInfo\.met \? "" : " Bu ürünü diğer ürünlerle birlikte sipariş edebilirsiniz\."\)/
   );
   assert.match(detail, /shippingReady\.then\(/);
   assert.match(admin, /minOrderAmount: values\.minOrderAmount/);
@@ -55,7 +55,7 @@ test("checkout and product detail surface the minimum order rule", () => {
 test("storefront pages load shipping.js before catalog", () => {
   for (const page of ["index.html", "urunler.html", "urun-detay.html", "sepet.html", "odeme.html"]) {
     const html = read(page);
-    assert.match(html, /shipping\.js\?v=storefront-ship-6/);
+    assert.match(html, /shipping\.js\?v=storefront-ship-7/);
     const shipIdx = html.indexOf("shipping.js");
     const catalogIdx = html.indexOf("catalog.js");
     assert.ok(shipIdx >= 0 && catalogIdx >= 0, page + " should include both scripts");
