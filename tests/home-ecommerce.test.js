@@ -43,12 +43,17 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
 test("brand strip shows sized logos that exist on disk", () => {
   const track = indexHtml.match(/<div class="partners-track">([\s\S]*?)<\/div>/);
   assert.ok(track);
-  const logos = [...track[1].matchAll(/<img src="\/assets\/img\/brand-logos\/([a-z]+)\.svg" alt="([^"]*)" width="(\d+)" height="(\d+)"/g)];
-  const visible = logos.filter((m) => m[2]);
-  assert.equal(visible.length, 14);
+  const logos = [
+    ...track[1].matchAll(
+      /<img src="\/assets\/img\/brand-logos\/([a-z]+)\.(svg|png)"(?: srcset="[^"]*")? alt="([^"]*)" width="(\d+)" height="(\d+)"/g
+    ),
+  ];
+  const visible = logos.filter((m) => m[3]);
+  assert.equal(visible.length, 15);
   assert.equal(logos.length, visible.length * 2);
-  for (const [, slug, , width, height] of logos) {
-    assert.ok(fs.existsSync(path.join(root, "assets", "img", "brand-logos", slug + ".svg")), slug);
+  assert.ok(visible.some((m) => m[1] === "arzum" && m[2] === "png" && m[3] === "Arzum"));
+  for (const [, slug, ext, , width, height] of logos) {
+    assert.ok(fs.existsSync(path.join(root, "assets", "img", "brand-logos", slug + "." + ext)), slug);
     assert.ok(Number(height) <= 34 && Number(width) <= 100, slug);
   }
   assert.doesNotMatch(track[1], /Everest|<span/);
