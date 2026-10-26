@@ -179,6 +179,12 @@ jobs:
             REDIR="$(curl -sSI --max-time 20 "${PUBLIC_URL}/bilgisayar-tablet" | tr -d '\r')"
             echo "$REDIR" | grep -qiE '^HTTP/.* 301'
             echo "$REDIR" | grep -qiE '^Location: .*/urunler/bilgisayar-tablet'
+            WWW_REDIR="$(curl -sSI --max-time 20 "http://www.patygoteknoloji.com/" | tr -d '\r')"
+            echo "$WWW_REDIR" | grep -qiE '^HTTP/.* 301'
+            echo "$WWW_REDIR" | grep -qiE '^Location: https://patygoteknoloji.com/'
+            fetch_has "${PUBLIC_URL}/robots.txt" 'Disallow: /listing/'
+            PROD_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "${PUBLIC_URL}/products/seo-probe-not-a-product")"
+            [ "$PROD_CODE" = "404" ] || { echo "/products/ probe HTTP $PROD_CODE (expected 404)"; exit 1; }
             SM_OK=0
             for i in $(seq 0 24); do
               if fetch_has "http://127.0.0.1:${APP_PORT}/sitemap" 'urunler/'; then

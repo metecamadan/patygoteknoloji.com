@@ -62,6 +62,7 @@ test("sitemap lists category pages and omits checkout surfaces", () => {
   assert.doesNotMatch(sitemap, /\/admin/);
   assert.match(robots, /Disallow: \/odeme/);
   assert.match(robots, /Disallow: \/sepet/);
+  assert.match(robots, /Disallow: \/listing\//);
   assert.match(robots, /Sitemap: https:\/\/patygoteknoloji\.com\/sitemap\.xml/);
   const indexXml = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
   assert.match(indexXml, /sitemapindex/);

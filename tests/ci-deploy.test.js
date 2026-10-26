@@ -61,6 +61,10 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /ensure-sitemap-nginx\.sh/);
   assert.match(workflow, /ensure-product-shell-nginx\.sh/);
   assert.match(workflow, /\/bilgisayar-tablet/);
+  assert.match(workflow, /http:\/\/www\.patygoteknoloji\.com\//);
+  assert.match(workflow, /Location: https:\/\/patygoteknoloji\.com\//);
+  assert.match(workflow, /Disallow: \/listing\//);
+  assert.match(workflow, /\/products\/seo-probe-not-a-product/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
   const ensureNginx = fs.readFileSync(

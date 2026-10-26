@@ -38,6 +38,21 @@ test("nginx: the repo copy keeps what is live (bot block, rate limits, micro-cac
   }
   assert.match(site, /ssl_certificate \/etc\/letsencrypt\/live\/patygoteknoloji\.com\/fullchain\.pem;/);
   assert.match(site, /listen 80 default_server;/);
+  assert.match(
+    site,
+    /if \(\$host = www\.patygoteknoloji\.com\) \{\s*return 301 https:\/\/patygoteknoloji\.com\$request_uri;/
+  );
+  assert.doesNotMatch(
+    site,
+    /if \(\$host = www\.patygoteknoloji\.com\) \{\s*return 301 https:\/\/\$host\$request_uri;/
+  );
+  assert.match(site, /error_page 404 \/404\.html;/);
+  assert.match(site, /location = \/404\.html \{/);
+  assert.match(site, /location \^~ \/listing\/ \{[\s\S]*?X-Robots-Tag "noindex, nofollow"/);
+  assert.match(site, /error_page 404 = @listing_miss;/);
+  assert.match(site, /location @listing_miss \{/);
+  assert.match(site, /location \^~ \/products\/ \{\s*return 404;/);
+  assert.match(site, /location \^~ \/collections\/ \{\s*return 404;/);
   // Every zone and variable the site uses is defined in the hardening file.
   for (const name of ["zone=patygo_bots:", "zone=patygo_ip:", "keys_zone=patygo_cache:", "$patygo_nocache", "$patygo_bot_block"]) {
     assert.ok(hardening.includes(name), name);

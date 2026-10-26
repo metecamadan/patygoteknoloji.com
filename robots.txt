@@ -7,5 +7,6 @@ Disallow: /odeme.html
 Disallow: /sepet
 Disallow: /sepet.html
 Disallow: /api/
+Disallow: /listing/
 
 Sitemap: https://patygoteknoloji.com/sitemap.xml

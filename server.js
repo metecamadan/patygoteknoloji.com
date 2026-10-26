@@ -74,6 +74,9 @@ const {
   homeFeaturedCatalog,
   isHomeFeaturedSnapshotValid,
   listingSnapshotFileName,
+  listingSnapshotPageFileName,
+  listingSnapshotPagesToWrite,
+  LISTING_SNAPSHOT_MAX_PAGES,
   listingSnapshotJobs,
   enrichCatalogSnapshotProducts,
   supplierStorefrontCandidates,
@@ -1753,22 +1756,39 @@ function writeCatalogBootstrapSnapshots() {
   } catch (_) {}
   const jobs = listingSnapshotJobs(index, categoryStore.publicList());
   const writeJob = (job) => {
-    const payload = queryPublicCatalogIndexed(
-      index,
-      Object.assign({ page: 1, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
-    );
-    const products = enrichCatalogSnapshotProducts(
-      { products: payload.products },
-      index.routeIndex
-    ).products;
-    atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, job.file), {
-      products,
-      total: payload.total,
-      page: payload.page,
-      limit: payload.limit,
-      totalPages: payload.totalPages,
-      facets: payload.facets || null,
-    });
+    const writePage = (page) => {
+      const payload = queryPublicCatalogIndexed(
+        index,
+        Object.assign({ page, limit: CATALOG_BOOTSTRAP_LIMIT }, job.params)
+      );
+      const products = enrichCatalogSnapshotProducts(
+        { products: payload.products },
+        index.routeIndex
+      ).products;
+      const file = listingSnapshotPageFileName(job.file, page);
+      atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, file), {
+        products,
+        total: payload.total,
+        page: payload.page,
+        limit: payload.limit,
+        totalPages: payload.totalPages,
+        facets: page === 1 ? payload.facets || null : null,
+      });
+      return payload;
+    };
+    const first = writePage(1);
+    const pages = listingSnapshotPagesToWrite(first.totalPages, LISTING_SNAPSHOT_MAX_PAGES);
+    for (const page of pages) {
+      if (page === 1) continue;
+      writePage(page);
+    }
+    const keptLast = pages[pages.length - 1] || 1;
+    for (let page = keptLast + 1; page <= LISTING_SNAPSHOT_MAX_PAGES; page += 1) {
+      const extra = path.join(CATALOG_BOOTSTRAP_DIR, listingSnapshotPageFileName(job.file, page));
+      try {
+        if (fs.existsSync(extra)) fs.unlinkSync(extra);
+      } catch (_) {}
+    }
   };
   writeJob(jobs[0]);
   let offset = 1;
@@ -5724,8 +5744,10 @@ const server = http.createServer(async (req, res) => {
 
   if (urlPath.startsWith("/listing/")) {
     const name = urlPath.slice("/listing/".length);
+    const listingMiss = () =>
+      json(res, 404, { ok: false, error: "not found" }, { "X-Robots-Tag": "noindex, nofollow" });
     if (!/^[A-Za-z0-9._-]+\.json$/.test(name)) {
-      return serveNotFound(res, req.method);
+      return listingMiss();
     }
     if (name === "categories.json") {
       const payload = ensureCategoriesBootstrapSnapshot();
@@ -5740,18 +5762,19 @@ const server = http.createServer(async (req, res) => {
     const filePath = path.resolve(CATALOG_BOOTSTRAP_DIR, name);
     const rootDir = path.resolve(CATALOG_BOOTSTRAP_DIR);
     if (!filePath.startsWith(rootDir + path.sep)) {
-      return serveNotFound(res, req.method);
+      return listingMiss();
     }
     if (!fs.existsSync(filePath)) {
-      return serveNotFound(res, req.method);
+      return listingMiss();
     }
     fs.readFile(filePath, (readErr, data) => {
-      if (readErr) return serveNotFound(res, req.method);
+      if (readErr) return listingMiss();
       res.writeHead(
         200,
         securityHeaders({
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "public, max-age=60, stale-while-revalidate=600",
+          "X-Robots-Tag": "noindex, nofollow",
         })
       );
       if (req.method === "HEAD") return res.end();

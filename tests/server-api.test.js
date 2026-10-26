@@ -191,6 +191,11 @@ test("catalog invalidation rewrites the nginx-served categories snapshot instead
   const catFile = path.join(dataRoot, ".runtime", "catalog-bootstrap", "categories.json");
   assert.equal((await fetch(baseUrl + "/listing/categories.json")).status, 200);
   assert.ok(fs.existsSync(catFile));
+  const listingMiss = await fetch(baseUrl + "/listing/ofis-urunleri__ofis-gida__p9.json");
+  assert.equal(listingMiss.status, 404);
+  assert.match(String(listingMiss.headers.get("content-type") || ""), /json/i);
+  assert.match(String(listingMiss.headers.get("x-robots-tag") || ""), /noindex/);
+  assert.equal((await listingMiss.json()).ok, false);
 
   const login = await fetch(baseUrl + "/api/admin/login", {
     method: "POST",

@@ -110,7 +110,24 @@ test("enrichCatalogSnapshotProducts backfills urlPath on stale bootstrap snapsho
 });
 
 test("listing snapshots cover parent mid and child keys", () => {
-  const { listingSnapshotFileName, listingSnapshotJobs, buildStorefrontIndex } = require("../lib/catalog");
+  const {
+    listingSnapshotFileName,
+    listingSnapshotPageFileName,
+    listingSnapshotPagesToWrite,
+    LISTING_SNAPSHOT_MAX_PAGES,
+    listingSnapshotJobs,
+    buildStorefrontIndex,
+  } = require("../lib/catalog");
+  assert.equal(listingSnapshotPageFileName("all.json", 1), "all.json");
+  assert.equal(listingSnapshotPageFileName("all.json", 2), "all__p2.json");
+  assert.equal(
+    listingSnapshotPageFileName("ofis-urunleri__ofis-gida.json", 5),
+    "ofis-urunleri__ofis-gida__p5.json"
+  );
+  assert.deepEqual(listingSnapshotPagesToWrite(1), [1]);
+  assert.deepEqual(listingSnapshotPagesToWrite(3), [1, 2, 3]);
+  assert.deepEqual(listingSnapshotPagesToWrite(20), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.equal(LISTING_SNAPSHOT_MAX_PAGES, 8);
   assert.equal(listingSnapshotFileName({}), "all.json");
   assert.equal(
     listingSnapshotFileName({
@@ -175,7 +192,11 @@ test("server exposes fast catalog bootstrap API and snapshot writers", () => {
   assert.match(serverJs, /storefrontIndex\(false\)/);
   assert.match(serverJs, /max-age=120/);
   assert.match(serverJs, /\/listing\//);
+  assert.match(serverJs, /X-Robots-Tag": "noindex, nofollow"/);
   assert.match(serverJs, /listingSnapshotJobs/);
+  assert.match(serverJs, /listingSnapshotPagesToWrite/);
+  assert.match(serverJs, /listingSnapshotPageFileName\(job\.file, page\)/);
+  assert.match(serverJs, /LISTING_SNAPSHOT_MAX_PAGES/);
   assert.match(serverJs, /lookupPublicProductsByIds/);
   assert.match(serverJs, /enqueueXmlCategorySync/);
   assert.match(serverJs, /syncXmlSiteCategoriesAsync/);
