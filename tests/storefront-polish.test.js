@@ -39,21 +39,41 @@ test("every storefront page header links to the cart", () => {
   assert.match(notFound, /href="\/sepet"/);
 });
 
-test("home popular mix covers tabbed parents only and prefers orderable prices", () => {
+test("home popular mix covers tabbed parents only and prefers affordable showcase prices", () => {
   const products = [
     product("paper", "ofis-urunleri", 1200, { name: "A4 Fotokopi Kağıdı 5'li Koli" }),
     product("misc", "diger", 5000),
-    product("cheap-cable", "bilgisayar-bilesenleri", 50),
-    product("ssd", "bilgisayar-bilesenleri", 1500),
-    product("notebook", "bilgisayar-tablet", 25000),
-    product("toner", "baski-cozumleri", 900),
+    product("cheap-cable", "bilgisayar-bilesenleri", 50, { name: "HDMI Kablo 1m" }),
+    product("ssd", "bilgisayar-bilesenleri", 1500, { name: "Kingston NV2 1TB SSD" }),
+    product("notebook", "bilgisayar-tablet", 25000, { name: "ASUS ExpertBook B9" }),
+    product("toner", "baski-cozumleri", 900, { name: "HP 107A Toner" }),
   ];
-  const home = homeFeaturedCatalog(products, { limit: 4, minPriceInclVat: 750 });
+  const home = homeFeaturedCatalog(products, { limit: 4 });
   const ids = home.products.map((row) => row.id);
   assert.equal(ids.includes("misc"), false);
   assert.equal(ids.includes("cheap-cable"), false);
-  assert.deepEqual(ids.slice().sort(), ["notebook", "paper", "ssd", "toner"]);
+  assert.equal(ids.includes("notebook"), false);
+  assert.deepEqual(ids.slice().sort(), ["paper", "ssd", "toner"]);
   assert.deepEqual(home.byParent["ofis-urunleri"].map((row) => row.id), ["paper"]);
+});
+
+test("home showcase skips cable-bin junk even when the price is in band", () => {
+  const { isHomeJunkProduct, isHomeShowcaseProduct } = require("../lib/catalog");
+  const junk = product("hdmi", "bilgisayar-tablet", 400, {
+    name: "HDMI 2.1 Kablo 2m",
+    siteMid: "kablolar-ve-donusturuculer",
+    siteChild: "goruntu-kablolari",
+  });
+  const mouse = product("mouse", "bilgisayar-tablet", 400, {
+    name: "Logitech M185 Kablosuz Mouse",
+    siteChild: "mouse",
+  });
+  assert.equal(isHomeJunkProduct(junk), true);
+  assert.equal(isHomeShowcaseProduct(junk), false);
+  assert.equal(isHomeJunkProduct(mouse), false);
+  assert.equal(isHomeShowcaseProduct(mouse), true);
+  const home = homeFeaturedCatalog([junk, mouse], { limit: 2 });
+  assert.deepEqual(home.byParent["bilgisayar-tablet"].map((row) => row.id), ["mouse"]);
 });
 
 test("brand counts and marka filter treat casing and dotted İ as the same brand", () => {

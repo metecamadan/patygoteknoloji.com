@@ -1740,7 +1740,6 @@ function writeCatalogBootstrapSnapshots() {
   try {
     const featured = homeFeaturedCatalog(mergedProducts(false), {
       popularity: popularProductScores(),
-      minPriceInclVat: shippingSettingsStore.getSettings().minOrderAmount,
       limit: 12,
     }, { routeIndex: index.routeIndex, ...catalogImageContext() });
     atomicWriteJson(path.join(CATALOG_BOOTSTRAP_DIR, "home-featured.json"), {
@@ -3483,7 +3482,6 @@ async function handleApi(req, res, urlPath) {
       }
       const featured = homeFeaturedCatalog(mergedProducts(false), {
         popularity: popularProductScores(),
-        minPriceInclVat: shippingSettingsStore.getSettings().minOrderAmount,
         limit: requestUrl.searchParams.get("limit") || 12,
       }, { routeIndex: storefrontIndex(false).routeIndex, ...catalogImageContext() });
       const payload = {

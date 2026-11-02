@@ -657,7 +657,7 @@ test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
         id: slug + "-" + i,
         name: slug + " " + String(i).padStart(2, "0"),
         brand: "NO-NAME",
-        price: 100,
+        price: 500,
         category: slug,
         active: true,
       });
@@ -704,7 +704,7 @@ test("homeFeaturedCatalog Tümü list ranks global popularity before category mi
       id: "low-bt",
       name: "Sakin Tablet",
       brand: "NO-NAME",
-      price: 100,
+      price: 500,
       category: "bilgisayar-tablet",
       active: true,
     },
@@ -712,7 +712,7 @@ test("homeFeaturedCatalog Tümü list ranks global popularity before category mi
       id: "hot-toner",
       name: "HP Muadil Toner",
       brand: "NO-NAME",
-      price: 100,
+      price: 500,
       category: "baski-cozumleri",
       active: true,
     },
@@ -735,7 +735,7 @@ test("homeFeaturedCatalog Tümü list ranks global popularity before category mi
   );
 });
 
-test("homeFeaturedCatalog prefers market-popular notebooks in bilgisayar-tablet", () => {
+test("homeFeaturedCatalog prefers affordable showcase gear over expensive notebooks", () => {
   const { homeFeaturedCatalog } = require("../lib/catalog");
   const products = [
     {
@@ -756,17 +756,17 @@ test("homeFeaturedCatalog prefers market-popular notebooks in bilgisayar-tablet"
       active: true,
     },
     {
-      id: "phone",
-      name: "Samsung Galaxy A55",
-      brand: "Samsung",
-      price: 16000,
+      id: "mouse",
+      name: "Logitech M185 Kablosuz Mouse",
+      brand: "Logitech",
+      price: 450,
       category: "bilgisayar-tablet",
-      siteChild: "telefon",
+      siteChild: "mouse",
       active: true,
     },
   ];
   const featured = homeFeaturedCatalog(products, { limit: 1 });
-  assert.equal(featured.byParent["bilgisayar-tablet"][0].id, "nb");
+  assert.equal(featured.byParent["bilgisayar-tablet"][0].id, "mouse");
 });
 
 test("homeFeaturedCatalog mixes ALT types inside an ANA instead of filling with notebooks", () => {

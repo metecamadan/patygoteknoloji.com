@@ -1,4 +1,4 @@
-/* Patygo sepet — sessionStorage (tarayıcı oturumu kapanınca sıfırlanır) */
+/* Patygo sepet — localStorage (sekme kapanınca kalır; eski sessionStorage sepeti taşınır) */
 (function () {
   "use strict";
   const KEY = "patygo_cart";
@@ -13,19 +13,20 @@
     return String(id == null ? "" : id).trim();
   }
 
-  function dropPersistentCart() {
+  function parseStore(storage) {
     try {
-      if (localStorage.getItem(KEY)) localStorage.removeItem(KEY);
-    } catch (_) {}
-  }
-
-  function loadRaw() {
-    try {
-      const raw = JSON.parse(sessionStorage.getItem(KEY) || "[]");
+      if (!storage) return [];
+      const raw = JSON.parse(storage.getItem(KEY) || "[]");
       return Array.isArray(raw) ? raw : [];
     } catch (_) {
       return [];
     }
+  }
+
+  function loadRaw() {
+    const local = parseStore(localStorage);
+    if (local.length) return local;
+    return parseStore(sessionStorage);
   }
 
   function snapshotFrom(meta, existing) {
@@ -61,15 +62,26 @@
   }
 
   function persist(items, emit) {
-    sessionStorage.setItem(KEY, JSON.stringify(items));
-    dropPersistentCart();
+    const payload = JSON.stringify(items);
+    try {
+      localStorage.setItem(KEY, payload);
+    } catch (_) {}
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch (_) {}
     if (emit) window.dispatchEvent(new CustomEvent("patygo:cart"));
   }
 
   function read() {
     const raw = loadRaw();
     const next = coalesce(raw);
-    if (JSON.stringify(raw) !== JSON.stringify(next)) persist(next, false);
+    let sessionLeft = "";
+    try {
+      sessionLeft = sessionStorage.getItem(KEY) || "";
+    } catch (_) {}
+    const needsWrite =
+      JSON.stringify(raw) !== JSON.stringify(next) || (next.length > 0 && Boolean(sessionLeft));
+    if (needsWrite) persist(next, false);
     return next;
   }
 
@@ -222,7 +234,7 @@
     });
   }
 
-  dropPersistentCart();
+  read();
   window.addEventListener("patygo:cart", refreshBadges);
   document.addEventListener("DOMContentLoaded", refreshBadges);
   refreshBadges();

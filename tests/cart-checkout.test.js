@@ -71,15 +71,26 @@ test("cart totals use stored product snapshot when catalog missing", () => {
   assert.equal(withCatalog.sub, 3000);
 });
 
-test("cart lives in sessionStorage and drops leftover localStorage count", () => {
+test("cart lives in localStorage and migrates leftover sessionStorage", () => {
   const leftover = JSON.stringify([{ id: "old-1", qty: 2, name: "Eski", price: 10 }]);
   const { cart, localStorage, sessionStorage } = loadCart({ localCart: leftover });
-  assert.equal(cart.count(), 0);
-  assert.equal(localStorage.getItem("patygo_cart"), null);
-  cart.add("sku-1", 2, { brand: "HP", name: "Laptop", price: 1000 });
   assert.equal(cart.count(), 2);
-  assert.match(sessionStorage.getItem("patygo_cart") || "", /sku-1/);
-  assert.equal(localStorage.getItem("patygo_cart"), null);
+  assert.match(localStorage.getItem("patygo_cart") || "", /old-1/);
+  cart.add("sku-1", 2, { brand: "HP", name: "Laptop", price: 1000 });
+  assert.equal(cart.count(), 4);
+  assert.match(localStorage.getItem("patygo_cart") || "", /sku-1/);
+  assert.equal(sessionStorage.getItem("patygo_cart"), null);
+});
+
+test("cart migrates a sessionStorage basket into localStorage", () => {
+  const { cart, localStorage, sessionStorage } = loadCart();
+  sessionStorage.setItem(
+    "patygo_cart",
+    JSON.stringify([{ id: "sku-1", qty: 1, name: "Fan", price: 10 }])
+  );
+  assert.equal(cart.count(), 1);
+  assert.match(localStorage.getItem("patygo_cart") || "", /sku-1/);
+  assert.equal(sessionStorage.getItem("patygo_cart"), null);
 });
 
 test("checkout waits for catalog and binds cart mode", () => {
@@ -95,8 +106,8 @@ test("checkout waits for catalog and binds cart mode", () => {
 });
 
 test("header cart count skips ghost lines that the cart page cannot resolve", () => {
-  const { cart, sessionStorage } = loadCart();
-  sessionStorage.setItem(
+  const { cart, localStorage } = loadCart();
+  localStorage.setItem(
     "patygo_cart",
     JSON.stringify([
       { id: "gone-1", qty: 1 },
@@ -111,12 +122,12 @@ test("header cart count skips ghost lines that the cart page cannot resolve", ()
   const pruned = cart.pruneUnresolved({});
   assert.equal(pruned.length, 1);
   assert.equal(cart.count(), 1);
-  assert.equal(JSON.parse(sessionStorage.getItem("patygo_cart")).length, 1);
+  assert.equal(JSON.parse(localStorage.getItem("patygo_cart")).length, 1);
 });
 
 test("cart merges duplicate ids so the badge matches a single line", () => {
-  const { cart, sessionStorage } = loadCart();
-  sessionStorage.setItem(
+  const { cart, localStorage } = loadCart();
+  localStorage.setItem(
     "patygo_cart",
     JSON.stringify([
       { id: 12, qty: 1, name: "Fan", price: 10 },

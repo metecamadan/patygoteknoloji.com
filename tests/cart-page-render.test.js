@@ -117,8 +117,8 @@ function bootCartPage(cartItems, shippingSettings = {}) {
       addEventListener() {},
       querySelectorAll: () => [],
     },
-    sessionStorage: memoryStorage({ patygo_cart: JSON.stringify(cartItems) }),
-    localStorage: memoryStorage({}),
+    sessionStorage: memoryStorage({}),
+    localStorage: memoryStorage({ patygo_cart: JSON.stringify(cartItems) }),
     CustomEvent: function (type) {
       this.type = type;
     },
