@@ -76,6 +76,18 @@ test("home showcase skips cable-bin junk even when the price is in band", () => 
   assert.deepEqual(home.byParent["bilgisayar-tablet"].map((row) => row.id), ["mouse"]);
 });
 
+test("home showcase drops grocery and no-name accessories even in the price band", () => {
+  const { isHomeShowcaseProduct } = require("../lib/catalog");
+  const tea = product("tea", "ofis-urunleri", 250, { name: "Çaykur Tiryaki Çay 500 gr", brand: "Çaykur" });
+  const fan = product("fan", "bilgisayar-tablet", 220, { name: "Everest EFN-505 Masaüstü USB Fan", brand: "Everest" });
+  const ssd = product("ssd2", "bilgisayar-bilesenleri", 1500, { name: "Kingston NV2 1TB SSD", brand: "Kingston" });
+  assert.equal(isHomeShowcaseProduct(tea), false);
+  assert.equal(isHomeShowcaseProduct(fan), false);
+  assert.equal(isHomeShowcaseProduct(ssd), true);
+  const home = homeFeaturedCatalog([tea, fan, ssd], { limit: 3 });
+  assert.deepEqual(home.products.map((row) => row.id), ["ssd2"]);
+});
+
 test("brand counts and marka filter treat casing and dotted İ as the same brand", () => {
   const items = [
     product("a", "bilgisayar-tablet", 1000, { brand: "DELL" }),

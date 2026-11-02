@@ -656,7 +656,7 @@ test("homeFeaturedCatalog groups 12 popular products per ANA category", () => {
       products.push({
         id: slug + "-" + i,
         name: slug + " " + String(i).padStart(2, "0"),
-        brand: "NO-NAME",
+        brand: "HP",
         price: 500,
         category: slug,
         active: true,
@@ -703,7 +703,7 @@ test("homeFeaturedCatalog Tümü list ranks global popularity before category mi
     {
       id: "low-bt",
       name: "Sakin Tablet",
-      brand: "NO-NAME",
+      brand: "Samsung",
       price: 500,
       category: "bilgisayar-tablet",
       active: true,
@@ -711,7 +711,7 @@ test("homeFeaturedCatalog Tümü list ranks global popularity before category mi
     {
       id: "hot-toner",
       name: "HP Muadil Toner",
-      brand: "NO-NAME",
+      brand: "HP",
       price: 500,
       category: "baski-cozumleri",
       active: true,
@@ -776,7 +776,7 @@ test("homeFeaturedCatalog mixes ALT types inside an ANA instead of filling with 
     products.push({
       id: "nb-" + i,
       name: "Notebook " + i,
-      brand: "NO-NAME",
+      brand: "Lenovo",
       price: 1000,
       category: "bilgisayar-tablet",
       siteChild: "notebooklar",
@@ -792,7 +792,7 @@ test("homeFeaturedCatalog mixes ALT types inside an ANA instead of filling with 
     products.push({
       id,
       name,
-      brand: "NO-NAME",
+      brand: "Logitech",
       price: 200,
       category: "bilgisayar-tablet",
       siteChild: child,
