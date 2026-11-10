@@ -1,5 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 const {
   applyBasamakGrossPrice,
   applyBasamakNetPrice,
@@ -49,4 +52,37 @@ test("priceInclVat applies magnitude basamak on the KDV dahil shopper price", ()
   // 219.76 net × 1.20 = 263.71 → basamak 9 → 269.99 → net back-calculated
   assert.equal(priceInclVatAmount({ price: 219.76, vatPercent: 20, basamak: 9 }), 269.99);
   assert.equal(applyBasamakNetPrice(219.76, 20, 9), 224.99);
+});
+
+test("storefront catalog.js priceInclVat matches server magnitude basamak", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "catalog.js"), "utf8");
+  assert.doesNotMatch(src, /const mod = 100000/, "eski sabit 1000₺ dilimi kalmamalı");
+  assert.match(src, /lib\/price-basamak\.js/);
+  const start = src.indexOf("priceInclVat(productOrPrice, vatPercent) {");
+  const end = src.indexOf("/** Server sends compareAtPrice", start);
+  assert.ok(start > 0 && end > start, "priceInclVat gövdesi catalog.js içinde bulunmalı");
+  const method = src.slice(start, end).replace(/,\s*$/, "");
+  const sandbox = {};
+  vm.createContext(sandbox);
+  const client = vm.runInContext(
+    "(" +
+      "function(){ return { ALLOWED_VAT:[1,8,10,20]," +
+      "normalizeVatPercent(value){ const n=Number(value); return this.ALLOWED_VAT.includes(n)?n:20; }," +
+      method +
+      " }; })()",
+    sandbox
+  );
+  const cases = [
+    [8.13, 9, 8.99],
+    [131.23, 4, 134.99],
+    [340.52, 9, 349.99],
+    [1234, 6, 1269.99],
+    [56567.13, 9, 56999.99],
+  ];
+  for (const [gross, digit, expected] of cases) {
+    const net = Math.round((gross / 1.2) * 100) / 100;
+    const got = client.priceInclVat({ price: net, vatPercent: 20, basamak: digit });
+    assert.equal(got, expected, "client " + gross + " basamak " + digit);
+    assert.equal(applyBasamakGrossPrice(Math.round(net * 1.2 * 100) / 100, digit), expected);
+  }
 });

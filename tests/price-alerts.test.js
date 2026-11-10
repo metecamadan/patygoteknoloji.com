@@ -267,6 +267,7 @@ test("product page offers the alert form with consent; KVKK lists purpose and re
   assert.match(detail, /payload\.targetPrice = targetPrice/, "fiyat alarmı hedef fiyatı gönderir");
   assert.match(detail, /id="priceAlertTarget" name="target"/);
   assert.match(detail, /Hedef fiyat şu anki fiyattan/);
+  assert.match(detail, /data\.priceIncl/, "sunucu fiyatı hata mesajında kullanılır");
   assert.match(detail, /Math\.floor\(current \* 0\.95\)/, "hedef varsayılanı ~%5 altı");
   assert.match(detail, /name="consent" required/);
   assert.match(detail, /form\.replaceWith\(done\)/, "talep alınınca form kapanır");
@@ -574,7 +575,10 @@ test("price alert API validates input, needs SMTP, and confirm/unsubscribe links
   assert.match((await noTarget.json()).error, /Hedef fiyatı girin/);
   const highTarget = await post({ productId: "alert-test-item", email: "ali@example.com", consent: true, targetPrice: 1200 });
   assert.equal(highTarget.status, 422, "hedef şu anki fiyattan (₺1.200) düşük olmalı");
-  assert.match((await highTarget.json()).error, /şu anki fiyattan düşük/);
+  const highBody = await highTarget.json();
+  assert.match(highBody.error, /şu anki fiyattan düşük/);
+  assert.equal(typeof highBody.priceIncl, "number");
+  assert.ok(highBody.priceIncl > 0 && highBody.priceIncl <= 1200);
   const noSmtp = await post({ productId: "alert-test-item", email: "ali@example.com", consent: true, targetPrice: 1100 });
   assert.equal(noSmtp.status, 503);
   assert.match((await noSmtp.json()).error, /E-posta bildirimi şu anda kullanılamıyor/);

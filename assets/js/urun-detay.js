@@ -874,7 +874,31 @@
           body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || copy.failed);
+        if (!res.ok || !data.ok) {
+          let msg = data.error || copy.failed;
+          if (
+            alertKind === "price" &&
+            Number(data.priceIncl) > 0 &&
+            /şu anki fiyattan düşük/i.test(String(msg || ""))
+          ) {
+            msg =
+              "Hedef fiyat şu anki fiyattan (" +
+              window.PatygoCatalog.formatPrice(data.priceIncl) +
+              ") düşük olmalı.";
+            const hint = box.querySelector(".price-alert-hint");
+            if (hint) {
+              hint.textContent =
+                "Şu anki fiyat: " +
+                window.PatygoCatalog.formatPrice(data.priceIncl) +
+                ". Fiyat bu tutara veya altına inince bir kez haber veririz.";
+            }
+            const targetInput = form.elements.target;
+            if (targetInput && Number(data.priceIncl) > 1) {
+              targetInput.value = String(suggestedTargetPrice(Number(data.priceIncl)));
+            }
+          }
+          throw new Error(msg);
+        }
         const done = document.createElement("p");
         done.className = "price-alert-done";
         done.setAttribute("role", "status");

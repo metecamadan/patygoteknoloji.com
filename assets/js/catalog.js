@@ -74,7 +74,11 @@
       const n = Number(value);
       return this.ALLOWED_VAT.includes(n) ? n : 20;
     },
-    /** Stored price is KDV hariç; returns KDV dahil tutar (basamak varsa X99,99’a yukarı). */
+    /**
+     * Stored price is KDV hariç; returns KDV dahil tutar.
+     * Basamak dilimi sunucuyla aynı (lib/price-basamak.js):
+     * <100 → .D9; 100–999 → D,99; 1.000–9.999 → D9,99; 10.000+ → D99,99.
+     */
     priceInclVat(productOrPrice, vatPercent) {
       let net;
       let vat;
@@ -91,13 +95,36 @@
       if (basamak === null || basamak === undefined || basamak === "") return gross;
       const digit = Number(basamak);
       if (!Number.isInteger(digit) || digit < 0 || digit > 9) return gross;
-      const cents = Math.round(gross * 100);
-      const mod = 100000;
-      const target = digit * 10000 + 9999;
-      const rem = ((cents % mod) + mod) % mod;
-      let next = cents - rem + target;
-      if (next < cents) next += mod;
-      return next / 100;
+      let cents = Math.round(gross * 100);
+      for (let guard = 0; guard < 4; guard += 1) {
+        const current = cents / 100;
+        const band =
+          current < 100 ? 1 : current < 1000 ? 10 : current < 10000 ? 100 : current < 100000 ? 1000 : current < 1000000 ? 10000 : 100000;
+        const bandCents = Math.round(band * 100);
+        const step = band / 10;
+        const targetCents = Math.round(((digit + 1) * step - 0.01) * 100);
+        const rem = ((cents % bandCents) + bandCents) % bandCents;
+        let next = cents - rem + targetCents;
+        if (next < cents) next += bandCents;
+        const nextBand =
+          next / 100 < 100
+            ? 1
+            : next / 100 < 1000
+              ? 10
+              : next / 100 < 10000
+                ? 100
+                : next / 100 < 100000
+                  ? 1000
+                  : next / 100 < 1000000
+                    ? 10000
+                    : 100000;
+        if (nextBand !== band && next > cents) {
+          cents = next;
+          continue;
+        }
+        return next / 100;
+      }
+      return cents / 100;
     },
     /** Server sends compareAtPrice only for a real drop vs the lowest price of the prior 30 days. */
     discountInfo(product) {

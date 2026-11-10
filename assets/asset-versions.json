@@ -30,8 +30,8 @@
       "sha256": "dde7f911644916b53acbd00fd34224daf2048c726aa3b7ecb6ab847dec09ad99"
     },
     "/assets/js/catalog.js": {
-      "v": "storefront-p46",
-      "sha256": "b4f453f19c7ccb646e945ccb00e834a3f7f86a30d850c052a33d48607ddb2c9a"
+      "v": "storefront-p47",
+      "sha256": "2f75de7b4cb9ec71576b0fc57f1753773cedc27c65b206dc8aab83f6643e981c"
     },
     "/assets/js/checkout.js": {
       "v": "checkout-p12",
@@ -82,8 +82,8 @@
       "sha256": "dbb55af88618c43d8c9ef7978f43812017463350e808e218de7bd190b3fe798a"
     },
     "/assets/js/urun-detay.js": {
-      "v": "storefront-p49",
-      "sha256": "58505121c7dfca66c246f5bb52831ccc26a3796f743d7c64d70f186e286ca1cf"
+      "v": "storefront-p50",
+      "sha256": "7703eb6625fab9832e0c02a00ec687e10fbe4efec834a8c97a76fce3a57133a0"
     }
   }
 }
