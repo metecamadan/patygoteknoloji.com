@@ -9135,7 +9135,15 @@
           ? inheritedValue !== null
             ? "Boş: " + inheritedFrom + " kategorisinden basamak " + inheritedValue + "."
             : "Boş: basamak uygulanmaz; fiyat marj sonrası olduğu gibi kalır."
-          : "KDV dahil fiyat her 1.000 ₺ diliminde …" + own + "99,99’a yukarı yuvarlanır.";
+          : "KDV dahil fiyat büyüklüğe göre yuvarlanır (ör. …" +
+            own +
+            "9 / …" +
+            own +
+            ",99 / …" +
+            own +
+            "9,99 / …" +
+            own +
+            "99,99).";
     } else {
       input.title =
         own === null

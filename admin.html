@@ -1146,7 +1146,7 @@
                   <span class="admin-eyebrow">WEB MENÜSÜ</span>
                   <h2>Kategori ağacı</h2>
                   <p class="admin-field-help">Sitede görünen adı buradan değiştirin. Ağaç ANA → ARA → ALT şeklindedir. Tutamacı sürükleyerek sıra değiştirin.</p>
-                  <p class="admin-field-help">Ek marj taban kâr oranının üstüne eklenir; kritik stok XML Yönetimi'ndeki varsayılanın yerine geçer. Basamak (0–9) KDV dahil fiyatı her 1.000 ₺ diliminde X99,99’a yukarı yuvarlar (ör. 9 → …999,99). Boş bırakılan kategori üst kategorisinden devralır (soluk değer). Değişiklik kaydedilince site ve Akakçe fiyatları hemen güncellenir.</p>
+                  <p class="admin-field-help">Ek marj taban kâr oranının üstüne eklenir; kritik stok XML Yönetimi'ndeki varsayılanın yerine geçer. Basamak (0–9) KDV dahil fiyatı büyüklüğe göre yukarı yuvarlar: &lt;100 ₺ → .D9 (8,13→8,99); 100–999 ₺ → D,99 (131→134,99); 1.000–9.999 ₺ → D9,99 (1.234→1.269,99); 10.000+ ₺ → D99,99 (56.567→56.999,99). Boş bırakılan kategori üst kategorisinden devralır (soluk değer). Değişiklik kaydedilince site ve Akakçe fiyatları hemen güncellenir.</p>
                 </div>
                 <div class="admin-card-head-actions">
                   <button type="button" class="btn btn-primary btn-sm" id="catAddParentBtn">+ Ana kategori</button>
@@ -1162,7 +1162,7 @@
                   <span role="columnheader" class="admin-cat-head-spacer"><span class="sr-only">Aç / kapat</span></span>
                   <span role="columnheader">Kategori</span>
                   <span role="columnheader" class="admin-cat-slug">Adres kodu</span>
-                  <span role="columnheader" class="admin-cat-pricing-head" title="0–9. KDV dahil fiyatı her 1.000 ₺ diliminde X99,99’a yukarı yuvarlar (9 → …999,99; 7 → …799,99). Boş bırakılan kategori üst kategoriden devralır.">Basamak</span>
+                  <span role="columnheader" class="admin-cat-pricing-head" title="0–9. KDV dahil fiyatı büyüklüğe göre yuvarlar: &lt;100 → .D9; 100–999 → D,99; 1.000–9.999 → D9,99; 10.000+ → D99,99. Boş bırakılan kategori üst kategoriden devralır.">Basamak</span>
                   <span role="columnheader" class="admin-cat-products" title="Bu kategoride sitede yayında olan ürün sayısı (alt kategoriler dahil).">Ürün</span>
                   <span role="columnheader" class="admin-cat-pricing-head" title="Taban kâr oranının üstüne eklenir. Boş bırakılan kategori üst kategorisinden devralır.">Ek marj %</span>
                   <span role="columnheader" class="admin-cat-pricing-head" title="Stoğu bu sayı ve altında olan ürün satışta görünmez. Boş bırakılan kategori üst kategoriden ya da XML Yönetimi'ndeki varsayılandan devralır.">Kritik stok</span>
@@ -1407,6 +1407,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-49"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-50"></script>
 </body>
 </html>
