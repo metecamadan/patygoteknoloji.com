@@ -113,3 +113,27 @@ test("ensureRates falls back to the old cache only when TCMB is unreachable", as
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("refreshRates retries once and sends a store User-Agent", async () => {
+  const { refreshRates } = require("../lib/fx");
+  const root = tempRoot();
+  try {
+    const calls = [];
+    const flaky = async (url, init) => {
+      calls.push({ url, ua: init && init.headers && init.headers["User-Agent"] });
+      if (calls.length === 1) {
+        const err = new Error("fetch failed");
+        err.name = "TypeError";
+        throw err;
+      }
+      return { ok: true, status: 200, text: async () => TCMB_XML };
+    };
+    const rates = await refreshRates(root, { fetchImpl: flaky, retries: 1 });
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].ua || "", /PatygoTeknolojiFX/);
+    assert.equal(rates.USD, 49.4204);
+    assert.equal(rates.rateDate, "15.10.2026");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
