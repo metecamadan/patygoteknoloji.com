@@ -70,6 +70,42 @@ Düzen (referans e-ticaret): **sol ~¾ kampanya görsel slider** + **sağ ~¼ ü
 
 - Sol: özel görsel URL (`imageOverride`). Sağ: katalog ürün kartı.
 - Yerel: `preview/home-slider.html`. Canlı: panelden slayt ekle → `https://patygoteknoloji.com`.
+- Güncelleme (19 Eki 2026): kullanıcı kampanya görsellerini hazırlıyor; görsel gelince panele bağlanacak. Canlıda `/api/home-slider` şu an `slides: []`.
+
+### 5. Google indeks / Search Console kontrolü (19 Eki 2026)
+
+Site audit notu: `site:patygoteknoloji.com` pratikte sonuç vermedi; sitemap ~6k URL var ama indeks görünürlüğü zayıf olabilir.
+
+Yapılacak:
+
+- Google Search Console mülkiyet + `https://patygoteknoloji.com` doğrulama.
+- Sitemap gönderimi (`/sitemap.xml`) ve indeks kapsamı / hata raporu.
+- Örnek ürün + ana sayfa URL Inspection (canlı URL Google’da mı?).
+- `robots.txt` / noindex yanlışlığı yok mu kontrol.
+- Gerekirse indeks talebi + birkaç gün sonra `site:` tekrar bak.
+
+### 6. PageSpeed / Core Web Vitals ölçümü (19 Eki 2026)
+
+Site audit notu: lab ölçümü bu turda API 429 ile alınamadı; LCP / INP (ve CLS) ayrıca bakılacak.
+
+Yapılacak:
+
+- [PageSpeed Insights](https://pagespeed.web.dev/) — mobil + masaüstü, `https://patygoteknoloji.com` (ana sayfa) ve bir ürün detay URL’si.
+- CrUX / alan verisi varsa kaydet; yoksa lab skorları + LCP öğesi notu.
+- Kırmızı metrikler için öncelik listesi (görsel, JS, font, cache) — düzeltme ayrı iş.
+
+### 7. TCMB döviz kuru — fetch failed (10 Kas 2026)
+
+PM2 error log’da tekrarlayan `Döviz kuru alınamadı: fetch failed`. Site düşmez; USD/EUR maliyetli ürünlerde kur eski kalırsa fiyat sapabilir.
+
+Yapılacak:
+
+- `server.js` / TCMB kur çekim yolunu bul; kök neden (DNS, TLS, URL, timeout, engel).
+- Canlıda kurun güncellendiğini doğrula; sessizce yeşil gösterme.
+
+### 5 (devam). Google Search Console — bu turda fiyat işinden sonra (10 Kas 2026)
+
+Kullanıcı kararı: fiyat düzeltmesi ve TCMB’den sonra. Sitemap var; organik görünürlük zayıf olabilir. Madde 5’teki checklist geçerli.
 
 ## Kapandı
 
