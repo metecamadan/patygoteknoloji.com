@@ -37,6 +37,12 @@ Patygo Teknoloji ve Bilişim Ltd. Şti. için hazırlanan kurumsal tanıtım web
     └── img/ (logo, favicon, vergi levhası)
 ```
 
+## Cursor Agent Skills
+
+126 skills live in `.cursor/skills` (also linked as `.agents/skills`). Marketplace entry: `.cursor-plugin/marketplace.json` → plugin `plugins/patygo-agent-skills` (skills via symlink to `.cursor/skills`).
+
+In Cursor: **Customize → Skills → From GitHub Repository** → this repo (`main`), then **Sync Skills for Cloud Agents**.
+
 ## Yerel Önizleme
 
 Ürün kataloğu ve yönetim paneli için Node.js sunucusunu kullanın:

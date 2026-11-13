@@ -18,8 +18,9 @@ desktop.ini
 !.cursor/skills/
 !.cursor/skills/**
 
-# skills CLI yerel ayna (Cursor kopyası .cursor/skills ile takip edilir)
-.agents/
+# skills CLI yerel ayna — .agents/skills symlink ana depoda; diğer içerik yok sayılır
+.agents/*
+!.agents/skills
 
 # Secrets / credentials
 .env
