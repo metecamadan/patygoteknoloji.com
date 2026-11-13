@@ -1,0 +1,37 @@
+{
+  "name": "patygo-agent-skills",
+  "owner": {
+    "name": "Mete Camadan",
+    "email": "mete.camadan@patygoteknoloji.com"
+  },
+  "metadata": {
+    "description": "Patygo Cursor agent skills marketplace: marketing, design, finance, APIs, sales, Shopify, security, PM, DevOps, i18n, RevOps, and legal/KVKK skills for Patygo Teknoloji.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "patygo-agent-skills",
+      "source": "./plugins/patygo-agent-skills",
+      "description": "Patygo Agent Skills — curated Cursor skills pack for e-commerce operations, marketing, design, finance, APIs, sales, Shopify, security, product management, DevOps, i18n, RevOps, and legal/KVKK.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Mete Camadan",
+        "email": "mete.camadan@patygoteknoloji.com"
+      },
+      "keywords": [
+        "patygo",
+        "agent-skills",
+        "marketing",
+        "design",
+        "finance",
+        "sales",
+        "shopify",
+        "security",
+        "devops",
+        "i18n",
+        "revops",
+        "kvkk"
+      ]
+    }
+  ]
+}

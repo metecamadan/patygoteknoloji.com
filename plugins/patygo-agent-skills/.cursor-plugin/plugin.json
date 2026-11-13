@@ -1,0 +1,20 @@
+{
+  "name": "patygo-agent-skills",
+  "displayName": "Patygo Agent Skills",
+  "version": "1.0.0",
+  "description": "Curated Cursor agent skills for Patygo Teknoloji: marketing, design, finance, APIs, sales, Shopify, security, PM, DevOps, i18n, RevOps, and legal/KVKK.",
+  "author": {
+    "name": "Mete Camadan",
+    "email": "mete.camadan@patygoteknoloji.com"
+  },
+  "keywords": [
+    "patygo",
+    "skills",
+    "ecommerce",
+    "marketing",
+    "kvkk"
+  ],
+  "homepage": "https://github.com/metecamadan/patygoteknoloji.com/tree/cursor/skills-marketplace-fe99",
+  "repository": "https://github.com/metecamadan/patygoteknoloji.com",
+  "license": "MIT"
+}
