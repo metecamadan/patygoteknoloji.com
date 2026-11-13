@@ -1,0 +1,501 @@
+{
+  "packagesAttempted": 47,
+  "packagesSucceeded": 47,
+  "packagesFailed": 0,
+  "packagesSkipped": 0,
+  "skillDirCount": 126,
+  "cursorSkillCount": 126,
+  "agentsSkillCount": 126,
+  "skillNames": [
+    "accessibility",
+    "ad-attribution-gap",
+    "ad-creative",
+    "add-analytics-instrumentation",
+    "ads",
+    "ai-seo",
+    "analytics",
+    "analyze-feature-requests",
+    "api-design-principles",
+    "aso",
+    "attribution",
+    "azure-advisor-cost-optimization",
+    "azure-compliance",
+    "azure-kubernetes",
+    "baseline-ui",
+    "better-auth-security-best-practices",
+    "brainstorming",
+    "brand-guidelines",
+    "churn-prevention",
+    "ci-cd-and-automation",
+    "code-review",
+    "cold-email",
+    "competitor-profiling",
+    "compliance-check",
+    "content-strategy",
+    "conversion-tracking",
+    "copywriting",
+    "core-web-vitals",
+    "create-prd",
+    "cro",
+    "cross-border-ecommerce",
+    "customer-churn-signals",
+    "design-mobile-apps",
+    "design-system",
+    "design-taste-frontend",
+    "diagnosing-bugs",
+    "discover-analytics-patterns",
+    "docker-build-strategies",
+    "docker-compose-patterns",
+    "eas-workflows",
+    "emails",
+    "figma-generate-design",
+    "figma-use",
+    "financial-insights",
+    "financial-statements",
+    "firebase-security-rules-auditor",
+    "firecrawl-build-onboarding",
+    "fixing-accessibility",
+    "flutter-setup-localization",
+    "frontend-design",
+    "gdpr-data-handling",
+    "github-actions-templates",
+    "google-ads-api-mcp-setup",
+    "google-ads-api-quickstart",
+    "grill-me",
+    "hyperframes",
+    "i18n",
+    "i18n-expert",
+    "impeccable",
+    "implement",
+    "improve-codebase-architecture",
+    "influencer-marketing",
+    "instrument-events",
+    "launch",
+    "legal-risk-assessment",
+    "local-seo",
+    "localize-unity-project",
+    "marketing-ideas",
+    "mcp-builder",
+    "media-use",
+    "multi-stage-dockerfile",
+    "onboarding",
+    "openapi-spec-generation",
+    "pci-compliance",
+    "performance",
+    "persona-customer-support",
+    "pptx",
+    "prd",
+    "prisma-client-api",
+    "prisma-database-setup",
+    "privacy-policy",
+    "programmatic-seo",
+    "prospecting",
+    "public-relations",
+    "remotion-best-practices",
+    "revops",
+    "revops-kickoff",
+    "sales-enablement",
+    "security-and-hardening",
+    "security-best-practices",
+    "security-review",
+    "seo-audit",
+    "seo-ecommerce",
+    "seo-local",
+    "shadcn",
+    "shopify-admin",
+    "shopify-custom-data",
+    "shopify-dev",
+    "shopify-liquid",
+    "shopify-storefront-graphql",
+    "social",
+    "sql-optimization",
+    "sql-optimization-patterns",
+    "sql-queries",
+    "startup-financial-modeling",
+    "statistical-analysis",
+    "stripe-best-practices",
+    "stripe-integration",
+    "supabase",
+    "systematic-debugging",
+    "taxonomy",
+    "tdd",
+    "terraform-style-guide",
+    "terraform-test",
+    "test-driven-development",
+    "to-spec",
+    "translation",
+    "turkey-kvkk",
+    "ui-styling",
+    "ui-ux-pro-max",
+    "vercel-react-best-practices",
+    "vercel-react-view-transitions",
+    "verification-before-completion",
+    "web-design-guidelines",
+    "writing-plans",
+    "xlsx"
+  ],
+  "successes": [
+    {
+      "pkg": "coreyhaines31/marketingskills",
+      "skills": [
+        "seo-audit",
+        "ad-creative",
+        "ads",
+        "ai-seo",
+        "analytics",
+        "conversion-tracking",
+        "copywriting",
+        "content-strategy",
+        "programmatic-seo",
+        "marketing-ideas",
+        "competitor-profiling",
+        "cro",
+        "cold-email",
+        "sales-enablement",
+        "prospecting",
+        "emails",
+        "attribution",
+        "social",
+        "influencer-marketing",
+        "aso",
+        "launch",
+        "public-relations",
+        "churn-prevention",
+        "revops",
+        "onboarding"
+      ]
+    },
+    {
+      "pkg": "google/skills",
+      "skills": [
+        "google-ads-api-mcp-setup",
+        "google-ads-api-quickstart"
+      ]
+    },
+    {
+      "pkg": "anthropics/skills",
+      "skills": [
+        "frontend-design",
+        "brand-guidelines",
+        "xlsx",
+        "mcp-builder",
+        "pptx"
+      ]
+    },
+    {
+      "pkg": "vercel-labs/agent-skills",
+      "skills": [
+        "vercel-react-best-practices",
+        "web-design-guidelines",
+        "vercel-react-view-transitions"
+      ]
+    },
+    {
+      "pkg": "mattpocock/skills",
+      "skills": [
+        "improve-codebase-architecture",
+        "code-review",
+        "tdd",
+        "diagnosing-bugs",
+        "implement",
+        "grill-me",
+        "to-spec"
+      ]
+    },
+    {
+      "pkg": "obra/superpowers",
+      "skills": [
+        "systematic-debugging",
+        "test-driven-development",
+        "writing-plans",
+        "verification-before-completion",
+        "brainstorming"
+      ]
+    },
+    {
+      "pkg": "leonxlnx/taste-skill",
+      "skills": [
+        "design-taste-frontend"
+      ]
+    },
+    {
+      "pkg": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "skills": [
+        "ui-ux-pro-max",
+        "ui-styling",
+        "design-system"
+      ]
+    },
+    {
+      "pkg": "shadcn-ui/ui",
+      "skills": [
+        "shadcn"
+      ]
+    },
+    {
+      "pkg": "pbakaus/impeccable",
+      "skills": [
+        "impeccable"
+      ]
+    },
+    {
+      "pkg": "designed-by-ai/skills",
+      "skills": [
+        "design-mobile-apps"
+      ]
+    },
+    {
+      "pkg": "addyosmani/web-quality-skills",
+      "skills": [
+        "accessibility",
+        "core-web-vitals",
+        "performance"
+      ]
+    },
+    {
+      "pkg": "ibelick/ui-skills",
+      "skills": [
+        "fixing-accessibility",
+        "baseline-ui"
+      ]
+    },
+    {
+      "pkg": "stripe/ai",
+      "skills": [
+        "stripe-best-practices"
+      ]
+    },
+    {
+      "pkg": "stripe/link-cli",
+      "skills": [
+        "financial-insights"
+      ]
+    },
+    {
+      "pkg": "microsoft/azure-skills",
+      "skills": [
+        "azure-advisor-cost-optimization",
+        "azure-kubernetes",
+        "azure-compliance"
+      ]
+    },
+    {
+      "pkg": "wshobson/agents",
+      "skills": [
+        "startup-financial-modeling",
+        "openapi-spec-generation",
+        "api-design-principles",
+        "stripe-integration",
+        "sql-optimization-patterns",
+        "github-actions-templates",
+        "gdpr-data-handling",
+        "pci-compliance"
+      ]
+    },
+    {
+      "pkg": "anthropics/knowledge-work-plugins",
+      "skills": [
+        "financial-statements",
+        "sql-queries",
+        "statistical-analysis",
+        "legal-risk-assessment",
+        "compliance-check"
+      ]
+    },
+    {
+      "pkg": "supabase/agent-skills",
+      "skills": [
+        "supabase"
+      ]
+    },
+    {
+      "pkg": "prisma/skills",
+      "skills": [
+        "prisma-client-api",
+        "prisma-database-setup"
+      ]
+    },
+    {
+      "pkg": "figma/mcp-server-guide",
+      "skills": [
+        "figma-use",
+        "figma-generate-design"
+      ]
+    },
+    {
+      "pkg": "shopify/shopify-ai-toolkit",
+      "skills": [
+        "shopify-admin",
+        "shopify-storefront-graphql",
+        "shopify-liquid",
+        "shopify-dev",
+        "shopify-custom-data"
+      ]
+    },
+    {
+      "pkg": "agricidaniel/claude-seo",
+      "skills": [
+        "seo-ecommerce",
+        "seo-local"
+      ]
+    },
+    {
+      "pkg": "remotion-dev/skills",
+      "skills": [
+        "remotion-best-practices"
+      ]
+    },
+    {
+      "pkg": "heygen-com/hyperframes",
+      "skills": [
+        "hyperframes",
+        "media-use"
+      ]
+    },
+    {
+      "pkg": "amplitude/mcp-marketplace",
+      "skills": [
+        "add-analytics-instrumentation",
+        "taxonomy",
+        "discover-analytics-patterns",
+        "instrument-events"
+      ]
+    },
+    {
+      "pkg": "github/awesome-copilot",
+      "skills": [
+        "sql-optimization",
+        "multi-stage-dockerfile",
+        "prd"
+      ]
+    },
+    {
+      "pkg": "firebase/agent-skills",
+      "skills": [
+        "firebase-security-rules-auditor"
+      ]
+    },
+    {
+      "pkg": "addyosmani/agent-skills",
+      "skills": [
+        "security-and-hardening",
+        "ci-cd-and-automation"
+      ]
+    },
+    {
+      "pkg": "better-auth/skills",
+      "skills": [
+        "better-auth-security-best-practices"
+      ]
+    },
+    {
+      "pkg": "getsentry/skills",
+      "skills": [
+        "security-review"
+      ]
+    },
+    {
+      "pkg": "openai/skills",
+      "skills": [
+        "security-best-practices"
+      ]
+    },
+    {
+      "pkg": "phuryn/pm-skills",
+      "skills": [
+        "create-prd",
+        "analyze-feature-requests",
+        "privacy-policy"
+      ]
+    },
+    {
+      "pkg": "hashicorp/agent-skills",
+      "skills": [
+        "terraform-style-guide",
+        "terraform-test"
+      ]
+    },
+    {
+      "pkg": "docker/skills",
+      "skills": [
+        "docker-build-strategies",
+        "docker-compose-patterns"
+      ]
+    },
+    {
+      "pkg": "expo/skills",
+      "skills": [
+        "eas-workflows"
+      ]
+    },
+    {
+      "pkg": "flutter/agent-plugins",
+      "skills": [
+        "flutter-setup-localization"
+      ]
+    },
+    {
+      "pkg": "lobehub/lobehub",
+      "skills": [
+        "i18n"
+      ]
+    },
+    {
+      "pkg": "daymade/claude-code-skills",
+      "skills": [
+        "i18n-expert"
+      ]
+    },
+    {
+      "pkg": "kostja94/marketing-skills",
+      "skills": [
+        "translation",
+        "local-seo"
+      ]
+    },
+    {
+      "pkg": "unity-technologies/skills",
+      "skills": [
+        "localize-unity-project"
+      ]
+    },
+    {
+      "pkg": "mbfinotti/revops-skills",
+      "skills": [
+        "revops-kickoff",
+        "customer-churn-signals"
+      ]
+    },
+    {
+      "pkg": "googleworkspace/cli",
+      "skills": [
+        "persona-customer-support"
+      ]
+    },
+    {
+      "pkg": "mbfinotti/advertising-skills",
+      "skills": [
+        "ad-attribution-gap"
+      ]
+    },
+    {
+      "pkg": "firecrawl/skills",
+      "skills": [
+        "firecrawl-build-onboarding"
+      ]
+    },
+    {
+      "pkg": "mukul975/privacy-data-protection-skills",
+      "skills": [
+        "turkey-kvkk"
+      ]
+    },
+    {
+      "pkg": "nexscope-ai/ecommerce-skills",
+      "skills": [
+        "cross-border-ecommerce"
+      ]
+    }
+  ],
+  "failures": []
+}

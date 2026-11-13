@@ -8,13 +8,18 @@ desktop.ini
 .idea/
 *.swp
 
-# Cursor (paylaşılan hook/kural hariç)
+# Cursor (paylaşılan hook/kural/skill hariç)
 .cursor/*
 !.cursor/hooks.json
 !.cursor/hooks/
 !.cursor/hooks/**
 !.cursor/rules/
 !.cursor/rules/**
+!.cursor/skills/
+!.cursor/skills/**
+
+# skills CLI yerel ayna (Cursor kopyası .cursor/skills ile takip edilir)
+.agents/
 
 # Secrets / credentials
 .env
