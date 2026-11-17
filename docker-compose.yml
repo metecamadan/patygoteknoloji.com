@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    labels:
+      flyway.web: "true"
+    expose:
+      - "3000"
+    environment:
+      PORT: "3000"
+      BIND_HOST: "0.0.0.0"
+      PATYGO_DATA_ROOT: /data
+    volumes:
+      - patygo-data:/data
+
+volumes:
+  patygo-data:
