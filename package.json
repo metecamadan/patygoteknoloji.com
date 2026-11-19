@@ -7,9 +7,9 @@
     "start": "node server.js",
     "dev": "node server.js 5173",
     "serve": "node server.js",
-    "test": "node --test",
+    "test": "node --test tests",
     "test:links": "node scripts/check-links.js",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-functions=80",
+    "test:coverage": "node --test tests --experimental-test-coverage --test-coverage-lines=80 --test-coverage-functions=80",
     "postinstall": "node scripts/post-deploy-sync.js"
   },
   "engines": {

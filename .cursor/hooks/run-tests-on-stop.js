@@ -69,8 +69,9 @@ function main() {
     process.stdout.write("{}\n");
     return;
   }
-  // Match package.json "test": "node --test" without depending on npm on PATH.
-  const result = spawnSync(process.execPath, ["--test"], {
+  // Match package.json "test": "node --test tests" without depending on npm on PATH.
+  // plugins/ is a vendored skill pack; its tests are not the store gate.
+  const result = spawnSync(process.execPath, ["--test", "tests"], {
     cwd: root,
     encoding: "utf8",
     env,

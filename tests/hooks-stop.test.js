@@ -10,7 +10,7 @@ const hook = path.join(root, ".cursor", "hooks", "run-tests-on-stop.js");
 test("stop hook invokes node --test via process.execPath (not bare npm)", () => {
   const source = fs.readFileSync(hook, "utf8");
   assert.match(source, /process\.execPath/);
-  assert.match(source, /"--test"/);
+  assert.match(source, /\["--test", "tests"\]/);
   assert.match(source, /PATYGO_HOOK_DRY_RUN/);
   assert.doesNotMatch(source, /spawnSync\(\s*["']npm["']/);
 });
