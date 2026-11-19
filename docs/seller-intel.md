@@ -26,12 +26,10 @@ Ham liste `.runtime` içindedir ve commit edilmez.
 
 ## Tur
 
-Canlı sunucuda, tek elektronik kategori:
+Canlı süreç her gün, İstanbul saati 08:00’dan sonra bir kez, bir elektronik kategori okur ve özeti `mete.camadan@patygoteknoloji.com` adresine yollar. Elle deneme: `node scripts/seller-intel-tour.js`.
 
-`node scripts/seller-intel-tour.js`
-
-Ham kayıt `.runtime/seller-intel/` altındadır ve commit edilmez. Harita anahtarı yoksa Google ve Yandex atlanır; sayfa HTML’i kazınmaz. Faz 2 kapalıdır.
+Ham kayıt `.runtime/seller-intel/` altındadır ve commit edilmez. Harita anahtarı yoksa Google ve Yandex atlanır. Hepsiburada’da yalnızca mağaza sayfasında yazan işletme telefonu ve e-postası aranır. LinkedIn ve firma yetkilisinin kişisel profili okunmaz. Faz 2 kapalıdır.
 
 ## Özet
 
-İlk tur kodu bu depoda. Sayılar sunucudaki turdan sonra yazılır; kısmi liste “tümü” diye yazılmaz.
+Sayılar o günkü tur mailindedir. Kısmi liste “tümü” diye yazılmaz.

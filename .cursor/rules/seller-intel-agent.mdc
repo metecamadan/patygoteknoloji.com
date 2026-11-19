@@ -12,7 +12,7 @@ Mağazanın Akakçe’ye verdiği ürün XML’i (`lib/akakce.js`, `/api/feeds/a
 
 ## Faz
 
-**Şimdi (faz 1):** satıcıyı bul, herkese açık iletişimini kaydet, özet yaz.
+**Şimdi (faz 1):** satıcıyı bul, herkese açık iletişimini kaydet, özet yaz. Özet her gün İstanbul saati 08:00’dan sonra bir kez `SELLER_INTEL_TO` adresine mail olur. Bu mail satıcıya giden teklif değildir.
 **Sonra (faz 2):** bu kayıtlara otomatik teklif. Kullanıcı faz 2’yi açmadan teklif, e-posta, SMS veya WhatsApp gönderilmez. Faz 2 ayrıca İYS onayı olmadan ticari ileti gönderemez.
 
 ## Sahiplik
@@ -31,7 +31,7 @@ Yalnızca işletmenin kendisinin yayınladığı ticari iletişim:
 - Ne sattığı (elektronik alt dal), kaynak URL, görülme tarihi
 - İletişim doluluğu: telefon var mı, e-posta var mı, site var mı
 
-Kişiye özel av yok. Çalışan e-postası, LinkedIn, panel şifresi, müşteri listesi ve giriş duvarının ardındaki veri alınmaz.
+Kişiye özel av yok. Çalışan e-postası, LinkedIn profili, firma yetkilisinin kişisel hesabı, panel şifresi, müşteri listesi ve giriş duvarının ardındaki veri alınmaz. Hepsiburada’da yalnızca mağaza sayfasında yayınlanan işletme telefonu ve e-postası okunur.
 
 ## Kaynaklar
 
