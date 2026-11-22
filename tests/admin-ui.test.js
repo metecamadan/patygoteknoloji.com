@@ -129,8 +129,13 @@ test("Barkodsuz Ürünler tab sits under Görselsiz Ürünler with barcode entry
   assert.doesNotMatch(script, /adminNoBarcodeRows[^\n]*innerHTML/);
   assert.match(css, /\.admin-barcode-input \{/);
 
-  const start = script.indexOf("function isValidGtin");
-  const isValidGtin = new Function(script.slice(start, script.indexOf("\n  }\n", start) + 4) + "; return isValidGtin;")();
+  // Windows checkouts keep CRLF; normalize before slicing the function body.
+  const panelSource = script.replace(/\r\n/g, "\n");
+  const start = panelSource.indexOf("function isValidGtin");
+  assert.ok(start >= 0, "isValidGtin defined in admin-panel.js");
+  const close = panelSource.indexOf("\n  }\n", start);
+  assert.ok(close > start, "isValidGtin closing brace");
+  const isValidGtin = new Function(panelSource.slice(start, close + 4) + "; return isValidGtin;")();
   ["4006381333931", "8690627001034", "96385074", "036000291452", "10012345678902"].forEach((code) =>
     assert.equal(isValidGtin(code), true, code)
   );
