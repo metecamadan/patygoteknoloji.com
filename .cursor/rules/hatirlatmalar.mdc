@@ -21,6 +21,8 @@ Kullanıcı Yurtiçi'den isteyecek:
 
 Gelince: kullanıcı `python scripts/vps_set_yurtici.py` → mod `live` (sonunda bağlantı OK/HATA yazar). Bilgiler sohbete yazılmaz.
 
+Güncelleme (22 Kas 2026): GÜ + AÜ web servis satırları geldi (müşteri 1240096365, çıkış 1010 YEŞİLPINAR, tanım 20261016). VPS `.env` live + GÜ yazıldı. `pingYurtici` hem GÜ hem AÜ için Yurtiçi cevabı: kullanıcı/parola örtüşmüyor. Uçtan uca deneme **önce** Yurtiçi IT: canlı WS + IP `87.76.157.41` aktivasyonu / parola teyidi.
+
 Deneme planı (kullanıcı kararı 12 Eki 2026): test ortamında deneme **yok**; canlı bilgiler gelince uçtan uca gerçek deneme:
 
 1. Kullanıcı sitede kendine küçük bir sipariş verir, gerçek kartla öder.

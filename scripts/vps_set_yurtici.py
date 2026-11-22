@@ -6,6 +6,7 @@ Ortam (test/live) sorulur, kullanıcı adı ve şifre gizli girilir. .env yedekl
 PM2 yeniden başlar ve bağlantı VPS'ten denenir (Yurtiçi yalnızca kayıtlı IP'yi kabul eder).
 """
 import getpass
+import os
 import shlex
 import sys
 import time
@@ -62,16 +63,31 @@ def write_env(client, values):
         sftp.close()
 
 
-def main():
-    sys.stdout.reconfigure(encoding="utf-8")
+def values_from_prompt():
     mode = input("Ortam (test / live) [test]: ").strip().lower() or "test"
     if mode not in ("test", "live"):
         raise SystemExit("Ortam test veya live olmalı; hiçbir şey yazılmadı.")
-    values = {
+    return {
         "YURTICI_MODE": mode,
         "YURTICI_WS_USER": checked(getpass.getpass("Yurtiçi kullanıcı adı: ").strip(), "Kullanıcı adı"),
         "YURTICI_WS_PASSWORD": checked(getpass.getpass("Yurtiçi şifre: ").strip(), "Şifre"),
     }
+
+
+def values_from_env():
+    mode = (os.environ.get("YURTICI_MODE") or "").strip().lower()
+    if mode not in ("test", "live"):
+        raise SystemExit("YURTICI_MODE test veya live olmalı; hiçbir şey yazılmadı.")
+    return {
+        "YURTICI_MODE": mode,
+        "YURTICI_WS_USER": checked((os.environ.get("YURTICI_WS_USER") or "").strip(), "Kullanıcı adı"),
+        "YURTICI_WS_PASSWORD": checked((os.environ.get("YURTICI_WS_PASSWORD") or "").strip(), "Şifre"),
+    }
+
+
+def main():
+    sys.stdout.reconfigure(encoding="utf-8")
+    values = values_from_env() if "--from-env" in sys.argv else values_from_prompt()
     client = connect(timeout=30)
     try:
         backup = write_env(client, values)

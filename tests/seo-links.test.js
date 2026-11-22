@@ -46,6 +46,17 @@ test("footer sponsor link to the hosting partner passes no link equity", () => {
   }
 });
 
+test("public footers do not link to the admin panel", () => {
+  const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html") && f !== "admin.html");
+  for (const page of pages) {
+    const html = fs.readFileSync(path.join(root, page), "utf8");
+    if (!html.includes('class="footer-bottom"')) continue;
+    assert.doesNotMatch(html, /href="\/admin"[^>]*>\s*Yönetim/, page);
+  }
+  const normalize = fs.readFileSync(path.join(root, "scripts", "normalize-site-links.js"), "utf8");
+  assert.doesNotMatch(normalize, /href="\/admin"[^>]*>Yönetim/);
+});
+
 test("sitemap lists category pages and omits checkout surfaces", () => {
   const sitemap = buildStorefrontSitemap({
     baseUrl: "https://patygoteknoloji.com",

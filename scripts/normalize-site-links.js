@@ -54,7 +54,6 @@ const FOOTER_GRID = `
           <a href="/gizlilik">Gizlilik</a>
           <a href="/cerez">Çerez</a>
           <a href="/kullanim-kosullari">Kullanım Koşulları</a>
-          <a href="/admin" rel="nofollow">Yönetim</a>
         </div>
       </div>`.trim();
 
