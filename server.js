@@ -5413,6 +5413,20 @@ function permanentRedirect(res, location) {
   res.end("Moved Permanently");
 }
 
+/** Foreign-storefront probes (/products, /collections) — never existed here; not a Shopify shop. */
+function serveGoneForeignStorefront(res, method) {
+  res.writeHead(
+    410,
+    securityHeaders({
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=86400",
+      "X-Robots-Tag": "noindex, nofollow",
+    })
+  );
+  if (method === "HEAD") return res.end();
+  res.end("Gone");
+}
+
 /** Short cache: the product may come back in a later supplier XML and must win over the redirect. */
 function goneProductRedirect(res, location) {
   res.writeHead(
@@ -5732,6 +5746,11 @@ const server = http.createServer(async (req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405, securityHeaders({ Allow: "GET, HEAD" }));
     return res.end("405 Method Not Allowed");
+  }
+
+  // Not a Shopify (or similar) storefront — permanent gone for crawler probes.
+  if (/^\/(products|collections)(\/|$)/i.test(urlPath)) {
+    return serveGoneForeignStorefront(res, req.method);
   }
 
   if (urlPath === "/assets/data/categories.json") {

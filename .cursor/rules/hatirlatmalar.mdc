@@ -74,17 +74,45 @@ Düzen (referans e-ticaret): **sol ~¾ kampanya görsel slider** + **sağ ~¼ ü
 - Yerel: `preview/home-slider.html`. Canlı: panelden slayt ekle → `https://patygoteknoloji.com`.
 - Güncelleme (19 Eki 2026): kullanıcı kampanya görsellerini hazırlıyor; görsel gelince panele bağlanacak. Canlıda `/api/home-slider` şu an `slides: []`.
 
-### 5. Google indeks / Search Console kontrolü (19 Eki 2026)
+### 5. Google Search Console — 30 günde bir hatırlat (22 Kas 2026)
 
-Site audit notu: `site:patygoteknoloji.com` pratikte sonuç vermedi; sitemap ~6k URL var ama indeks görünürlüğü zayıf olabilir.
+Kullanıcı kararı: her **30 günde bir** sohbet + mail ile hatırlat (başlık: GSC doğrulama + sitemap).
 
-Yapılacak:
+İlk kurulum (22 Kas 2026) bitti: HTML doğrulama ✓, `sitemap.xml` gönderildi ✓, ana sayfa URL Inspection + indeks isteği ✓.
 
-- Google Search Console mülkiyet + `https://patygoteknoloji.com` doğrulama.
-- Sitemap gönderimi (`/sitemap.xml`) ve indeks kapsamı / hata raporu.
-- Örnek ürün + ana sayfa URL Inspection (canlı URL Google’da mı?).
-- `robots.txt` / noindex yanlışlığı yok mu kontrol.
-- Gerekirse indeks talebi + birkaç gün sonra `site:` tekrar bak.
+**Sonraki hatırlatma:** 22 Ara 2026 (±1 gün). Sonra her 30 gün.
+
+Aylık checklist (zorunlu “Dizine ekle” spamı yok):
+
+- Search Console → Sayfa dizine ekleme / kapsam: yeni hata var mı?
+- Sitemap durumu (`https://patygoteknoloji.com/sitemap.xml`)
+- `site:patygoteknoloji.com` kaba görünürlük
+- 1–2 ürün URL Inspection
+- Yalnız büyük değişiklik veya kırmızı hata varsa indeks iste
+
+Cursor Automations’ta “GSC 30 gün hatırlatma” formu açıldı; kullanıcı kaydederse zamanlayıcı oradan da çalışır. Agent yeni sohbette bu maddeyi hatırlatır.
+
+### SEO — yapılacaklar listesi (22 Kas 2026)
+
+Kullanıcı: tüm liste SEO başlığında tutulacak; sırayla çözülecek. Sohbet: `SEO yapılacaklar`.
+
+| # | Durum | Madde |
+|---|--------|--------|
+| 1 | **doing** | GSC kapsam baseline 22 Kas: dizine **804**; sitemap ~**6165**. Hariç: 404 **1029**, kopya **519**, yönlendirme **451**, noindex **172**, 5xx **59**, keşfedildi **5389**, tarandı **187**. Shopify mağaza **yok**; `/products`+`/collections` → **410 Gone** (22 Kas). Kalan: gerçek ürün 404 örnekleri |
+| 2 | todo | PageSpeed / Core Web Vitals (mobil LCP; madde 6 ile birleşik) |
+| 3 | todo | Ürün Rich Results — 3–5 ürün Product şema testi |
+| 4 | todo | Kırık ürün URL 404 (segment yok / kalkmış) — örnek URL + 301 iyileştirme |
+| 5 | todo | Kategori sayfaları — özgün kısa metin + net H1 |
+| 6 | todo | Ürün açıklamaları — öncelikli ürünlerde SEO override |
+| 7 | todo | Rehber / karşılaştırma sayfaları (internal link) |
+| 8 | todo | Title / meta — kategori+ürün, kopya title yok |
+| 9 | todo | Google Business Profile (varsa) |
+| 10 | todo | Dış link / marka otoritesi (spam yok) |
+| 11 | todo | Akakçe feed fiyat tutarlılığı |
+| 12 | todo | GA4 ↔ GSC bağla |
+| 13 | todo | GSC Performans — yüksek gösterim düşük tıklama sayfalarına title/meta |
+
+Öncelik sırası (kullanıcı onayı 22 Kas): 1 → …; içerikte 5+6 sonra 2.
 
 ### 6. PageSpeed / Core Web Vitals ölçümü (19 Eki 2026)
 
@@ -105,10 +133,8 @@ Yapılacak:
 - `server.js` / TCMB kur çekim yolunu bul; kök neden (DNS, TLS, URL, timeout, engel).
 - Canlıda kurun güncellendiğini doğrula; sessizce yeşil gösterme.
 
-### 5 (devam). Google Search Console — bu turda fiyat işinden sonra (10 Kas 2026)
-
-Kullanıcı kararı: fiyat düzeltmesi ve TCMB’den sonra. Sitemap var; organik görünürlük zayıf olabilir. Madde 5’teki checklist geçerli.
-
 ## Kapandı
 
-(yok)
+### K.1 Google Search Console ilk kurulum (22 Kas 2026)
+
+Mülkiyet HTML doğrulama + sitemap gönderimi + ana sayfa indeks isteği tamam. Aylık tekrar → Açık madde 5.

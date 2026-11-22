@@ -4,6 +4,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnTestServer } = require("./helpers/spawn-server");
 
+test("foreign storefront probes /products and /collections return 410 Gone", async (t) => {
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: "test-admin-password" });
+  for (const pathName of ["/products/seo-probe-not-a-product", "/collections/seo-probe-not-a-collection"]) {
+    const res = await fetch(baseUrl + pathName, { redirect: "manual" });
+    assert.equal(res.status, 410, pathName);
+    assert.match(String(res.headers.get("x-robots-tag") || ""), /noindex/i);
+  }
+});
+
 test("Google Search Console verification HTML is served without stripping .html", async (t) => {
   const root = path.resolve(__dirname, "..");
   const fileName = "google902a4f739695cb08.html";
