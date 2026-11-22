@@ -101,7 +101,7 @@ Kullanıcı: tüm liste SEO başlığında tutulacak; sırayla çözülecek. Soh
 | 1 | partial | GSC: dizine **804** / sitemap ~**6165**. Shopify yolları **410** ✓. Kalan ürün 404 → madde 4 |
 | 2 | deferred | PageSpeed 22 Kas mobil lab ~**91** — elzem değil; kullanıcı 22 Kas: şimdi dokunma. Checklist dursun, sıralama/içerik sonrası |
 | 3 | todo | Ürün Rich Results — 3–5 ürün Product şema testi |
-| 4 | partial | Trailing `-` slug ✓. ALL-CAPS marka çift-slug (`LOGITECH`+`Logitech`) + legacy 301 ✓ (23 Kas). Shopify `sitemap_products_*.xml` → 410 ✓. Kalan: yanlış segment / kalkmış ürün / bot 404 |
+| 4 | partial | Trailing `-` ✓. Çift-marka + `i-ngilizce` legacy ✓; tükendi satırında da legacy 301 ✓ (`02c0a12`, 23 Kas). Shopify 410 ✓. Kalan: yanlış segment / publishedPaths’siz kalkmış / bot; isim değişmiş slug 404 bilinçli |
 | 5 | done | Kategori SEO: ana/ara/alt teaser farkı + alt detay; 270 kategori otomatik (23 Kas) |
 | 6 | todo | Ürün açıklamaları — öncelikli ürünlerde SEO override |
 | 7 | todo | Rehber / karşılaştırma sayfaları (internal link) |
