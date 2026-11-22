@@ -5989,6 +5989,21 @@ const server = http.createServer(async (req, res) => {
     // the index can be cold here — still 301 gone products and 404 junk segments.
     if (wantsHtml && htmlPath && fs.existsSync(htmlPath)) {
       if (warmIndex) return sendProductHtml(res, req, htmlPath, urlPath, warmIndex);
+      // Cold catalog: still honor legacy aliases before "gone → category" (publishedPaths).
+      // Otherwise ALL-CAPS doubled-brand URLs 301 to the category during warmup.
+      try {
+        const coldIndex = storefrontIndex(false).routeIndex;
+        const legacyTarget =
+          resolveLegacyProductPath(
+            coldIndex,
+            productRoute.segment,
+            productRoute.rawSlug || productRoute.slug
+          ) ||
+          resolveLegacyProductPath(coldIndex, productRoute.segment, productRoute.slug);
+        if (legacyTarget && legacyTarget !== urlPath) {
+          return permanentRedirect(res, legacyTarget + search);
+        }
+      } catch (_) {}
       const gonePath = goneProductCategoryPath(urlPath);
       if (gonePath) return goneProductRedirect(res, gonePath);
       const segmentKey = String(productRoute.segment || "").toLowerCase();
