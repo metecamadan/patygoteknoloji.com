@@ -3464,6 +3464,13 @@ h1, h2, h3, h4 {
 .catalog-seo-detail {
   padding-top: 8px;
 }
+.products-page .section.catalog-seo-detail {
+  padding-top: 16px;
+  padding-bottom: 20px;
+}
+.products-page .catalog-seo-detail + .section {
+  padding-top: 20px;
+}
 .catalog-seo-detail[hidden] {
   display: none;
 }
