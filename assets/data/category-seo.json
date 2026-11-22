@@ -1,36 +1,47 @@
 {
   "version": 2,
   "entries": {
+    "bilgisayar-tablet/tasinabilir-bilgisayarlar": {
+      "h1": "Taşınabilir Bilgisayarlar",
+      "teaser": "Bu kategorideki ürünleri notebook, dizüstü bilgisayar ve laptop seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
+      "detailHeading": "Taşınabilir Bilgisayarlar hakkında",
+      "detailParagraphs": [
+        "Bilgisayar / Tablet altında yer alan Taşınabilir Bilgisayarlar listesinde notebook ve dizüstü modellerini marka, işlemci, bellek ve ekran boyutuna göre filtreleyebilirsiniz. Tüm fiyatlara KDV dahildir.",
+        "Bu ürün grubu notebook, dizüstü bilgisayar ve laptop gibi arama ifadeleriyle de anılır. Ofis, eğitim veya günlük kullanım ihtiyacına göre listeyi daraltabilirsiniz.",
+        "Patygo Teknoloji bu kategorideki ürünleri bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir. Sorularınız için iletişim kanallarımız açıktır."
+      ],
+      "description": "Taşınabilir bilgisayar fiyatları ve modelleri Patygo Teknoloji’de. Notebook, dizüstü bilgisayar ve laptop seçeneklerini KDV dahil güncel fiyatlarla inceleyin."
+    },
     "bilgisayar-tablet/tasinabilir-bilgisayarlar/notebooklar": {
       "h1": "Notebooklar",
-      "teaser": "Bu kategorideki notebook ürünlerini dizüstü bilgisayar ve laptop seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir ve güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
+      "teaser": "Bu kategorideki ürünleri dizüstü bilgisayar ve laptop seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
       "detailHeading": "Notebooklar hakkında",
       "detailParagraphs": [
         "Bilgisayar / Tablet ve Taşınabilir Bilgisayarlar altında yer alan Notebooklar listesinde Acer, Lenovo, ASUS ve diğer markaların stoktaki modellerini işlemci, bellek ve ekran boyutuna göre filtreleyebilirsiniz. Tüm fiyatlara KDV dahildir.",
         "Bu ürün grubu dizüstü bilgisayar, laptop ve taşınabilir bilgisayar gibi arama ifadeleriyle de anılır. Sayfadaki filtreler, listenizi ofis, eğitim veya günlük kullanım ihtiyacına göre daraltmanıza yardımcı olur.",
-        "Patygo Teknoloji, notebook ürünlerini bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir. Sorularınız için iletişim kanallarımız açıktır."
+        "Patygo Teknoloji bu kategorideki ürünleri bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir. Sorularınız için iletişim kanallarımız açıktır."
       ],
       "description": "Notebook fiyatları ve modelleri Patygo Teknoloji’de. Dizüstü bilgisayar ve laptop seçeneklerini KDV dahil güncel fiyatlarla inceleyin."
     },
     "bilgisayar-bilesenleri/ekran-kartlari": {
       "h1": "Ekran Kartları",
-      "teaser": "Bu kategorideki ekran kartı ürünlerini GPU seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir ve güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
+      "teaser": "Bu kategorideki ürünleri ekran kartı ve GPU seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
       "detailHeading": "Ekran kartları hakkında",
       "detailParagraphs": [
         "Bilgisayar Bileşenleri altında yer alan Ekran Kartları listesinde PCI Express modellerini stoktan inceleyebilirsiniz. Oyun veya iş istasyonu ihtiyacınıza göre filtre uygulayabilirsiniz. Tüm fiyatlara KDV dahildir.",
         "Bu ürün grubu ekran kartı ve GPU gibi arama ifadeleriyle de anılır. Kasa ve güç kaynağı uyumluluğunu ürün sayfasındaki bilgilerden kontrol etmenizi öneririz.",
-        "Patygo Teknoloji, ekran kartı ürünlerini bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir."
+        "Patygo Teknoloji bu kategorideki ürünleri bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir."
       ],
       "description": "Ekran kartı ve GPU fiyatları Patygo Teknoloji’de. Stoktaki modelleri KDV dahil güncel fiyatlarla inceleyin."
     },
     "baski-cozumleri/yazici-tuketim-urunleri-orj/laser-tonerler": {
       "h1": "Laser Tonerler",
-      "teaser": "Bu kategorideki orijinal laser toner ürünlerini yazıcı toneri seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir ve güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
+      "teaser": "Bu kategorideki ürünleri yazıcı toneri ve laser toner seçenekleriyle birlikte KDV dahil güncel fiyatlarla inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.",
       "detailHeading": "Laser tonerler hakkında",
       "detailParagraphs": [
         "Baskı Çözümleri altında yer alan orijinal laser toner listesinde yazıcı modelinize uygun ürünleri stoktan seçebilirsiniz. Marka ve uyumluluk bilgisi ürün kartında yer alır. Tüm fiyatlara KDV dahildir.",
         "Bu ürün grubu yazıcı toneri ve laser toner gibi arama ifadeleriyle de anılır. Doğru modeli bulmak için yazıcı kodunuzu filtre veya ürün adıyla eşleştirmenizi öneririz.",
-        "Patygo Teknoloji, orijinal baskı tüketim ürünlerini bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir."
+        "Patygo Teknoloji bu kategorideki ürünleri bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir."
       ],
       "description": "Orijinal laser toner ve yazıcı toneri fiyatları Patygo Teknoloji’de. KDV dahil güncel fiyatlarla inceleyin."
     }

@@ -31,8 +31,9 @@ test("auto copy: one-line teaser + multi-paragraph detail for any new leaf", () 
   );
   assert.equal(seo.curated, false);
   assert.equal(seo.h1, "Yeni Yaprak");
-  assert.match(seo.teaser, /^Bu kategorideki Yeni Yaprak/);
-  assert.match(seo.teaser, /inceleyebilir ve güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz\.$/);
+  assert.match(seo.teaser, /^Bu kategorideki ürünleri/);
+  assert.doesNotMatch(seo.teaser, /Bu kategorideki Yeni Yaprak ürünlerini/);
+  assert.match(seo.teaser, /inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz\.$/);
   assert.doesNotMatch(seo.teaser, /sipariş edilebilir|stoktakiler/);
   assert.doesNotMatch(seo.teaser, /\n/);
   assert.ok(seo.teaser.length < 260, "teaser stays one short sentence");
@@ -40,6 +41,18 @@ test("auto copy: one-line teaser + multi-paragraph detail for any new leaf", () 
   assert.match(seo.detailHeading, /hakkında/);
   assert.doesNotMatch(seo.teaser, BANNED);
   seo.detailParagraphs.forEach((p) => assert.doesNotMatch(p, BANNED));
+});
+
+test("mid category teaser does not echo H1 as ürünlerini", () => {
+  resetCategorySeoCache();
+  const seo = resolveCategorySeo(
+    { parent: "bilgisayar-tablet", mid: "tasinabilir-bilgisayarlar", child: "" },
+    ["Bilgisayar Tablet", "Taşınabilir Bilgisayarlar"]
+  );
+  assert.equal(seo.h1, "Taşınabilir Bilgisayarlar");
+  assert.doesNotMatch(seo.teaser, /Taşınabilir Bilgisayarlar ürünlerini/);
+  assert.match(seo.teaser, /^Bu kategorideki ürünleri/);
+  assert.match(seo.teaser, /notebook|dizüstü|laptop/i);
 });
 
 test("curated notebook keeps alt keywords without spam", () => {
@@ -53,7 +66,8 @@ test("curated notebook keeps alt keywords without spam", () => {
     ["Bilgisayar Tablet", "Taşınabilir Bilgisayarlar", "Notebooklar"]
   );
   assert.equal(seo.curated, true);
-  assert.match(seo.teaser, /^Bu kategorideki/);
+  assert.match(seo.teaser, /^Bu kategorideki ürünleri/);
+  assert.doesNotMatch(seo.teaser, /Bu kategorideki notebook ürünlerini/);
   assert.match(seo.teaser, /dizüstü bilgisayar ve laptop/);
   assert.doesNotMatch(seo.teaser, /sipariş edilebilir/);
   assert.match(seo.detailParagraphs.join(" "), /dizüstü|laptop/i);
@@ -79,7 +93,9 @@ test("buildAllCategorySeoEntries covers every tree node automatically", () => {
   assert.ok(entries["demo-ust"]);
   assert.ok(entries["demo-ust/demo-mid"]);
   assert.ok(entries["demo-ust/demo-mid/demo-yaprak"]);
-  assert.match(entries["demo-ust/demo-mid/demo-yaprak"].teaser, /Demo Yaprak/);
+  assert.match(entries["demo-ust/demo-mid/demo-yaprak"].teaser, /^Bu kategorideki ürünleri/);
+  assert.doesNotMatch(entries["demo-ust/demo-mid/demo-yaprak"].teaser, /Demo Yaprak ürünlerini/);
+  assert.match(entries["demo-ust/demo-mid/demo-yaprak"].detailParagraphs.join(" "), /Demo Yaprak/);
   const payload = categorySeoPayload(tree);
   assert.equal(payload.version, 2);
   assert.equal(Object.keys(payload.entries).length, 3);
