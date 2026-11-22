@@ -966,10 +966,10 @@
       names.push(window.PatygoCatalog.prettyCategoryName(resolved.child.name) || resolved.child.name);
     }
     const leaf = prettyLeaf || names[names.length - 1] || "Ürünler";
-    const trail = names.length ? names.join(" › ") : leaf;
     const teaser =
+      "Bu kategorideki " +
       leaf +
-      " modellerini KDV dahil güncel fiyatlarla karşılaştırın; stoktakiler Patygo Teknoloji’de güvenli ödeme ile sipariş edilebilir.";
+      " ürünlerini KDV dahil güncel fiyatlarla inceleyebilir ve güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz.";
     return {
       h1: leaf,
       teaser,
@@ -977,10 +977,11 @@
       detailHeading: leaf + " hakkında",
       detailParagraphs: [
         leaf +
-          " kategorisinde stokta görünen ürünleri marka, özellik ve fiyata göre süzebilirsiniz. Fiyatlar KDV dahildir; uygun modeli seçip sepete ekleyerek güvenli ödeme ile sipariş verebilirsiniz.",
-        "İhtiyacınıza göre listeyi daraltmak için marka ve özellik filtrelerini kullanın; stok güncel tutulur.",
-        trail +
-          " yolundaki ürünler Patygo Teknoloji kataloğunda listelenir. Kargo ve ödeme seçenekleri sipariş sırasında netleşir; sorularınız için iletişim kanallarımız açıktır.",
+          " listesinde stokta bulunan ürünleri marka, özellik ve fiyata göre filtreleyebilirsiniz. Tüm fiyatlara KDV dahildir. Uygun modeli sepete ekleyerek güvenli ödeme ile sipariş verebilirsiniz.",
+        "Marka ve özellik filtreleriyle listeyi ihtiyacınıza göre daraltabilirsiniz. Stok bilgisi düzenli olarak güncellenir.",
+        "Patygo Teknoloji, " +
+          leaf +
+          " ürünlerini bireysel ve kurumsal alıcılar için sunar. Kargo ve ödeme ayrıntıları sipariş aşamasında gösterilir. Sorularınız için iletişim kanallarımız açıktır.",
       ],
     };
   }

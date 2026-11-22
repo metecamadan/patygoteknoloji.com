@@ -30,8 +30,8 @@
       "sha256": "dde7f911644916b53acbd00fd34224daf2048c726aa3b7ecb6ab847dec09ad99"
     },
     "/assets/js/catalog.js": {
-      "v": "storefront-p50",
-      "sha256": "d785d51d0aab5b9c01231d11ef0d55ec462955af5f987355c8d80eebafd641cf"
+      "v": "storefront-p52",
+      "sha256": "158109e556ee6146b91804cacc69039192a30606f42c5b048a49f1579d5ef903"
     },
     "/assets/js/checkout.js": {
       "v": "checkout-p12",

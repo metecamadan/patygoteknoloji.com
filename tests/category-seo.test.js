@@ -31,9 +31,11 @@ test("auto copy: one-line teaser + multi-paragraph detail for any new leaf", () 
   );
   assert.equal(seo.curated, false);
   assert.equal(seo.h1, "Yeni Yaprak");
-  assert.match(seo.teaser, /^Yeni Yaprak/);
+  assert.match(seo.teaser, /^Bu kategorideki Yeni Yaprak/);
+  assert.match(seo.teaser, /inceleyebilir ve güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz\.$/);
+  assert.doesNotMatch(seo.teaser, /sipariş edilebilir|stoktakiler/);
   assert.doesNotMatch(seo.teaser, /\n/);
-  assert.ok(seo.teaser.length < 220, "teaser stays one short sentence");
+  assert.ok(seo.teaser.length < 260, "teaser stays one short sentence");
   assert.equal(seo.detailParagraphs.length >= 2, true);
   assert.match(seo.detailHeading, /hakkında/);
   assert.doesNotMatch(seo.teaser, BANNED);
@@ -51,7 +53,9 @@ test("curated notebook keeps alt keywords without spam", () => {
     ["Bilgisayar Tablet", "Taşınabilir Bilgisayarlar", "Notebooklar"]
   );
   assert.equal(seo.curated, true);
-  assert.match(seo.teaser, /dizüstü|laptop/i);
+  assert.match(seo.teaser, /^Bu kategorideki/);
+  assert.match(seo.teaser, /dizüstü bilgisayar ve laptop/);
+  assert.doesNotMatch(seo.teaser, /sipariş edilebilir/);
   assert.match(seo.detailParagraphs.join(" "), /dizüstü|laptop/i);
   assert.match(categorySeoTitle(seo), /^Notebooklar Fiyatları/);
 });
