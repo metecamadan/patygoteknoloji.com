@@ -47,9 +47,16 @@ Do not replace a health question with a test-fix detour unless the user (or a fa
 3. Open risks that do not take the site down (e.g. historical FX fetch-failed lines, weak admin password warning, empty home slider, Akakçe image 404s) — separate from outage.
 4. What you did **not** check (e.g. `gh` unauthenticated → Actions unknown).
 
+## SSH allowlist
+
+- Allowed comments only: `patygo-admin-pc` (local `~/.ssh/patygo_vps`) and `github-actions-patygo-deploy`.
+- Before removing any `authorized_keys` line, match **key body fingerprint** to local `patygo_vps.pub` — never delete by comment name alone.
+- Deploy runs `scripts/ensure-authorized-ssh-keys.sh` after `git reset` to keep those two keys.
+
 ## Do not
 
 - Hit bilgisayarim.com.tr from this PC.
 - `pm2 restart all` / touch auction stack.
 - Greenwash: if FX cache missing/stale by `ratesAreStale` rules, or XML digest failures today, say so.
 - Dump secrets or raw supplier URLs.
+- Strip SSH keys without fingerprint proof (22 Nov 2026 lockout lesson).

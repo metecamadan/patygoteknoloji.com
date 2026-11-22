@@ -23,3 +23,10 @@ if ! runuser -u "${WEB_GROUP}" -- test -x "${APP_DIR}"; then
   exit 1
 fi
 echo "app dir isolated: $(stat -c '%a %U:%G' "${APP_DIR}") ${APP_DIR}"
+
+# Same deploy path: keep root SSH to admin PC + GitHub Actions only (restores admin key if dropped).
+SSH_ENSURE="${APP_DIR}/scripts/ensure-authorized-ssh-keys.sh"
+if [ -f "${SSH_ENSURE}" ]; then
+  sed -i 's/\r$//' "${SSH_ENSURE}" || true
+  bash "${SSH_ENSURE}"
+fi
