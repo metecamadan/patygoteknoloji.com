@@ -86,6 +86,8 @@ test("missing product page is noindex; category SSR uses tree names and 404s unk
   );
   assert.match(html, /<title>Taşınabilir Bilgisayarlar Fiyatları ve Modelleri \| Patygo Teknoloji<\/title>/);
   assert.match(html, /data-catalog-title>Taşınabilir Bilgisayarlar<\/h1>/);
+  assert.match(html, /data-catalog-lead>İş, okul ve günlük kullanım için notebook ve tablet/);
+  assert.doesNotMatch(html, /data-catalog-lead[^>]*\shidden/i);
   assert.match(html, /canonical" href="https:\/\/patygoteknoloji\.com\/urunler\/bilgisayar-tablet\/tasinabilir-bilgisayarlar"/);
   assert.doesNotMatch(html, /faturalı satış/i);
   assert.equal(renderCategoryHtml(catalogShell, categories, { parent: "yok", mid: "", child: "" }, "/urunler/yok"), null);

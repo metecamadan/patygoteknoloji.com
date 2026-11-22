@@ -926,6 +926,65 @@
     settleCatalogHeading();
   }
 
+  let categorySeoEntries = null;
+  let categorySeoPromise = null;
+
+  function loadCategorySeoEntries() {
+    if (categorySeoEntries) return Promise.resolve(categorySeoEntries);
+    if (categorySeoPromise) return categorySeoPromise;
+    categorySeoPromise = fetchJsonCached("/assets/data/category-seo.json")
+      .then((data) => {
+        categorySeoEntries = (data && data.entries) || {};
+        return categorySeoEntries;
+      })
+      .catch(() => {
+        categorySeoEntries = {};
+        return categorySeoEntries;
+      });
+    return categorySeoPromise;
+  }
+
+  function categorySeoPathKey(resolved) {
+    if (!resolved || !resolved.parent) return "";
+    return [resolved.parent.slug, resolved.mid && resolved.mid.slug, resolved.child && resolved.child.slug]
+      .filter(Boolean)
+      .join("/");
+  }
+
+  function fallbackCategorySeo(prettyLeaf, resolved) {
+    const names = [];
+    if (resolved && resolved.parent) {
+      names.push(window.PatygoCatalog.prettyCategoryName(resolved.parent.name) || resolved.parent.name);
+    }
+    if (resolved && resolved.mid) {
+      names.push(window.PatygoCatalog.prettyCategoryName(resolved.mid.name) || resolved.mid.name);
+    }
+    if (resolved && resolved.child) {
+      names.push(window.PatygoCatalog.prettyCategoryName(resolved.child.name) || resolved.child.name);
+    }
+    const leaf = prettyLeaf || names[names.length - 1] || "Ürünler";
+    const trail = names.length ? names.join(" › ") : leaf;
+    return {
+      h1: leaf,
+      lead:
+        leaf +
+        " kategorisinde stoktaki ürünleri KDV dahil fiyatlarla inceleyin. " +
+        trail +
+        " altında güvenli ödeme ve hızlı kargo ile Patygo Teknoloji’den sipariş verebilirsiniz.",
+    };
+  }
+
+  function resolveCategorySeoClient(resolved, prettyLeaf) {
+    const key = categorySeoPathKey(resolved);
+    const entry = key && categorySeoEntries && categorySeoEntries[key];
+    const fallback = fallbackCategorySeo(prettyLeaf, resolved);
+    if (!entry) return fallback;
+    return {
+      h1: String(entry.h1 || fallback.h1).trim() || fallback.h1,
+      lead: String(entry.lead || fallback.lead).trim() || fallback.lead,
+    };
+  }
+
   function applyCategoryHeading(resolved) {
     const crumb = document.querySelector("[data-catalog-crumb]");
     const title = document.querySelector("[data-catalog-title]");
@@ -974,11 +1033,16 @@
     } else if (crumb) {
       crumb.textContent = label;
     }
-    if (title) title.textContent = window.PatygoCatalog.prettyCategoryName(label) || label;
-    if (lead) lead.hidden = true;
+    const prettyLeaf = window.PatygoCatalog.prettyCategoryName(label) || label;
+    const seo = resolveCategorySeoClient(resolved, prettyLeaf);
+    if (title) title.textContent = seo.h1;
+    if (lead) {
+      lead.textContent = seo.lead;
+      lead.hidden = false;
+    }
     const page = listingScroll.startPage > 1 ? listingScroll.startPage : 1;
     document.title =
-      (window.PatygoCatalog.prettyCategoryName(label) || label) +
+      seo.h1 +
       " Fiyatları ve Modelleri" +
       (page > 1 ? " – Sayfa " + page : "") +
       " | Patygo Teknoloji";
@@ -2342,8 +2406,8 @@
       window.PatygoCart.pruneUnresolved(window.PatygoCatalog.byId);
     }
 
-    categoriesPromise
-      .then((categories) => {
+    Promise.all([categoriesPromise, loadCategorySeoEntries()])
+      .then(([categories]) => {
         if (token !== listingReloadToken) return;
         window.PatygoCatalog._lastCategories = categories;
         if (wantsCategory) {
@@ -2493,7 +2557,8 @@
     const cats = window.PatygoNav && window.PatygoNav.categories;
     if (!Array.isArray(cats) || !cats.length) return;
     const resolved = resolveCategoryLabels(cats, query);
-    if (resolved) applyCategoryHeading(resolved);
+    if (!resolved) return;
+    loadCategorySeoEntries().then(() => applyCategoryHeading(resolved));
   });
 
   // Panel kaydettiğinde açık site sekmeleri güncellensin

@@ -1026,7 +1026,12 @@ function isBlocked(relPosix) {
   if (lower.startsWith(".runtime/") || lower.includes("/.runtime/")) return true;
   if (lower.startsWith("lib/") || lower.includes("/lib/")) return true;
   if (lower.startsWith("assets/data/") || lower.includes("/assets/data/")) {
-    if (lower === "assets/data/categories.json" || lower.endsWith("/assets/data/categories.json")) {
+    if (
+      lower === "assets/data/categories.json" ||
+      lower.endsWith("/assets/data/categories.json") ||
+      lower === "assets/data/category-seo.json" ||
+      lower.endsWith("/assets/data/category-seo.json")
+    ) {
       return false;
     }
     return true;
