@@ -86,6 +86,15 @@ test("ALL-CAPS brand does not double when name already starts with brand", () =>
     ),
     canonical
   );
+  // Direct byPath undouble (even if legacyByPath missed the key).
+  assert.equal(
+    resolveProductIdFromRoute(
+      index,
+      "klavye-ve-mouse",
+      "logitech-logitech-920-007931-mk235-ingilizce-kablosuz-klavye-mouse-seti"
+    ),
+    product.id
+  );
 });
 
 test("pre-fix i-slemci URLs resolve to the canonical path for 301", () => {
