@@ -932,7 +932,8 @@
   function loadCategorySeoEntries() {
     if (categorySeoEntries) return Promise.resolve(categorySeoEntries);
     if (categorySeoPromise) return categorySeoPromise;
-    categorySeoPromise = fetchJsonCached("/assets/data/category-seo.json")
+    categorySeoPromise = fetchJsonCached("/listing/category-seo.json")
+      .catch(() => fetchJsonCached("/assets/data/category-seo.json"))
       .then((data) => {
         categorySeoEntries = (data && data.entries) || {};
         return categorySeoEntries;

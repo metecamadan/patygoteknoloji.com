@@ -48,6 +48,7 @@ test("nginx: the repo copy keeps what is live (bot block, rate limits, micro-cac
   );
   assert.match(site, /error_page 404 \/404\.html;/);
   assert.match(site, /location = \/404\.html \{/);
+  assert.match(site, /location = \/assets\/data\/category-seo\.json \{[\s\S]*?rewrite \^ \/listing\/category-seo\.json last;/);
   assert.match(site, /location \^~ \/listing\/ \{[\s\S]*?X-Robots-Tag "noindex, nofollow"/);
   assert.match(site, /error_page 404 = @listing_miss;/);
   assert.match(site, /location @listing_miss \{/);

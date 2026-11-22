@@ -111,6 +111,14 @@ server {
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto \$scheme;
   }
+  location = /assets/data/category-seo.json {
+    proxy_pass http://127.0.0.1:${PATY_PORT};
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+  }
   location ^~ /assets/data/ { return 404; }
   location ^~ /assets/ { expires 1h; add_header Cache-Control "public"; try_files \$uri @node; }
   location = / { try_files /index.html @node; }

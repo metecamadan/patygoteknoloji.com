@@ -1642,6 +1642,20 @@ function readCategoriesBootstrapSnapshot() {
   }
 }
 
+function writeCategorySeoBootstrapSnapshot() {
+  fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
+  const src = path.join(ROOT, "assets", "data", "category-seo.json");
+  const dest = path.join(CATALOG_BOOTSTRAP_DIR, "category-seo.json");
+  try {
+    fs.copyFileSync(src, dest);
+  } catch (_) {
+    try {
+      const { loadCategorySeoData } = require("./lib/category-seo");
+      atomicWriteJson(dest, loadCategorySeoData());
+    } catch (__) {}
+  }
+}
+
 function writeCategoriesBootstrapSnapshot(payload) {
   fs.mkdirSync(CATALOG_BOOTSTRAP_DIR, { recursive: true });
   let categories;
@@ -1662,6 +1676,7 @@ function writeCategoriesBootstrapSnapshot(payload) {
     version: (payload && payload.version) || 5,
     categories,
   });
+  writeCategorySeoBootstrapSnapshot();
 }
 
 function ensureCategoriesBootstrapSnapshot() {

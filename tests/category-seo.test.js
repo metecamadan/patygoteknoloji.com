@@ -53,5 +53,8 @@ test("category-seo.json is publicly allowed next to categories.json", () => {
   const path = require("node:path");
   const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /assets\/data\/category-seo\.json/);
+  assert.match(serverJs, /writeCategorySeoBootstrapSnapshot/);
   assert.ok(fs.existsSync(path.join(__dirname, "..", "assets", "data", "category-seo.json")));
+  const catalogJs = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "catalog.js"), "utf8");
+  assert.match(catalogJs, /\/listing\/category-seo\.json/);
 });
