@@ -5785,7 +5785,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Not a Shopify (or similar) storefront — permanent gone for crawler probes.
-  if (/^\/(products|collections)(\/|$)/i.test(urlPath)) {
+  if (/^\/(products|collections)(\/|$)/i.test(urlPath) || /^\/sitemap_products(_\d+)?\.xml$/i.test(urlPath)) {
     return serveGoneForeignStorefront(res, req.method);
   }
 

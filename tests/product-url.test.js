@@ -53,6 +53,41 @@ test("İ-prefixed noise words are stripped like their ASCII form", () => {
   assert.match(slug, /^[a-z0-9-]+$/);
 });
 
+test("ALL-CAPS brand does not double when name already starts with brand", () => {
+  const product = {
+    id: "sup-300-10-30-0118-99d2db19",
+    brand: "LOGITECH",
+    name: "Logitech 920-007931 MK235 İngilizce Kablosuz Klavye & Mouse Seti",
+    siteChild: "klavye-ve-mouse",
+  };
+  const canonical = productPagePath(product);
+  assert.equal(
+    canonical,
+    "/klavye-ve-mouse/logitech-920-007931-mk235-ingilizce-kablosuz-klavye-mouse-seti"
+  );
+  assert.doesNotMatch(canonical, /logitech-logitech/);
+
+  const index = buildProductRouteIndex([product]);
+  assert.equal(index.byId[product.id], canonical);
+  // Pre-fix doubled slug (tr-TR I→ı mismatch) must 301 to canonical.
+  assert.equal(
+    resolveLegacyProductPath(
+      index,
+      "klavye-ve-mouse",
+      "logitech-logitech-920-007931-mk235-ingilizce-kablosuz-klavye-mouse-seti"
+    ),
+    canonical
+  );
+  assert.equal(
+    resolveLegacyProductPath(
+      index,
+      "klavye-ve-mouse",
+      "logitech-logitech-920-007931-mk235-i-ngilizce-kablosuz-klavye-mouse-seti"
+    ),
+    canonical
+  );
+});
+
 test("pre-fix i-slemci URLs resolve to the canonical path for 301", () => {
   const product = { id: "sup-1-abcd1234", brand: "ÇAYKUR", name: "Çaykur İnce Belli Bardak İkili Set", siteChild: "gida" };
   const index = buildProductRouteIndex([product]);
