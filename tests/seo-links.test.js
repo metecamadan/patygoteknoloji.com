@@ -46,6 +46,12 @@ test("footer sponsor link to the hosting partner passes no link equity", () => {
   }
 });
 
+test("Google Search Console verification file is present at the site root", () => {
+  const file = path.join(root, "google902a4f739695cb08.html");
+  assert.ok(fs.existsSync(file));
+  assert.match(fs.readFileSync(file, "utf8"), /^google-site-verification:\s*google902a4f739695cb08\.html\s*$/m);
+});
+
 test("public footers do not link to the admin panel", () => {
   const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html") && f !== "admin.html");
   for (const page of pages) {

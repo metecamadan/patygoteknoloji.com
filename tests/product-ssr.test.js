@@ -137,7 +137,12 @@ test("catalog infinite scroll keeps ?sayfa= in the URL with crawlable prev/next 
 });
 
 test("storefront HTML has no inline handlers (CSP script-src 'self') and ships icons/manifest/og", () => {
-  const pages = fs.readdirSync(root).filter((name) => name.endsWith(".html") && name !== "admin.html");
+  const pages = fs
+    .readdirSync(root)
+    .filter(
+      (name) =>
+        name.endsWith(".html") && name !== "admin.html" && !/^google[0-9a-f]+\.html$/i.test(name)
+    );
   for (const page of pages) {
     const html = read(page);
     assert.doesNotMatch(html, /\son[a-z]+="/i, page + " has an inline event handler");

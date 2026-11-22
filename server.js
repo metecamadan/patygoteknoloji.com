@@ -5805,8 +5805,11 @@ const server = http.createServer(async (req, res) => {
     if (htmlPath) return sendCatalogHtml(res, req, htmlPath, req.method);
   }
 
-  // SEO: /sayfa.html → /sayfa (301)
+  // SEO: /sayfa.html → /sayfa (301). Google Search Console HTML file must stay at *.html.
   if (/\.html$/i.test(urlPath)) {
+    if (/^\/google[0-9a-f]+\.html$/i.test(urlPath)) {
+      return serveStatic(req, res, urlPath);
+    }
     const clean =
       urlPath.toLowerCase() === "/index.html" ? "/" + search : urlPath.replace(/\.html$/i, "") + search;
     return permanentRedirect(res, clean);

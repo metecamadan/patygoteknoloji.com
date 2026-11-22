@@ -1,6 +1,21 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { spawnTestServer } = require("./helpers/spawn-server");
+
+test("Google Search Console verification HTML is served without stripping .html", async (t) => {
+  const root = path.resolve(__dirname, "..");
+  const fileName = "google902a4f739695cb08.html";
+  const filePath = path.join(root, fileName);
+  assert.ok(fs.existsSync(filePath), fileName + " must sit in the site root");
+  const expected = fs.readFileSync(filePath, "utf8").trim();
+
+  const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: "test-admin-password" });
+  const res = await fetch(baseUrl + "/" + fileName, { redirect: "manual" });
+  assert.equal(res.status, 200);
+  assert.equal((await res.text()).trim(), expected);
+});
 
 test("clean URLs serve HTML and redirect .html aliases", async (t) => {
   const { baseUrl } = await spawnTestServer(t, { ADMIN_PASSWORD: "test-admin-password" });
