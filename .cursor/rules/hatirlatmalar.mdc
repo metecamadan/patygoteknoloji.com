@@ -98,7 +98,7 @@ Kullanıcı: tüm liste SEO başlığında tutulacak; sırayla çözülecek. Soh
 
 | # | Durum | Madde |
 |---|--------|--------|
-| 1 | **doing** | GSC kapsam baseline 22 Kas: dizine **804**; sitemap ~**6165**. Hariç: 404 **1029**, kopya **519**, yönlendirme **451**, noindex **172**, 5xx **59**, keşfedildi **5389**, tarandı **187**. Shopify mağaza **yok**; `/products`+`/collections` → **410 Gone** (22 Kas). Kalan: gerçek ürün 404 örnekleri |
+| 1 | **doing** | GSC baseline: dizine **804** / sitemap ~**6165**. Shopify mağaza **yok**. `/products`+`/collections` canlı **410 Gone** + noindex (22 Kas, commit `4246570`). CI workflow smoke hâlâ 404 bekliyor — `workflow` scope ile `ci-deploy.yml` push lazım. Kalan: GSC’den gerçek ürün 404 örnekleri |
 | 2 | todo | PageSpeed / Core Web Vitals (mobil LCP; madde 6 ile birleşik) |
 | 3 | todo | Ürün Rich Results — 3–5 ürün Product şema testi |
 | 4 | todo | Kırık ürün URL 404 (segment yok / kalkmış) — örnek URL + 301 iyileştirme |

@@ -64,7 +64,14 @@ test("CI deploy job SSHes into production after tests pass", () => {
   assert.match(workflow, /http:\/\/www\.patygoteknoloji\.com\//);
   assert.match(workflow, /Location: https:\/\/patygoteknoloji\.com\//);
   assert.match(workflow, /Disallow: \/listing\//);
-  assert.match(workflow, /\/products\/seo-probe-not-a-product/);
+  assert.match(workflow, /smoke-foreign-storefront-paths\.sh/);
+  const foreignSmoke = fs.readFileSync(
+    path.join(root, "scripts", "smoke-foreign-storefront-paths.sh"),
+    "utf8"
+  );
+  assert.match(foreignSmoke, /\/products\/seo-probe-not-a-product/);
+  assert.match(foreignSmoke, /\/collections\/seo-probe-not-a-collection/);
+  assert.match(foreignSmoke, /410/);
   assert.doesNotMatch(workflow, /data-catalog-pager/);
   assert.doesNotMatch(workflow, /Confirm VPS pull-deploy/);
   const ensureNginx = fs.readFileSync(
