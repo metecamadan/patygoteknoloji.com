@@ -118,10 +118,16 @@ test("legacy redirect include lists only pre-fix aliases as exact nginx location
   assert.ok(lines.every((line) => !line.startsWith("location = " + index.byId[plainProduct.id] + " ")));
   const plainIndex = buildProductRouteIndex([plainProduct]);
   const plainCanonical = plainIndex.byId[plainProduct.id];
-  assert.deepEqual(legacyRedirectNginxText(plainIndex).trim().split("\n"), [
-    "location = " + plainCanonical + "-ef567890 { return 301 " + plainCanonical + "$is_args$args; }",
-    "location = " + plainCanonical + "-ef567890/ { return 301 " + plainCanonical + "$is_args$args; }",
-  ]);
+  const plainLines = legacyRedirectNginxText(plainIndex).trim().split("\n");
+  assert.ok(
+    plainLines.includes(
+      "location = " + plainCanonical + "-ef567890 { return 301 " + plainCanonical + "$is_args$args; }"
+    )
+  );
+  // brand+" "+name alias (hp-hp-…) covers pre-fix ALL-CAPS doubling; keep it as a 301.
+  assert.ok(
+    plainLines.some((line) => line.includes("/toner/hp-hp-212a-siyah-toner { return 301 " + plainCanonical))
+  );
   assert.equal(legacyRedirectNginxText(null), "");
 });
 

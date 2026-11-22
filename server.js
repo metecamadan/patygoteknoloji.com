@@ -5659,22 +5659,38 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
   let page = productHtmlCache.pages.get(key);
   if (!page) {
     const found = lookupPublicProductsByPath(key);
-    const product = found && Array.isArray(found.products) ? found.products[0] : null;
-    const canonicalPath = product && product.urlPath ? String(product.urlPath).replace(/\/+$/, "") : "";
-    const gonePath = product ? "" : goneProductCategoryPath(key);
-    page = gonePath
-      ? { status: 301, location: gonePath }
-      : !product
-      ? { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) }
-      : canonicalPath && canonicalPath !== key
-        ? { status: 301, location: canonicalPath }
-      : product.soldOut
-        ? { status: 200, html: renderSoldOutProductHtml(productHtmlCache.shell, product) }
-        : { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) };
+    let product = found && Array.isArray(found.products) ? found.products[0] : null;
+    let canonicalPath = product && product.urlPath ? String(product.urlPath).replace(/\/+$/, "") : "";
+    if (!product && warmIndex && warmIndex.routeIndex) {
+      const parts = key.split("/").filter(Boolean);
+      if (parts.length === 2) {
+        const legacyTarget =
+          resolveLegacyProductPath(warmIndex.routeIndex, parts[0], parts[1]) || "";
+        if (legacyTarget && legacyTarget !== key) {
+          page = { status: 301, location: legacyTarget };
+        }
+      }
+    }
+    if (!page) {
+      const gonePath = product ? "" : goneProductCategoryPath(key);
+      page = gonePath
+        ? { status: 301, location: gonePath }
+        : !product
+        ? { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) }
+        : canonicalPath && canonicalPath !== key
+          ? { status: 301, location: canonicalPath }
+        : product.soldOut
+          ? { status: 200, html: renderSoldOutProductHtml(productHtmlCache.shell, product) }
+          : { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) };
+    }
     if (productHtmlCache.pages.size >= PRODUCT_HTML_CACHE_MAX) productHtmlCache.pages.clear();
     productHtmlCache.pages.set(key, page);
   }
-  if (page.location) return goneProductRedirect(res, page.location);
+  if (page.location) {
+    return page.location.startsWith("/urunler/")
+      ? goneProductRedirect(res, page.location)
+      : permanentRedirect(res, page.location);
+  }
   res.writeHead(
     page.status,
     securityHeaders({
