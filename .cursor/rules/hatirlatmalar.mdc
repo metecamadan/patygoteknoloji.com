@@ -102,7 +102,7 @@ Kullanıcı: tüm liste SEO başlığında tutulacak; sırayla çözülecek. Soh
 | 2 | deferred | PageSpeed 22 Kas mobil lab ~**91** — elzem değil; kullanıcı 22 Kas: şimdi dokunma. Checklist dursun, sıralama/içerik sonrası |
 | 3 | todo | Ürün Rich Results — 3–5 ürün Product şema testi |
 | 4 | partial | Trailing `-` slug HTML 404 düzeltildi (canlı+CI ✓). Kalan: yanlış segment / kalkmış ürün 404’leri |
-| 5 | doing | Kategori SEO: curated lead+H1 (category-seo.json) + SSR/client; önizleme preview/category-seo.html |
+| 5 | partial | Kategori SEO: üstte 1 cümle teaser + altta detay; her yeni kategori otomatik. Curated override JSON. Panel yok |
 | 6 | todo | Ürün açıklamaları — öncelikli ürünlerde SEO override |
 | 7 | todo | Rehber / karşılaştırma sayfaları (internal link) |
 | 8 | todo | Title / meta — kategori+ürün, kopya title yok |

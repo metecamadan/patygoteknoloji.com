@@ -3459,6 +3459,27 @@ h1, h2, h3, h4 {
   line-height: 1.55;
   color: var(--muted);
 }
+.catalog-seo-detail {
+  padding-top: 8px;
+}
+.catalog-seo-detail[hidden] {
+  display: none;
+}
+.catalog-seo-detail h2 {
+  font-size: 1.25rem;
+  margin: 0 0 12px;
+}
+.catalog-seo-detail .catalog-seo-body {
+  max-width: 68ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.catalog-seo-detail .catalog-seo-body p {
+  margin: 0 0 0.85em;
+}
+.catalog-seo-detail .catalog-seo-body p:last-child {
+  margin-bottom: 0;
+}
 .products-page .catalog-section { padding: 32px 0 72px; }
 .products-page .product-tabs { margin-bottom: 28px; }
 .home .hero {

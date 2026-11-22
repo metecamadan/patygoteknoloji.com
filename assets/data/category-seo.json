@@ -1,85 +1,38 @@
 {
-  "version": 1,
+  "version": 2,
   "entries": {
-    "bilgisayar-tablet": {
-      "h1": "Bilgisayar ve Tablet",
-      "lead": "Notebook, masaüstü, all-in-one ve tablet modellerini tek yerden karşılaştırın. KDV dahil güncel fiyatlar, stoktakiler listelenir; güvenli ödeme ve hızlı kargo ile Patygo Teknoloji’den sipariş verin.",
-      "description": "Bilgisayar ve tablet modelleri KDV dahil fiyatlarla Patygo Teknoloji’de. Notebook, masaüstü ve tablet stokları, güvenli ödeme ve hızlı kargo."
-    },
-    "bilgisayar-tablet/tasinabilir-bilgisayarlar": {
-      "h1": "Taşınabilir Bilgisayarlar",
-      "lead": "İş, okul ve günlük kullanım için notebook ve tablet seçenekleri. Marka, bellek ve depolama filtreleriyle stoktaki taşınabilir bilgisayarları inceleyin; fiyatlar KDV dahildir.",
-      "description": "Taşınabilir bilgisayarlar: notebook ve tablet modelleri, KDV dahil fiyat, stoktakiler. Patygo Teknoloji’de güvenli ödeme."
-    },
     "bilgisayar-tablet/tasinabilir-bilgisayarlar/notebooklar": {
       "h1": "Notebooklar",
-      "lead": "Acer, Lenovo, ASUS ve diğer markaların stoktaki notebook modelleri. Öğrenci, ofis ve performans ihtiyaçlarına göre karşılaştırın; KDV dahil fiyat ve hızlı kargo Patygo Teknoloji güvencesiyle.",
-      "description": "Notebook fiyatları ve modelleri Patygo Teknoloji’de. Stoktaki dizüstü bilgisayarlar, KDV dahil fiyat, güvenli ödeme ve hızlı kargo."
-    },
-    "bilgisayar-tablet/tasinabilir-bilgisayarlar/tabletler": {
-      "h1": "Tabletler",
-      "lead": "Okuma, çizim ve mobil iş için stoktaki tablet modelleri. Ekran boyutu ve depolamaya göre filtreleyin; KDV dahil fiyatlarla Patygo Teknoloji’den güvenle sipariş edin.",
-      "description": "Tablet fiyatları ve modelleri. Stoktaki tabletler, KDV dahil fiyat, güvenli ödeme — Patygo Teknoloji."
-    },
-    "bilgisayar-tablet/bilgisayarlar/masaustu-bilgisayarlar": {
-      "h1": "Masaüstü Bilgisayarlar",
-      "lead": "Ofis ve ev kullanımı için hazır masaüstü sistemler. Stoktaki modelleri karşılaştırın; KDV dahil fiyat ve güvenli ödeme ile Patygo Teknoloji’den alın.",
-      "description": "Masaüstü bilgisayar fiyatları ve modelleri. Stoktakiler, KDV dahil — Patygo Teknoloji."
-    },
-    "bilgisayar-tablet/monitorler-ve-aks/monitorler": {
-      "h1": "Monitörler",
-      "lead": "Ofis, tasarım ve oyun için stoktaki monitörler. Çözünürlük ve boyut filtreleriyle seçin; KDV dahil fiyatlarla Patygo Teknoloji’de.",
-      "description": "Monitör fiyatları ve modelleri. Stoktaki ekranlar, KDV dahil — Patygo Teknoloji."
-    },
-    "bilgisayar-bilesenleri": {
-      "h1": "Bilgisayar Bileşenleri",
-      "lead": "Bellek, ekran kartı, kasa, güç kaynağı ve diğer bileşenler. Uyumlu parçaları stoktan seçin; KDV dahil fiyat ve hızlı kargo ile sipariş verin.",
-      "description": "Bilgisayar bileşenleri: bellek, ekran kartı, kasa ve daha fazlası. KDV dahil fiyat — Patygo Teknoloji."
-    },
-    "bilgisayar-bilesenleri/bellekler": {
-      "h1": "Bellekler",
-      "lead": "DDR3, DDR4 ve DDR5 PC bellekleri stokta. Kapasiteye göre filtreleyin; KDV dahil fiyatlarla Patygo Teknoloji’den güvenle alın.",
-      "description": "PC bellek (RAM) fiyatları ve modelleri. DDR bellek stokları, KDV dahil — Patygo Teknoloji."
+      "teaser": "Notebook (dizüstü bilgisayar, laptop) modellerini KDV dahil güncel fiyatlarla karşılaştırın; stoktakiler Patygo Teknoloji’de güvenli ödeme ile sipariş edilebilir.",
+      "detailHeading": "Notebooklar hakkında",
+      "detailParagraphs": [
+        "Notebook kategorisinde Acer, Lenovo, ASUS ve diğer markaların stoktaki dizüstü bilgisayarlarını işlemci, bellek ve ekran boyutuna göre süzebilirsiniz. Fiyatlar KDV dahildir.",
+        "Aynı ürün grubu aramalarda laptop veya taşınabilir bilgisayar olarak da geçer; listedeki filtreler ofis, öğrenci ve günlük kullanım ihtiyaçlarına göre daraltmanıza yardımcı olur.",
+        "Bilgisayar / Tablet › Taşınabilir Bilgisayarlar › Notebooklar yolundaki ürünler Patygo Teknoloji kataloğunda listelenir. Kargo ve ödeme seçenekleri sipariş sırasında netleşir."
+      ],
+      "description": "Notebook fiyatları ve modelleri Patygo Teknoloji’de. Dizüstü bilgisayar / laptop stokları, KDV dahil güvenli ödeme."
     },
     "bilgisayar-bilesenleri/ekran-kartlari": {
       "h1": "Ekran Kartları",
-      "lead": "PCI Express ekran kartları stokta. Oyun ve iş istasyonu ihtiyaçlarına göre karşılaştırın; KDV dahil fiyat ve güvenli ödeme Patygo Teknoloji’de.",
-      "description": "Ekran kartı fiyatları ve modelleri. Stoktaki GPU’lar, KDV dahil — Patygo Teknoloji."
-    },
-    "baski-cozumleri": {
-      "h1": "Baskı Çözümleri",
-      "lead": "Yazıcı, tarayıcı, orijinal ve muadil toner/kartuşlar. Ofis baskı ihtiyacını tek kategoride toplayın; KDV dahil fiyatlarla Patygo Teknoloji’den sipariş edin.",
-      "description": "Yazıcı, toner ve kartuş çözümleri. Orijinal ve muadil tüketim, KDV dahil — Patygo Teknoloji."
+      "teaser": "Ekran kartı (GPU) modellerini KDV dahil güncel fiyatlarla karşılaştırın; stoktakiler Patygo Teknoloji’de güvenli ödeme ile sipariş edilebilir.",
+      "detailHeading": "Ekran kartları hakkında",
+      "detailParagraphs": [
+        "Ekran kartları kategorisinde PCI Express GPU seçeneklerini stoktan inceleyebilirsiniz. Oyun ve iş istasyonu ihtiyaçlarına göre listeyi daraltın; fiyatlar KDV dahildir.",
+        "Aramalarda ekran kartı veya GPU olarak da geçer; uyumluluk için kasa ve güç kaynağı gereksinimlerini ürün sayfasından kontrol edin.",
+        "Bilgisayar Bileşenleri › Ekran Kartları altındaki ürünler Patygo Teknoloji kataloğunda yer alır; sorularınız için iletişim kanallarımız açıktır."
+      ],
+      "description": "Ekran kartı / GPU fiyatları ve modelleri. Stoktakiler, KDV dahil — Patygo Teknoloji."
     },
     "baski-cozumleri/yazici-tuketim-urunleri-orj/laser-tonerler": {
       "h1": "Laser Tonerler",
-      "lead": "Orijinal laser tonerler stokta. Yazıcı modelinize uygun tonerleri bulun; KDV dahil fiyat ve hızlı kargo ile Patygo Teknoloji’den alın.",
-      "description": "Orijinal laser toner fiyatları. Stoktaki tonerler, KDV dahil — Patygo Teknoloji."
-    },
-    "baski-cozumleri/yazici-tuketim-urunleri-orj/inkjet-kartuslar": {
-      "h1": "Inkjet Kartuşlar",
-      "lead": "Orijinal inkjet kartuşlar. Yazıcınıza uygun renk ve siyah kartuşları stoktan seçin; KDV dahil fiyatlarla güvenli ödeme.",
-      "description": "Orijinal inkjet kartuş fiyatları. Stoktakiler, KDV dahil — Patygo Teknoloji."
-    },
-    "yapi-gerecleri": {
-      "h1": "Yapı Gereçleri",
-      "lead": "Hırdavat, elektrik ve aydınlatma ürünleri. Priz, alet ve ampul çeşitlerini stoktan inceleyin; KDV dahil fiyatlarla Patygo Teknoloji’de.",
-      "description": "Yapı gereçleri: hırdavat, elektrik ve aydınlatma. KDV dahil fiyat — Patygo Teknoloji."
-    },
-    "yapi-gerecleri/elektrik-urunleri/prizler": {
-      "h1": "Prizler",
-      "lead": "Akım korumalı ve standart prizler stokta. İhtiyacınıza uygun modeli seçin; KDV dahil fiyat ve hızlı kargo ile sipariş verin.",
-      "description": "Priz fiyatları ve modelleri. Akım korumalı prizler dahil, KDV dahil — Patygo Teknoloji."
-    },
-    "ofis-urunleri": {
-      "h1": "Ofis Ürünleri",
-      "lead": "Powerbank, pil, hesap makinesi ve ofis aksesuarları. Günlük ofis ihtiyacını stoktan tamamlayın; KDV dahil fiyatlarla Patygo Teknoloji.",
-      "description": "Ofis ürünleri: pil, powerbank, hesap makinesi. KDV dahil fiyat — Patygo Teknoloji."
-    },
-    "ofis-urunleri/pil-sarj-batarya-urunleri/powerbank": {
-      "h1": "Powerbank",
-      "lead": "Taşınabilir şarj cihazları stokta. Kapasiteye göre seçin; KDV dahil fiyat ve güvenli ödeme ile Patygo Teknoloji’den alın.",
-      "description": "Powerbank fiyatları ve modelleri. Stoktakiler, KDV dahil — Patygo Teknoloji."
+      "teaser": "Orijinal laser toner modellerini KDV dahil güncel fiyatlarla karşılaştırın; stoktakiler Patygo Teknoloji’de güvenli ödeme ile sipariş edilebilir.",
+      "detailHeading": "Laser tonerler hakkında",
+      "detailParagraphs": [
+        "Orijinal laser tonerler yazıcı modelinize uygun stoktan seçilebilir. Marka ve uyumluluk bilgisi ürün kartında yer alır; fiyatlar KDV dahildir.",
+        "Aramalarda yazıcı toneri veya laser toner olarak da geçer; doğru modeli seçmek için yazıcı kodunuzu filtre veya ürün adıyla eşleştirin.",
+        "Baskı Çözümleri altındaki orijinal tüketim ürünleri Patygo Teknoloji kataloğunda listelenir."
+      ],
+      "description": "Orijinal laser toner fiyatları. Yazıcı toneri stokları, KDV dahil — Patygo Teknoloji."
     }
   }
 }

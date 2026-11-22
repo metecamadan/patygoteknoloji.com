@@ -6,8 +6,8 @@
       "sha256": "4ab20ae7e1580158e262a229ffb826cdb37eac598605086c354926a941476667"
     },
     "/assets/css/style.css": {
-      "v": "storefront-p56",
-      "sha256": "1407a098466cf68d6da564ce1d3f13005bc0eeb70abb0858dc57cc528748367c"
+      "v": "storefront-p57",
+      "sha256": "6e1f3562f99e89652e5667930134f15d29af0cfa3e3dd76ce8ab3de9201c9433"
     },
     "/assets/geo/tr-districts.json": {
       "v": "ilce-1",
@@ -30,8 +30,8 @@
       "sha256": "dde7f911644916b53acbd00fd34224daf2048c726aa3b7ecb6ab847dec09ad99"
     },
     "/assets/js/catalog.js": {
-      "v": "storefront-p49",
-      "sha256": "ebe92383f7d7f828140e09765077c17d683094c364245810c053ad237a0bc99c"
+      "v": "storefront-p50",
+      "sha256": "d785d51d0aab5b9c01231d11ef0d55ec462955af5f987355c8d80eebafd641cf"
     },
     "/assets/js/checkout.js": {
       "v": "checkout-p12",

@@ -879,6 +879,7 @@
     if (crumb) crumb.textContent = "Arama: " + q;
     if (title) title.textContent = "“" + q + "” için arama sonuçları";
     if (lead) lead.hidden = true;
+    hideCategorySeoDetail();
     document.title = "“" + q + "” araması | Patygo Teknoloji";
     settleCatalogHeading();
   }
@@ -919,6 +920,7 @@
         "Kategorilere göre ürünleri keşfedin; sepete ekleyin ve güvenle online ödeme yapın.";
       lead.hidden = false;
     }
+    hideCategorySeoDetail();
     document.title =
       "Ürünler" +
       (listingScroll.startPage > 1 ? " – Sayfa " + listingScroll.startPage : "") +
@@ -965,13 +967,21 @@
     }
     const leaf = prettyLeaf || names[names.length - 1] || "Ürünler";
     const trail = names.length ? names.join(" › ") : leaf;
+    const teaser =
+      leaf +
+      " modellerini KDV dahil güncel fiyatlarla karşılaştırın; stoktakiler Patygo Teknoloji’de güvenli ödeme ile sipariş edilebilir.";
     return {
       h1: leaf,
-      lead:
+      teaser,
+      lead: teaser,
+      detailHeading: leaf + " hakkında",
+      detailParagraphs: [
         leaf +
-        " kategorisinde stoktaki ürünleri KDV dahil fiyatlarla inceleyin. " +
+          " kategorisinde stokta görünen ürünleri marka, özellik ve fiyata göre süzebilirsiniz. Fiyatlar KDV dahildir; uygun modeli seçip sepete ekleyerek güvenli ödeme ile sipariş verebilirsiniz.",
+        "İhtiyacınıza göre listeyi daraltmak için marka ve özellik filtrelerini kullanın; stok güncel tutulur.",
         trail +
-        " altında güvenli ödeme ve hızlı kargo ile Patygo Teknoloji’den sipariş verebilirsiniz.",
+          " yolundaki ürünler Patygo Teknoloji kataloğunda listelenir. Kargo ve ödeme seçenekleri sipariş sırasında netleşir; sorularınız için iletişim kanallarımız açıktır.",
+      ],
     };
   }
 
@@ -980,10 +990,40 @@
     const entry = key && categorySeoEntries && categorySeoEntries[key];
     const fallback = fallbackCategorySeo(prettyLeaf, resolved);
     if (!entry) return fallback;
+    const teaser = String(entry.teaser || entry.lead || fallback.teaser).trim() || fallback.teaser;
+    const detailParagraphs =
+      Array.isArray(entry.detailParagraphs) && entry.detailParagraphs.length
+        ? entry.detailParagraphs
+        : fallback.detailParagraphs;
     return {
       h1: String(entry.h1 || fallback.h1).trim() || fallback.h1,
-      lead: String(entry.lead || fallback.lead).trim() || fallback.lead,
+      teaser,
+      lead: teaser,
+      detailHeading: String(entry.detailHeading || fallback.detailHeading).trim() || fallback.detailHeading,
+      detailParagraphs,
     };
+  }
+
+  function applyCategorySeoDetail(seo) {
+    const block = document.querySelector("[data-catalog-seo-detail]");
+    const heading = document.querySelector("[data-catalog-seo-heading]");
+    const body = document.querySelector("[data-catalog-seo-body]");
+    if (!block || !seo) return;
+    if (heading) heading.textContent = seo.detailHeading || "";
+    if (body) {
+      body.textContent = "";
+      (seo.detailParagraphs || []).forEach((text) => {
+        const p = document.createElement("p");
+        p.textContent = text;
+        body.appendChild(p);
+      });
+    }
+    block.hidden = false;
+  }
+
+  function hideCategorySeoDetail() {
+    const block = document.querySelector("[data-catalog-seo-detail]");
+    if (block) block.hidden = true;
   }
 
   function applyCategoryHeading(resolved) {
@@ -1038,9 +1078,10 @@
     const seo = resolveCategorySeoClient(resolved, prettyLeaf);
     if (title) title.textContent = seo.h1;
     if (lead) {
-      lead.textContent = seo.lead;
+      lead.textContent = seo.teaser || seo.lead;
       lead.hidden = false;
     }
+    applyCategorySeoDetail(seo);
     const page = listingScroll.startPage > 1 ? listingScroll.startPage : 1;
     document.title =
       seo.h1 +
