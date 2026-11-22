@@ -3454,8 +3454,10 @@ h1, h2, h3, h4 {
 .detail-ssr-reviews ul { padding-left: 18px; }
 .products-page .products-hero { padding: 24px 0 30px; }
 .products-page .products-hero:has([data-catalog-lead][hidden]) { padding-bottom: 22px; }
+.products-page .page-hero.products-hero p[data-catalog-lead],
 .products-page .products-hero [data-catalog-lead] {
-  max-width: 62ch;
+  max-width: none;
+  width: 100%;
   line-height: 1.55;
   color: var(--muted);
 }
@@ -3469,8 +3471,10 @@ h1, h2, h3, h4 {
   font-size: 1.25rem;
   margin: 0 0 12px;
 }
+.catalog-seo-detail .prose,
 .catalog-seo-detail .catalog-seo-body {
-  max-width: 68ch;
+  max-width: none;
+  width: 100%;
   color: var(--muted);
   line-height: 1.6;
 }
