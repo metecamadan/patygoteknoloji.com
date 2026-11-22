@@ -140,6 +140,17 @@ test("legacy redirect include lists only pre-fix aliases as exact nginx location
   assert.equal(legacyRedirectNginxText(null), "");
 });
 
+test("sold-out path lookup resolves legacy aliases (not only byPath undouble)", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const serverJs = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const fnStart = serverJs.indexOf("function lookupSoldOutProductByPath");
+  assert.ok(fnStart >= 0);
+  const fnBody = serverJs.slice(fnStart, fnStart + 900);
+  assert.match(fnBody, /resolveLegacyProductPath/);
+  assert.match(fnBody, /resolveProductIdFromRoute/);
+});
+
 test("server writes the legacy redirect include with catalog snapshots and warms when it is missing", () => {
   const fs = require("node:fs");
   const path = require("node:path");

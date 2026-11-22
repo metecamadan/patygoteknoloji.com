@@ -1463,7 +1463,18 @@ function soldOutCompact(productId) {
 
 function lookupSoldOutProductByPath(segment, slug) {
   const index = soldOutIndex();
-  const productId = resolveProductIdFromRoute(index.routeIndex, segment, slug);
+  const routeIndex = index.routeIndex;
+  let productId =
+    resolveProductIdFromRoute(routeIndex, segment, slug) || "";
+  // Sold-out XML rows live only in soldOutIndex — legacy / doubled-brand aliases
+  // must resolve here too, or GSC 404s stick on "Tükendi" product URLs.
+  if (!productId) {
+    const legacyPath = resolveLegacyProductPath(routeIndex, segment, slug) || "";
+    const legacyParts = legacyPath.split("/").filter(Boolean);
+    if (legacyParts.length === 2) {
+      productId = resolveProductIdFromRoute(routeIndex, legacyParts[0], legacyParts[1]);
+    }
+  }
   if (!productId || !soldOutCompact(productId)) return null;
   const supplier = supplierManager.getProductById(productId);
   if (!supplier) return null;
@@ -1474,7 +1485,7 @@ function lookupSoldOutProductByPath(segment, slug) {
   );
   const product = Array.isArray(result.products) ? result.products[0] : null;
   if (!product) return null;
-  return Object.assign(attachProductUrlFields(product, index.routeIndex), { soldOut: true });
+  return Object.assign(attachProductUrlFields(product, routeIndex), { soldOut: true });
 }
 
 // Product URLs start with their category segment (/intel-islemci/<slug>). Segments seen in
@@ -5665,7 +5676,9 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
       const parts = key.split("/").filter(Boolean);
       if (parts.length === 2) {
         const legacyTarget =
-          resolveLegacyProductPath(warmIndex.routeIndex, parts[0], parts[1]) || "";
+          resolveLegacyProductPath(warmIndex.routeIndex, parts[0], parts[1]) ||
+          resolveLegacyProductPath(soldOutIndex().routeIndex, parts[0], parts[1]) ||
+          "";
         if (legacyTarget && legacyTarget !== key) {
           page = { status: 301, location: legacyTarget };
         }
@@ -5972,13 +5985,20 @@ const server = http.createServer(async (req, res) => {
     // Warm index only: a cold HTML request must not wait for the catalog build.
     const warmIndex = storefrontCatalogMemo.active && storefrontCatalogMemo.active.index;
     if (warmIndex) {
+      const soldOutRoute = soldOutIndex().routeIndex;
       const legacyTarget =
         resolveLegacyProductPath(
           warmIndex.routeIndex,
           productRoute.segment,
           productRoute.rawSlug || productRoute.slug
         ) ||
-        resolveLegacyProductPath(warmIndex.routeIndex, productRoute.segment, productRoute.slug);
+        resolveLegacyProductPath(warmIndex.routeIndex, productRoute.segment, productRoute.slug) ||
+        resolveLegacyProductPath(
+          soldOutRoute,
+          productRoute.segment,
+          productRoute.rawSlug || productRoute.slug
+        ) ||
+        resolveLegacyProductPath(soldOutRoute, productRoute.segment, productRoute.slug);
       if (legacyTarget && legacyTarget !== urlPath) {
         return permanentRedirect(res, legacyTarget + search);
       }
