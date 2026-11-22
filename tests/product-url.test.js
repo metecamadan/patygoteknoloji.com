@@ -18,6 +18,34 @@ test("slugify folds Turkish İ instead of splitting it", () => {
   assert.equal(slugify("Yazıcı Kartuşu"), "yazici-kartusu");
 });
 
+test("slugify does not leave a trailing hyphen after the 96-char cut", () => {
+  const long = "S-Link SPG03U 5V2.4A 1.5m 3x1.00mm 100 yüzde Bakır 750 Joule 3 lü anahtarlı akım korumalı siyah priz";
+  const slug = slugify(long);
+  assert.ok(slug.length <= 96);
+  assert.doesNotMatch(slug, /-$/);
+  assert.match(slug, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+});
+
+test("trailing-hyphen cut aliases 301 to the cleaned slug path", () => {
+  const product = {
+    id: "sup-400-70-20-0380-31e5f24d",
+    brand: "S-Link",
+    name: "S-Link SPG03U 5V2.4A 1.5m 3x1.00mm 100 yüzde Bakır 750 Joule 3 lü anahtarlı akım korumalı siyah priz",
+    siteChild: "akim-korumali-prizler",
+  };
+  const index = buildProductRouteIndex([product]);
+  const canonical = index.byId[product.id];
+  assert.doesNotMatch(canonical, /-$/);
+  const dirty = buildProductSlugBase(product, { cutOnly: true });
+  assert.match(dirty, /-$/);
+  assert.equal(resolveLegacyProductPath(index, canonical.split("/")[1], dirty), canonical);
+  assert.deepEqual(parseProductRoutePath("/" + canonical.split("/")[1] + "/" + dirty), {
+    segment: canonical.split("/")[1],
+    slug: dirty.replace(/-+$/, ""),
+    rawSlug: dirty,
+  });
+});
+
 test("İ-prefixed noise words are stripped like their ASCII form", () => {
   const product = { id: "x-1", brand: "INTEL", name: "Intel Core i5-12400 İşlemci", siteChild: "islemciler" };
   const slug = buildProductSlugBase(product);
@@ -120,9 +148,15 @@ test("parseProductRoutePath accepts two-segment product URLs", () => {
   assert.deepEqual(parseProductRoutePath("/notebook/lenovo-v15-83a100kxtr-i7-1355u-40gb"), {
     segment: "notebook",
     slug: "lenovo-v15-83a100kxtr-i7-1355u-40gb",
+    rawSlug: "lenovo-v15-83a100kxtr-i7-1355u-40gb",
   });
   assert.equal(parseProductRoutePath("/urunler"), null);
   assert.equal(parseProductRoutePath("/notebook"), null);
+  assert.deepEqual(parseProductRoutePath("/akim-korumali-priz/ornek-slug-"), {
+    segment: "akim-korumali-priz",
+    slug: "ornek-slug",
+    rawSlug: "ornek-slug-",
+  });
 });
 
 test("catalog.js productHref prefers slug urlPath over legacy id query", () => {

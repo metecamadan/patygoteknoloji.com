@@ -98,10 +98,10 @@ Kullanıcı: tüm liste SEO başlığında tutulacak; sırayla çözülecek. Soh
 
 | # | Durum | Madde |
 |---|--------|--------|
-| 1 | **doing** | GSC baseline: dizine **804** / sitemap ~**6165**. Shopify mağaza **yok**. `/products`+`/collections` canlı **410 Gone** + noindex (22 Kas, commit `4246570`). CI workflow smoke hâlâ 404 bekliyor — `workflow` scope ile `ci-deploy.yml` push lazım. Kalan: GSC’den gerçek ürün 404 örnekleri |
-| 2 | todo | PageSpeed / Core Web Vitals (mobil LCP; madde 6 ile birleşik) |
+| 1 | partial | GSC: dizine **804** / sitemap ~**6165**. Shopify yolları **410** ✓. Kalan ürün 404 → madde 4 |
+| 2 | deferred | PageSpeed 22 Kas mobil lab ~**91** — elzem değil; kullanıcı 22 Kas: şimdi dokunma. Checklist dursun, sıralama/içerik sonrası |
 | 3 | todo | Ürün Rich Results — 3–5 ürün Product şema testi |
-| 4 | todo | Kırık ürün URL 404 (segment yok / kalkmış) — örnek URL + 301 iyileştirme |
+| 4 | doing | Kırık ürün URL 404 — kök: slug 96 kesim sonda `-` → HTML 404 (API 200). Düzeltme + eski URL 301. Kalan: yanlış segment / kalkmış ürün |
 | 5 | todo | Kategori sayfaları — özgün kısa metin + net H1 |
 | 6 | todo | Ürün açıklamaları — öncelikli ürünlerde SEO override |
 | 7 | todo | Rehber / karşılaştırma sayfaları (internal link) |
@@ -114,15 +114,24 @@ Kullanıcı: tüm liste SEO başlığında tutulacak; sırayla çözülecek. Soh
 
 Öncelik sırası (kullanıcı onayı 22 Kas): 1 → …; içerikte 5+6 sonra 2.
 
+#### Madde 2 — PageSpeed checklist (22 Kas 2026, mobil lab ~91)
+
+Kaynak: PageSpeed Insights ana sayfa. API 429; UI lab kullanıldı. CrUX: veri yok/az.
+
+| Öncelik | İş | Tahmini | Not |
+|---------|-----|---------|-----|
+| Y | Google Fonts render-block kaldır | ~730ms (font+CSS grubu) | `index.html`: Inter hâlâ `rel=stylesheet` (display=swap var). Self-host woff2 + `font-display: optional/swap` veya preload + async CSS |
+| Y | `style.css` kritik yolu kısalt | aynı grup | ~125KB ham CSS; kritik above-fold inline veya media/preload; tam dosya ertelenmesin ama blok süresi düşsün |
+| O | Marka şeridi / hero görselleri | ~82KiB encode + CLS | width/height eksikleri; WebP/AVIF veya daha sıkı compress; brand-logos PNG |
+| O | Ana sayfa unused JS | ~74KiB | `catalog.js` (~96KB) ana sayfada tam lazım mı? code-split / route’a göre yükle |
+| O | Cache TTL (etiketsiz asset) | ~68KiB | `?v=` olanlar zaten immutable; etiketsiz / üçüncü parti (font) cache |
+| D | Minify CSS/JS | ~5+5KiB | build adımı veya ters proxy; düşük getiri |
+| D | Unused CSS | ~18KiB | purge/split; dikkat kırılma |
+| — | Ürün detay URL’si PSI | — | henüz koşulmadı; LCP ürün görseli olabilir |
+
 ### 6. PageSpeed / Core Web Vitals ölçümü (19 Eki 2026)
 
-Site audit notu: lab ölçümü bu turda API 429 ile alınamadı; LCP / INP (ve CLS) ayrıca bakılacak.
-
-Yapılacak:
-
-- [PageSpeed Insights](https://pagespeed.web.dev/) — mobil + masaüstü, `https://patygoteknoloji.com` (ana sayfa) ve bir ürün detay URL’si.
-- CrUX / alan verisi varsa kaydet; yoksa lab skorları + LCP öğesi notu.
-- Kırmızı metrikler için öncelik listesi (görsel, JS, font, cache) — düzeltme ayrı iş.
+Güncelleme 22 Kas: ana sayfa mobil lab ~91; checklist SEO madde 2’ye taşındı. Ürün detay PSI + CrUX hâlâ açık.
 
 ### 7. TCMB döviz kuru — fetch failed (10 Kas 2026)
 

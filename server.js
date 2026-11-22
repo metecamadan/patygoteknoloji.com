@@ -1573,16 +1573,24 @@ function lookupPublicProductsByPath(pathValue) {
     return { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
   }
   const routeIndex = storefrontIndex(false).routeIndex;
-  let productId = resolveProductIdFromRoute(routeIndex, parts[0], parts[1]);
+  const rawSlug = parts[1];
+  const slug = String(rawSlug || "").replace(/-+$/, "");
+  let productId =
+    resolveProductIdFromRoute(routeIndex, parts[0], slug) ||
+    resolveProductIdFromRoute(routeIndex, parts[0], rawSlug);
   if (!productId) {
-    const legacyPath = resolveLegacyProductPath(routeIndex, parts[0], parts[1]);
+    const legacyPath =
+      resolveLegacyProductPath(routeIndex, parts[0], rawSlug) ||
+      resolveLegacyProductPath(routeIndex, parts[0], slug);
     const legacyParts = legacyPath.split("/").filter(Boolean);
     if (legacyParts.length === 2) {
       productId = resolveProductIdFromRoute(routeIndex, legacyParts[0], legacyParts[1]);
     }
   }
   if (!productId) {
-    const soldOut = lookupSoldOutProductByPath(parts[0], parts[1]);
+    const soldOut =
+      lookupSoldOutProductByPath(parts[0], slug) ||
+      lookupSoldOutProductByPath(parts[0], rawSlug);
     return soldOut
       ? { products: [soldOut], total: 1, page: 1, limit: 1, totalPages: 1 }
       : { products: [], total: 0, page: 1, limit: 1, totalPages: 0 };
@@ -5627,11 +5635,14 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
   if (!page) {
     const found = lookupPublicProductsByPath(key);
     const product = found && Array.isArray(found.products) ? found.products[0] : null;
+    const canonicalPath = product && product.urlPath ? String(product.urlPath).replace(/\/+$/, "") : "";
     const gonePath = product ? "" : goneProductCategoryPath(key);
     page = gonePath
       ? { status: 301, location: gonePath }
       : !product
       ? { status: 404, html: renderMissingProductHtml(productHtmlCache.shell) }
+      : canonicalPath && canonicalPath !== key
+        ? { status: 301, location: canonicalPath }
       : product.soldOut
         ? { status: 200, html: renderSoldOutProductHtml(productHtmlCache.shell, product) }
         : { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) };
@@ -5920,13 +5931,28 @@ const server = http.createServer(async (req, res) => {
     // Warm index only: a cold HTML request must not wait for the catalog build.
     const warmIndex = storefrontCatalogMemo.active && storefrontCatalogMemo.active.index;
     if (warmIndex) {
-      const legacyTarget = resolveLegacyProductPath(
-        warmIndex.routeIndex,
-        productRoute.segment,
-        productRoute.slug
-      );
+      const legacyTarget =
+        resolveLegacyProductPath(
+          warmIndex.routeIndex,
+          productRoute.segment,
+          productRoute.rawSlug || productRoute.slug
+        ) ||
+        resolveLegacyProductPath(warmIndex.routeIndex, productRoute.segment, productRoute.slug);
       if (legacyTarget && legacyTarget !== urlPath) {
         return permanentRedirect(res, legacyTarget + search);
+      }
+      if (productRoute.rawSlug && productRoute.rawSlug !== productRoute.slug) {
+        const canonicalId = resolveProductIdFromRoute(
+          warmIndex.routeIndex,
+          productRoute.segment,
+          productRoute.slug
+        );
+        const canonical =
+          (canonicalId && warmIndex.routeIndex.byId[canonicalId]) ||
+          "";
+        if (canonical && canonical !== urlPath) {
+          return permanentRedirect(res, canonical + search);
+        }
       }
     }
     const htmlPath = safeJoin(ROOT, "/urun-detay.html");
