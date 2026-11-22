@@ -86,9 +86,13 @@ test("missing product page is noindex; category SSR uses tree names and 404s unk
   );
   assert.match(html, /<title>Taşınabilir Bilgisayarlar Fiyatları ve Modelleri \| Patygo Teknoloji<\/title>/);
   assert.match(html, /data-catalog-title>Taşınabilir Bilgisayarlar<\/h1>/);
-  assert.match(html, /data-catalog-lead>Bu kategorideki ürünleri/);
+  assert.match(html, /data-catalog-lead>Bu ara kategorideki ürünleri/);
   assert.doesNotMatch(html, /Taşınabilir Bilgisayarlar ürünlerini/);
-  assert.match(html, /data-catalog-lead>[^<]*inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz/);
+  assert.doesNotMatch(
+    html,
+    /KDV dahil güncel fiyatlarla inceleyebilir; güvenli ödeme ile Patygo Teknoloji üzerinden sipariş verebilirsiniz/
+  );
+  assert.match(html, /data-catalog-lead>[^<]*KDV dahil fiyat listesinden siparişinizi oluşturabilirsiniz/);
   assert.doesNotMatch(html, /sipariş edilebilir|stoktakiler/);
   assert.match(html, /data-catalog-seo-heading>Taşınabilir Bilgisayarlar hakkında</);
   assert.match(html, /data-catalog-seo-body><p>/);
