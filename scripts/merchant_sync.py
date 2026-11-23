@@ -259,11 +259,37 @@ def main() -> int:
 
     ok = 0
     err = 0
+    consecutive_auth = 0
+
+    def refresh_token(force: bool = False) -> str:
+        nonlocal creds, token
+        from google.auth.transport.requests import Request
+
+        if force or (creds.expired and creds.refresh_token):
+            creds.refresh(Request())
+            token = creds.token
+            print("token_refreshed", flush=True)
+        return token
+
     for i, product_input in enumerate(inputs):
+        if ok > 0 and ok % 400 == 0:
+            try:
+                refresh_token(force=True)
+            except Exception as e:
+                print("token_refresh_warn", type(e).__name__, flush=True)
         status, body = insert_product(account, ds_id, token, product_input)
-        done = skip + ok + 1
+        if status == 401:
+            consecutive_auth += 1
+            try:
+                refresh_token(force=True)
+                status, body = insert_product(account, ds_id, token, product_input)
+            except Exception as e:
+                print("token_refresh_fail", type(e).__name__, flush=True)
+        else:
+            consecutive_auth = 0
         if status in (200, 201):
             ok += 1
+            err = 0  # reset hard-stop window after recovery
             done = skip + ok
             if ok <= 3 or done % 100 == 0:
                 print("insert_ok", done, product_input.get("offerId"), flush=True)
@@ -276,7 +302,7 @@ def main() -> int:
                 str(body.get("error", ""))[:240],
                 flush=True,
             )
-            if err >= 20:
+            if consecutive_auth >= 5 or err >= 20:
                 print("too_many_errors_stop", flush=True)
                 break
         if args.sleep_ms > 0:
