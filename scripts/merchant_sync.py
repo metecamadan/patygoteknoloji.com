@@ -50,20 +50,31 @@ def load_creds():
     raise SystemExit(f"refresh_failed {type(last_err).__name__}")
 
 
-def http_json(method: str, url: str, token: str, body: dict | None = None):
+def http_json(method: str, url: str, token: str, body: dict | None = None, retries: int = 4):
     data = None
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     if body is not None:
         data = json.dumps(body).encode("utf-8")
         headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            raw = resp.read().decode("utf-8")
-            return resp.status, json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8", "replace")
-        return e.code, {"error": err_body[:1200]}
+    last_err: Exception | None = None
+    for attempt in range(retries):
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                raw = resp.read().decode("utf-8")
+                return resp.status, json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", "replace")
+            # Retry transient 5xx / 429
+            if e.code in (429, 500, 502, 503, 504) and attempt + 1 < retries:
+                time.sleep(2 + attempt * 2)
+                continue
+            return e.code, {"error": err_body[:1200]}
+        except (TimeoutError, urllib.error.URLError, ConnectionResetError, OSError) as e:
+            last_err = e
+            print("http_retry", attempt, type(e).__name__)
+            time.sleep(2 + attempt * 2)
+    return 599, {"error": f"network_failed {type(last_err).__name__ if last_err else 'unknown'}"}
 
 
 def ensure_api_ds(cfg: dict, token: str) -> tuple[dict, str]:
@@ -185,6 +196,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--from-file", default="", help="Use exported JSON instead of local catalog")
+    parser.add_argument("--skip", type=int, default=0, help="Skip first N inputs (resume)")
     parser.add_argument("--delete-missing", action="store_true", help="Delete offerIds not in export")
     parser.add_argument("--sleep-ms", type=int, default=50)
     args = parser.parse_args()
@@ -219,6 +231,10 @@ def main() -> int:
     inputs = payload.get("inputs") or []
     if args.limit > 0:
         inputs = inputs[: args.limit]
+    skip = max(0, int(args.skip or 0))
+    if skip:
+        inputs = inputs[skip:]
+        print("resume_skip", skip)
     print("export_count", len(inputs), "eligible", payload.get("eligible"))
 
     if args.dry_run and args.from_file:
@@ -245,10 +261,12 @@ def main() -> int:
     err = 0
     for i, product_input in enumerate(inputs):
         status, body = insert_product(account, ds_id, token, product_input)
+        done = skip + ok + 1
         if status in (200, 201):
             ok += 1
-            if ok <= 3 or ok % 100 == 0:
-                print("insert_ok", ok, product_input.get("offerId"))
+            done = skip + ok
+            if ok <= 3 or done % 100 == 0:
+                print("insert_ok", done, product_input.get("offerId"), flush=True)
         else:
             err += 1
             print(
@@ -256,9 +274,10 @@ def main() -> int:
                 status,
                 product_input.get("offerId"),
                 str(body.get("error", ""))[:240],
+                flush=True,
             )
             if err >= 20:
-                print("too_many_errors_stop")
+                print("too_many_errors_stop", flush=True)
                 break
         if args.sleep_ms > 0:
             time.sleep(args.sleep_ms / 1000.0)
