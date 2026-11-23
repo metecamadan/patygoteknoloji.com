@@ -21,7 +21,9 @@ Kullanıcı Yurtiçi'den isteyecek:
 
 Gelince: kullanıcı `python scripts/vps_set_yurtici.py` → mod `live` (sonunda bağlantı OK/HATA yazar). Bilgiler sohbete yazılmaz.
 
-Güncelleme (22 Kas 2026): GÜ + AÜ web servis satırları geldi (müşteri 1240096365, çıkış 1010 YEŞİLPINAR, tanım 20261016). VPS `.env` live + GÜ yazıldı. `pingYurtici` hem GÜ hem AÜ için Yurtiçi cevabı: kullanıcı/parola örtüşmüyor. Uçtan uca deneme **önce** Yurtiçi IT: canlı WS + IP `87.76.157.41` aktivasyonu / parola teyidi.
+Güncelleme (22 Kas 2026): GÖ + AÖ web servis satırları geldi (müşteri 1240096365, çıkış 1010 YEŞİLPINAR, tanım 20261016).
+
+Güncelleme (23 Kas 2026): IP `87.76.157.41` verildi teyidi + VPS çıkış aynı. Canlı `ws.yurticikargo.com` ping: **AÖ** (`1010A…`) → OK (kargo anahtarı yok = auth/IP geçti). **GÖ** (`1010G…`) → hâlâ «kullanıcı ve parola örtüşmüyor». VPS `.env` şimdilik çalışan AÖ + `live` (mağaza için asıl GÖ lazım — Yurtiçi’ye GÖ parola/aktivasyon). Şifre sohbete/kurala yazılmaz.
 
 Deneme planı (kullanıcı kararı 12 Eki 2026): test ortamında deneme **yok**; canlı bilgiler gelince uçtan uca gerçek deneme:
 
@@ -32,17 +34,29 @@ Deneme planı (kullanıcı kararı 12 Eki 2026): test ortamında deneme **yok**;
 
 Resmî WSDL: `tests/fixtures/yurtici-shipping-order-dispatcher.wsdl` (test: `https://testws.yurticikargo.com/...`, canlı: `https://ws.yurticikargo.com/...`).
 
-### 2. Kolay Gelsin — API bilgileri (12 Eki 2026)
+### 2. Kolay Gelsin — API entegrasyonu (12 Eki 2026; doküman 23 Kas 2026)
 
-Agent'ta resmî doküman yok; açık kaynaklar çelişiyor (eski Sendeo `LoginAES` müşteri kodu+şifre / yeni REST + Bearer token; adresler `apiintg.kolaygelsin.com`, `apiintg.klyglsn.com`, `api.kolaygelsin.com`, `api.sendeo.com.tr`). Kullanıcı Kolay Gelsin'den isteyecek:
+Resmî doküman: https://klyglsn.github.io/web-service-doc/ (kullanıcı iletti 23 Kas).
 
-- Resmî entegrasyon dokümanı (hangi API: REST token'lı entegrasyon API'si).
-- Test ve canlı API adresi.
-- API kullanıcı adı + API token (yıllık yenileniyor mu?), müşteri ID (CustomerId).
-- Gönderici adres ID (panelde tanımlı çıkış adresi / depo).
-- IP kısıtı var mı (varsa `87.76.157.41`).
-- Etiket: kendi barkodları/etiket PDF'i mi, bizim barkodumuz mu.
-- Durum bildirimi: webhook mu, sorgulama mı.
+**Kesinleşen (dokümandan):**
+
+- API tabanı: `https://apiintg.kolaygelsin.com` (tarayıcıda açılmaz). TLS 1.2.
+- Auth: `Token/LoginAES` → Bearer token; süre **20 saat**; bitince yeniden login.
+- Test hesabı: müşteri `TEST`; şifre → `entegrasyon@kolaygelsin.com`. Canlı API kullanıcısı: `sube.kolaygelsin.com` → Kullanıcılar → tip **API**.
+- IP whitelist **yok** (herkese açık). Çok hatalı login → blok; mail ile açtırılır.
+- Akış: `SetDelivery` → (opsiyonel `CargoMeasurementUpdate`) → `TrackDelivery` / `CancelDelivery`; barkod `GetBarcode` / `GetBarcodeByTrackingNumber`; il-ilçe `GetCityDistricts`.
+- Mağaza senaryosu: **DeliveryType = 1** (lokasyon → müşteri). `ReferenceNo` = bizim tekil no (örn. `PTY-…`, max 50). `PaymentType=1`, `CollectionType=0`, `ServiceType=1`.
+- Etiket: kendi `ReferenceNo` barkodumuz **veya** onların Base64/ZPL (`BarcodeLabelType` 0–3; V2 flag).
+- Durum: webhook yok; `TrackDelivery` **≥30 dk** aralık (cache). Statü `111` = Teslim Edildi, `101` = iş emri (iptal edilebilir).
+
+**Hâlâ kullanıcıdan / şubeden:**
+
+- Test şifresi (`entegrasyon@kolaygelsin.com`) veya canlı API kullanıcı + şifre.
+- Gönderici sabit adres: depo açık adres + Kolay Gelsin `SenderCityId` / `SenderDistrictId` (GetCityDistricts ile).
+- Canlı geçişte API kullanıcısının `sube.kolaygelsin.com`’da tanımlandığı teyidi.
+- Tercih: bizim A5/`ReferenceNo` mı, onların barkod PDF/Base64 mı (Yurtiçi ile aynı A5 yolu mı?).
+
+Kod: henüz `lib/kolay-gelsin.js` yok; Yurtiçi `lib/yurtici-kargo.js` + `lib/cargo-shipments.js` yanına eklenecek. Credential gelince scaffold + ping.
 
 ### 3. Tedarikçi ↔ satış durum tablosu — tekrar bakılacak (15 Eki 2026)
 
@@ -141,6 +155,16 @@ Yapılacak:
 
 - `server.js` / TCMB kur çekim yolunu bul; kök neden (DNS, TLS, URL, timeout, engel).
 - Canlıda kurun güncellendiğini doğrula; sessizce yeşil gösterme.
+
+### 8. Google Merchant ürün feed senkronu (23 Kas 2026)
+
+Güncelleme (23 Kas 2026): API primary DS `Patygo API TR` / `10798234595` (website AUTOFEED `10797241334` duruyor). Mapper `lib/google-merchant.js` = Akakçe eligible. Script: `scripts/merchant_export_payload.js` + `scripts/merchant_sync.py` + VPS export `scripts/_merchant_vps_export.py`. OAuth yerel `%USERPROFILE%\.patygo\` (IPv4). Smoke insert OK; tam sync ~5721 ürün (Akakçe kuralları: stok 0/tükendi yok).
+
+Sonraki:
+
+- Tam sync bitince Merchant UI / processed products gecikmesi.
+- Panel özeti / VPS zamanlanmış sync yok (bilinçli).
+- `--delete-missing` yalnız API DS ürünleri için kullanılmalı (AUTOFEED’e dokunma).
 
 ## Kapandı
 
