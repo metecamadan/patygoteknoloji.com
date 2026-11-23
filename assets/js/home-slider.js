@@ -171,30 +171,38 @@
     article.setAttribute("aria-roledescription", "slide");
     var thumb = deal.productImage || "";
     var dealHref = productHref(deal.productUrlPath);
+    var eyebrow = String(deal.eyebrow || "").trim() || "Fırsat";
     article.innerHTML =
       '<a class="home-deal-card" href="' +
       escapeAttr(dealHref) +
       '">' +
-      '<span class="home-deal-eyebrow">' +
-      escapeHtml(deal.eyebrow || "Fırsat") +
-      "</span>" +
       '<div class="home-deal-media">' +
+      '<span class="home-deal-badges" aria-hidden="true">' +
+      '<span class="home-deal-badge">Fırsat</span>' +
+      '<span class="home-deal-eyebrow">' +
+      escapeHtml(eyebrow) +
+      "</span>" +
+      "</span>" +
       '<img src="' +
       escapeAttr(thumb) +
       '" alt="" loading="' +
       (index === 0 ? "eager" : "lazy") +
       '" decoding="async" />' +
       "</div>" +
+      '<div class="home-deal-body">' +
       '<p class="home-deal-brand">' +
       escapeHtml(deal.brand || "") +
       "</p>" +
       '<h3 class="home-deal-title">' +
       escapeHtml(shortName(deal.name, 64)) +
       "</h3>" +
+      '<div class="home-deal-foot">' +
       '<div class="home-deal-price"><strong>' +
       escapeHtml(formatTry(deal.priceIncl)) +
       "</strong><span>KDV dahil</span></div>" +
-      '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
+      '<span class="btn btn-primary home-deal-cta">Fırsatı yakala</span>' +
+      "</div>" +
+      "</div>" +
       "</a>";
     return article;
   }
