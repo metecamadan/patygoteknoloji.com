@@ -81,6 +81,28 @@ test("normalizeConfig drops slides without productId and defaults tone", () => {
   assert.equal(cfg.slides[1].active, true);
 });
 
+test("normalizeSlide maps legacy imageOverride to imageDesktop and keeps imageMobile", () => {
+  const cfg = normalizeConfig({
+    slides: [
+      {
+        productId: "legacy",
+        imageOverride: "/assets/img/home-slider/old-desk.jpg",
+        imageMobile: "/assets/img/home-slider/old-mob.jpg",
+      },
+      {
+        productId: "new",
+        imageDesktop: "/assets/img/home-slider/desk.jpg",
+        imageMobile: "",
+      },
+    ],
+  });
+  assert.equal(cfg.slides[0].imageDesktop, "/assets/img/home-slider/old-desk.jpg");
+  assert.equal(cfg.slides[0].imageOverride, "/assets/img/home-slider/old-desk.jpg");
+  assert.equal(cfg.slides[0].imageMobile, "/assets/img/home-slider/old-mob.jpg");
+  assert.equal(cfg.slides[1].imageDesktop, "/assets/img/home-slider/desk.jpg");
+  assert.equal(cfg.slides[1].imageMobile, "");
+});
+
 test("public home-slider empty by default; admin save enriches live product", async (t) => {
   const password = "test-admin-password";
   const { baseUrl } = await spawnTestServer(
@@ -106,6 +128,8 @@ test("public home-slider empty by default; admin save enriches live product", as
           eyebrow: "Notebook fırsatları",
           tone: "blue",
           titleOverride: "Test başlık",
+          imageDesktop: "/assets/img/home-slider/desk-test.webp",
+          imageMobile: "/assets/img/home-slider/mob-test.webp",
           active: true,
         },
         {
@@ -128,8 +152,18 @@ test("public home-slider empty by default; admin save enriches live product", as
   assert.equal(pub2Body.slides[0].eyebrow, "Notebook fırsatları");
   assert.equal(pub2Body.slides[0].tone, "blue");
   assert.equal(pub2Body.slides[0].name, "Test başlık");
-  assert.ok(pub2Body.slides[0].image);
+  assert.equal(pub2Body.slides[0].imageDesktop, "/assets/img/home-slider/desk-test.webp");
+  assert.equal(pub2Body.slides[0].imageMobile, "/assets/img/home-slider/mob-test.webp");
+  assert.equal(pub2Body.slides[0].image, "/assets/img/home-slider/desk-test.webp");
   assert.ok(pub2Body.slides[0].productImage);
   assert.ok(pub2Body.slides[0].urlPath);
   assert.ok(pub2Body.slides[0].priceIncl > 0);
+});
+
+test("home-slider storefront uses picture with desktop and mobile sources", () => {
+  const js = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "home-slider.js"), "utf8");
+  assert.match(js, /<picture>/);
+  assert.match(js, /max-width:\s*900px/);
+  assert.match(js, /imageDesktop/);
+  assert.match(js, /imageMobile/);
 });

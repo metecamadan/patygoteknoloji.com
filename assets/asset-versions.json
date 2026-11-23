@@ -2,24 +2,24 @@
   "version": 1,
   "files": {
     "/assets/css/admin.css": {
-      "v": "siparis-48",
-      "sha256": "4ab20ae7e1580158e262a229ffb826cdb37eac598605086c354926a941476667"
+      "v": "siparis-49",
+      "sha256": "ac48fb6581c6e7a3667ea7dea662c3650307134c0e6b154a057b7c0429401488"
     },
     "/assets/css/style.css": {
-      "v": "storefront-p60",
-      "sha256": "035540966f1a9ddb1d9e4c6dd67fe206a04c81db31f9c41a132de143857bb9a4"
+      "v": "storefront-p61",
+      "sha256": "6ec6b4ce567191fe46de501a70428b90ba09f9e2a0a39769350dfef4f1fb5a15"
     },
     "/assets/geo/tr-districts.json": {
       "v": "ilce-1",
       "sha256": "a1b4184976a8465dea908da2b5021db4f17994faa2bbc52f66a530966b539958"
     },
     "/assets/js/admin-login.js": {
-      "v": "siparis-50",
-      "sha256": "9948236f503761bfddb68bd8b41fa2edd7f7e6210be014e7388333ccf358b7b0"
+      "v": "siparis-51",
+      "sha256": "9d6051348d26409b208a42cf88e97d83ed69ada95d8d31bc88e4808e75e64f17"
     },
     "/assets/js/admin-panel.js": {
-      "v": "siparis-50",
-      "sha256": "6f7e8b18f4ec8ca6ab8e1588ccb7d92b4de23142ed7ec4f3daa0b415c86fd543"
+      "v": "siparis-51",
+      "sha256": "6d855e81ab6cd55386eb1ca64822dad75cad9610c8cc886c82f11742c7134f14"
     },
     "/assets/js/cargo-label.js": {
       "v": "cargo-1",
@@ -54,8 +54,8 @@
       "sha256": "61e3d548d3132713571bad2c3a5179b38b9fcc1d89ed3c20f3494cccfcbd5773"
     },
     "/assets/js/home-slider.js": {
-      "v": "slider-4",
-      "sha256": "d3bc7d4d29ea9a41aba8347ece406fc669fb53e25c2c230c013dbca9930d9c9d"
+      "v": "slider-5",
+      "sha256": "d57ef47194cb89c591b3ac02aa22d151937d70e0cb19a2e31e36fdb93ea95f0b"
     },
     "/assets/js/installments.js": {
       "v": "taksit-1",

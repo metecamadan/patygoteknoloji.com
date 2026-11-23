@@ -2750,6 +2750,27 @@ body.admin-modal-open {
   gap: 14px;
   margin-top: 12px;
 }
+.admin-home-slide-upload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.admin-home-slide-upload input[type="url"] {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.admin-home-slide-thumb {
+  margin: 8px 0 0;
+}
+.admin-home-slide-thumb img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
 .admin-home-slide {
   border: 1px solid var(--line);
   border-radius: 14px;

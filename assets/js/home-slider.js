@@ -92,17 +92,29 @@
     article.className = "home-banner-slide" + (index === 0 ? " is-active" : "");
     article.setAttribute("aria-roledescription", "slide");
     const href = productHref(slide.urlPath);
+    const desktop = slide.imageDesktop || slide.image || "";
+    const mobile = slide.imageMobile || desktop;
+    const alt = slide.eyebrow
+      ? slide.eyebrow + " — " + (slide.name || "")
+      : slide.name || "Kampanya";
+    const loading = index === 0 ? "eager" : "lazy";
+    // <picture>: both sources stay in HTML for SEO; browser picks by viewport.
     article.innerHTML =
       '<a class="home-banner-link" href="' +
       escapeAttr(href) +
       '">' +
+      "<picture>" +
+      (mobile && mobile !== desktop
+        ? '<source media="(max-width: 900px)" srcset="' + escapeAttr(mobile) + '" />'
+        : "") +
       '<img src="' +
-      escapeAttr(slide.image) +
+      escapeAttr(desktop) +
       '" alt="' +
-      escapeAttr(slide.eyebrow ? slide.eyebrow + " — " + (slide.name || "") : slide.name || "Kampanya") +
-      '" loading="' +
-      (index === 0 ? "eager" : "lazy") +
+      escapeAttr(alt) +
+      '" width="1200" height="350" loading="' +
+      loading +
       '" decoding="async" />' +
+      "</picture>" +
       "</a>";
     return article;
   }

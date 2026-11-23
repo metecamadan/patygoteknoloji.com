@@ -282,6 +282,7 @@ if (IS_PRODUCTION && adminSecurityStore.shouldForcePasswordChange(getAdminPasswo
 const BIND_HOST = process.env.BIND_HOST || (IS_PRODUCTION ? "127.0.0.1" : "0.0.0.0");
 const PRODUCTS_FILE = path.join(DATA_ROOT, "assets", "data", "products.json");
 const PRODUCTS_IMG_DIR = path.join(ROOT, "assets", "img", "products");
+const HOME_SLIDER_IMG_DIR = path.join(ROOT, "assets", "img", "home-slider");
 const SITE_BASE_URL = resolveSiteBaseUrl(process.env.SITE_BASE_URL, PORT, IS_PRODUCTION);
 const rawIdleMs = Number(process.env.ADMIN_IDLE_MS);
 const ADMIN_IDLE_MS =
@@ -411,8 +412,10 @@ function publicHomeSliderSlides() {
     if (!item || item.soldOut === true) continue;
     const catalogImage =
       item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
-    const image = slide.imageOverride || catalogImage;
-    if (!image) continue;
+    const imageDesktop =
+      slide.imageDesktop || slide.imageOverride || catalogImage || "";
+    const imageMobile = slide.imageMobile || imageDesktop;
+    if (!imageDesktop) continue;
     let urlPath = String(item.urlPath || "").trim();
     if (urlPath && !urlPath.startsWith("/")) urlPath = "/" + urlPath;
     slides.push({
@@ -420,10 +423,12 @@ function publicHomeSliderSlides() {
       productId: slide.productId,
       brand: String(item.brand || "").trim(),
       name: slide.titleOverride || String(item.name || "").trim(),
-      /** Sol banner (özel görsel varsa o, yoksa katalog). */
-      image,
+      /** Sol banner masaüstü (özel görsel veya katalog). */
+      image: imageDesktop,
+      imageDesktop,
+      imageMobile,
       /** Sağ ürün kartı her zaman katalog görseli. */
-      productImage: catalogImage || image,
+      productImage: catalogImage || imageDesktop,
       urlPath,
       priceIncl: priceInclVatAmount(item),
       eyebrow: slide.eyebrow || "Fırsat",
@@ -707,6 +712,7 @@ const CATEGORIES = new Set(["bilgisayar", "yazici", "kucuk-ev", "beyaz-esya"]);
 
 fs.mkdirSync(path.dirname(PRODUCTS_FILE), { recursive: true });
 fs.mkdirSync(PRODUCTS_IMG_DIR, { recursive: true });
+fs.mkdirSync(HOME_SLIDER_IMG_DIR, { recursive: true });
 
 function securityHeaders(extra) {
   return Object.assign(
@@ -5380,15 +5386,19 @@ async function handleApi(req, res, urlPath) {
         return json(res, 400, { ok: false, error: "Görsel içeriği bildirilen türle uyuşmuyor." });
       }
       const ext = detected;
+      const kind = String(body.kind || "").trim().toLowerCase();
+      const forHomeSlider = kind === "home-slider" || kind === "homeslider";
       const name =
-        slugify(body.name || "urun") +
+        slugify(body.name || (forHomeSlider ? "kampanya" : "urun")) +
         "-" +
         Date.now().toString(36) +
         "." +
         ext;
-      const out = path.join(PRODUCTS_IMG_DIR, name);
+      const outDir = forHomeSlider ? HOME_SLIDER_IMG_DIR : PRODUCTS_IMG_DIR;
+      const publicPrefix = forHomeSlider ? "/assets/img/home-slider/" : "/assets/img/products/";
+      const out = path.join(outDir, name);
       fs.writeFileSync(out, buf);
-      return json(res, 200, { ok: true, url: "/assets/img/products/" + name });
+      return json(res, 200, { ok: true, url: publicPrefix + name });
     } catch (err) {
       return json(res, 400, { ok: false, error: err.message || "Yükleme başarısız" });
     }

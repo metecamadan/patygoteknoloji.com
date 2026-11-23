@@ -8322,17 +8322,43 @@
 
   function readHomeSliderCard(card) {
     if (!card) return null;
+    const imageDesktop = String(
+      (card.querySelector("[data-field=imageDesktop]") || {}).value || ""
+    ).trim();
+    const imageMobile = String(
+      (card.querySelector("[data-field=imageMobile]") || {}).value || ""
+    ).trim();
     return {
       id: card.dataset.slideId || homeSliderNewId(),
       productId: String((card.querySelector("[data-field=productId]") || {}).value || "").trim(),
       eyebrow: String((card.querySelector("[data-field=eyebrow]") || {}).value || "").trim(),
       titleOverride: String((card.querySelector("[data-field=titleOverride]") || {}).value || "").trim(),
-      imageOverride: String((card.querySelector("[data-field=imageOverride]") || {}).value || "").trim(),
+      imageDesktop,
+      imageMobile,
+      imageOverride: imageDesktop,
       tone: String((card.querySelector("[data-field=tone]") || {}).value || "navy").trim(),
       active: Boolean(card.querySelector("[data-field=active]") && card.querySelector("[data-field=active]").checked),
       sort: Number(card.dataset.sort || 0) || 0,
       product: null,
     };
+  }
+
+  async function uploadHomeSliderImage(file, label) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Dosya okunamadı"));
+      reader.readAsDataURL(file);
+    });
+    const uploaded = await api("/api/admin/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        dataUrl,
+        name: "kampanya-" + (label || "slide"),
+        kind: "home-slider",
+      }),
+    });
+    return uploaded && uploaded.url ? String(uploaded.url) : "";
   }
 
   function collectHomeSliderDraft() {
@@ -8447,11 +8473,34 @@
           '<input type="text" data-field="titleOverride" maxlength="160" value="' +
           escapeHomeSliderHtml(slide.titleOverride || "") +
           '" placeholder="Kısa başlık (isteğe bağlı)" /></div>' +
-          '<div class="field"><label>Sol kampanya görseli URL (boş = katalog)</label>' +
-          '<input type="url" data-field="imageOverride" maxlength="500" value="' +
-          escapeHomeSliderHtml(slide.imageOverride || "") +
-          '" placeholder="https://… veya /media/…" />' +
-          '<p class="admin-field-help">Önerilen: 1200×350 (masaüstü). Mobilde 220px yüksekliğe cover ile sığar.</p></div>' +
+          '<div class="field"><label>Masaüstü kampanya görseli (1200×350)</label>' +
+          '<div class="admin-home-slide-upload">' +
+          '<input type="url" data-field="imageDesktop" maxlength="500" value="' +
+          escapeHomeSliderHtml(slide.imageDesktop || slide.imageOverride || "") +
+          '" placeholder="URL veya dosya yükle" />' +
+          '<input type="file" data-field="imageDesktopFile" accept="image/png,image/jpeg,image/webp" hidden />' +
+          '<button type="button" class="btn btn-outline btn-xs" data-upload-desktop>Yükle</button>' +
+          "</div>" +
+          (slide.imageDesktop || slide.imageOverride
+            ? '<p class="admin-home-slide-thumb"><img src="' +
+              escapeHomeSliderHtml(slide.imageDesktop || slide.imageOverride) +
+              '" alt="" width="160" height="48" loading="lazy" /></p>'
+            : "") +
+          '<p class="admin-field-help">Boş = katalog ürün görseli. SEO için site içi yükleme tercih.</p></div>' +
+          '<div class="field"><label>Mobil kampanya görseli (800×220, ≤900px)</label>' +
+          '<div class="admin-home-slide-upload">' +
+          '<input type="url" data-field="imageMobile" maxlength="500" value="' +
+          escapeHomeSliderHtml(slide.imageMobile || "") +
+          '" placeholder="URL veya dosya yükle (isteğe bağlı)" />' +
+          '<input type="file" data-field="imageMobileFile" accept="image/png,image/jpeg,image/webp" hidden />' +
+          '<button type="button" class="btn btn-outline btn-xs" data-upload-mobile>Yükle</button>' +
+          "</div>" +
+          (slide.imageMobile
+            ? '<p class="admin-home-slide-thumb"><img src="' +
+              escapeHomeSliderHtml(slide.imageMobile) +
+              '" alt="" width="160" height="44" loading="lazy" /></p>'
+            : "") +
+          '<p class="admin-field-help">Boşsa masaüstü görseli mobil için de kullanılır.</p></div>' +
           '<div class="admin-home-slide-row">' +
           '<div class="field"><label>Ton</label><select data-field="tone">' +
           toneOpts +
@@ -8619,6 +8668,38 @@
         bindAllHomeSliderCards();
       });
     }
+
+    function wireUpload(btnSel, fileSel, urlSel) {
+      const btn = card.querySelector(btnSel);
+      const fileInput = card.querySelector(fileSel);
+      const urlInput = card.querySelector(urlSel);
+      if (!btn || !fileInput || !urlInput) return;
+      btn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = "";
+        if (!file) return;
+        btn.disabled = true;
+        try {
+          const url = await uploadHomeSliderImage(
+            file,
+            urlSel.includes("Mobile") ? "mobil" : "masaustu"
+          );
+          if (!url) throw new Error("Yükleme yanıtı boş");
+          urlInput.value = url;
+          homeSliderDraft = collectHomeSliderDraft();
+          renderHomeSliderList();
+          bindAllHomeSliderCards();
+          note(homeSliderNote, "ok", "Görsel yüklendi — Kaydet’e basmayı unutma.");
+        } catch (err) {
+          note(homeSliderNote, "err", (err && err.message) || "Görsel yüklenemedi");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+    wireUpload("[data-upload-desktop]", "[data-field=imageDesktopFile]", "[data-field=imageDesktop]");
+    wireUpload("[data-upload-mobile]", "[data-field=imageMobileFile]", "[data-field=imageMobile]");
   }
 
   function bindAllHomeSliderCards() {
@@ -8653,6 +8734,8 @@
         productId: "",
         eyebrow: "",
         titleOverride: "",
+        imageDesktop: "",
+        imageMobile: "",
         imageOverride: "",
         tone: "navy",
         active: true,
@@ -8684,7 +8767,9 @@
               productId: slide.productId,
               eyebrow: slide.eyebrow,
               titleOverride: slide.titleOverride,
-              imageOverride: slide.imageOverride,
+              imageDesktop: slide.imageDesktop || slide.imageOverride || "",
+              imageMobile: slide.imageMobile || "",
+              imageOverride: slide.imageDesktop || slide.imageOverride || "",
               tone: slide.tone,
               active: slide.active !== false,
               sort: index,
