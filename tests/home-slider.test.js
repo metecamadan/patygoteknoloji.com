@@ -210,8 +210,11 @@ test("admin panel: separate campaign and deal lists max 4 deals", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
   assert.match(html, /id="homeDealList"/);
   assert.match(html, /id="homeDealAddBtn"/);
+  assert.match(html, /id="homeDealAddSearch"/);
   assert.match(js, /homeDealMax/);
+  assert.match(js, /appendHomeDealProduct/);
   assert.match(js, /collectHomeDealDraft/);
   assert.match(js, /deals:\s*homeDealDraft/);
   assert.match(js, /Kaydedildi:/);
+  assert.match(js, /Listeye eklendi/);
 });

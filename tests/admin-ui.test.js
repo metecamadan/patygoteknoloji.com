@@ -640,7 +640,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-54/);
+  assert.match(html, /admin\.css\?v=siparis-55/);
 });
 
 test("category rows edit their own margin and critical stock; inherited values are placeholders", () => {
@@ -706,8 +706,8 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
   assert.match(script, /fetch\("\/api\/admin\/export"/);
   assert.match(script, /Authorization: "Bearer " \+ token/);
   assert.match(script, /URL\.revokeObjectURL\(url\)/);
-  assert.match(loginScript, /admin-panel\.js\?v=siparis-54/);
-  assert.match(html, /admin-login\.js\?v=siparis-54/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-55/);
+  assert.match(html, /admin-login\.js\?v=siparis-55/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {

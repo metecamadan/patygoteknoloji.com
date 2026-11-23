@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/style.css?v=storefront-p62" />
-  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-54" />
+  <link rel="stylesheet" href="/assets/css/admin.css?v=siparis-55" />
 </head>
 <body class="admin-body">
   <div id="loginView" class="admin-login">
@@ -1241,9 +1241,14 @@
               <div id="homeSliderList" class="admin-home-slider-list" aria-live="polite"></div>
               <div class="admin-home-slider-section-head" style="margin-top:1.25rem">
                 <h3 class="admin-section-title">Sağ — Fırsat ürünleri</h3>
-                <button type="button" class="btn btn-outline btn-sm" id="homeDealAddBtn">+ Ürün ekle</button>
+                <button type="button" class="btn btn-outline btn-sm" id="homeDealAddBtn">+ Boş satır</button>
               </div>
-              <p class="admin-field-help" id="homeDealHint">En fazla 4 fırsat ürünü. Kategori seçince üst etiket otomatik dolar.</p>
+              <p class="admin-field-help" id="homeDealHint">En fazla 4 ürün. Aşağıdan ara → seçince listeye eklenir (hepsi görünür). Kaydet’i unutma.</p>
+              <div class="field admin-home-deal-add" id="homeDealAddSearchWrap">
+                <label for="homeDealAddSearch">Listeye ürün ekle</label>
+                <input type="search" id="homeDealAddSearch" placeholder="Ad veya marka yaz, sonuçtan seç…" autocomplete="off" />
+                <div class="admin-home-slide-suggest" id="homeDealAddSuggest" hidden></div>
+              </div>
               <div id="homeDealList" class="admin-home-slider-list" aria-live="polite"></div>
               <p class="admin-note" id="homeSliderNote" role="status"></p>
             </section>
@@ -1415,6 +1420,6 @@
     </div>
   </div>
 
-  <script defer src="/assets/js/admin-login.js?v=siparis-54"></script>
+  <script defer src="/assets/js/admin-login.js?v=siparis-55"></script>
 </body>
 </html>

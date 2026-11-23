@@ -2756,6 +2756,18 @@ body.admin-modal-open {
   font-size: 1rem;
   font-weight: 700;
 }
+.admin-home-deal-add {
+  margin: 0.5rem 0 0.75rem;
+  position: relative;
+  max-width: 520px;
+}
+.admin-home-deal-add .admin-home-slide-suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin-top: 4px;
+}
 .admin-home-slider-list {
   display: flex;
   flex-direction: column;

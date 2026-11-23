@@ -8304,8 +8304,11 @@
   let homeDealDraft = [];
   let homeSliderMax = 8;
   let homeDealMax = 4;
+  let homeSliderDirty = false;
   let homeSliderTones = ["navy", "blue", "indigo", "teal", "slate"];
   let homeSliderCategories = [];
+  const homeDealAddSearch = document.getElementById("homeDealAddSearch");
+  const homeDealAddSuggest = document.getElementById("homeDealAddSuggest");
   const HOME_SLIDER_TONE_LABELS = {
     navy: "Lacivert",
     blue: "Mavi",
@@ -8626,8 +8629,8 @@
           escapeHomeSliderHtml(catLabel) +
           "</span></p></div></div>" +
           '<div class="admin-home-slide-fields">' +
-          '<div class="field"><label>Fırsat ürünü ara</label>' +
-          '<input type="search" data-field="productSearch" placeholder="Ad veya marka…" autocomplete="off" />' +
+          '<div class="field"><label>Ürünü değiştir</label>' +
+          '<input type="search" data-field="productSearch" placeholder="Bu satırdaki ürünü değiştir…" autocomplete="off" />' +
           '<div class="admin-home-slide-suggest" data-suggest hidden></div></div>' +
           '<input type="hidden" data-field="productId" value="' +
           escapeHomeSliderHtml(deal.productId || "") +
@@ -8669,6 +8672,145 @@
     const data = await res.json();
     return Array.isArray(data.products) ? data.products : [];
   }
+
+  function markHomeSliderDirty() {
+    homeSliderDirty = true;
+  }
+
+  function productPayloadFromPick(btnOrProduct) {
+    if (btnOrProduct && btnOrProduct.dataset) {
+      return {
+        id: btnOrProduct.dataset.pickId || "",
+        name: btnOrProduct.dataset.pickName || "",
+        brand: btnOrProduct.dataset.pickBrand || "",
+        image: btnOrProduct.dataset.pickImage || "",
+        priceIncl: Number(btnOrProduct.dataset.pickPrice || 0) || 0,
+      };
+    }
+    const product = btnOrProduct || {};
+    const img =
+      product.image ||
+      (Array.isArray(product.images) ? product.images.find(Boolean) : "") ||
+      "";
+    return {
+      id: product.id || "",
+      name: product.name || "",
+      brand: product.brand || "",
+      image: img,
+      priceIncl: Number(product.priceIncl || product.price || 0) || 0,
+    };
+  }
+
+  function appendHomeDealProduct(pick) {
+    homeDealDraft = collectHomeDealDraft();
+    const productId = String(pick.id || "").trim();
+    if (!productId) {
+      note(homeSliderNote, "err", "Ürün seçilemedi.");
+      return false;
+    }
+    if (homeDealDraft.some((d) => String(d.productId || "") === productId)) {
+      note(homeSliderNote, "err", "Bu ürün zaten fırsat listesinde.");
+      return false;
+    }
+    if (homeDealDraft.length >= homeDealMax) {
+      note(homeSliderNote, "err", "En fazla " + homeDealMax + " fırsat ürünü eklenebilir.");
+      return false;
+    }
+    // Boş satır varsa onu doldur; yoksa yeni satır ekle
+    const emptyIdx = homeDealDraft.findIndex((d) => !String(d.productId || "").trim());
+    const row = {
+      id: emptyIdx >= 0 ? homeDealDraft[emptyIdx].id : homeSliderNewId("hd_"),
+      productId,
+      categoryKey: emptyIdx >= 0 ? homeDealDraft[emptyIdx].categoryKey || "" : "",
+      categoryName: emptyIdx >= 0 ? homeDealDraft[emptyIdx].categoryName || "" : "",
+      eyebrow: emptyIdx >= 0 ? homeDealDraft[emptyIdx].eyebrow || "" : "",
+      titleOverride: "",
+      active: true,
+      sort: emptyIdx >= 0 ? emptyIdx : homeDealDraft.length,
+      product: {
+        name: pick.name || "",
+        brand: pick.brand || "",
+        image: pick.image || "",
+        priceIncl: pick.priceIncl || 0,
+        soldOut: false,
+      },
+    };
+    if (emptyIdx >= 0) homeDealDraft[emptyIdx] = row;
+    else homeDealDraft.push(row);
+    markHomeSliderDirty();
+    renderHomeDealList();
+    bindAllHomeDealCards();
+    note(
+      homeSliderNote,
+      "ok",
+      "Listeye eklendi (" + homeDealDraft.length + "/" + homeDealMax + "). Kaydet’e bas."
+    );
+    return true;
+  }
+
+  function wireHomeDealAddSearch() {
+    if (!homeDealAddSearch || !homeDealAddSuggest) return;
+    let timer = null;
+    homeDealAddSearch.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = homeDealAddSearch.value;
+      if (String(q || "").trim().length < 2) {
+        homeDealAddSuggest.hidden = true;
+        homeDealAddSuggest.innerHTML = "";
+        return;
+      }
+      timer = setTimeout(async () => {
+        try {
+          const products = await searchHomeSliderProducts(q);
+          if (!products.length) {
+            homeDealAddSuggest.innerHTML = '<p class="admin-field-help">Sonuç yok</p>';
+            homeDealAddSuggest.hidden = false;
+            return;
+          }
+          homeDealAddSuggest.innerHTML = products
+            .map((product) => {
+              const img =
+                product.image ||
+                (Array.isArray(product.images) ? product.images.find(Boolean) : "") ||
+                "";
+              return (
+                '<button type="button" class="admin-home-slide-suggest-item" data-pick-id="' +
+                escapeHomeSliderHtml(product.id) +
+                '" data-pick-name="' +
+                escapeHomeSliderHtml(product.name || "") +
+                '" data-pick-brand="' +
+                escapeHomeSliderHtml(product.brand || "") +
+                '" data-pick-image="' +
+                escapeHomeSliderHtml(img) +
+                '" data-pick-price="' +
+                escapeHomeSliderHtml(product.priceIncl || product.price || "") +
+                '">' +
+                (img
+                  ? '<img src="' + escapeHomeSliderHtml(img) + '" alt="" width="40" height="40" />'
+                  : "") +
+                "<span>" +
+                escapeHomeSliderHtml(product.name || product.id) +
+                "</span></button>"
+              );
+            })
+            .join("");
+          homeDealAddSuggest.hidden = false;
+        } catch (_) {
+          homeDealAddSuggest.hidden = true;
+        }
+      }, 280);
+    });
+    homeDealAddSuggest.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-pick-id]");
+      if (!btn) return;
+      appendHomeDealProduct(productPayloadFromPick(btn));
+      homeDealAddSearch.value = "";
+      homeDealAddSuggest.hidden = true;
+      homeDealAddSuggest.innerHTML = "";
+    });
+  }
+
+  wireHomeDealAddSearch();
 
   function bindHomeSliderCardEvents(card) {
     const catSelect = card.querySelector("[data-field=categoryKey]");
@@ -8808,7 +8950,17 @@
         const btn = ev.target.closest("[data-pick-id]");
         if (!btn) return;
         const idInput = card.querySelector("[data-field=productId]");
-        if (idInput) idInput.value = btn.dataset.pickId || "";
+        const existingId = String((idInput && idInput.value) || "").trim();
+        const pickId = String(btn.dataset.pickId || "").trim();
+        // Dolu satırda farklı ürün seçilirse listeye yeni satır olarak ekle (üzerine yazma)
+        if (existingId && pickId && existingId !== pickId) {
+          appendHomeDealProduct(productPayloadFromPick(btn));
+          searchInput.value = "";
+          suggest.hidden = true;
+          suggest.innerHTML = "";
+          return;
+        }
+        if (idInput) idInput.value = pickId;
         const preview = card.querySelector("[data-product-preview]");
         if (preview) {
           preview.dataset.productName = btn.dataset.pickName || "";
@@ -8838,6 +8990,15 @@
               .filter(Boolean)
               .join(" · ");
           }
+        }
+        markHomeSliderDirty();
+        homeDealDraft = collectHomeDealDraft();
+        if (homeDealHint) {
+          homeDealHint.textContent =
+            homeDealDraft.length +
+            " / " +
+            homeDealMax +
+            " fırsat ürünü · sitede 5 sn’de bir kayar. Stokta olmayan atlanır.";
         }
         searchInput.value = "";
         suggest.hidden = true;
@@ -8904,6 +9065,14 @@
 
   async function loadAdminHomeSlider() {
     if ((!homeSliderList && !homeDealList) || !token) return;
+    if (homeSliderDirty) {
+      note(
+        homeSliderNote,
+        "err",
+        "Kaydedilmemiş değişiklik var — sunucudan yeniden yüklemedim. Kaydet veya sayfayı yenile."
+      );
+      return;
+    }
     note(homeSliderNote, "", "");
     try {
       const data = await api("/api/admin/home-slider");
@@ -8913,6 +9082,7 @@
       homeSliderCategories = Array.isArray(data.categories) ? data.categories : [];
       homeSliderDraft = Array.isArray(data.slides) ? data.slides : [];
       homeDealDraft = Array.isArray(data.deals) ? data.deals : [];
+      homeSliderDirty = false;
       renderHomeSliderList();
       renderHomeDealList();
       bindAllHomeSliderCards();
@@ -8968,9 +9138,15 @@
         sort: homeDealDraft.length,
         product: null,
       });
+      markHomeSliderDirty();
       renderHomeDealList();
       bindAllHomeDealCards();
-      note(homeSliderNote, "", "");
+      note(
+        homeSliderNote,
+        "ok",
+        "Boş satır eklendi (" + homeDealDraft.length + "/" + homeDealMax + "). Üstteki aramadan ürün seç."
+      );
+      if (homeDealAddSearch) homeDealAddSearch.focus();
     });
   }
 
@@ -9040,6 +9216,7 @@
         homeSliderDraft = Array.isArray(saved.slides) ? saved.slides : homeSliderDraft;
         homeDealDraft = Array.isArray(saved.deals) ? saved.deals : homeDealDraft;
         if (Array.isArray(saved.categories)) homeSliderCategories = saved.categories;
+        homeSliderDirty = false;
         renderHomeSliderList();
         renderHomeDealList();
         bindAllHomeSliderCards();
@@ -9051,7 +9228,7 @@
             homeSliderDraft.length +
             " kampanya · " +
             homeDealDraft.length +
-            " fırsat ürünü (5 sn kayar)."
+            " fırsat ürünü (hepsi listede; 5 sn kayar)."
         );
       } catch (err) {
         note(homeSliderNote, "err", err.message || "Kaydedilemedi");
