@@ -2832,6 +2832,15 @@ body.admin-modal-open {
   font-size: 12.5px;
   color: var(--muted);
 }
+.admin-home-slide-tag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
 .admin-home-slide-fields {
   display: grid;
   gap: 10px;

@@ -398,7 +398,34 @@ function priceAlertProduct(productId) {
   return { priceIncl: priceInclVatAmount(item), name: item.name, urlPath: item.urlPath, image };
 }
 
-/** Active home-slider slides enriched with live catalog fields; missing/OOS products omitted. */
+/** Flat category options for home-slider panel (leaf + mid + parent). */
+function homeSliderCategoryOptions() {
+  const out = [];
+  function walk(nodes, slugParts, nameParts) {
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+      if (!node || node.active === false || !node.slug) continue;
+      const slugs = slugParts.concat(String(node.slug).trim());
+      const names = nameParts.concat(String(node.name || node.slug).trim());
+      const key = slugs.join("/");
+      const href = categoryHref(slugs[0], slugs[1] || "", slugs[2] || "");
+      const shortName = names[names.length - 1] || "";
+      out.push({
+        key,
+        label: shortName,
+        name: names.join(" › "),
+        shortName,
+        path: href,
+      });
+      if (Array.isArray(node.children) && node.children.length) {
+        walk(node.children, slugs, names);
+      }
+    }
+  }
+  walk(categoryStore.list(), [], []);
+  return out;
+}
+
+/** Active home-slider slides: campaign image + redirect; optional product enrich. */
 function publicHomeSliderSlides() {
   const config = homeSliderStore.getConfig();
   const index = storefrontIndex(false);
@@ -408,67 +435,54 @@ function publicHomeSliderSlides() {
   const slides = [];
   for (const slide of config.slides) {
     if (!slide.active) continue;
-    const item = index.compactById.get(String(slide.productId || ""));
-    if (!item || item.soldOut === true) continue;
-    const catalogImage =
-      item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
-    const imageDesktop =
-      slide.imageDesktop || slide.imageOverride || catalogImage || "";
+    const imageDesktop = slide.imageDesktop || slide.imageOverride || "";
     const imageMobile = slide.imageMobile || imageDesktop;
-    if (!imageDesktop) continue;
-    let urlPath = String(item.urlPath || "").trim();
-    if (urlPath && !urlPath.startsWith("/")) urlPath = "/" + urlPath;
+    let urlPath = String(slide.linkHref || "").trim();
+    if (urlPath && !urlPath.startsWith("/") && !/^https?:\/\//i.test(urlPath)) {
+      urlPath = "/" + urlPath;
+    }
+    if (!imageDesktop || !urlPath) continue;
+
+    const item = slide.productId
+      ? index.compactById.get(String(slide.productId || ""))
+      : null;
+    const catalogImage = item
+      ? item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || ""
+      : "";
+    const name =
+      slide.titleOverride ||
+      (item && String(item.name || "").trim()) ||
+      slide.categoryName ||
+      slide.eyebrow ||
+      "Kampanya";
     slides.push({
       id: slide.id,
-      productId: slide.productId,
-      brand: String(item.brand || "").trim(),
-      name: slide.titleOverride || String(item.name || "").trim(),
-      /** Sol banner masaüstü (özel görsel veya katalog). */
+      productId: slide.productId || "",
+      categoryKey: slide.categoryKey || "",
+      categoryName: slide.categoryName || "",
+      brand: item ? String(item.brand || "").trim() : "",
+      name,
       image: imageDesktop,
       imageDesktop,
       imageMobile,
-      /** Sağ ürün kartı her zaman katalog görseli. */
       productImage: catalogImage || imageDesktop,
       urlPath,
-      priceIncl: priceInclVatAmount(item),
-      eyebrow: slide.eyebrow || "Fırsat",
+      priceIncl: item ? priceInclVatAmount(item) : 0,
+      eyebrow: slide.eyebrow || slide.categoryName || "Kampanya",
       tone: slide.tone || "navy",
+      campaignOnly: !item,
     });
   }
   return slides;
 }
 
-/** Admin listing: config slides plus catalog snapshot (may be sold out / missing). */
+/** Admin listing: slides + category options for panel. */
 function adminHomeSliderPayload() {
   const config = homeSliderStore.getConfig();
-  const index = storefrontIndex(false);
-  if (!index.compactById) {
-    index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
-  }
-  const slides = config.slides.map((slide) => {
-    const item = index.compactById.get(String(slide.productId || ""));
-    const catalogImage = item
-      ? item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || ""
-      : "";
-    let urlPath = item ? String(item.urlPath || "").trim() : "";
-    if (urlPath && !urlPath.startsWith("/")) urlPath = "/" + urlPath;
-    return Object.assign({}, slide, {
-      product: item
-        ? {
-            id: item.id,
-            name: item.name,
-            brand: item.brand || "",
-            image: catalogImage,
-            urlPath,
-            priceIncl: priceInclVatAmount(item),
-            soldOut: item.soldOut === true,
-          }
-        : null,
-    });
-  });
   return {
     ok: true,
-    slides,
+    slides: config.slides,
+    categories: homeSliderCategoryOptions(),
     updatedAt: config.updatedAt,
     maxSlides: homeSliderStore.MAX_SLIDES,
     tones: homeSliderStore.TONES,

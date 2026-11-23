@@ -98,7 +98,6 @@
       ? slide.eyebrow + " — " + (slide.name || "")
       : slide.name || "Kampanya";
     const loading = index === 0 ? "eager" : "lazy";
-    // <picture>: both sources stay in HTML for SEO; browser picks by viewport.
     article.innerHTML =
       '<a class="home-banner-link" href="' +
       escapeAttr(href) +
@@ -123,13 +122,20 @@
     const article = document.createElement("article");
     article.className = "home-deal-slide" + (index === 0 ? " is-active" : "");
     article.setAttribute("aria-roledescription", "slide");
-    const thumb = slide.productImage || slide.image;
+    const thumb = slide.productImage || slide.imageDesktop || slide.image;
+    const campaignOnly = slide.campaignOnly === true || !(Number(slide.priceIncl) > 0);
+    const priceBlock = campaignOnly
+      ? ""
+      : '<div class="home-deal-price"><strong>' +
+        escapeHtml(formatTry(slide.priceIncl)) +
+        "</strong><span>KDV dahil</span></div>";
+    const cta = campaignOnly ? "İncele" : "Ürüne git";
     article.innerHTML =
       '<a class="home-deal-card" href="' +
       escapeAttr(productHref(slide.urlPath)) +
       '">' +
       '<span class="home-deal-eyebrow">' +
-      escapeHtml(slide.eyebrow || "Fırsat") +
+      escapeHtml(slide.eyebrow || "Kampanya") +
       "</span>" +
       '<div class="home-deal-media">' +
       '<img src="' +
@@ -139,15 +145,15 @@
       '" decoding="async" />' +
       "</div>" +
       '<p class="home-deal-brand">' +
-      escapeHtml(slide.brand || "") +
+      escapeHtml(slide.brand || slide.categoryName || "") +
       "</p>" +
       '<h3 class="home-deal-title">' +
       escapeHtml(shortName(slide.name, 64)) +
       "</h3>" +
-      '<div class="home-deal-price"><strong>' +
-      escapeHtml(formatTry(slide.priceIncl)) +
-      "</strong><span>KDV dahil</span></div>" +
-      '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
+      priceBlock +
+      '<span class="btn btn-primary home-deal-cta">' +
+      escapeHtml(cta) +
+      "</span>" +
       "</a>";
     return article;
   }
