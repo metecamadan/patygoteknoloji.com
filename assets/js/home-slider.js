@@ -187,7 +187,7 @@
       escapeHtml(deal.brand || "") +
       "</p>" +
       '<h3 class="home-deal-title">' +
-      escapeHtml(shortName(deal.name, 64)) +
+      escapeHtml(String(deal.name || "").trim()) +
       "</h3>" +
       '<div class="home-deal-foot">' +
       '<div class="home-deal-price"><strong>' +
