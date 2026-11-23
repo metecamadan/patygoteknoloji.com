@@ -171,18 +171,11 @@
     article.setAttribute("aria-roledescription", "slide");
     var thumb = deal.productImage || "";
     var dealHref = productHref(deal.productUrlPath);
-    var eyebrow = String(deal.eyebrow || "").trim() || "Fırsat";
     article.innerHTML =
       '<a class="home-deal-card" href="' +
       escapeAttr(dealHref) +
       '">' +
       '<div class="home-deal-media">' +
-      '<span class="home-deal-badges" aria-hidden="true">' +
-      '<span class="home-deal-badge">Fırsat</span>' +
-      '<span class="home-deal-eyebrow">' +
-      escapeHtml(eyebrow) +
-      "</span>" +
-      "</span>" +
       '<img src="' +
       escapeAttr(thumb) +
       '" alt="" loading="' +
@@ -200,7 +193,7 @@
       '<div class="home-deal-price"><strong>' +
       escapeHtml(formatTry(deal.priceIncl)) +
       "</strong><span>KDV dahil</span></div>" +
-      '<span class="btn btn-primary home-deal-cta">Fırsatı yakala</span>' +
+      '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
       "</div>" +
       "</div>" +
       "</a>";
