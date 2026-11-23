@@ -36,6 +36,8 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
   assert.match(sliderJs, /Ürüne git/);
   assert.doesNotMatch(sliderJs, /home-deal-badge/);
   assert.doesNotMatch(sliderJs, /Fırsatı yakala/);
+  assert.doesNotMatch(sliderJs, /shortName\(deal\.name/);
+  assert.match(sliderJs, /home-deal-title[\s\S]*?escapeHtml\(String\(deal\.name/);
   assert.doesNotMatch(indexHtml, /Fırsat ürünleri/);
   assert.doesNotMatch(indexHtml, /home-deal-heading/);
   const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
@@ -49,6 +51,7 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
   assert.match(css, /\.home-deal-media\s*\{[^}]*background:\s*#fff/s);
   assert.match(css, /\.product-card \.visual\.has-image\s*\{[^}]*background:\s*#fff/s);
   assert.match(css, /\.detail-media\s*\{[^}]*background:\s*#fff/s);
+  assert.match(css, /\.home-deal-title\s*\{[^}]*-webkit-line-clamp:\s*2/s);
 });
 
 test("brand strip shows sized logos that exist on disk", () => {
