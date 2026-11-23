@@ -84,19 +84,26 @@ Tekrar bakarken: panel XML Yönetimi → "Stokta ama satışta olmayanlar" kart�
 
 ### 4. Ana sayfa ürün slider — görsel + canlı slaytlar (16 Eki 2026)
 
-Düzen (referans e-ticaret): **sol ~¾ kampanya görsel slider** + **sağ ~¼ ürün kartı slider** (ikisi ayrı kayar). Panel: **Vitrin → Ana sayfa slider**. Aktif slayt yoksa klasik hero.
+Düzen: **sol ~¾ kampanya görsel** + **sağ ~¼ kart** (ikisi ayrı kayar). Panel: **Vitrin → Ürün slider**. Aktif yoksa klasik hero.
 
-- Sol: özel görsel URL (`imageOverride`). Sağ: katalog ürün kartı.
-- Yerel: `preview/home-slider.html`. Canlı: panelden slayt ekle → `https://patygoteknoloji.com`.
-- Güncelleme (19 Eki 2026): kullanıcı kampanya görsellerini hazırlıyor; görsel gelince panele bağlanacak. Canlıda `/api/home-slider` şu an `slides: []`.
+- Panel (23 Kas 2026): ürün arama yok; kategori → otomatik üst etiket; yönlendirme `linkHref` zorunlu; Kaydet sonucu notta.
+- Masaüstü + mobil görsel; yayın = görsel + link. Canlı: panelden ekle → `https://patygoteknoloji.com`.
 
-### 5. Google Search Console — 30 günde bir hatırlat (22 Kas 2026)
+### 5. Google Search Console — hatırlat + haftalık triage (22–23 Kas 2026)
 
-Kullanıcı kararı: her **30 günde bir** sohbet + mail ile hatırlat (başlık: GSC doğrulama + sitemap).
+**Haftalık (kullanıcı kararı 23 Kas 2026):** Cursor Automation **«GSC haftalık triage»**
+
+- Tetik: her **Pazartesi 10:00** (TR).
+- Rapor: `mete.camadan@patygoteknoloji.com` (SMTP / Agent Email).
+- Mail: tespitler + planlanan aksiyonlar; cevap gövdesinde yalnız `UYGULA` / `ERTELE` / `REDDET`.
+- `UYGULA` → güvenli fix + `npm test` + `main` push. Kod, onay mailinden önce yok.
+- Geniş dikine mail gövdesi (`brandedMailHtml` max-width 720px).
+
+**Aylık (kalır):** her **30 günde bir** sohbet + mail hatırlat (GSC doğrulama + sitemap).
 
 İlk kurulum (22 Kas 2026) bitti: HTML doğrulama ✓, `sitemap.xml` gönderildi ✓, ana sayfa URL Inspection + indeks isteği ✓.
 
-**Sonraki hatırlatma:** 22 Ara 2026 (±1 gün). Sonra her 30 gün.
+**Sonraki aylık hatırlatma:** 22 Ara 2026 (±1 gün).
 
 Aylık checklist (zorunlu “Dizine ekle” spamı yok):
 
@@ -106,7 +113,7 @@ Aylık checklist (zorunlu “Dizine ekle” spamı yok):
 - 1–2 ürün URL Inspection
 - Yalnız büyük değişiklik veya kırmızı hata varsa indeks iste
 
-Cursor Automations’ta “GSC 30 gün hatırlatma” formu açıldı; kullanıcı kaydederse zamanlayıcı oradan da çalışır. Agent yeni sohbette bu maddeyi hatırlatır.
+Cursor Automations: haftalık triage taslağı editöre yüklendi — **kaydet + etkinleştir** gerekir. Gelen cevap (`UYGULA`…) için ikinci tetik (email received) editörde bağlanır.
 
 ### SEO — yapılacaklar listesi (22 Kas 2026)
 
