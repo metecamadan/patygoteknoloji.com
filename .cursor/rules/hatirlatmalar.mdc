@@ -23,7 +23,9 @@ Gelince: kullanıcı `python scripts/vps_set_yurtici.py` → mod `live` (sonunda
 
 Güncelleme (22 Kas 2026): GÖ + AÖ web servis satırları geldi (müşteri 1240096365, çıkış 1010 YEŞİLPINAR, tanım 20261016).
 
-Güncelleme (23 Kas 2026): IP `87.76.157.41` verildi teyidi + VPS çıkış aynı. Canlı `ws.yurticikargo.com` ping: **AÖ** (`1010A…`) → OK (kargo anahtarı yok = auth/IP geçti). **GÖ** (`1010G…`) → hâlâ «kullanıcı ve parola örtüşmüyor». VPS `.env` şimdilik çalışan AÖ + `live` (mağaza için asıl GÖ lazım — Yurtiçi’ye GÖ parola/aktivasyon). Şifre sohbete/kurala yazılmaz.
+Güncelleme (23 Kas 2026): IP `87.76.157.41` verildi teyidi + VPS çıkış aynı. Canlı `ws.yurticikargo.com` ping: **AÖ** (`1010A…`) → OK. **GÖ** önce parola örtüşmüyordu.
+
+Güncelleme (23 Kas 2026 akşam): YK GÖ şifre geldi → VPS `.env` **live + GÖ** (`1010G…`) yazıldı; ping **OK** («kargo anahtarı yok» = auth/IP geçti). Şifre sohbete/kurala yazılmaz. Sırada: kullanıcı deneme planı (küçük sipariş → panel Yurtiçi’ye gönder → A5 etiket → şube).
 
 Deneme planı (kullanıcı kararı 12 Eki 2026): test ortamında deneme **yok**; canlı bilgiler gelince uçtan uca gerçek deneme:
 
