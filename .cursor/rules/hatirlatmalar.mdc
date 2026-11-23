@@ -158,13 +158,14 @@ Yapılacak:
 
 ### 8. Google Merchant ürün feed senkronu (23 Kas 2026)
 
-Güncelleme (23 Kas 2026): API primary DS `Patygo API TR` / `10798234595` (website AUTOFEED `10797241334` duruyor). Mapper `lib/google-merchant.js` = Akakçe eligible. Script: `scripts/merchant_export_payload.js` + `scripts/merchant_sync.py` + VPS export `scripts/_merchant_vps_export.py`. OAuth yerel `%USERPROFILE%\.patygo\` (IPv4). Smoke insert OK; tam sync ~5721 ürün (Akakçe kuralları: stok 0/tükendi yok).
+Tamam (23 Kas 2026): API primary DS `Patygo API TR` / `10798234595` (website AUTOFEED `10797241334` duruyor). Mapper `lib/google-merchant.js` = Akakçe eligible. Script: `merchant_export_payload.js` + `merchant_sync.py` + `merchant_vps_export.py`. OAuth yerel `%USERPROFILE%\.patygo\` (IPv4; mid-sync refresh). İlk tam sync **5721** insert OK.
 
-Sonraki:
+Sonraki (opsiyonel):
 
-- Tam sync bitince Merchant UI / processed products gecikmesi.
+- Merchant UI / processed products gecikmesi (birkaç dk–saat).
 - Panel özeti / VPS zamanlanmış sync yok (bilinçli).
-- `--delete-missing` yalnız API DS ürünleri için kullanılmalı (AUTOFEED’e dokunma).
+- `--delete-missing` yalnız API DS ürünleri için (AUTOFEED’e dokunma).
+- Periyodik yeniden sync (katalog değişince).
 
 ## Kapandı
 
