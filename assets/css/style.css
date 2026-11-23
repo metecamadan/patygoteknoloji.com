@@ -4841,16 +4841,25 @@ h1, h2, h3, h4 {
 .home-banner-link {
   height: 100%;
 }
-.home-banner-viewport { overflow: hidden; }
+.home-banner-viewport {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
 .home-banner-track {
   display: flex;
+  height: 100%;
+  width: 100%;
   transition: transform 0.55s var(--ease);
   will-change: transform;
+  backface-visibility: hidden;
 }
 .home-banner-slide {
   flex: 0 0 100%;
   width: 100%;
   min-width: 100%;
+  max-width: 100%;
 }
 .home-banner-link { display: block; height: 100%; }
 .home-banner-link picture {
@@ -4916,32 +4925,42 @@ h1, h2, h3, h4 {
   flex: 1 1 auto;
   overflow: hidden;
   min-height: 0;
+  width: 100%;
+  position: relative;
 }
 .home-deal-track {
   display: flex;
   height: 100%;
+  width: 100%;
   transition: transform 0.55s var(--ease);
   will-change: transform;
+  backface-visibility: hidden;
 }
 .home-deal-slide {
   flex: 0 0 100%;
   width: 100%;
   min-width: 100%;
+  max-width: 100%;
   height: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 .home-deal-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: center;
   gap: 4px;
   height: 100%;
-  padding: 2px 12px 6px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 4px 12px 6px;
   color: inherit;
   text-decoration: none;
   box-sizing: border-box;
+  overflow: hidden;
 }
 .home-deal-eyebrow {
   display: inline-flex;
@@ -4958,16 +4977,23 @@ h1, h2, h3, h4 {
 .home-deal-media {
   flex: 1 1 auto;
   width: 100%;
-  max-width: 120px;
-  max-height: 110px;
-  min-height: 0;
-  display: grid;
-  place-items: center;
+  max-width: 140px;
+  max-height: 112px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
 }
 .home-deal-media img {
+  display: block;
   max-width: 100%;
-  max-height: 100%;
+  max-height: 112px;
+  width: auto;
+  height: auto;
+  margin: 0 auto;
   object-fit: contain;
+  object-position: center;
 }
 .home-deal-brand {
   flex: 0 0 auto;

@@ -8293,12 +8293,17 @@
   }
 
   const homeSliderList = document.getElementById("homeSliderList");
+  const homeDealList = document.getElementById("homeDealList");
   const homeSliderNote = document.getElementById("homeSliderNote");
   const homeSliderAddBtn = document.getElementById("homeSliderAddBtn");
+  const homeDealAddBtn = document.getElementById("homeDealAddBtn");
   const homeSliderSaveBtn = document.getElementById("homeSliderSaveBtn");
   const homeSliderHint = document.getElementById("homeSliderHint");
+  const homeDealHint = document.getElementById("homeDealHint");
   let homeSliderDraft = [];
+  let homeDealDraft = [];
   let homeSliderMax = 8;
+  let homeDealMax = 4;
   let homeSliderTones = ["navy", "blue", "indigo", "teal", "slate"];
   let homeSliderCategories = [];
   const HOME_SLIDER_TONE_LABELS = {
@@ -8317,8 +8322,8 @@
       .replace(/"/g, "&quot;");
   }
 
-  function homeSliderNewId() {
-    return "hs_" + Math.random().toString(16).slice(2, 10) + Date.now().toString(16).slice(-4);
+  function homeSliderNewId(prefix) {
+    return (prefix || "hs_") + Math.random().toString(16).slice(2, 10) + Date.now().toString(16).slice(-4);
   }
 
   function homeSliderCategoryByKey(key) {
@@ -8363,8 +8368,8 @@
     ).trim();
     const categoryName = homeSliderCategoryLabel(categoryKey);
     return {
-      id: card.dataset.slideId || homeSliderNewId(),
-      productId: String((card.querySelector("[data-field=productId]") || {}).value || "").trim(),
+      id: card.dataset.slideId || homeSliderNewId("hs_"),
+      productId: "",
       categoryKey,
       categoryName,
       eyebrow: categoryName,
@@ -8374,6 +8379,24 @@
       imageMobile,
       imageOverride: imageDesktop,
       tone: String((card.querySelector("[data-field=tone]") || {}).value || "navy").trim(),
+      active: Boolean(card.querySelector("[data-field=active]") && card.querySelector("[data-field=active]").checked),
+      sort: Number(card.dataset.sort || 0) || 0,
+    };
+  }
+
+  function readHomeDealCard(card) {
+    if (!card) return null;
+    const categoryKey = String(
+      (card.querySelector("[data-field=categoryKey]") || {}).value || ""
+    ).trim();
+    const categoryName = homeSliderCategoryLabel(categoryKey);
+    return {
+      id: card.dataset.dealId || homeSliderNewId("hd_"),
+      productId: String((card.querySelector("[data-field=productId]") || {}).value || "").trim(),
+      categoryKey,
+      categoryName,
+      eyebrow: categoryName,
+      titleOverride: String((card.querySelector("[data-field=titleOverride]") || {}).value || "").trim(),
       active: Boolean(card.querySelector("[data-field=active]") && card.querySelector("[data-field=active]").checked),
       sort: Number(card.dataset.sort || 0) || 0,
       product: null,
@@ -8403,9 +8426,18 @@
     return Array.from(homeSliderList.querySelectorAll("[data-home-slide]")).map((card, index) => {
       const slide = readHomeSliderCard(card);
       slide.sort = index;
+      return slide;
+    });
+  }
+
+  function collectHomeDealDraft() {
+    if (!homeDealList) return homeDealDraft.slice();
+    return Array.from(homeDealList.querySelectorAll("[data-home-deal]")).map((card, index) => {
+      const deal = readHomeDealCard(card);
+      deal.sort = index;
       const preview = card.querySelector("[data-product-preview]");
       if (preview && preview.dataset.productName) {
-        slide.product = {
+        deal.product = {
           name: preview.dataset.productName,
           brand: preview.dataset.productBrand || "",
           image: preview.dataset.productImage || "",
@@ -8413,7 +8445,7 @@
           soldOut: preview.dataset.productSoldOut === "1",
         };
       }
-      return slide;
+      return deal;
     });
   }
 
@@ -8421,27 +8453,18 @@
     if (!homeSliderList) return;
     if (!homeSliderDraft.length) {
       homeSliderList.innerHTML =
-        '<p class="admin-table-empty">Henüz slayt yok. “Slayt ekle” ile fırsat ürünü + kampanya ekleyin.</p>';
+        '<p class="admin-table-empty">Kampanya yok. “Kampanya ekle” ile sol görsel ekleyin.</p>';
       if (homeSliderHint) {
         homeSliderHint.textContent =
-          "En fazla " + homeSliderMax + " slayt. Aktif slayt yoksa ana sayfada klasik hero kalır.";
+          "En fazla " + homeSliderMax + " kampanya. Görsel + yönlendirme linki zorunlu.";
       }
       return;
     }
     homeSliderList.innerHTML = homeSliderDraft
       .map((slide, index) => {
-        const product = slide.product || {};
-        const productName =
-          product.name ||
-          (slide.productId ? "Ürün bulunamadı / stokta değil" : "Fırsat ürünü seçilmedi");
-        const brand = product.brand || "";
-        const productImage = product.image || "";
-        const price = product.priceIncl ? formatMoney(product.priceIncl) : "";
-        const soldOut = product.soldOut === true;
-        const catLabel =
-          slide.categoryName || homeSliderCategoryLabel(slide.categoryKey) || "Kategori seçilmedi";
-        const eyebrowTag = catLabel !== "Kategori seçilmedi" ? catLabel : "—";
         const desktopImg = slide.imageDesktop || slide.imageOverride || "";
+        const catLabel =
+          slide.categoryName || homeSliderCategoryLabel(slide.categoryKey) || "—";
         const toneOpts = homeSliderTones
           .map((tone) => {
             const label = HOME_SLIDER_TONE_LABELS[tone] || tone;
@@ -8462,11 +8485,9 @@
           '" data-sort="' +
           index +
           '">' +
-          '<div class="admin-home-slide-head">' +
-          "<strong>Slayt " +
+          '<div class="admin-home-slide-head"><strong>Kampanya ' +
           (index + 1) +
-          "</strong>" +
-          '<div class="admin-home-slide-actions">' +
+          '</strong><div class="admin-home-slide-actions">' +
           '<button type="button" class="btn btn-ghost btn-xs" data-slide-up' +
           (index === 0 ? " disabled" : "") +
           ">Yukarı</button>" +
@@ -8474,6 +8495,105 @@
           (index >= homeSliderDraft.length - 1 ? " disabled" : "") +
           ">Aşağı</button>" +
           '<button type="button" class="btn btn-ghost btn-xs" data-slide-remove>Sil</button>' +
+          "</div></div>" +
+          '<div class="admin-home-slide-body">' +
+          '<div class="admin-home-slide-preview">' +
+          (desktopImg
+            ? '<img src="' +
+              escapeHomeSliderHtml(desktopImg) +
+              '" alt="" width="120" height="40" loading="lazy" />'
+            : '<span class="admin-home-slide-ph">Görsel yok</span>') +
+          '<div><p class="admin-home-slide-name">' +
+          escapeHomeSliderHtml(slide.titleOverride || catLabel || "Kampanya") +
+          "</p></div></div>" +
+          '<div class="admin-home-slide-fields">' +
+          '<div class="field"><label>Kategori (isteğe bağlı etiket)</label>' +
+          '<select data-field="categoryKey">' +
+          homeSliderCategoryOptionsHtml(slide.categoryKey || "") +
+          "</select></div>" +
+          '<div class="field"><label>Başlık (isteğe bağlı)</label>' +
+          '<input type="text" data-field="titleOverride" maxlength="160" value="' +
+          escapeHomeSliderHtml(slide.titleOverride || "") +
+          '" placeholder="Boşsa kategori / Kampanya" /></div>' +
+          '<div class="field"><label>Yönlendirme linki</label>' +
+          '<input type="url" data-field="linkHref" maxlength="500" value="' +
+          escapeHomeSliderHtml(slide.linkHref || "") +
+          '" placeholder="/notebook veya https://…" /></div>' +
+          '<div class="field"><label>Masaüstü kampanya görseli (1200×350)</label>' +
+          '<div class="admin-home-slide-upload">' +
+          '<input type="url" data-field="imageDesktop" maxlength="500" value="' +
+          escapeHomeSliderHtml(desktopImg) +
+          '" placeholder="URL veya dosya yükle" />' +
+          '<input type="file" data-field="imageDesktopFile" accept="image/png,image/jpeg,image/webp" hidden />' +
+          '<button type="button" class="btn btn-outline btn-xs" data-upload-desktop>Yükle</button></div>' +
+          (desktopImg
+            ? '<p class="admin-home-slide-thumb"><img src="' +
+              escapeHomeSliderHtml(desktopImg) +
+              '" alt="" width="160" height="48" loading="lazy" /></p>'
+            : "") +
+          "</div>" +
+          '<div class="field"><label>Mobil kampanya görseli (800×220)</label>' +
+          '<div class="admin-home-slide-upload">' +
+          '<input type="url" data-field="imageMobile" maxlength="500" value="' +
+          escapeHomeSliderHtml(slide.imageMobile || "") +
+          '" placeholder="İsteğe bağlı" />' +
+          '<input type="file" data-field="imageMobileFile" accept="image/png,image/jpeg,image/webp" hidden />' +
+          '<button type="button" class="btn btn-outline btn-xs" data-upload-mobile>Yükle</button></div></div>' +
+          '<div class="admin-home-slide-row">' +
+          '<div class="field"><label>Ton</label><select data-field="tone">' +
+          toneOpts +
+          "</select></div>" +
+          '<label class="admin-check admin-home-slide-active"><input type="checkbox" data-field="active"' +
+          (slide.active !== false ? " checked" : "") +
+          " /><span>Aktif</span></label></div></div></div></article>"
+        );
+      })
+      .join("");
+    if (homeSliderHint) {
+      homeSliderHint.textContent =
+        homeSliderDraft.length + " / " + homeSliderMax + " kampanya. Sol görsel + link zorunlu.";
+    }
+  }
+
+  function renderHomeDealList() {
+    if (!homeDealList) return;
+    if (!homeDealDraft.length) {
+      homeDealList.innerHTML =
+        '<p class="admin-table-empty">Fırsat ürünü yok. “Ürün ekle” ile 3–4 ürün seçin.</p>';
+      if (homeDealHint) {
+        homeDealHint.textContent =
+          "En fazla " + homeDealMax + " ürün. Sitede 5 saniyede bir otomatik kayar.";
+      }
+      return;
+    }
+    homeDealList.innerHTML = homeDealDraft
+      .map((deal, index) => {
+        const product = deal.product || {};
+        const productName =
+          product.name ||
+          (deal.productId ? "Ürün bulunamadı / stokta değil" : "Ürün seçilmedi");
+        const brand = product.brand || "";
+        const productImage = product.image || "";
+        const price = product.priceIncl ? formatMoney(product.priceIncl) : "";
+        const soldOut = product.soldOut === true;
+        const catLabel =
+          deal.categoryName || homeSliderCategoryLabel(deal.categoryKey) || "—";
+        return (
+          '<article class="admin-home-slide" data-home-deal data-deal-id="' +
+          escapeHomeSliderHtml(deal.id) +
+          '" data-sort="' +
+          index +
+          '">' +
+          '<div class="admin-home-slide-head"><strong>Fırsat ' +
+          (index + 1) +
+          '</strong><div class="admin-home-slide-actions">' +
+          '<button type="button" class="btn btn-ghost btn-xs" data-deal-up' +
+          (index === 0 ? " disabled" : "") +
+          ">Yukarı</button>" +
+          '<button type="button" class="btn btn-ghost btn-xs" data-deal-down' +
+          (index >= homeDealDraft.length - 1 ? " disabled" : "") +
+          ">Aşağı</button>" +
+          '<button type="button" class="btn btn-ghost btn-xs" data-deal-remove>Sil</button>' +
           "</div></div>" +
           '<div class="admin-home-slide-body">' +
           '<div class="admin-home-slide-preview" data-product-preview' +
@@ -8493,7 +8613,7 @@
               escapeHomeSliderHtml(productImage) +
               '" alt="" width="72" height="72" loading="lazy" />'
             : '<span class="admin-home-slide-ph">Ürün yok</span>') +
-          "<div><p class=\"admin-home-slide-name\">" +
+          '<div><p class="admin-home-slide-name">' +
           escapeHomeSliderHtml(productName) +
           "</p>" +
           (brand || price
@@ -8503,79 +8623,38 @@
               "</p>"
             : "") +
           '<p class="admin-home-slide-meta">Etiket: <span class="admin-home-slide-tag">' +
-          escapeHomeSliderHtml(eyebrowTag) +
+          escapeHomeSliderHtml(catLabel) +
           "</span></p></div></div>" +
           '<div class="admin-home-slide-fields">' +
-          '<div class="field"><label>Fırsat ürünü (sağ kart)</label>' +
+          '<div class="field"><label>Fırsat ürünü ara</label>' +
           '<input type="search" data-field="productSearch" placeholder="Ad veya marka…" autocomplete="off" />' +
           '<div class="admin-home-slide-suggest" data-suggest hidden></div></div>' +
           '<input type="hidden" data-field="productId" value="' +
-          escapeHomeSliderHtml(slide.productId || "") +
+          escapeHomeSliderHtml(deal.productId || "") +
           '" />' +
           '<div class="field"><label>Kategori (üst etiket)</label>' +
           '<select data-field="categoryKey">' +
-          homeSliderCategoryOptionsHtml(slide.categoryKey || "") +
+          homeSliderCategoryOptionsHtml(deal.categoryKey || "") +
           "</select>" +
-          '<p class="admin-field-help">Üst etiket otomatik: <strong data-eyebrow-preview>' +
-          escapeHomeSliderHtml(eyebrowTag) +
+          '<p class="admin-field-help">Üst etiket: <strong data-eyebrow-preview>' +
+          escapeHomeSliderHtml(catLabel) +
           "</strong></p></div>" +
           '<div class="field"><label>Başlık (isteğe bağlı)</label>' +
           '<input type="text" data-field="titleOverride" maxlength="160" value="' +
-          escapeHomeSliderHtml(slide.titleOverride || "") +
-          '" placeholder="Boşsa ürün adı kullanılır" /></div>' +
-          '<div class="field"><label>Kampanya yönlendirme linki (sol görsel)</label>' +
-          '<input type="url" data-field="linkHref" maxlength="500" value="' +
-          escapeHomeSliderHtml(slide.linkHref || "") +
-          '" placeholder="/notebook veya https://…" />' +
-          '<p class="admin-field-help">Sol kampanya görseline tıklanınca gidilecek adres. Sağ kart ürüne gider.</p></div>' +
-          '<div class="field"><label>Masaüstü kampanya görseli (1200×350)</label>' +
-          '<div class="admin-home-slide-upload">' +
-          '<input type="url" data-field="imageDesktop" maxlength="500" value="' +
-          escapeHomeSliderHtml(desktopImg) +
-          '" placeholder="URL veya dosya yükle" />' +
-          '<input type="file" data-field="imageDesktopFile" accept="image/png,image/jpeg,image/webp" hidden />' +
-          '<button type="button" class="btn btn-outline btn-xs" data-upload-desktop>Yükle</button>' +
-          "</div>" +
-          (desktopImg
-            ? '<p class="admin-home-slide-thumb"><img src="' +
-              escapeHomeSliderHtml(desktopImg) +
-              '" alt="" width="160" height="48" loading="lazy" /></p>'
-            : "") +
-          "</div>" +
-          '<div class="field"><label>Mobil kampanya görseli (800×220, ≤900px)</label>' +
-          '<div class="admin-home-slide-upload">' +
-          '<input type="url" data-field="imageMobile" maxlength="500" value="' +
-          escapeHomeSliderHtml(slide.imageMobile || "") +
-          '" placeholder="URL veya dosya yükle (isteğe bağlı)" />' +
-          '<input type="file" data-field="imageMobileFile" accept="image/png,image/jpeg,image/webp" hidden />' +
-          '<button type="button" class="btn btn-outline btn-xs" data-upload-mobile>Yükle</button>' +
-          "</div>" +
-          (slide.imageMobile
-            ? '<p class="admin-home-slide-thumb"><img src="' +
-              escapeHomeSliderHtml(slide.imageMobile) +
-              '" alt="" width="160" height="44" loading="lazy" /></p>'
-            : "") +
-          '<p class="admin-field-help">Boşsa masaüstü görseli mobil için de kullanılır.</p></div>' +
-          '<div class="admin-home-slide-row">' +
-          '<div class="field"><label>Ton</label><select data-field="tone">' +
-          toneOpts +
-          "</select></div>" +
+          escapeHomeSliderHtml(deal.titleOverride || "") +
+          '" placeholder="Boşsa ürün adı" /></div>' +
           '<label class="admin-check admin-home-slide-active"><input type="checkbox" data-field="active"' +
-          (slide.active !== false ? " checked" : "") +
-          " /><span>Aktif</span></label>" +
-          "</div></div></div></article>"
+          (deal.active !== false ? " checked" : "") +
+          " /><span>Aktif</span></label></div></div></article>"
         );
       })
       .join("");
-    if (homeSliderHint) {
-      const activeCount = homeSliderDraft.filter((s) => s.active !== false).length;
-      homeSliderHint.textContent =
-        homeSliderDraft.length +
+    if (homeDealHint) {
+      homeDealHint.textContent =
+        homeDealDraft.length +
         " / " +
-        homeSliderMax +
-        " slayt · " +
-        activeCount +
-        " aktif. Yayın: fırsat ürünü + masaüstü görsel + yönlendirme linki. Stokta olmayan ürün sitede atlanır.";
+        homeDealMax +
+        " fırsat ürünü · sitede 5 sn’de bir kayar. Stokta olmayan atlanır.";
     }
   }
 
@@ -8592,6 +8671,86 @@
   }
 
   function bindHomeSliderCardEvents(card) {
+    const catSelect = card.querySelector("[data-field=categoryKey]");
+    if (catSelect) {
+      catSelect.addEventListener("change", () => {
+        const cat = homeSliderCategoryByKey(catSelect.value);
+        const linkInput = card.querySelector("[data-field=linkHref]");
+        if (linkInput && cat && cat.path && !String(linkInput.value || "").trim()) {
+          linkInput.value = cat.path;
+        }
+      });
+    }
+    const up = card.querySelector("[data-slide-up]");
+    const down = card.querySelector("[data-slide-down]");
+    const remove = card.querySelector("[data-slide-remove]");
+    if (up) {
+      up.addEventListener("click", () => {
+        homeSliderDraft = collectHomeSliderDraft();
+        const i = Number(card.dataset.sort || 0);
+        if (i <= 0) return;
+        const tmp = homeSliderDraft[i - 1];
+        homeSliderDraft[i - 1] = homeSliderDraft[i];
+        homeSliderDraft[i] = tmp;
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+      });
+    }
+    if (down) {
+      down.addEventListener("click", () => {
+        homeSliderDraft = collectHomeSliderDraft();
+        const i = Number(card.dataset.sort || 0);
+        if (i >= homeSliderDraft.length - 1) return;
+        const tmp = homeSliderDraft[i + 1];
+        homeSliderDraft[i + 1] = homeSliderDraft[i];
+        homeSliderDraft[i] = tmp;
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+      });
+    }
+    if (remove) {
+      remove.addEventListener("click", () => {
+        homeSliderDraft = collectHomeSliderDraft().filter(
+          (_, idx) => idx !== Number(card.dataset.sort || 0)
+        );
+        renderHomeSliderList();
+        bindAllHomeSliderCards();
+      });
+    }
+    function wireUpload(btnSel, fileSel, urlSel) {
+      const btn = card.querySelector(btnSel);
+      const fileInput = card.querySelector(fileSel);
+      const urlInput = card.querySelector(urlSel);
+      if (!btn || !fileInput || !urlInput) return;
+      btn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = "";
+        if (!file) return;
+        btn.disabled = true;
+        try {
+          const url = await uploadHomeSliderImage(
+            file,
+            urlSel.includes("Mobile") ? "mobil" : "masaustu"
+          );
+          if (!url) throw new Error("Yükleme yanıtı boş");
+          urlInput.value = url;
+          homeSliderDraft = collectHomeSliderDraft();
+          renderHomeSliderList();
+          bindAllHomeSliderCards();
+          note(homeSliderNote, "ok", "Görsel yüklendi — Kaydet’e basmayı unutma.");
+        } catch (err) {
+          note(homeSliderNote, "err", (err && err.message) || "Görsel yüklenemedi");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+    wireUpload("[data-upload-desktop]", "[data-field=imageDesktopFile]", "[data-field=imageDesktop]");
+    wireUpload("[data-upload-mobile]", "[data-field=imageMobileFile]", "[data-field=imageMobile]");
+  }
+
+  function bindHomeDealCardEvents(card) {
     const searchInput = card.querySelector("[data-field=productSearch]");
     const suggest = card.querySelector("[data-suggest]");
     let searchTimer = null;
@@ -8660,9 +8819,8 @@
           const imgEl = preview.querySelector("img");
           const ph = preview.querySelector(".admin-home-slide-ph");
           if (btn.dataset.pickImage) {
-            if (imgEl) {
-              imgEl.src = btn.dataset.pickImage;
-            } else if (ph) {
+            if (imgEl) imgEl.src = btn.dataset.pickImage;
+            else if (ph) {
               ph.outerHTML =
                 '<img src="' +
                 escapeHomeSliderHtml(btn.dataset.pickImage) +
@@ -8671,28 +8829,14 @@
           }
           const nameEl = preview.querySelector(".admin-home-slide-name");
           if (nameEl) nameEl.textContent = btn.dataset.pickName || "";
-          let meta = preview.querySelector(".admin-home-slide-meta");
-          const metaText = [
-            btn.dataset.pickBrand,
-            btn.dataset.pickPrice ? formatMoney(Number(btn.dataset.pickPrice)) : "",
-          ]
-            .filter(Boolean)
-            .join(" · ");
-          if (metaText) {
-            if (!meta) {
-              meta = document.createElement("p");
-              meta.className = "admin-home-slide-meta";
-              const wrap = preview.querySelector("div");
-              const tagLine = wrap && wrap.querySelector(".admin-home-slide-tag");
-              if (wrap && tagLine && tagLine.parentElement) {
-                wrap.insertBefore(meta, tagLine.parentElement);
-              } else if (wrap) {
-                wrap.appendChild(meta);
-              } else {
-                preview.appendChild(meta);
-              }
-            }
-            meta.textContent = metaText;
+          const metas = preview.querySelectorAll(".admin-home-slide-meta");
+          if (metas[0] && !metas[0].querySelector(".admin-home-slide-tag")) {
+            metas[0].textContent = [
+              btn.dataset.pickBrand,
+              btn.dataset.pickPrice ? formatMoney(Number(btn.dataset.pickPrice)) : "",
+            ]
+              .filter(Boolean)
+              .join(" · ");
           }
         }
         searchInput.value = "";
@@ -8700,91 +8844,52 @@
         suggest.innerHTML = "";
       });
     }
-
     const catSelect = card.querySelector("[data-field=categoryKey]");
     const eyebrowPreview = card.querySelector("[data-eyebrow-preview]");
     const tagSpan = card.querySelector(".admin-home-slide-tag");
     if (catSelect) {
       catSelect.addEventListener("change", () => {
-        const cat = homeSliderCategoryByKey(catSelect.value);
         const label = homeSliderCategoryLabel(catSelect.value) || "—";
         if (eyebrowPreview) eyebrowPreview.textContent = label;
         if (tagSpan) tagSpan.textContent = label;
-        const linkInput = card.querySelector("[data-field=linkHref]");
-        if (linkInput && cat && cat.path && !String(linkInput.value || "").trim()) {
-          linkInput.value = cat.path;
-        }
       });
     }
-
-    const up = card.querySelector("[data-slide-up]");
-    const down = card.querySelector("[data-slide-down]");
-    const remove = card.querySelector("[data-slide-remove]");
+    const up = card.querySelector("[data-deal-up]");
+    const down = card.querySelector("[data-deal-down]");
+    const remove = card.querySelector("[data-deal-remove]");
     if (up) {
       up.addEventListener("click", () => {
-        homeSliderDraft = collectHomeSliderDraft();
+        homeDealDraft = collectHomeDealDraft();
         const i = Number(card.dataset.sort || 0);
         if (i <= 0) return;
-        const tmp = homeSliderDraft[i - 1];
-        homeSliderDraft[i - 1] = homeSliderDraft[i];
-        homeSliderDraft[i] = tmp;
-        renderHomeSliderList();
-        bindAllHomeSliderCards();
+        const tmp = homeDealDraft[i - 1];
+        homeDealDraft[i - 1] = homeDealDraft[i];
+        homeDealDraft[i] = tmp;
+        renderHomeDealList();
+        bindAllHomeDealCards();
       });
     }
     if (down) {
       down.addEventListener("click", () => {
-        homeSliderDraft = collectHomeSliderDraft();
+        homeDealDraft = collectHomeDealDraft();
         const i = Number(card.dataset.sort || 0);
-        if (i >= homeSliderDraft.length - 1) return;
-        const tmp = homeSliderDraft[i + 1];
-        homeSliderDraft[i + 1] = homeSliderDraft[i];
-        homeSliderDraft[i] = tmp;
-        renderHomeSliderList();
-        bindAllHomeSliderCards();
+        if (i >= homeDealDraft.length - 1) return;
+        const tmp = homeDealDraft[i + 1];
+        homeDealDraft[i + 1] = homeDealDraft[i];
+        homeDealDraft[i] = tmp;
+        renderHomeDealList();
+        bindAllHomeDealCards();
       });
     }
     if (remove) {
       remove.addEventListener("click", () => {
-        homeSliderDraft = collectHomeSliderDraft().filter(
+        homeDealDraft = collectHomeDealDraft().filter(
           (_, idx) => idx !== Number(card.dataset.sort || 0)
         );
-        renderHomeSliderList();
-        bindAllHomeSliderCards();
+        renderHomeDealList();
+        bindAllHomeDealCards();
       });
     }
-
-    function wireUpload(btnSel, fileSel, urlSel) {
-      const btn = card.querySelector(btnSel);
-      const fileInput = card.querySelector(fileSel);
-      const urlInput = card.querySelector(urlSel);
-      if (!btn || !fileInput || !urlInput) return;
-      btn.addEventListener("click", () => fileInput.click());
-      fileInput.addEventListener("change", async () => {
-        const file = fileInput.files && fileInput.files[0];
-        fileInput.value = "";
-        if (!file) return;
-        btn.disabled = true;
-        try {
-          const url = await uploadHomeSliderImage(
-            file,
-            urlSel.includes("Mobile") ? "mobil" : "masaustu"
-          );
-          if (!url) throw new Error("Yükleme yanıtı boş");
-          urlInput.value = url;
-          homeSliderDraft = collectHomeSliderDraft();
-          renderHomeSliderList();
-          bindAllHomeSliderCards();
-          note(homeSliderNote, "ok", "Görsel yüklendi — Kaydet’e basmayı unutma.");
-        } catch (err) {
-          note(homeSliderNote, "err", (err && err.message) || "Görsel yüklenemedi");
-        } finally {
-          btn.disabled = false;
-        }
-      });
-    }
-    wireUpload("[data-upload-desktop]", "[data-field=imageDesktopFile]", "[data-field=imageDesktop]");
-    wireUpload("[data-upload-mobile]", "[data-field=imageMobileFile]", "[data-field=imageMobile]");
   }
 
   function bindAllHomeSliderCards() {
@@ -8792,17 +8897,26 @@
     homeSliderList.querySelectorAll("[data-home-slide]").forEach(bindHomeSliderCardEvents);
   }
 
+  function bindAllHomeDealCards() {
+    if (!homeDealList) return;
+    homeDealList.querySelectorAll("[data-home-deal]").forEach(bindHomeDealCardEvents);
+  }
+
   async function loadAdminHomeSlider() {
-    if (!homeSliderList || !token) return;
+    if ((!homeSliderList && !homeDealList) || !token) return;
     note(homeSliderNote, "", "");
     try {
       const data = await api("/api/admin/home-slider");
       homeSliderMax = Number(data.maxSlides) || 8;
+      homeDealMax = Number(data.maxDeals) || 4;
       homeSliderTones = Array.isArray(data.tones) && data.tones.length ? data.tones : homeSliderTones;
       homeSliderCategories = Array.isArray(data.categories) ? data.categories : [];
       homeSliderDraft = Array.isArray(data.slides) ? data.slides : [];
+      homeDealDraft = Array.isArray(data.deals) ? data.deals : [];
       renderHomeSliderList();
+      renderHomeDealList();
       bindAllHomeSliderCards();
+      bindAllHomeDealCards();
     } catch (err) {
       note(homeSliderNote, "err", err.message || "Slider yüklenemedi");
     }
@@ -8812,11 +8926,11 @@
     homeSliderAddBtn.addEventListener("click", () => {
       homeSliderDraft = collectHomeSliderDraft();
       if (homeSliderDraft.length >= homeSliderMax) {
-        note(homeSliderNote, "err", "En fazla " + homeSliderMax + " slayt eklenebilir.");
+        note(homeSliderNote, "err", "En fazla " + homeSliderMax + " kampanya eklenebilir.");
         return;
       }
       homeSliderDraft.push({
-        id: homeSliderNewId(),
+        id: homeSliderNewId("hs_"),
         productId: "",
         categoryKey: "",
         categoryName: "",
@@ -8829,7 +8943,6 @@
         tone: "navy",
         active: true,
         sort: homeSliderDraft.length,
-        product: null,
       });
       renderHomeSliderList();
       bindAllHomeSliderCards();
@@ -8837,20 +8950,57 @@
     });
   }
 
+  if (homeDealAddBtn) {
+    homeDealAddBtn.addEventListener("click", () => {
+      homeDealDraft = collectHomeDealDraft();
+      if (homeDealDraft.length >= homeDealMax) {
+        note(homeSliderNote, "err", "En fazla " + homeDealMax + " fırsat ürünü eklenebilir.");
+        return;
+      }
+      homeDealDraft.push({
+        id: homeSliderNewId("hd_"),
+        productId: "",
+        categoryKey: "",
+        categoryName: "",
+        eyebrow: "",
+        titleOverride: "",
+        active: true,
+        sort: homeDealDraft.length,
+        product: null,
+      });
+      renderHomeDealList();
+      bindAllHomeDealCards();
+      note(homeSliderNote, "", "");
+    });
+  }
+
   if (homeSliderSaveBtn) {
     homeSliderSaveBtn.addEventListener("click", async () => {
       homeSliderDraft = collectHomeSliderDraft();
-      const bad = homeSliderDraft.find((s) => {
+      homeDealDraft = collectHomeDealDraft();
+      const badCampaign = homeSliderDraft.find((s) => {
         const img = String(s.imageDesktop || s.imageOverride || "").trim();
         const link = String(s.linkHref || "").trim();
-        const productId = String(s.productId || "").trim();
-        return !productId || !img || !link;
+        return !img || !link;
       });
-      if (bad) {
+      if (badCampaign) {
         note(
           homeSliderNote,
           "err",
-          "Her slaytta fırsat ürünü + masaüstü görsel + yönlendirme linki zorunlu. Eksik slaytı doldur veya sil."
+          "Her kampanyada masaüstü görsel + yönlendirme linki zorunlu."
+        );
+        return;
+      }
+      const badDeal = homeDealDraft.find((d) => !String(d.productId || "").trim());
+      if (badDeal) {
+        note(homeSliderNote, "err", "Her fırsat satırında ürün seçin veya satırı silin.");
+        return;
+      }
+      if (!homeSliderDraft.length || !homeDealDraft.length) {
+        note(
+          homeSliderNote,
+          "err",
+          "Ana sayfada görünmesi için en az 1 kampanya ve 1 fırsat ürünü gerekli."
         );
         return;
       }
@@ -8863,7 +9013,6 @@
           body: JSON.stringify({
             slides: homeSliderDraft.map((slide, index) => ({
               id: slide.id,
-              productId: slide.productId || "",
               categoryKey: slide.categoryKey || "",
               categoryName: slide.categoryName || "",
               eyebrow: slide.eyebrow || slide.categoryName || "",
@@ -8876,23 +9025,33 @@
               active: slide.active !== false,
               sort: index,
             })),
+            deals: homeDealDraft.map((deal, index) => ({
+              id: deal.id,
+              productId: deal.productId || "",
+              categoryKey: deal.categoryKey || "",
+              categoryName: deal.categoryName || "",
+              eyebrow: deal.eyebrow || deal.categoryName || "",
+              titleOverride: deal.titleOverride || "",
+              active: deal.active !== false,
+              sort: index,
+            })),
           }),
         });
         homeSliderDraft = Array.isArray(saved.slides) ? saved.slides : homeSliderDraft;
+        homeDealDraft = Array.isArray(saved.deals) ? saved.deals : homeDealDraft;
         if (Array.isArray(saved.categories)) homeSliderCategories = saved.categories;
         renderHomeSliderList();
+        renderHomeDealList();
         bindAllHomeSliderCards();
-        const total = homeSliderDraft.length;
-        const activeCount = homeSliderDraft.filter((s) => s.active !== false).length;
+        bindAllHomeDealCards();
         note(
           homeSliderNote,
           "ok",
           "Kaydedildi: " +
-            total +
-            " slayt · " +
-            activeCount +
-            " aktif. Ana sayfada " +
-            (activeCount ? "fırsat slider görünür." : "klasik hero kalır (aktif yok).")
+            homeSliderDraft.length +
+            " kampanya · " +
+            homeDealDraft.length +
+            " fırsat ürünü (5 sn kayar)."
         );
       } catch (err) {
         note(homeSliderNote, "err", err.message || "Kaydedilemedi");

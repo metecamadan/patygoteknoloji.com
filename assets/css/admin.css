@@ -2744,6 +2744,18 @@ body.admin-modal-open {
 .admin-home-slider-spec-list strong {
   color: var(--ink);
 }
+.admin-home-slider-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0.5rem 0 0.35rem;
+}
+.admin-home-slider-section-head .admin-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
 .admin-home-slider-list {
   display: flex;
   flex-direction: column;

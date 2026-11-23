@@ -425,13 +425,42 @@ function homeSliderCategoryOptions() {
   return out;
 }
 
-/** Active home-slider: sol kampanya (image+linkHref), sağ fırsat ürünü (stokta). */
-function publicHomeSliderSlides() {
+function enrichHomeSliderProduct(productId, index) {
+  const id = String(productId || "").trim();
+  if (!id) return null;
+  const item = index.compactById.get(id) || null;
+  const sold = !item ? soldOutCompact(id) : null;
+  const src = item || sold;
+  if (!src) {
+    return {
+      name: "Ürün bulunamadı / stokta değil",
+      brand: "",
+      image: "",
+      priceIncl: 0,
+      soldOut: true,
+      urlPath: "",
+    };
+  }
+  const image =
+    src.image || (Array.isArray(src.images) ? src.images.find(Boolean) : "") || "";
+  return {
+    name: src.name || "",
+    brand: src.brand || "",
+    image,
+    priceIncl: priceInclVatAmount(src),
+    soldOut: Boolean(sold) && !item,
+    urlPath: src.urlPath || "",
+  };
+}
+
+/** Active home-slider: sol kampanyalar + sağ fırsat ürünleri (ayrı listeler). */
+function publicHomeSliderPayload() {
   const config = homeSliderStore.getConfig();
   const index = storefrontIndex(false);
   if (!index.compactById) {
     index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   }
+
   const slides = [];
   for (const slide of config.slides) {
     if (!slide.active) continue;
@@ -441,79 +470,100 @@ function publicHomeSliderSlides() {
     if (bannerHref && !bannerHref.startsWith("/") && !/^https?:\/\//i.test(bannerHref)) {
       bannerHref = "/" + bannerHref;
     }
-    const item = slide.productId
-      ? index.compactById.get(String(slide.productId || ""))
-      : null;
-    if (!item || !imageDesktop || !bannerHref) continue;
-
-    const catalogImage =
-      item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
-    const productUrlPath = String(item.urlPath || "").trim() || bannerHref;
-    const name =
-      slide.titleOverride ||
-      String(item.name || "").trim() ||
-      slide.categoryName ||
-      slide.eyebrow ||
-      "Fırsat";
+    if (!imageDesktop || !bannerHref) continue;
     slides.push({
       id: slide.id,
-      productId: slide.productId || "",
       categoryKey: slide.categoryKey || "",
       categoryName: slide.categoryName || "",
-      brand: String(item.brand || "").trim(),
-      name,
+      name: slide.titleOverride || slide.categoryName || slide.eyebrow || "Kampanya",
       image: imageDesktop,
       imageDesktop,
       imageMobile,
-      productImage: catalogImage || imageDesktop,
       urlPath: bannerHref,
-      productUrlPath,
-      priceIncl: priceInclVatAmount(item),
-      eyebrow: slide.eyebrow || slide.categoryName || "Fırsat",
+      eyebrow: slide.eyebrow || slide.categoryName || "Kampanya",
       tone: slide.tone || "navy",
-      campaignOnly: false,
     });
   }
-  return slides;
+
+  const deals = [];
+  for (const deal of config.deals || []) {
+    if (!deal.active) continue;
+    const item = deal.productId
+      ? index.compactById.get(String(deal.productId || ""))
+      : null;
+    if (!item) continue;
+    const catalogImage =
+      item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
+    const productUrlPath = String(item.urlPath || "").trim();
+    if (!productUrlPath) continue;
+    deals.push({
+      id: deal.id,
+      productId: deal.productId || "",
+      categoryKey: deal.categoryKey || "",
+      categoryName: deal.categoryName || "",
+      brand: String(item.brand || "").trim(),
+      name:
+        deal.titleOverride ||
+        String(item.name || "").trim() ||
+        deal.categoryName ||
+        deal.eyebrow ||
+        "Fırsat",
+      productImage: catalogImage,
+      productUrlPath,
+      priceIncl: priceInclVatAmount(item),
+      eyebrow: deal.eyebrow || deal.categoryName || "Fırsat",
+    });
+  }
+
+  return { slides, deals };
 }
 
-/** Admin listing: slides + product preview + category options. */
+/** @deprecated shape for older clients — prefer publicHomeSliderPayload */
+function publicHomeSliderSlides() {
+  const payload = publicHomeSliderPayload();
+  if (!payload.slides.length || !payload.deals.length) return [];
+  // Pair by index for legacy single-list consumers
+  const n = Math.max(payload.slides.length, payload.deals.length);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const slide = payload.slides[i % payload.slides.length];
+    const deal = payload.deals[i % payload.deals.length];
+    out.push(
+      Object.assign({}, slide, deal, {
+        id: "pair_" + i,
+        urlPath: slide.urlPath,
+        productUrlPath: deal.productUrlPath,
+        image: slide.imageDesktop,
+        imageDesktop: slide.imageDesktop,
+        imageMobile: slide.imageMobile,
+        campaignOnly: false,
+      })
+    );
+  }
+  return out;
+}
+
+/** Admin listing: campaigns + deals + category options. */
 function adminHomeSliderPayload() {
   const config = homeSliderStore.getConfig();
   const index = storefrontIndex(false);
   if (!index.compactById) {
     index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
   }
-  const slides = config.slides.map((slide) => {
-    const item = slide.productId
-      ? index.compactById.get(String(slide.productId || ""))
-      : null;
-    const sold = !item && slide.productId ? soldOutCompact(slide.productId) : null;
-    const src = item || sold;
-    const image = src
-      ? src.image || (Array.isArray(src.images) ? src.images.find(Boolean) : "") || ""
-      : "";
-    return Object.assign({}, slide, {
-      product: src
-        ? {
-            name: src.name || "",
-            brand: src.brand || "",
-            image,
-            priceIncl: priceInclVatAmount(src),
-            soldOut: Boolean(sold) && !item,
-            urlPath: src.urlPath || "",
-          }
-        : slide.productId
-          ? { name: "Ürün bulunamadı / stokta değil", brand: "", image: "", priceIncl: 0, soldOut: true }
-          : null,
-    });
-  });
+  const slides = config.slides.map((slide) => Object.assign({}, slide));
+  const deals = (config.deals || []).map((deal) =>
+    Object.assign({}, deal, {
+      product: enrichHomeSliderProduct(deal.productId, index),
+    })
+  );
   return {
     ok: true,
     slides,
+    deals,
     categories: homeSliderCategoryOptions(),
     updatedAt: config.updatedAt,
     maxSlides: homeSliderStore.MAX_SLIDES,
+    maxDeals: homeSliderStore.MAX_DEALS || 4,
     tones: homeSliderStore.TONES,
   };
 }
@@ -3058,10 +3108,17 @@ async function handleApi(req, res, urlPath) {
   }
 
   if (req.method === "GET" && urlPath === "/api/home-slider") {
+    const payload = publicHomeSliderPayload();
     return json(
       res,
       200,
-      { ok: true, slides: publicHomeSliderSlides() },
+      {
+        ok: true,
+        slides: payload.slides,
+        deals: payload.deals,
+        // legacy paired list (eski istemciler)
+        items: publicHomeSliderSlides(),
+      },
       { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" }
     );
   }
@@ -3901,7 +3958,10 @@ async function handleApi(req, res, urlPath) {
   if (req.method === "PUT" && urlPath === "/api/admin/home-slider") {
     try {
       const body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8") || "{}");
-      const saved = homeSliderStore.setConfig({ slides: body.slides });
+      const saved = homeSliderStore.setConfig({
+        slides: body.slides,
+        deals: body.deals,
+      });
       return json(res, 200, Object.assign(adminHomeSliderPayload(), { updatedAt: saved.updatedAt }));
     } catch (err) {
       return json(res, 422, { ok: false, error: (err && err.message) || "Slider kaydedilemedi." });

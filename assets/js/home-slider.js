@@ -1,6 +1,9 @@
 (function () {
   "use strict";
 
+  var DEAL_AUTO_MS = 5000;
+  var BANNER_AUTO_MS = 6000;
+
   function formatTry(amount) {
     return (
       "₺" +
@@ -12,8 +15,8 @@
   }
 
   function shortName(name, max) {
-    const limit = max || 72;
-    const text = String(name || "").trim();
+    var limit = max || 72;
+    var text = String(name || "").trim();
     if (text.length <= limit) return text;
     return text.slice(0, limit - 1).trimEnd() + "…";
   }
@@ -31,21 +34,49 @@
   }
 
   function productHref(urlPath) {
-    const path = String(urlPath || "").trim();
+    var path = String(urlPath || "").trim();
     if (!path) return "/urunler";
     if (/^https?:\/\//i.test(path)) return path;
     return path.startsWith("/") ? path : "/" + path;
   }
 
   function makeCarousel(opts) {
-    const { track, dotsWrap, prevBtn, nextBtn, count, autoMs, onPaint, reduceMotion } = opts;
-    let index = 0;
-    let timer = null;
+    var track = opts.track;
+    var viewport = opts.viewport || (track && track.parentElement);
+    var dotsWrap = opts.dotsWrap;
+    var prevBtn = opts.prevBtn;
+    var nextBtn = opts.nextBtn;
+    var count = opts.count;
+    var autoMs = opts.autoMs;
+    var onPaint = opts.onPaint;
+    var reduceMotion = opts.reduceMotion;
+    var index = 0;
+    var timer = null;
+
+    function slideWidth() {
+      return viewport && viewport.clientWidth ? viewport.clientWidth : 0;
+    }
+
+    function layout() {
+      var w = slideWidth();
+      if (!track || !w) return;
+      track.style.width = w * count + "px";
+      Array.prototype.forEach.call(track.children, function (el) {
+        el.style.flex = "0 0 " + w + "px";
+        el.style.width = w + "px";
+        el.style.minWidth = w + "px";
+        el.style.maxWidth = w + "px";
+      });
+    }
 
     function paint() {
-      if (track) track.style.transform = "translateX(-" + index * 100 + "%)";
+      layout();
+      var w = slideWidth();
+      if (track) {
+        track.style.transform = w ? "translateX(-" + index * w + "px)" : "translateX(0)";
+      }
       if (dotsWrap) {
-        dotsWrap.querySelectorAll("button").forEach((el, i) => {
+        Array.prototype.forEach.call(dotsWrap.querySelectorAll("button"), function (el, i) {
           el.setAttribute("aria-selected", i === index ? "true" : "false");
         });
       }
@@ -62,7 +93,9 @@
     function restart() {
       if (reduceMotion || count < 2 || !autoMs) return;
       clearInterval(timer);
-      timer = setInterval(() => go(index + 1, false), autoMs);
+      timer = setInterval(function () {
+        go(index + 1, false);
+      }, autoMs);
     }
 
     function stop() {
@@ -70,34 +103,48 @@
     }
 
     if (dotsWrap) {
-      dotsWrap.querySelectorAll("button").forEach((dot, i) => {
-        dot.addEventListener("click", () => go(i, true));
+      Array.prototype.forEach.call(dotsWrap.querySelectorAll("button"), function (dot, i) {
+        dot.addEventListener("click", function () {
+          go(i, true);
+        });
       });
     }
-    if (prevBtn) prevBtn.addEventListener("click", () => go(index - 1, true));
-    if (nextBtn) nextBtn.addEventListener("click", () => go(index + 1, true));
+    if (prevBtn) {
+      prevBtn.addEventListener("click", function () {
+        go(index - 1, true);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function () {
+        go(index + 1, true);
+      });
+    }
     if (count < 2) {
       if (prevBtn) prevBtn.hidden = true;
       if (nextBtn) nextBtn.hidden = true;
       if (dotsWrap) dotsWrap.hidden = true;
     }
 
+    window.addEventListener("resize", function () {
+      paint();
+    });
+
     paint();
     restart();
-    return { go, restart, stop, getIndex: () => index };
+    return { go: go, restart: restart, stop: stop, getIndex: function () { return index; } };
   }
 
   function renderBannerSlide(slide, index) {
-    const article = document.createElement("article");
+    var article = document.createElement("article");
     article.className = "home-banner-slide" + (index === 0 ? " is-active" : "");
     article.setAttribute("aria-roledescription", "slide");
-    const href = productHref(slide.urlPath);
-    const desktop = slide.imageDesktop || slide.image || "";
-    const mobile = slide.imageMobile || desktop;
-    const alt = slide.eyebrow
+    var href = productHref(slide.urlPath);
+    var desktop = slide.imageDesktop || slide.image || "";
+    var mobile = slide.imageMobile || desktop;
+    var alt = slide.eyebrow
       ? slide.eyebrow + " — " + (slide.name || "")
       : slide.name || "Kampanya";
-    const loading = index === 0 ? "eager" : "lazy";
+    var loading = index === 0 ? "eager" : "lazy";
     article.innerHTML =
       '<a class="home-banner-link" href="' +
       escapeAttr(href) +
@@ -118,18 +165,18 @@
     return article;
   }
 
-  function renderDealSlide(slide, index) {
-    const article = document.createElement("article");
+  function renderDealSlide(deal, index) {
+    var article = document.createElement("article");
     article.className = "home-deal-slide" + (index === 0 ? " is-active" : "");
     article.setAttribute("aria-roledescription", "slide");
-    const thumb = slide.productImage || slide.imageDesktop || slide.image;
-    const dealHref = productHref(slide.productUrlPath || slide.urlPath);
+    var thumb = deal.productImage || "";
+    var dealHref = productHref(deal.productUrlPath);
     article.innerHTML =
       '<a class="home-deal-card" href="' +
       escapeAttr(dealHref) +
       '">' +
       '<span class="home-deal-eyebrow">' +
-      escapeHtml(slide.eyebrow || "Fırsat") +
+      escapeHtml(deal.eyebrow || "Fırsat") +
       "</span>" +
       '<div class="home-deal-media">' +
       '<img src="' +
@@ -139,37 +186,44 @@
       '" decoding="async" />' +
       "</div>" +
       '<p class="home-deal-brand">' +
-      escapeHtml(slide.brand || "") +
+      escapeHtml(deal.brand || "") +
       "</p>" +
       '<h3 class="home-deal-title">' +
-      escapeHtml(shortName(slide.name, 64)) +
+      escapeHtml(shortName(deal.name, 64)) +
       "</h3>" +
       '<div class="home-deal-price"><strong>' +
-      escapeHtml(formatTry(slide.priceIncl)) +
+      escapeHtml(formatTry(deal.priceIncl)) +
       "</strong><span>KDV dahil</span></div>" +
       '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
       "</a>";
     return article;
   }
 
-  function mountDuo(slides) {
-    const wrap = document.querySelector("[data-hero-slider-wrap]");
-    const classic = document.querySelector("[data-classic-hero]");
-    const duo = document.querySelector("[data-home-duo]");
-    const bannerTrack = duo && duo.querySelector("[data-banner-track]");
-    const dealTrack = duo && duo.querySelector("[data-deal-track]");
-    const dealDots = duo && duo.querySelector("[data-deal-dots]");
-    const live = duo && duo.querySelector("[data-duo-live]");
-    if (!wrap || !duo || !bannerTrack || !dealTrack || !dealDots || !slides.length) return false;
+  function mountDuo(slides, deals) {
+    var wrap = document.querySelector("[data-hero-slider-wrap]");
+    var classic = document.querySelector("[data-classic-hero]");
+    var duo = document.querySelector("[data-home-duo]");
+    var banner = duo && duo.querySelector("[data-home-banner]");
+    var bannerTrack = duo && duo.querySelector("[data-banner-track]");
+    var bannerViewport = banner && banner.querySelector(".home-banner-viewport");
+    var dealAside = duo && duo.querySelector("[data-home-deal]");
+    var dealTrack = duo && duo.querySelector("[data-deal-track]");
+    var dealViewport = dealAside && dealAside.querySelector(".home-deal-viewport");
+    var dealDots = duo && duo.querySelector("[data-deal-dots]");
+    var live = duo && duo.querySelector("[data-duo-live]");
+    if (!wrap || !duo || !bannerTrack || !dealTrack || !dealDots) return false;
+    if (!slides.length || !deals.length) return false;
 
     bannerTrack.innerHTML = "";
     dealTrack.innerHTML = "";
     dealDots.innerHTML = "";
 
-    slides.forEach((slide, index) => {
+    slides.forEach(function (slide, index) {
       bannerTrack.appendChild(renderBannerSlide(slide, index));
-      dealTrack.appendChild(renderDealSlide(slide, index));
-      const dot = document.createElement("button");
+    });
+    deals.forEach(function (deal, index) {
+      dealTrack.appendChild(renderDealSlide(deal, index));
+      var dot = document.createElement("button");
       dot.type = "button";
       dot.setAttribute("role", "tab");
       dot.setAttribute("aria-label", "Ürün " + (index + 1));
@@ -177,46 +231,49 @@
       dealDots.appendChild(dot);
     });
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const banner = makeCarousel({
+    var bannerCarousel = makeCarousel({
       track: bannerTrack,
+      viewport: bannerViewport,
       prevBtn: duo.querySelector("[data-banner-prev]"),
       nextBtn: duo.querySelector("[data-banner-next]"),
       count: slides.length,
-      autoMs: 6000,
-      reduceMotion,
+      autoMs: BANNER_AUTO_MS,
+      reduceMotion: reduceMotion,
       onPaint: function (i) {
-        bannerTrack.querySelectorAll(".home-banner-slide").forEach((el, n) => {
+        Array.prototype.forEach.call(bannerTrack.querySelectorAll(".home-banner-slide"), function (el, n) {
           el.classList.toggle("is-active", n === i);
         });
       },
     });
 
-    const deal = makeCarousel({
+    var dealCarousel = makeCarousel({
       track: dealTrack,
+      viewport: dealViewport,
       dotsWrap: dealDots,
-      count: slides.length,
-      autoMs: 4500,
-      reduceMotion,
+      count: deals.length,
+      autoMs: DEAL_AUTO_MS,
+      reduceMotion: reduceMotion,
       onPaint: function (i) {
-        dealTrack.querySelectorAll(".home-deal-slide").forEach((el, n) => {
+        Array.prototype.forEach.call(dealTrack.querySelectorAll(".home-deal-slide"), function (el, n) {
           el.classList.toggle("is-active", n === i);
         });
         if (live) {
-          const s = slides[i];
-          live.textContent = "Ürün " + (i + 1) + ": " + (s.brand || "") + " " + shortName(s.name, 40);
+          var d = deals[i];
+          live.textContent =
+            "Ürün " + (i + 1) + "/" + deals.length + ": " + (d.brand || "") + " " + shortName(d.name, 40);
         }
       },
     });
 
-    duo.addEventListener("mouseenter", () => {
-      banner.stop();
-      deal.stop();
+    duo.addEventListener("mouseenter", function () {
+      bannerCarousel.stop();
+      dealCarousel.stop();
     });
-    duo.addEventListener("mouseleave", () => {
-      banner.restart();
-      deal.restart();
+    duo.addEventListener("mouseleave", function () {
+      bannerCarousel.restart();
+      dealCarousel.restart();
     });
 
     if (classic) classic.hidden = true;
@@ -224,15 +281,55 @@
     return true;
   }
 
+  function legacyToLists(data) {
+    var slides = data && Array.isArray(data.slides) ? data.slides : [];
+    var deals = data && Array.isArray(data.deals) ? data.deals : [];
+    if (deals.length && slides.length) return { slides: slides, deals: deals };
+
+    // Eski API: tek listede pair
+    var items = data && Array.isArray(data.items) ? data.items : slides;
+    if (!items.length) return { slides: [], deals: [] };
+    var hasSplit = items[0] && (items[0].productUrlPath || items[0].productImage);
+    if (!hasSplit || (data.deals && data.deals.length === 0 && data.slides && data.slides[0] && !data.slides[0].productId)) {
+      return { slides: slides, deals: deals };
+    }
+    if (!deals.length && items[0] && items[0].productId) {
+      deals = items.map(function (item) {
+        return {
+          id: item.id,
+          productId: item.productId,
+          brand: item.brand,
+          name: item.name,
+          productImage: item.productImage,
+          productUrlPath: item.productUrlPath || item.urlPath,
+          priceIncl: item.priceIncl,
+          eyebrow: item.eyebrow,
+        };
+      });
+      slides = items.map(function (item) {
+        return {
+          id: item.id,
+          name: item.name,
+          imageDesktop: item.imageDesktop || item.image,
+          imageMobile: item.imageMobile,
+          urlPath: item.urlPath,
+          eyebrow: item.eyebrow,
+          tone: item.tone,
+        };
+      });
+    }
+    return { slides: slides, deals: deals };
+  }
+
   async function init() {
-    const wrap = document.querySelector("[data-hero-slider-wrap]");
+    var wrap = document.querySelector("[data-hero-slider-wrap]");
     if (!wrap) return;
     try {
-      const res = await fetch("/api/home-slider", { credentials: "same-origin" });
+      var res = await fetch("/api/home-slider", { credentials: "same-origin" });
       if (!res.ok) return;
-      const data = await res.json();
-      const slides = data && Array.isArray(data.slides) ? data.slides : [];
-      if (slides.length) mountDuo(slides);
+      var data = await res.json();
+      var lists = legacyToLists(data);
+      if (lists.slides.length && lists.deals.length) mountDuo(lists.slides, lists.deals);
     } catch (_) {}
   }
 
