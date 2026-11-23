@@ -38,9 +38,10 @@ test("product detail tabs and spec chips are rendered in JS", () => {
   assert.doesNotMatch(script, /detail-empty/);
   assert.match(script, /İade ve Cayma/);
   assert.doesNotMatch(script, /<li>Faturalı satış<\/li>/);
+  assert.doesNotMatch(script, /Stokta · KDV dahil fiyat/);
+  assert.doesNotMatch(script, /3D Secure güvenli ödeme/);
   assert.match(script, /"<li>" \+ dispatchDaysLabel\(\) \+ " kargoda<\/li>"/);
   assert.match(script, /\|\| 2;\s*return days \+ " iş gününde";/);
-  assert.match(script, /<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz<\/li>/);
   assert.match(script, /el\("li", "", "Sorunuz mu var\? "\)/);
   assert.match(script, /askLink\.href =\s*"https:\/\/wa\.me\/905555070724\?text=" \+\s*encodeURIComponent\("Merhaba, bu ürün hakkında bilgi almak istiyorum: " \+ product\.name/);
   assert.doesNotMatch(script, /Sorunuz mu var\?[^\n]*tel:/, "Sorunuz mu var? satırında GSM numarası gösterilmez");

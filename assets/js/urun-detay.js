@@ -1191,12 +1191,9 @@
 
     const trust = document.createElement("ul");
     trust.className = "detail-trust";
-    const trustItems = ["<li>Stokta · KDV dahil fiyat</li>"];
+    const trustItems = [];
     if (isOriginalProduct(product)) trustItems.push("<li>Orijinal ürün</li>");
-    trustItems.push(
-      "<li>" + dispatchDaysLabel() + " kargoda</li>",
-      "<li>3D Secure güvenli ödeme · kart bilgileriniz saklanmaz</li>"
-    );
+    trustItems.push("<li>" + dispatchDaysLabel() + " kargoda</li>");
     trust.innerHTML = trustItems.join("");
     const askItem = el("li", "", "Sorunuz mu var? ");
     const askLink = el("a", "", "WhatsApp");
