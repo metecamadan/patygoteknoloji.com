@@ -8364,7 +8364,7 @@
     const categoryName = homeSliderCategoryLabel(categoryKey);
     return {
       id: card.dataset.slideId || homeSliderNewId(),
-      productId: "",
+      productId: String((card.querySelector("[data-field=productId]") || {}).value || "").trim(),
       categoryKey,
       categoryName,
       eyebrow: categoryName,
@@ -8403,6 +8403,16 @@
     return Array.from(homeSliderList.querySelectorAll("[data-home-slide]")).map((card, index) => {
       const slide = readHomeSliderCard(card);
       slide.sort = index;
+      const preview = card.querySelector("[data-product-preview]");
+      if (preview && preview.dataset.productName) {
+        slide.product = {
+          name: preview.dataset.productName,
+          brand: preview.dataset.productBrand || "",
+          image: preview.dataset.productImage || "",
+          priceIncl: Number(preview.dataset.productPrice || 0) || 0,
+          soldOut: preview.dataset.productSoldOut === "1",
+        };
+      }
       return slide;
     });
   }
@@ -8411,7 +8421,7 @@
     if (!homeSliderList) return;
     if (!homeSliderDraft.length) {
       homeSliderList.innerHTML =
-        '<p class="admin-table-empty">Henüz slayt yok. “Slayt ekle” ile kampanya ekleyin.</p>';
+        '<p class="admin-table-empty">Henüz slayt yok. “Slayt ekle” ile fırsat ürünü + kampanya ekleyin.</p>';
       if (homeSliderHint) {
         homeSliderHint.textContent =
           "En fazla " + homeSliderMax + " slayt. Aktif slayt yoksa ana sayfada klasik hero kalır.";
@@ -8420,6 +8430,14 @@
     }
     homeSliderList.innerHTML = homeSliderDraft
       .map((slide, index) => {
+        const product = slide.product || {};
+        const productName =
+          product.name ||
+          (slide.productId ? "Ürün bulunamadı / stokta değil" : "Fırsat ürünü seçilmedi");
+        const brand = product.brand || "";
+        const productImage = product.image || "";
+        const price = product.priceIncl ? formatMoney(product.priceIncl) : "";
+        const soldOut = product.soldOut === true;
         const catLabel =
           slide.categoryName || homeSliderCategoryLabel(slide.categoryKey) || "Kategori seçilmedi";
         const eyebrowTag = catLabel !== "Kategori seçilmedi" ? catLabel : "—";
@@ -8458,19 +8476,43 @@
           '<button type="button" class="btn btn-ghost btn-xs" data-slide-remove>Sil</button>' +
           "</div></div>" +
           '<div class="admin-home-slide-body">' +
-          '<div class="admin-home-slide-preview">' +
-          (desktopImg
+          '<div class="admin-home-slide-preview" data-product-preview' +
+          ' data-product-name="' +
+          escapeHomeSliderHtml(product.name || "") +
+          '" data-product-brand="' +
+          escapeHomeSliderHtml(brand) +
+          '" data-product-image="' +
+          escapeHomeSliderHtml(productImage) +
+          '" data-product-price="' +
+          escapeHomeSliderHtml(product.priceIncl || "") +
+          '" data-product-sold-out="' +
+          (soldOut ? "1" : "0") +
+          '">' +
+          (productImage
             ? '<img src="' +
-              escapeHomeSliderHtml(desktopImg) +
-              '" alt="" width="120" height="40" loading="lazy" />'
-            : '<span class="admin-home-slide-ph">Görsel yok</span>') +
+              escapeHomeSliderHtml(productImage) +
+              '" alt="" width="72" height="72" loading="lazy" />'
+            : '<span class="admin-home-slide-ph">Ürün yok</span>') +
           "<div><p class=\"admin-home-slide-name\">" +
-          escapeHomeSliderHtml(slide.titleOverride || catLabel) +
-          '</p><p class="admin-home-slide-meta">Etiket: <span class="admin-home-slide-tag">' +
+          escapeHomeSliderHtml(productName) +
+          "</p>" +
+          (brand || price
+            ? '<p class="admin-home-slide-meta">' +
+              escapeHomeSliderHtml([brand, price].filter(Boolean).join(" · ")) +
+              (soldOut ? " · Tükendi" : "") +
+              "</p>"
+            : "") +
+          '<p class="admin-home-slide-meta">Etiket: <span class="admin-home-slide-tag">' +
           escapeHomeSliderHtml(eyebrowTag) +
           "</span></p></div></div>" +
           '<div class="admin-home-slide-fields">' +
-          '<div class="field"><label>Kategori</label>' +
+          '<div class="field"><label>Fırsat ürünü (sağ kart)</label>' +
+          '<input type="search" data-field="productSearch" placeholder="Ad veya marka…" autocomplete="off" />' +
+          '<div class="admin-home-slide-suggest" data-suggest hidden></div></div>' +
+          '<input type="hidden" data-field="productId" value="' +
+          escapeHomeSliderHtml(slide.productId || "") +
+          '" />' +
+          '<div class="field"><label>Kategori (üst etiket)</label>' +
           '<select data-field="categoryKey">' +
           homeSliderCategoryOptionsHtml(slide.categoryKey || "") +
           "</select>" +
@@ -8480,12 +8522,12 @@
           '<div class="field"><label>Başlık (isteğe bağlı)</label>' +
           '<input type="text" data-field="titleOverride" maxlength="160" value="' +
           escapeHomeSliderHtml(slide.titleOverride || "") +
-          '" placeholder="Boşsa kategori adı kullanılır" /></div>' +
-          '<div class="field"><label>Yönlendirme linki</label>' +
+          '" placeholder="Boşsa ürün adı kullanılır" /></div>' +
+          '<div class="field"><label>Kampanya yönlendirme linki (sol görsel)</label>' +
           '<input type="url" data-field="linkHref" maxlength="500" value="' +
           escapeHomeSliderHtml(slide.linkHref || "") +
           '" placeholder="/notebook veya https://…" />' +
-          '<p class="admin-field-help">Görsele tıklanınca gidilecek adres (site içi yol veya tam URL).</p></div>' +
+          '<p class="admin-field-help">Sol kampanya görseline tıklanınca gidilecek adres. Sağ kart ürüne gider.</p></div>' +
           '<div class="field"><label>Masaüstü kampanya görseli (1200×350)</label>' +
           '<div class="admin-home-slide-upload">' +
           '<input type="url" data-field="imageDesktop" maxlength="500" value="' +
@@ -8533,11 +8575,132 @@
         homeSliderMax +
         " slayt · " +
         activeCount +
-        " aktif. Yayın için masaüstü görsel + yönlendirme linki gerekir.";
+        " aktif. Yayın: fırsat ürünü + masaüstü görsel + yönlendirme linki. Stokta olmayan ürün sitede atlanır.";
     }
   }
 
+  async function searchHomeSliderProducts(query) {
+    const q = String(query || "").trim();
+    if (q.length < 2) return [];
+    const res = await fetch(
+      "/api/products?q=" + encodeURIComponent(q) + "&limit=8&page=1",
+      { credentials: "same-origin" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.products) ? data.products : [];
+  }
+
   function bindHomeSliderCardEvents(card) {
+    const searchInput = card.querySelector("[data-field=productSearch]");
+    const suggest = card.querySelector("[data-suggest]");
+    let searchTimer = null;
+    if (searchInput && suggest) {
+      searchInput.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        const q = searchInput.value;
+        if (String(q || "").trim().length < 2) {
+          suggest.hidden = true;
+          suggest.innerHTML = "";
+          return;
+        }
+        searchTimer = setTimeout(async () => {
+          try {
+            const products = await searchHomeSliderProducts(q);
+            if (!products.length) {
+              suggest.innerHTML = '<p class="admin-field-help">Sonuç yok</p>';
+              suggest.hidden = false;
+              return;
+            }
+            suggest.innerHTML = products
+              .map((product) => {
+                const img =
+                  product.image ||
+                  (Array.isArray(product.images) ? product.images.find(Boolean) : "") ||
+                  "";
+                return (
+                  '<button type="button" class="admin-home-slide-suggest-item" data-pick-id="' +
+                  escapeHomeSliderHtml(product.id) +
+                  '" data-pick-name="' +
+                  escapeHomeSliderHtml(product.name || "") +
+                  '" data-pick-brand="' +
+                  escapeHomeSliderHtml(product.brand || "") +
+                  '" data-pick-image="' +
+                  escapeHomeSliderHtml(img) +
+                  '" data-pick-price="' +
+                  escapeHomeSliderHtml(product.priceIncl || product.price || "") +
+                  '">' +
+                  (img
+                    ? '<img src="' + escapeHomeSliderHtml(img) + '" alt="" width="40" height="40" />'
+                    : "") +
+                  "<span>" +
+                  escapeHomeSliderHtml(product.name || product.id) +
+                  "</span></button>"
+                );
+              })
+              .join("");
+            suggest.hidden = false;
+          } catch (_) {
+            suggest.hidden = true;
+          }
+        }, 280);
+      });
+      suggest.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-pick-id]");
+        if (!btn) return;
+        const idInput = card.querySelector("[data-field=productId]");
+        if (idInput) idInput.value = btn.dataset.pickId || "";
+        const preview = card.querySelector("[data-product-preview]");
+        if (preview) {
+          preview.dataset.productName = btn.dataset.pickName || "";
+          preview.dataset.productBrand = btn.dataset.pickBrand || "";
+          preview.dataset.productImage = btn.dataset.pickImage || "";
+          preview.dataset.productPrice = btn.dataset.pickPrice || "";
+          preview.dataset.productSoldOut = "0";
+          const imgEl = preview.querySelector("img");
+          const ph = preview.querySelector(".admin-home-slide-ph");
+          if (btn.dataset.pickImage) {
+            if (imgEl) {
+              imgEl.src = btn.dataset.pickImage;
+            } else if (ph) {
+              ph.outerHTML =
+                '<img src="' +
+                escapeHomeSliderHtml(btn.dataset.pickImage) +
+                '" alt="" width="72" height="72" loading="lazy" />';
+            }
+          }
+          const nameEl = preview.querySelector(".admin-home-slide-name");
+          if (nameEl) nameEl.textContent = btn.dataset.pickName || "";
+          let meta = preview.querySelector(".admin-home-slide-meta");
+          const metaText = [
+            btn.dataset.pickBrand,
+            btn.dataset.pickPrice ? formatMoney(Number(btn.dataset.pickPrice)) : "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          if (metaText) {
+            if (!meta) {
+              meta = document.createElement("p");
+              meta.className = "admin-home-slide-meta";
+              const wrap = preview.querySelector("div");
+              const tagLine = wrap && wrap.querySelector(".admin-home-slide-tag");
+              if (wrap && tagLine && tagLine.parentElement) {
+                wrap.insertBefore(meta, tagLine.parentElement);
+              } else if (wrap) {
+                wrap.appendChild(meta);
+              } else {
+                preview.appendChild(meta);
+              }
+            }
+            meta.textContent = metaText;
+          }
+        }
+        searchInput.value = "";
+        suggest.hidden = true;
+        suggest.innerHTML = "";
+      });
+    }
+
     const catSelect = card.querySelector("[data-field=categoryKey]");
     const eyebrowPreview = card.querySelector("[data-eyebrow-preview]");
     const tagSpan = card.querySelector(".admin-home-slide-tag");
@@ -8547,17 +8710,13 @@
         const label = homeSliderCategoryLabel(catSelect.value) || "—";
         if (eyebrowPreview) eyebrowPreview.textContent = label;
         if (tagSpan) tagSpan.textContent = label;
-        const nameEl = card.querySelector(".admin-home-slide-name");
-        const titleInput = card.querySelector("[data-field=titleOverride]");
-        if (nameEl && titleInput && !String(titleInput.value || "").trim()) {
-          nameEl.textContent = label === "—" ? "Kategori seçilmedi" : label;
-        }
         const linkInput = card.querySelector("[data-field=linkHref]");
         if (linkInput && cat && cat.path && !String(linkInput.value || "").trim()) {
           linkInput.value = cat.path;
         }
       });
     }
+
     const up = card.querySelector("[data-slide-up]");
     const down = card.querySelector("[data-slide-down]");
     const remove = card.querySelector("[data-slide-remove]");
@@ -8684,13 +8843,14 @@
       const bad = homeSliderDraft.find((s) => {
         const img = String(s.imageDesktop || s.imageOverride || "").trim();
         const link = String(s.linkHref || "").trim();
-        return !img || !link;
+        const productId = String(s.productId || "").trim();
+        return !productId || !img || !link;
       });
       if (bad) {
         note(
           homeSliderNote,
           "err",
-          "Her aktif slaytta masaüstü görsel ve yönlendirme linki zorunlu. Eksik slaytı doldur veya sil."
+          "Her slaytta fırsat ürünü + masaüstü görsel + yönlendirme linki zorunlu. Eksik slaytı doldur veya sil."
         );
         return;
       }
@@ -8703,7 +8863,7 @@
           body: JSON.stringify({
             slides: homeSliderDraft.map((slide, index) => ({
               id: slide.id,
-              productId: "",
+              productId: slide.productId || "",
               categoryKey: slide.categoryKey || "",
               categoryName: slide.categoryName || "",
               eyebrow: slide.eyebrow || slide.categoryName || "",
@@ -8732,7 +8892,7 @@
             " slayt · " +
             activeCount +
             " aktif. Ana sayfada " +
-            (activeCount ? "ürün slider görünür." : "klasik hero kalır (aktif yok).")
+            (activeCount ? "fırsat slider görünür." : "klasik hero kalır (aktif yok).")
         );
       } catch (err) {
         note(homeSliderNote, "err", err.message || "Kaydedilemedi");

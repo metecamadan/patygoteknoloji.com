@@ -425,7 +425,7 @@ function homeSliderCategoryOptions() {
   return out;
 }
 
-/** Active home-slider slides: campaign image + redirect; optional product enrich. */
+/** Active home-slider: sol kampanya (image+linkHref), sağ fırsat ürünü (stokta). */
 function publicHomeSliderSlides() {
   const config = homeSliderStore.getConfig();
   const index = storefrontIndex(false);
@@ -437,51 +437,80 @@ function publicHomeSliderSlides() {
     if (!slide.active) continue;
     const imageDesktop = slide.imageDesktop || slide.imageOverride || "";
     const imageMobile = slide.imageMobile || imageDesktop;
-    let urlPath = String(slide.linkHref || "").trim();
-    if (urlPath && !urlPath.startsWith("/") && !/^https?:\/\//i.test(urlPath)) {
-      urlPath = "/" + urlPath;
+    let bannerHref = String(slide.linkHref || "").trim();
+    if (bannerHref && !bannerHref.startsWith("/") && !/^https?:\/\//i.test(bannerHref)) {
+      bannerHref = "/" + bannerHref;
     }
-    if (!imageDesktop || !urlPath) continue;
-
     const item = slide.productId
       ? index.compactById.get(String(slide.productId || ""))
       : null;
-    const catalogImage = item
-      ? item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || ""
-      : "";
+    if (!item || !imageDesktop || !bannerHref) continue;
+
+    const catalogImage =
+      item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
+    const productUrlPath = String(item.urlPath || "").trim() || bannerHref;
     const name =
       slide.titleOverride ||
-      (item && String(item.name || "").trim()) ||
+      String(item.name || "").trim() ||
       slide.categoryName ||
       slide.eyebrow ||
-      "Kampanya";
+      "Fırsat";
     slides.push({
       id: slide.id,
       productId: slide.productId || "",
       categoryKey: slide.categoryKey || "",
       categoryName: slide.categoryName || "",
-      brand: item ? String(item.brand || "").trim() : "",
+      brand: String(item.brand || "").trim(),
       name,
       image: imageDesktop,
       imageDesktop,
       imageMobile,
       productImage: catalogImage || imageDesktop,
-      urlPath,
-      priceIncl: item ? priceInclVatAmount(item) : 0,
-      eyebrow: slide.eyebrow || slide.categoryName || "Kampanya",
+      urlPath: bannerHref,
+      productUrlPath,
+      priceIncl: priceInclVatAmount(item),
+      eyebrow: slide.eyebrow || slide.categoryName || "Fırsat",
       tone: slide.tone || "navy",
-      campaignOnly: !item,
+      campaignOnly: false,
     });
   }
   return slides;
 }
 
-/** Admin listing: slides + category options for panel. */
+/** Admin listing: slides + product preview + category options. */
 function adminHomeSliderPayload() {
   const config = homeSliderStore.getConfig();
+  const index = storefrontIndex(false);
+  if (!index.compactById) {
+    index.compactById = new Map(index.compactAll.map((item) => [String(item.id), item]));
+  }
+  const slides = config.slides.map((slide) => {
+    const item = slide.productId
+      ? index.compactById.get(String(slide.productId || ""))
+      : null;
+    const sold = !item && slide.productId ? soldOutCompact(slide.productId) : null;
+    const src = item || sold;
+    const image = src
+      ? src.image || (Array.isArray(src.images) ? src.images.find(Boolean) : "") || ""
+      : "";
+    return Object.assign({}, slide, {
+      product: src
+        ? {
+            name: src.name || "",
+            brand: src.brand || "",
+            image,
+            priceIncl: priceInclVatAmount(src),
+            soldOut: Boolean(sold) && !item,
+            urlPath: src.urlPath || "",
+          }
+        : slide.productId
+          ? { name: "Ürün bulunamadı / stokta değil", brand: "", image: "", priceIncl: 0, soldOut: true }
+          : null,
+    });
+  });
   return {
     ok: true,
-    slides: config.slides,
+    slides,
     categories: homeSliderCategoryOptions(),
     updatedAt: config.updatedAt,
     maxSlides: homeSliderStore.MAX_SLIDES,

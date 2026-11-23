@@ -53,6 +53,7 @@ test("home slider store normalizes and caps slides", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-hs-"));
   const store = createHomeSliderStore(root);
   const many = Array.from({ length: MAX_SLIDES + 3 }, (_, i) => ({
+    productId: "p" + i,
     categoryKey: "cat/" + i,
     categoryName: "Kategori " + i,
     eyebrow: "Etiket " + i,
@@ -63,17 +64,18 @@ test("home slider store normalizes and caps slides", () => {
   }));
   const saved = store.setConfig({ slides: many });
   assert.equal(saved.slides.length, MAX_SLIDES);
-  assert.equal(saved.slides[0].categoryKey, "cat/0");
+  assert.equal(saved.slides[0].productId, "p0");
   assert.equal(saved.slides[0].linkHref, "/kategori-0");
   assert.equal(saved.slides[0].sort, 0);
   assert.ok(saved.updatedAt);
   assert.equal(store.getConfig().slides.length, MAX_SLIDES);
 });
 
-test("normalizeConfig keeps only slides with image + linkHref", () => {
+test("normalizeConfig requires productId + image + linkHref", () => {
   const cfg = normalizeConfig({
     slides: [
       {
+        productId: "a",
         imageDesktop: "/a.jpg",
         linkHref: "/notebook",
         tone: "nope",
@@ -86,13 +88,19 @@ test("normalizeConfig keeps only slides with image + linkHref", () => {
         linkHref: "kampanya",
         categoryKey: "bilgisayar-tablet",
       },
+      {
+        productId: "b",
+        imageDesktop: "/c.jpg",
+        linkHref: "kampanya-2",
+      },
     ],
   });
   assert.equal(cfg.slides.length, 2);
   assert.equal(cfg.slides[0].tone, "navy");
   assert.equal(cfg.slides[0].active, false);
   assert.equal(cfg.slides[0].eyebrow, "Notebook");
-  assert.equal(cfg.slides[1].linkHref, "/kampanya");
+  assert.equal(cfg.slides[1].productId, "b");
+  assert.equal(cfg.slides[1].linkHref, "/kampanya-2");
   assert.equal(cfg.slides[1].active, true);
 });
 
@@ -100,11 +108,13 @@ test("normalizeSlide maps legacy imageOverride to imageDesktop and keeps imageMo
   const cfg = normalizeConfig({
     slides: [
       {
+        productId: "legacy",
         linkHref: "/eski",
         imageOverride: "/assets/img/home-slider/old-desk.jpg",
         imageMobile: "/assets/img/home-slider/old-mob.jpg",
       },
       {
+        productId: "new",
         linkHref: "/yeni",
         imageDesktop: "/assets/img/home-slider/desk.jpg",
         imageMobile: "",
@@ -118,7 +128,7 @@ test("normalizeSlide maps legacy imageOverride to imageDesktop and keeps imageMo
   assert.equal(cfg.slides[1].imageMobile, "");
 });
 
-test("public home-slider campaign slide needs image+link; optional product enrich", async (t) => {
+test("public home-slider needs in-stock product + image + link; deal uses product url", async (t) => {
   const password = "test-admin-password";
   const { baseUrl } = await spawnTestServer(
     t,
@@ -138,9 +148,6 @@ test("public home-slider campaign slide needs image+link; optional product enric
   const adminBody = await adminGet.json();
   assert.ok(Array.isArray(adminBody.categories));
   assert.ok(adminBody.categories.length > 0);
-  assert.ok(adminBody.categories[0].key);
-  assert.ok(adminBody.categories[0].label || adminBody.categories[0].name);
-  assert.ok(adminBody.categories[0].path);
 
   const put = await fetch(baseUrl + "/api/admin/home-slider", {
     method: "PUT",
@@ -148,6 +155,7 @@ test("public home-slider campaign slide needs image+link; optional product enric
     body: JSON.stringify({
       slides: [
         {
+          productId: "slider-test-item",
           categoryKey: "bilgisayar-tablet/tasinabilir-bilgisayarlar/notebooklar",
           categoryName: "Notebooklar",
           eyebrow: "Notebooklar",
@@ -159,15 +167,16 @@ test("public home-slider campaign slide needs image+link; optional product enric
           active: true,
         },
         {
-          categoryName: "Eksik",
+          productId: "missing-product-xyz",
+          linkHref: "/yok",
+          imageDesktop: "/assets/img/home-slider/gone.webp",
           eyebrow: "Yok",
           active: true,
         },
         {
-          productId: "slider-test-item",
-          linkHref: "/urun/slider-test",
-          imageDesktop: "/assets/img/home-slider/with-product.webp",
-          eyebrow: "Ürünlü",
+          categoryName: "Ürünsüz",
+          linkHref: "/kampanya",
+          imageDesktop: "/assets/img/home-slider/no-product.webp",
           active: true,
         },
       ],
@@ -177,44 +186,42 @@ test("public home-slider campaign slide needs image+link; optional product enric
   const putBody = await put.json();
   assert.equal(putBody.ok, true);
   assert.equal(putBody.slides.length, 2);
-  assert.ok(Array.isArray(putBody.categories));
+  assert.ok(putBody.slides[0].product);
+  assert.match(String(putBody.slides[0].product.name || ""), /Slider Test Notebook/);
 
   const pub2 = await fetch(baseUrl + "/api/home-slider");
   const pub2Body = await pub2.json();
-  assert.equal(pub2Body.slides.length, 2);
-
-  const campaign = pub2Body.slides.find((s) => s.campaignOnly === true);
-  assert.ok(campaign);
-  assert.equal(campaign.eyebrow, "Notebooklar");
-  assert.equal(campaign.tone, "blue");
-  assert.equal(campaign.name, "Test başlık");
-  assert.equal(campaign.imageDesktop, "/assets/img/home-slider/desk-test.webp");
-  assert.equal(campaign.imageMobile, "/assets/img/home-slider/mob-test.webp");
-  assert.equal(campaign.urlPath, "/bilgisayar-tablet/tasinabilir-bilgisayarlar/notebooklar");
-  assert.equal(campaign.priceIncl, 0);
-
-  const withProduct = pub2Body.slides.find((s) => s.productId === "slider-test-item");
-  assert.ok(withProduct);
-  assert.equal(withProduct.campaignOnly, false);
-  assert.ok(withProduct.priceIncl > 0);
-  assert.ok(withProduct.productImage);
+  assert.equal(pub2Body.slides.length, 1);
+  const slide = pub2Body.slides[0];
+  assert.equal(slide.productId, "slider-test-item");
+  assert.equal(slide.eyebrow, "Notebooklar");
+  assert.equal(slide.tone, "blue");
+  assert.equal(slide.name, "Test başlık");
+  assert.equal(slide.imageDesktop, "/assets/img/home-slider/desk-test.webp");
+  assert.equal(slide.imageMobile, "/assets/img/home-slider/mob-test.webp");
+  assert.equal(slide.urlPath, "/bilgisayar-tablet/tasinabilir-bilgisayarlar/notebooklar");
+  assert.ok(slide.productUrlPath);
+  assert.ok(slide.priceIncl > 0);
+  assert.ok(slide.productImage);
+  assert.equal(slide.campaignOnly, false);
 });
 
-test("home-slider storefront uses picture with desktop and mobile sources", () => {
+test("home-slider storefront uses picture and product deal link", () => {
   const js = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "home-slider.js"), "utf8");
   assert.match(js, /<picture>/);
   assert.match(js, /max-width:\s*900px/);
   assert.match(js, /imageDesktop/);
   assert.match(js, /imageMobile/);
-  assert.match(js, /campaignOnly/);
+  assert.match(js, /productUrlPath/);
+  assert.match(js, /Ürüne git/);
 });
 
-test("admin panel home-slider UX: category, linkHref, no product search", () => {
+test("admin panel home-slider UX: fırsat ürünü + kategori + linkHref + kaydet", () => {
   const js = fs.readFileSync(path.join(__dirname, "..", "assets", "js", "admin-panel.js"), "utf8");
   assert.match(js, /data-field="categoryKey"/);
   assert.match(js, /data-field="linkHref"/);
+  assert.match(js, /data-field="productSearch"/);
+  assert.match(js, /Fırsat ürünü/);
   assert.match(js, /data-eyebrow-preview/);
   assert.match(js, /Kaydedildi:/);
-  assert.doesNotMatch(js, /data-field="productSearch"/);
-  assert.doesNotMatch(js, /Ürün ara/);
 });

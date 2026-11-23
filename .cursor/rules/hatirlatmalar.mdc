@@ -86,8 +86,8 @@ Tekrar bakarken: panel XML Yönetimi → "Stokta ama satışta olmayanlar" kart�
 
 Düzen: **sol ~¾ kampanya görsel** + **sağ ~¼ kart** (ikisi ayrı kayar). Panel: **Vitrin → Ürün slider**. Aktif yoksa klasik hero.
 
-- Panel (23 Kas 2026): ürün arama yok; kategori → otomatik üst etiket; yönlendirme `linkHref` zorunlu; Kaydet sonucu notta.
-- Masaüstü + mobil görsel; yayın = görsel + link. Canlı: panelden ekle → `https://patygoteknoloji.com`.
+- Panel (23 Kas 2026): **sağ** = fırsat ürünü (arama); **sol** = kampanya görseli + `linkHref`. Kategori → otomatik üst etiket; Kaydet sonucu notta.
+- Yayın = ürün + masaüstü görsel + link. Stokta olmayan sitede atlanır. Canlı: panelden ekle → `https://patygoteknoloji.com`.
 
 ### 5. Google Search Console — hatırlat + haftalık triage (22–23 Kas 2026)
 

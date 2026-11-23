@@ -123,19 +123,13 @@
     article.className = "home-deal-slide" + (index === 0 ? " is-active" : "");
     article.setAttribute("aria-roledescription", "slide");
     const thumb = slide.productImage || slide.imageDesktop || slide.image;
-    const campaignOnly = slide.campaignOnly === true || !(Number(slide.priceIncl) > 0);
-    const priceBlock = campaignOnly
-      ? ""
-      : '<div class="home-deal-price"><strong>' +
-        escapeHtml(formatTry(slide.priceIncl)) +
-        "</strong><span>KDV dahil</span></div>";
-    const cta = campaignOnly ? "İncele" : "Ürüne git";
+    const dealHref = productHref(slide.productUrlPath || slide.urlPath);
     article.innerHTML =
       '<a class="home-deal-card" href="' +
-      escapeAttr(productHref(slide.urlPath)) +
+      escapeAttr(dealHref) +
       '">' +
       '<span class="home-deal-eyebrow">' +
-      escapeHtml(slide.eyebrow || "Kampanya") +
+      escapeHtml(slide.eyebrow || "Fırsat") +
       "</span>" +
       '<div class="home-deal-media">' +
       '<img src="' +
@@ -145,15 +139,15 @@
       '" decoding="async" />' +
       "</div>" +
       '<p class="home-deal-brand">' +
-      escapeHtml(slide.brand || slide.categoryName || "") +
+      escapeHtml(slide.brand || "") +
       "</p>" +
       '<h3 class="home-deal-title">' +
       escapeHtml(shortName(slide.name, 64)) +
       "</h3>" +
-      priceBlock +
-      '<span class="btn btn-primary home-deal-cta">' +
-      escapeHtml(cta) +
-      "</span>" +
+      '<div class="home-deal-price"><strong>' +
+      escapeHtml(formatTry(slide.priceIncl)) +
+      "</strong><span>KDV dahil</span></div>" +
+      '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
       "</a>";
     return article;
   }
