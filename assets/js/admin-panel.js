@@ -8635,17 +8635,17 @@
           '<input type="hidden" data-field="productId" value="' +
           escapeHomeSliderHtml(deal.productId || "") +
           '" />' +
-          '<div class="field"><label>Kategori (üst etiket)</label>' +
+          '<div class="field"><label>Kategori (yalnız üst etiket rozeti)</label>' +
           '<select data-field="categoryKey">' +
           homeSliderCategoryOptionsHtml(deal.categoryKey || "") +
           "</select>" +
-          '<p class="admin-field-help">Üst etiket: <strong data-eyebrow-preview>' +
+          '<p class="admin-field-help">Rozet: <strong data-eyebrow-preview>' +
           escapeHomeSliderHtml(catLabel) +
-          "</strong></p></div>" +
-          '<div class="field"><label>Başlık (isteğe bağlı)</label>' +
+          "</strong> — tıklanınca kategoriye değil, <strong>ürüne</strong> gider.</p></div>" +
+          '<div class="field"><label>Başlık (ürüne tıklanınca bu görünür)</label>' +
           '<input type="text" data-field="titleOverride" maxlength="160" value="' +
-          escapeHomeSliderHtml(deal.titleOverride || "") +
-          '" placeholder="Boşsa ürün adı" /></div>' +
+          escapeHomeSliderHtml(deal.titleOverride || product.name || "") +
+          '" placeholder="Ürün seçince otomatik dolar" /></div>' +
           '<label class="admin-check admin-home-slide-active"><input type="checkbox" data-field="active"' +
           (deal.active !== false ? " checked" : "") +
           " /><span>Aktif</span></label></div></div></article>"
@@ -8724,7 +8724,8 @@
       categoryKey: emptyIdx >= 0 ? homeDealDraft[emptyIdx].categoryKey || "" : "",
       categoryName: emptyIdx >= 0 ? homeDealDraft[emptyIdx].categoryName || "" : "",
       eyebrow: emptyIdx >= 0 ? homeDealDraft[emptyIdx].eyebrow || "" : "",
-      titleOverride: "",
+      // Başlık = ürün adı (kullanıcı isterse sonra kısaltır); tıklanınca ürüne gider
+      titleOverride: String(pick.name || "").trim().slice(0, 160),
       active: true,
       sort: emptyIdx >= 0 ? emptyIdx : homeDealDraft.length,
       product: {
@@ -8961,6 +8962,8 @@
           return;
         }
         if (idInput) idInput.value = pickId;
+        const titleInput = card.querySelector("[data-field=titleOverride]");
+        if (titleInput) titleInput.value = String(btn.dataset.pickName || "").trim().slice(0, 160);
         const preview = card.querySelector("[data-product-preview]");
         if (preview) {
           preview.dataset.productName = btn.dataset.pickName || "";
@@ -8998,7 +9001,7 @@
             homeDealDraft.length +
             " / " +
             homeDealMax +
-            " fırsat ürünü · sitede 5 sn’de bir kayar. Stokta olmayan atlanır.";
+            " fırsat · tıklanınca ürüne gider · 5 sn kayar.";
         }
         searchInput.value = "";
         suggest.hidden = true;

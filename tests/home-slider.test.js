@@ -217,4 +217,6 @@ test("admin panel: separate campaign and deal lists max 4 deals", () => {
   assert.match(js, /deals:\s*homeDealDraft/);
   assert.match(js, /Kaydedildi:/);
   assert.match(js, /Listeye eklendi/);
+  assert.match(js, /titleOverride:\s*String\(pick\.name/);
+  assert.match(js, /ürüne/);
 });
