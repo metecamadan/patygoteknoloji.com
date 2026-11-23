@@ -9,6 +9,7 @@ const {
   normalizeContactPayload,
   validateContactPayload,
   buildMailText,
+  brandedMailHtml,
   createContactStore,
   deliverContactMail,
   smtpConfigured,
@@ -75,6 +76,17 @@ test("buildMailText includes core fields", () => {
   assert.match(text, /Acme/);
   assert.match(text, /1234567890/);
   assert.match(text, /Merhaba/);
+});
+
+test("brandedMailHtml uses wide document column layout", () => {
+  const html = brandedMailHtml({
+    heading: "Test başlık",
+    innerHtml: "<p>İçerik</p>",
+    env: { SITE_BASE_URL: "https://patygoteknoloji.com" },
+  });
+  assert.match(html, /max-width:720px/);
+  assert.doesNotMatch(html, /max-width:560px/);
+  assert.match(html, /text-align:left/);
 });
 
 test("deliverContactMail uses formsubmit fallback", async () => {
