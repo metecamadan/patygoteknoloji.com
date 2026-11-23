@@ -232,6 +232,10 @@
       dealDots.appendChild(dot);
     });
 
+    // Ölçüm için önce göster: [hidden] iken viewport genişliği 0 → kartlar görünmez kalır.
+    if (classic) classic.hidden = true;
+    wrap.hidden = false;
+
     var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     var bannerCarousel = makeCarousel({
@@ -277,8 +281,6 @@
       dealCarousel.restart();
     });
 
-    if (classic) classic.hidden = true;
-    wrap.hidden = false;
     return true;
   }
 

@@ -31,6 +31,11 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
   assert.match(sliderJs, /\/api\/home-slider/);
   assert.match(sliderJs, /data-classic-hero/);
   assert.match(sliderJs, /mountDuo/);
+  assert.match(
+    sliderJs,
+    /wrap\.hidden\s*=\s*false;[\s\S]*?makeCarousel\s*\(/,
+    "carousel layout must run after slider wrap is shown (hidden width is 0)"
+  );
   assert.match(sliderJs, /home-deal-card/);
   assert.match(sliderJs, /home-deal-foot/);
   assert.match(sliderJs, /Ürüne git/);
