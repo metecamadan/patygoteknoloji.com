@@ -1089,6 +1089,10 @@
         window.PatygoCatalog.formatPrice(window.PatygoCatalog.priceInclVat(product)) +
         " <small>KDV dahil</small>";
     }
+    const stockStatus = document.createElement("p");
+    stockStatus.className = "detail-availability";
+    stockStatus.setAttribute("data-stock-status", soldOut ? "out-of-stock" : "in-stock");
+    stockStatus.textContent = soldOut ? "Stokta yok" : "Stokta var";
     const discount = soldOut ? null : window.PatygoCatalog.discountInfo(product);
     if (discount) {
       const before = document.createElement("p");
@@ -1139,6 +1143,7 @@
       info.appendChild(h1);
       info.appendChild(buildRatingLink(product));
       info.appendChild(price);
+      info.appendChild(stockStatus);
       info.appendChild(actions);
       info.appendChild(soldOutTrust);
       const soldOutHub = buildHighlights(product);
@@ -1208,6 +1213,7 @@
     info.appendChild(h1);
     info.appendChild(buildRatingLink(product));
     info.appendChild(price);
+    info.appendChild(stockStatus);
     if (shippingLine) info.appendChild(shippingLine);
     if (dispatchLine) info.appendChild(dispatchLine);
     info.appendChild(actions);
@@ -1258,6 +1264,15 @@
       Array.isArray(product.images) ? product.images : [product.image]
     ).filter(Boolean);
     const price = window.PatygoCatalog.priceInclVat(product);
+    const shipCfg =
+      window.PatygoShipping && typeof window.PatygoShipping.normalize === "function"
+        ? window.PatygoShipping.normalize(window.PatygoShipping.settings || {})
+        : { shippingFee: 0, freeShippingThreshold: 0, dispatchBusinessDays: 2 };
+    const shipFee =
+      window.PatygoShipping && typeof window.PatygoShipping.feeForMerchandise === "function"
+        ? window.PatygoShipping.feeForMerchandise(price)
+        : 0;
+    const handlingMax = Math.max(1, Number(shipCfg.dispatchBusinessDays) || 2);
     const productLd = {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -1278,6 +1293,44 @@
         price: String(price),
         availability: product.soldOut === true ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
         itemCondition: "https://schema.org/NewCondition",
+        seller: {
+          "@type": "Organization",
+          name: "Patygo Teknoloji",
+          url: "https://patygoteknoloji.com",
+        },
+        hasMerchantReturnPolicy: {
+          "@type": "MerchantReturnPolicy",
+          applicableCountry: "TR",
+          returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+          merchantReturnDays: 14,
+          returnMethod: "https://schema.org/ReturnByMail",
+          returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
+          url: "https://patygoteknoloji.com/iade-ve-cayma",
+        },
+        shippingDetails: {
+          "@type": "OfferShippingDetails",
+          shippingDestination: { "@type": "DefinedRegion", addressCountry: "TR" },
+          shippingRate: {
+            "@type": "MonetaryAmount",
+            value: Number(Number(shipFee || 0).toFixed(2)),
+            currency: "TRY",
+          },
+          deliveryTime: {
+            "@type": "ShippingDeliveryTime",
+            handlingTime: {
+              "@type": "QuantitativeValue",
+              minValue: 0,
+              maxValue: handlingMax,
+              unitCode: "DAY",
+            },
+            transitTime: {
+              "@type": "QuantitativeValue",
+              minValue: 1,
+              maxValue: 5,
+              unitCode: "DAY",
+            },
+          },
+        },
       },
     };
     if (product.soldOut === true) {

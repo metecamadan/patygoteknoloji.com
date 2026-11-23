@@ -62,9 +62,15 @@ test("product SSR writes title, description, canonical, og and escaped h1 + pric
   assert.doesNotMatch(html, /faturalı satış/i);
   assert.equal((html.match(/<title>/g) || []).length, 1);
   assert.equal((html.match(/rel="canonical"/g) || []).length, 1);
+  assert.match(html, /data-stock-status="in-stock">Stokta var<\/p>/);
+  assert.match(html, /product:availability" content="in stock"/);
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json" id="product-jsonld">([\s\S]*?)<\/script>/)[1]);
   assert.equal(ld["@type"], "Product");
   assert.equal(ld.offers.price, "1200");
+  assert.equal(ld.offers.availability, "https://schema.org/InStock");
+  assert.equal(ld.offers.seller.name, "Patygo Teknoloji");
+  assert.equal(ld.offers.hasMerchantReturnPolicy.merchantReturnDays, 14);
+  assert.equal(ld.offers.shippingDetails.shippingDestination.addressCountry, "TR");
   assert.equal(ld.gtin, "8690000000456");
   assert.equal(ld.brand.name, "Lenovo");
 });

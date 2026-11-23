@@ -5693,8 +5693,18 @@ function sendProductHtml(res, req, shellPath, urlPath, warmIndex) {
         : canonicalPath && canonicalPath !== key
           ? { status: 301, location: canonicalPath }
         : product.soldOut
-          ? { status: 200, html: renderSoldOutProductHtml(productHtmlCache.shell, product) }
-          : { status: 200, html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id)) };
+          ? {
+              status: 200,
+              html: renderSoldOutProductHtml(productHtmlCache.shell, product, {
+                shippingSettings: shippingSettingsStore.getSettings(),
+              }),
+            }
+          : {
+              status: 200,
+              html: renderProductHtml(productHtmlCache.shell, product, reviewDataFor(product.id), {
+                shippingSettings: shippingSettingsStore.getSettings(),
+              }),
+            };
     }
     if (productHtmlCache.pages.size >= PRODUCT_HTML_CACHE_MAX) productHtmlCache.pages.clear();
     productHtmlCache.pages.set(key, page);

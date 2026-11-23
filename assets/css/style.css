@@ -1433,6 +1433,15 @@ h1, h2, h3, h4 {
 .detail-ssr h1 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 8px 0; }
 .detail-ssr .price { font-size: 1.5rem; font-weight: 800; margin: 8px 0; }
 .detail-ssr .detail-desc { color: var(--muted); max-width: 70ch; }
+.detail-availability {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0a7a32;
+}
+.detail-availability[data-stock-status="out-of-stock"] {
+  color: var(--muted);
+}
 .catalog-active-filters {
   display: flex;
   flex-wrap: wrap;
