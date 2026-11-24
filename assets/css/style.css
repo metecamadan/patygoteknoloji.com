@@ -5089,58 +5089,124 @@ h1, h2, h3, h4 {
 
 @media (max-width: 900px) {
   .home .hero--slider {
-    padding: 12px 0 10px;
+    padding: 14px 0 12px;
   }
+  /* Aynı yatay gutter — banner/fırsat genişlik farkı olmasın */
   .home .hero--slider .container {
-    padding-inline: max(12px, calc(var(--gutter) * 0.6));
+    padding-inline: 12px;
+  }
+  .home .hero--slider + .partners {
+    padding-top: 16px;
+    padding-bottom: 14px;
   }
   .home-duo {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
     grid-template-columns: none;
     height: auto;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
+    max-width: 100%;
   }
   .home-banner,
   .home-deal {
-    width: 100%;
+    flex: 0 0 auto;
+    width: 100% !important;
     max-width: 100%;
     min-width: 0;
+    margin-inline: 0;
     box-sizing: border-box;
-    border-radius: 14px;
+    border-radius: 16px;
+    align-self: stretch;
   }
   .home-banner {
     height: auto;
-    aspect-ratio: 16 / 9;
-    min-height: 168px;
-    max-height: 240px;
+    aspect-ratio: 2 / 1;
+    min-height: 150px;
+    max-height: none;
     background: #fff;
+  }
+  .home-banner-viewport,
+  .home-banner-track,
+  .home-banner-slide,
+  .home-banner-link {
+    width: 100%;
   }
   .home-banner-link img {
     object-fit: cover;
   }
   .home-banner-nav {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
   .home-banner-nav--prev { left: 8px; }
   .home-banner-nav--next { right: 8px; }
+  /* Fırsat: yatay kompakt kart (görsel sol, metin sağ) */
   .home-deal {
     height: auto;
-    min-height: 280px;
+    min-height: 0;
   }
-  .home-deal-media {
-    min-height: 150px;
-    max-height: 180px;
+  .home-deal-viewport,
+  .home-deal-track,
+  .home-deal-slide {
+    height: auto;
+    min-height: 0;
   }
   .home-deal-card {
-    padding: 10px 12px 8px;
+    display: grid;
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 10px 12px;
+    align-items: center;
+    padding: 12px;
+    height: auto;
+    text-align: left;
+  }
+  .home-deal-media {
+    grid-column: 1;
+    grid-row: 1;
+    width: 118px;
+    height: 118px;
+    min-height: 118px;
+    max-height: 118px;
+    flex: none;
+    border-radius: 12px;
+    background: #fff;
+  }
+  .home-deal-media img {
+    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .home-deal-body {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 6px;
+    min-width: 0;
+  }
+  .home-deal-title {
+    font-size: 0.8rem;
+    -webkit-line-clamp: 2;
+    min-height: 0;
+  }
+  .home-deal-foot {
+    margin-top: 2px;
+    gap: 8px;
+    align-items: center;
+  }
+  .home-deal-price strong {
+    font-size: 1rem;
   }
   .home-deal-cta {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     padding: 8px 12px;
+    min-height: 36px;
+    box-shadow: none;
+  }
+  .home-deal-dots {
+    padding: 0 12px 10px;
   }
 }
 
