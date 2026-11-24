@@ -137,3 +137,16 @@ test("refreshRates retries once and sends a store User-Agent", async () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("custom fetchImpl failure does not hit the real TCMB network", async () => {
+  const { refreshRates } = require("../lib/fx");
+  const root = tempRoot();
+  try {
+    const down = async () => {
+      throw Object.assign(new Error("fetch failed"), { name: "TypeError" });
+    };
+    await assert.rejects(refreshRates(root, { fetchImpl: down, retries: 0 }), /fetch failed/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

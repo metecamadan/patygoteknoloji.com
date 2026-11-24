@@ -4927,6 +4927,15 @@ h1, h2, h3, h4 {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+.home-deal-heading {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 12px 4px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink);
+}
 .home-deal-viewport {
   flex: 1 1 auto;
   overflow: hidden;
@@ -5155,6 +5164,10 @@ h1, h2, h3, h4 {
   }
   .home-banner-nav--prev { left: 8px; }
   .home-banner-nav--next { right: 8px; }
+  .home-deal-heading {
+    padding: 10px 12px 2px;
+    font-size: 0.9rem;
+  }
   /* Fırsat: yatay kompakt kart (görsel sol, metin sağ) */
   .home-deal {
     height: auto;

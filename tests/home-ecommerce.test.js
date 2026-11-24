@@ -43,9 +43,9 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
   assert.doesNotMatch(sliderJs, /Fırsatı yakala/);
   assert.doesNotMatch(sliderJs, /shortName\(deal\.name/);
   assert.match(sliderJs, /home-deal-title[\s\S]*?escapeHtml\(String\(deal\.name/);
-  assert.doesNotMatch(indexHtml, /Fırsat ürünleri/);
-  assert.doesNotMatch(indexHtml, /home-deal-heading/);
+  assert.match(indexHtml, /<h2 class="home-deal-heading">Fırsat ürünleri<\/h2>/);
   const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
+  assert.match(css, /\.home-deal-heading\s*\{/);
   assert.match(css, /\.home-duo\s*\{/);
   assert.match(css, /\.home-banner\s*\{/);
   assert.match(css, /\.home-deal\s*\{/);
