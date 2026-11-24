@@ -66,6 +66,12 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
 });
 
 test("brand strip shows sized logos that exist on disk", () => {
+  const css = fs.readFileSync(path.join(root, "assets", "css", "style.css"), "utf8");
+  assert.match(
+    indexHtml,
+    /class="partners"[^>]*>\s*<div class="container">\s*<div class="partners-viewport">/
+  );
+  assert.match(css, /\.partners\s*>\s*\.container\s*\{[^}]*overflow:\s*hidden/s);
   const track = indexHtml.match(/<div class="partners-track">([\s\S]*?)<\/div>/);
   assert.ok(track);
   const logos = [

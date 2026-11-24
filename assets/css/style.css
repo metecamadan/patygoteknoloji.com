@@ -826,6 +826,10 @@ h1, h2, h3, h4 {
   padding: 28px 0;
   overflow: hidden;
 }
+/* Hero / ürün grid ile aynı yatay hiza (.container) */
+.partners > .container {
+  overflow: hidden;
+}
 .partners-label {
   text-align: center;
   font-size: 0.75rem;
@@ -837,8 +841,8 @@ h1, h2, h3, h4 {
 }
 .partners-viewport {
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
 }
 .partners-track {
   --partners-shift: 28px;
@@ -1415,6 +1419,7 @@ h1, h2, h3, h4 {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 600;
+  text-decoration: line-through;
 }
 .detail-info .price { flex-wrap: wrap; }
 .detail-price-before {
