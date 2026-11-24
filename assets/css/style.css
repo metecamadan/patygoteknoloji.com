@@ -4816,12 +4816,12 @@ h1, h2, h3, h4 {
 }
 /* .home .hero padding’i duo’da fazla boşluk bırakır — header/marka şeridine sıkı. */
 .home .hero--slider {
-  padding: 10px 0 6px;
+  padding: 18px 0 14px;
   background: #fff;
 }
 .home .hero--slider + .partners {
-  padding-top: 10px;
-  padding-bottom: 14px;
+  padding-top: 18px;
+  padding-bottom: 16px;
   border-top: 0;
 }
 .home-duo {
@@ -5089,7 +5089,7 @@ h1, h2, h3, h4 {
 
 @media (max-width: 900px) {
   .home .hero--slider {
-    padding: 8px 0 4px;
+    padding: 12px 0 10px;
   }
   .home .hero--slider .container {
     padding-inline: max(12px, calc(var(--gutter) * 0.6));
