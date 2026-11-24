@@ -5083,16 +5083,59 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 900px) {
+  .home .hero--slider {
+    padding: 8px 0 4px;
+  }
+  .home .hero--slider .container {
+    padding-inline: max(12px, calc(var(--gutter) * 0.6));
+  }
   .home-duo {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    grid-template-columns: none;
     height: auto;
-    --duo-h: 220px;
+    gap: 10px;
+    width: 100%;
+  }
+  .home-banner,
+  .home-deal {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border-radius: 14px;
   }
   .home-banner {
-    height: var(--duo-h);
+    height: auto;
+    aspect-ratio: 16 / 9;
+    min-height: 168px;
+    max-height: 240px;
+    background: #fff;
   }
+  .home-banner-link img {
+    object-fit: cover;
+  }
+  .home-banner-nav {
+    width: 32px;
+    height: 32px;
+  }
+  .home-banner-nav--prev { left: 8px; }
+  .home-banner-nav--next { right: 8px; }
   .home-deal {
-    height: 280px;
+    height: auto;
+    min-height: 280px;
+  }
+  .home-deal-media {
+    min-height: 150px;
+    max-height: 180px;
+  }
+  .home-deal-card {
+    padding: 10px 12px 8px;
+  }
+  .home-deal-cta {
+    font-size: 0.78rem;
+    padding: 8px 12px;
   }
 }
 
