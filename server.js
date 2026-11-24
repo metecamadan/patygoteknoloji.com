@@ -496,7 +496,17 @@ function publicHomeSliderPayload() {
       item.image || (Array.isArray(item.images) ? item.images.find(Boolean) : "") || "";
     const productUrlPath = String(item.urlPath || "").trim();
     if (!productUrlPath) continue;
-    deals.push({
+    const priceIncl = priceInclVatAmount(item);
+    const compareNet = Number(item.compareAtPrice) || 0;
+    let compareAtPriceIncl = 0;
+    if (compareNet > 0) {
+      compareAtPriceIncl = priceInclVatAmount({
+        price: compareNet,
+        vatPercent: item.vatPercent,
+        basamak: item.basamak,
+      });
+    }
+    const dealRow = {
       id: deal.id,
       productId: deal.productId || "",
       categoryKey: deal.categoryKey || "",
@@ -510,9 +520,14 @@ function publicHomeSliderPayload() {
         "Fırsat",
       productImage: catalogImage,
       productUrlPath,
-      priceIncl: priceInclVatAmount(item),
+      priceIncl,
       eyebrow: deal.eyebrow || deal.categoryName || "Fırsat",
-    });
+    };
+    // Liste kartlarıyla aynı: son 30 günün en düşük net fiyatı (KDV dahil).
+    if (compareAtPriceIncl > priceIncl && priceIncl > 0) {
+      dealRow.compareAtPriceIncl = compareAtPriceIncl;
+    }
+    deals.push(dealRow);
   }
 
   return { slides, deals };

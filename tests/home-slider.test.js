@@ -195,6 +195,8 @@ test("public API returns separate slides and deals; deal auto uses products", as
   assert.ok(pubBody.deals[0].productUrlPath);
   assert.ok(pubBody.deals[0].priceIncl > 0);
   assert.equal(pubBody.slides[0].urlPath, "/notebook");
+  // compareAtPriceIncl yalnız gerçek 30-gün düşüşünde gelir; yoksa alan yok.
+  assert.equal("compareAtPriceIncl" in pubBody.deals[0], false);
 });
 
 test("home-slider storefront: independent deals + 5s autoplay + pixel carousel", () => {
@@ -203,6 +205,9 @@ test("home-slider storefront: independent deals + 5s autoplay + pixel carousel",
   assert.match(js, /productUrlPath/);
   assert.match(js, /translateX\(-" \+ index \* w/);
   assert.match(js, /mountDuo\(lists\.slides,\s*lists\.deals\)/);
+  assert.match(js, /dealCompareHtml/);
+  assert.match(js, /compareAtPriceIncl/);
+  assert.match(js, /home-deal-price-before/);
 });
 
 test("admin panel: separate campaign and deal lists max 4 deals", () => {

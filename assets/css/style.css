@@ -5031,6 +5031,13 @@ h1, h2, h3, h4 {
   gap: 0;
   min-width: 0;
 }
+.home-deal-price-before {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: line-through;
+}
 .home-deal-price strong {
   font-size: 1.05rem;
   font-weight: 800;

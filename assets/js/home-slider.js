@@ -165,6 +165,20 @@
     return article;
   }
 
+  /** Liste kartlarıyla aynı: ≥%5 düşüşte üstü çizili önceki fiyat. */
+  function dealCompareHtml(deal) {
+    var now = Number(deal && deal.priceIncl) || 0;
+    var before = Number(deal && deal.compareAtPriceIncl) || 0;
+    if (!(before > now) || !(now > 0)) return "";
+    var percent = Math.floor(((before - now) / before) * 100);
+    if (percent < 5) return "";
+    return (
+      '<s class="home-deal-price-before" title="Son 30 günün en düşük fiyatı">' +
+      escapeHtml(formatTry(before)) +
+      "</s>"
+    );
+  }
+
   function renderDealSlide(deal, index) {
     var article = document.createElement("article");
     article.className = "home-deal-slide" + (index === 0 ? " is-active" : "");
@@ -190,7 +204,9 @@
       escapeHtml(String(deal.name || "").trim()) +
       "</h3>" +
       '<div class="home-deal-foot">' +
-      '<div class="home-deal-price"><strong>' +
+      '<div class="home-deal-price">' +
+      dealCompareHtml(deal) +
+      "<strong>" +
       escapeHtml(formatTry(deal.priceIncl)) +
       "</strong><span>KDV dahil</span></div>" +
       '<span class="btn btn-primary home-deal-cta">Ürüne git</span>' +
@@ -306,6 +322,7 @@
           productImage: item.productImage,
           productUrlPath: item.productUrlPath || item.urlPath,
           priceIncl: item.priceIncl,
+          compareAtPriceIncl: item.compareAtPriceIncl,
           eyebrow: item.eyebrow,
         };
       });
