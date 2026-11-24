@@ -53,6 +53,8 @@ test("homepage includes duo slider shell: banner left + product deal right", () 
   assert.match(css, /--duo-h:\s*350px/);
   assert.match(css, /\.home-deal-card\s*\{[^}]*text-align:\s*left/s);
   assert.match(css, /\.home-deal-foot\s*\{[^}]*justify-content:\s*space-between/s);
+  assert.match(css, /\.home \.hero--slider\s*\{[^}]*padding:\s*10px 0 6px/s);
+  assert.match(css, /\.home \.hero--slider \+ \.partners\s*\{[^}]*padding-top:\s*10px/s);
   assert.match(css, /\.home-deal-media\s*\{[^}]*background:\s*#fff/s);
   assert.match(css, /\.product-card \.visual\.has-image\s*\{[^}]*background:\s*#fff/s);
   assert.match(css, /\.detail-media\s*\{[^}]*background:\s*#fff/s);
