@@ -5052,6 +5052,11 @@ h1, h2, h3, h4 {
   font-size: 0.72rem;
   white-space: nowrap;
   pointer-events: none;
+  box-shadow: none;
+}
+.home-deal-cta:hover {
+  box-shadow: none;
+  transform: none;
 }
 .home-deal-dots {
   flex: 0 0 auto;
