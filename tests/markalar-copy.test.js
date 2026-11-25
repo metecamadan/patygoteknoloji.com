@@ -46,7 +46,7 @@ test("markalar brand tiles show a sized logo and the brand name", () => {
 test("markalar why section uses left-aligned copy and spaced metrics", () => {
   assert.match(html, /section-head--start/);
   assert.match(html, /class="metrics"/);
-  assert.match(html, /<strong>43\+<\/strong><span>Marka portföyü<\/span>/);
+  assert.match(html, /<strong>300\+<\/strong><span>Marka portföyü<\/span>/);
   assert.match(html, /<strong>%100<\/strong><span>Faturalı satış<\/span>/);
   assert.match(html, /<strong>B2B<\/strong><span>Kurumsal odak<\/span>/);
   assert.match(html, /<strong>TR<\/strong><span>Yerel tedarik<\/span>/);
@@ -60,4 +60,11 @@ test("markalar why section uses left-aligned copy and spaced metrics", () => {
 test("homepage dark stats use Turkish percent order", () => {
   assert.match(indexHtml, /<strong>%100<\/strong><span>Faturalı satış<\/span>/);
   assert.doesNotMatch(indexHtml, /<strong>100%<\/strong>/);
+  assert.match(indexHtml, /<strong>300\+<\/strong><span>Marka<\/span>/);
+  assert.match(
+    indexHtml,
+    /Kurumsal elektronik alışverişte güvenilir adresiniz/,
+  );
+  assert.doesNotMatch(indexHtml, /Türkiye geneline elektronik e-ticaret/);
+  assert.doesNotMatch(indexHtml, /<strong>43\+<\/strong>/);
 });

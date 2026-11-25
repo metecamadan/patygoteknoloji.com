@@ -113,7 +113,7 @@ Aylık checklist (zorunlu “Dizine ekle” spamı yok):
 - 1–2 ürün URL Inspection
 - Yalnız büyük değişiklik veya kırmızı hata varsa indeks iste
 
-Cursor Automations: haftalık triage taslağı editöre yüklendi — **kaydet + etkinleştir** gerekir. Gelen cevap (`UYGULA`…) için ikinci tetik (email received) editörde bağlanır.
+Güncelleme (25 Kas 2026): Kullanıcı **Active + kaydet** yaptı. Saat: Pazartesi **10:00** Europe/Istanbul. Gelen cevap (`UYGULA`…) için ikinci tetik (email received) editörde bağlı olmalı — ilk koşuda teyit.
 
 ### SEO — yapılacaklar listesi (22 Kas 2026)
 
@@ -158,12 +158,7 @@ Güncelleme 22 Kas: ana sayfa mobil lab ~91; checklist SEO madde 2’ye taşınd
 
 ### 7. TCMB döviz kuru — fetch failed (10 Kas 2026)
 
-PM2 error log’da tekrarlayan `Döviz kuru alınamadı: fetch failed`. Site düşmez; USD/EUR maliyetli ürünlerde kur eski kalırsa fiyat sapabilir.
-
-Yapılacak:
-
-- `server.js` / TCMB kur çekim yolunu bul; kök neden (DNS, TLS, URL, timeout, engel).
-- Canlıda kurun güncellendiğini doğrula; sessizce yeşil gösterme.
+Güncelleme (25 Kas 2026): Kök neden — undici `fetch failed` (TCMB AAAA/IPv6 aralıklı). Fix (`502abff`): `dns.setDefaultResultOrder('ipv4first')` + `https.get({ family: 4 })` yedek; retry 2. Deploy sonrası VPS kur tazeliği + log kontrolü (sessiz yeşil yok).
 
 ### 8. Google Merchant ürün feed senkronu (23 Kas 2026)
 
@@ -175,6 +170,45 @@ Sonraki (opsiyonel):
 - Panel özeti / VPS zamanlanmış sync yok (bilinçli).
 - `--delete-missing` yalnız API DS ürünleri için (AUTOFEED’e dokunma).
 - Periyodik yeniden sync (katalog değişince).
+
+### 9. Master backlog — tasarım / teknik / trafik (25 Kas 2026)
+
+Canlı canvas: sohbet yan paneli `patygo-master-backlog` (Cursor canvases). Yeni madde «hatırlatmaya ekle» ile buraya + canvas’a ID ile yazılır.
+
+**Önerilen sıra (2–4 hafta):** YK canlı deneme (sen) → GSC 404 + triage triage ilk koşu → title/meta + ürün açıklama → tedarikçi satış boşlukları → sepet/ödeme huni dili → Kolay Gelsin credential → scaffold.
+
+| ID | Alan | P | Durum | İş |
+|----|------|---|--------|-----|
+| T1 | Trafik | Y | partial | GSC 404 / indeks hijyeni |
+| T2 | Trafik | Y | todo | Ürün SEO açıklama override |
+| T3 | Trafik | Y | todo | Title / meta — kopya yok |
+| T4 | Trafik | Y | todo | Rehber / karşılaştırma sayfaları |
+| T5 | Trafik | O | partial | Rich Results doğrulama |
+| T6 | Trafik | O | todo | Akakçe fiyat tutarlılığı |
+| T7 | Trafik | O | todo | GA4 ↔ GSC |
+| T8 | Trafik | O | todo | Google Business Profile |
+| T9 | Trafik | O | todo | Dış link / marka otoritesi |
+| T10 | Trafik | O | watch | Merchant periyodik sync |
+| T11 | Trafik | D | deferred | PageSpeed / CWV |
+| T12 | Trafik | Y | done | Merchant dönüşüm: GA4 property `558497049` → MC `5915162050` ACTIVE (`galk:558497049`, 25 Kas; purchase report=true) |
+| D1 | Tasarım | Y | partial | Duo + fırsat olgunlaştırma |
+| D2 | Tasarım | Y | todo | Katalog arama + sıralama UI |
+| D3 | Tasarım | Y | todo | Detay stok/kargo/adet CTA |
+| D4 | Tasarım | Y | todo | Sepet→ödeme huni dili |
+| D5 | Tasarım | O | todo | Mobil filtre chip + badge |
+| D6 | Tasarım | O | todo | Lightbox + specs accordion |
+| D7 | Tasarım | O | todo | Admin Overview sadeleştir |
+| D8 | Tasarım | D | todo | design-audit.md yenile |
+| K1 | Teknik | Y | blocked | Yurtiçi canlı deneme (sen) |
+| K2 | Teknik | Y | blocked | Kolay Gelsin scaffold (credential) |
+| K3 | Teknik | Y | todo | Tedarikçi↔satış boşlukları |
+| K4 | Teknik | O | watch | TCMB kur izleme |
+| K5 | Teknik | O | todo | Katalog SSR / ilk boya |
+| K6 | Teknik | O | todo | CI flaky shipping 503 |
+| K7 | Teknik | D | cancelled | Skyversal asset parity — önizleme akışı kaldırıldı (25 Kas 2026) |
+| O1 | Ops | Y | watch | GSC haftalık triage (Active ✓) |
+| O2 | Ops | O | todo | GSC aylık 22 Ara 2026 |
+| O3 | Ops | O | todo | İade + BizimHesap denemesi |
 
 ## Kapandı
 

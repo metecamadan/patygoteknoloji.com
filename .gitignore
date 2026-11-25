@@ -41,6 +41,8 @@ dist/
 
 # Yerel önizlemeler (canlıya gitmez)
 preview/
+skyversal.json
+.skyversal/
 
 # Tek seferlik yerel teşhis/deploy yardımcıları (scripts/_*); kalıcı olanlar `git add -f` ile eklenir
 scripts/_*

@@ -19,8 +19,4 @@ Bu liste kullanıcının kalıcı kurallarıdır. Her işte uy.
    - `npm test` yeşil olmadan commit/push yok.
    - GitHub `main` push + Actions yeşil olmadan canlı "bitti" sayılmaz.
    - Canlı doğrulama alan adıyla: `https://patygoteknoloji.com`.
-
-2. **Büyük / görsel değişiklik: önce Skyversal → sen onay → sonra GitHub canlı.** (24 Kas 2026)
-   - Vitrin, panel UX, layout, slider, ürün kartı/detay gibi görünür işler: yerelde `npm test` → Skyversal’da test (`https://patygoteknoloji.skyversal.xyz`) → sen “canlıya al / push” demeden `main` push yok.
-   - Bu madde büyük işlerde otomatik `main` push’u (github-sync) durdurur; küçük bugfix / metin / test-only için madde 1 geçerli.
-   - Skyversal’da görüp onayladıktan sonra: commit + `main` push → Actions → `https://patygoteknoloji.com`.
+   - Büyük / görsel işler dahil ara önizleme ortamı yok; doğrulama doğrudan canlıda (25 Kas 2026: Skyversal önizleme akışı kaldırıldı).
