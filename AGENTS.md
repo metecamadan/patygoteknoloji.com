@@ -13,11 +13,10 @@ Bu proje web (şu an) ve ileride mobil için çoklu agent ile yürütülür. Her
 | 5 | **Dijital Pazarlama & SEO** | teknik SEO kontrolleri, içerik/meta denetimi, uyarı ve öneri üretimi |
 | 6 | **Release & DevOps** | commit/push, GitHub Actions, deploy doğrulama, secret kontrolü |
 | 7 | **Product Designer** | vitrin/panel UX, görsel tutarlılık, huni copy, erişilebilirlik denetimi, `docs/design-audit.md` |
-| 8 | **Satıcı Keşif** | akakce.com elektronik satıcıları ve Türkiye harita firmalarının iletişim özeti. Teklif gönderimi kapalı |
 
-**Mobil fazında 9. agent eklenir:** Mobile (React Native / Expo veya native).
+**Mobil fazında 8. agent eklenir:** Mobile (React Native / Expo veya native).
 
-Toplam: **8 agent** (mobil ile **9**). Satıcı Keşif yalnızca bu depodadır; açık artırma projesine geçmez.
+Toplam: **7 agent** (mobil ile **8**).
 
 ---
 
@@ -66,13 +65,7 @@ Toplam: **8 agent** (mobil ile **9**). Satıcı Keşif yalnızca bu depodadır; 
 - Büyük UI değişikliği öncesi/sonrası görsel tutarlılık kontrolü; SEO metin değil (Dijital Pazarlama ile koordinasyon).
 - **Öğrenmesi gerekenler:** `assets/css/style.css` token’ları, `AGENTS.md`, `.cursor/rules/designer-agent.mdc`, canlı vitrin smoke.
 
-### 8) Satıcı Keşif
-- akakce.com üzerindeki elektronik satıcıların herkese açık iletişimini ve Türkiye’deki harita kayıtlı elektronik firmalarını toplar, özetler.
-- Mağazanın kendi Akakçe XML feed’ini (`lib/akakce.js`) değiştirmez. O feed bizim katalogdur.
-- Faz 2 (otomatik teklif) kullanıcı açmadan ve İYS onayı olmadan başlamaz.
-- **Öğrenmesi gerekenler:** `.cursor/rules/seller-intel-agent.mdc`, `docs/seller-intel.md`.
-
-### 9) Mobile (gelecek)
+### 8) Mobile (gelecek)
 - API-first; mevcut backend sözleşmelerini bozmaz.
 - **Öğrenmesi gerekenler:** public API'ler, auth modeli, mobil UX, store gereksinimleri.
 
@@ -114,7 +107,6 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 | `tests/` | QA (diğerleri test yazar, QA doğrular) |
 | `.github/`, deploy scriptleri | Release & DevOps |
 | `docs/design-audit.md`, UX öncelik listesi | Product Designer |
-| `docs/seller-intel.md`, `lib/seller-intel/` | Satıcı Keşif |
 | `AGENTS.md`, görev planı | Orchestrator |
 
 ## Kurallar
@@ -136,4 +128,3 @@ Cursor hook: agent durduğunda `.cursor/hooks/run-tests-on-stop.js` otomatik `np
 - `.cursor/rules/qa-agent.mdc` — QA & Test kapısı
 - `.cursor/rules/seo-agent.mdc` — Dijital Pazarlama & SEO
 - `.cursor/rules/release-agent.mdc` — Release & DevOps yayın hattı
-- `.cursor/rules/seller-intel-agent.mdc` — Satıcı Keşif (iletişim özeti; teklif fazı kapalı)

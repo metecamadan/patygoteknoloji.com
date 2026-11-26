@@ -70,7 +70,6 @@ async function spawnTestServer(t, envExtra, options) {
         SMTP_USER: "",
         SMTP_PASS: "",
         FX_AUTO_REFRESH: "0",
-        SELLER_INTEL_DAILY: "0",
       }, envExtra || {}),
       stdio: ["ignore", "ignore", "pipe"],
     });

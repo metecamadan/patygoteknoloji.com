@@ -6346,10 +6346,6 @@ const supplierScheduler = createSupplierScheduler({
   logError: (...parts) => console.error(...parts),
 });
 supplierScheduler.start();
-if (process.env.SELLER_INTEL_DAILY !== "0") {
-  const { startSellerIntelDaily } = require("./lib/seller-intel/daily");
-  startSellerIntelDaily({ env: process.env });
-}
 setImmediate(() => {
   try {
     ensureListingTreeSnapshotFiles();
