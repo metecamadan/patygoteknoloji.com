@@ -154,6 +154,7 @@ const {
   SHIPPING_CARRIERS,
   NOTIFY_STATUSES,
   sendOrderStatusMail,
+  sendAdminNewOrderMail,
   itemDisplayName,
 } = require("./lib/order-mail");
 const {
@@ -3500,6 +3501,9 @@ async function handleApi(req, res, urlPath) {
           setImmediate(() => {
             sendOrderStatusMail(updated, "paid", { store: orderStore }).catch((err) => {
               console.error("order paid mail failed:", err.message);
+            });
+            sendAdminNewOrderMail(updated, { store: orderStore }).catch((err) => {
+              console.error("admin new-order mail failed:", err.message);
             });
             transferOrderToBizimHesap(updated.id, "payment").catch((err) => {
               console.error("bizimhesap transfer failed:", err.message);

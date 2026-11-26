@@ -8,8 +8,12 @@ const {
   NOTIFY_STATUSES,
   buildOrderMail,
   buildOrderSummaryText,
+  buildAdminNewOrderMail,
   sendOrderStatusMail,
+  sendAdminNewOrderMail,
+  adminNotifyEmail,
   customerEmail,
+  DEFAULT_ADMIN_NOTIFY_EMAIL,
   SHIPPING_CARRIERS,
 } = require("../lib/order-mail");
 const { createOrderStore } = require("../lib/orders");
@@ -116,6 +120,60 @@ test("delivered template carries the review link", () => {
 test("customerEmail normalizes address", () => {
   assert.equal(customerEmail(sampleOrder), "ayse@example.com");
   assert.equal(customerEmail({ customer: {} }), "");
+});
+
+test("adminNotifyEmail defaults to mete.camadan and respects ORDER_ADMIN_NOTIFY_EMAIL", () => {
+  assert.equal(adminNotifyEmail({}), DEFAULT_ADMIN_NOTIFY_EMAIL);
+  assert.equal(DEFAULT_ADMIN_NOTIFY_EMAIL, "mete.camadan@patygoteknoloji.com");
+  assert.equal(
+    adminNotifyEmail({ ORDER_ADMIN_NOTIFY_EMAIL: "ops@patygoteknoloji.com" }),
+    "ops@patygoteknoloji.com"
+  );
+});
+
+test("admin new-order mail summarizes customer and links panel", () => {
+  const mail = buildAdminNewOrderMail(sampleOrder, { SITE_BASE_URL: "https://patygoteknoloji.com" });
+  assert.match(mail.subject, /Yeni sipariş: PTY-TEST-001/);
+  assert.match(mail.text, /ayse@example.com/);
+  assert.match(mail.text, /₺1\.250,50/);
+  assert.match(mail.text, /https:\/\/patygoteknoloji\.com\/admin/);
+  assert.match(mail.html, /Yeni sipariş/);
+  assert.match(mail.html, /Panele git/);
+});
+
+test("admin new-order mail is sent once per paid order", async () => {
+  resetDbForTests();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "patygo-admin-order-mail-"));
+  const store = createOrderStore(root);
+  store.save({
+    id: "PTY-ADMIN-1",
+    total: 100,
+    status: "paid",
+    paymentStatus: "paid",
+    paymentTaken: true,
+    customer: { name: "A", email: "a@example.com", phone: "555" },
+    items: [{ productId: "p1", name: "Ürün", qty: 1, line: 100, lineVat: 0 }],
+    createdAt: new Date().toISOString(),
+  });
+  const sent = [];
+  const first = await sendAdminNewOrderMail(store.get("PTY-ADMIN-1"), {
+    store,
+    sendImpl: async (payload) => {
+      sent.push(payload);
+    },
+  });
+  const second = await sendAdminNewOrderMail(store.get("PTY-ADMIN-1"), {
+    store,
+    sendImpl: async (payload) => {
+      sent.push(payload);
+    },
+  });
+  assert.equal(first.sent, true);
+  assert.equal(first.to, "mete.camadan@patygoteknoloji.com");
+  assert.equal(second.sent, false);
+  assert.equal(second.reason, "already_notified");
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].subject, /Yeni sipariş: PTY-ADMIN-1/);
 });
 
 test("shipping carriers list includes major Turkish carriers", () => {

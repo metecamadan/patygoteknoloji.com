@@ -105,7 +105,11 @@ test("payment APIs start hosted form and verify callback", async (t) => {
 
   const serverJs = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "server.js"), "utf8");
   assert.match(serverJs, /setImmediate\(\(\) => \{\s*sendOrderStatusMail/);
-  assert.match(serverJs, /sendOrderStatusMail\(updated, "paid"[\s\S]{0,300}transferOrderToBizimHesap\(updated\.id, "payment"\)/);
+  assert.match(serverJs, /sendAdminNewOrderMail\(updated/);
+  assert.match(
+    serverJs,
+    /sendOrderStatusMail\(updated, "paid"[\s\S]{0,500}sendAdminNewOrderMail\(updated[\s\S]{0,300}transferOrderToBizimHesap\(updated\.id, "payment"\)/
+  );
 
   const order = await fetch(
     baseUrl +
