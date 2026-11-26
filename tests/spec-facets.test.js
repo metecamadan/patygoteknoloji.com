@@ -95,6 +95,60 @@ test("buildSpecFacets only lists groups relevant to the category with enough cov
   assert.equal(groups.some((group) => group.key === "renk"), false);
   assert.deepEqual(buildSpecFacets(rows, "baski-cozumleri"), []);
   assert.deepEqual(buildSpecFacets(rows.slice(0, 3), "bilgisayar-tablet"), []);
+  assert.ok(
+    buildSpecFacets(rows, "bilgisayar-tablet", "tasinabilir-bilgisayarlar").some((group) => group.key === "ram")
+  );
+  assert.deepEqual(buildSpecFacets(rows, "bilgisayar-tablet", "kablolar-ve-donusturuculer"), []);
+});
+
+test("memory sticks expose RAM and DDR filters under Bellekler", () => {
+  const sticks = [
+    { id: "1", name: "Kingston 32GB DDR4 3200MHz Notebook Ram" },
+    { id: "2", name: "Crucial 16GB DDR5 4800MHz Notebook Ram" },
+    { id: "3", name: "HI-Level 8GB DDR4 3200Mhz Notebook Ram" },
+    { id: "4", name: "Patriot 16GB DDR4 3200MHz SODIMM Notebook Ram" },
+  ];
+  assert.equal(specValues(sticks[0]).ram, "32 GB");
+  assert.equal(specValues(sticks[0]).ddr, "DDR4");
+  assert.equal(specValues(sticks[1]).ddr, "DDR5");
+  const keys = buildSpecFacets(sticks, "bilgisayar-bilesenleri", "bellekler").map((group) => group.key).sort();
+  assert.deepEqual(keys, ["ddr", "ram"]);
+  assert.deepEqual(buildSpecFacets(sticks, "bilgisayar-bilesenleri", "ekran-kartlari"), []);
+});
+
+test("USB flash, GPU, socket, input and printer extractors feed mid-scoped facets", () => {
+  assert.equal(specValues({ name: "Acer 128GB USB 3.2 Flash Bellek" }).depolama, "128 GB");
+  assert.equal(specValues({ name: "Asus Dual GeForce RTX3050 OC 6GB GDDR6" }).gpu, "RTX 30xx");
+  assert.equal(specValues({ name: "Asus Dual GeForce RTX3050 OC 6GB GDDR6" }).vram, "6 GB");
+  assert.equal(specValues({ name: "Asus Prime B850M Soket AM5 Anakart" }).soket, "AM5");
+  assert.equal(specValues({ name: "Logitech M280 Kablosuz Siyah Mouse" }).baglanti, "Kablosuz");
+  assert.equal(specValues({ name: "Logitech M90 Kablolu USB Optik Mouse" }).baglanti, "Kablolu");
+  assert.equal(specValues({ name: "Brother HL-L1232W Mono Lazer Yazıcı" }).baski, "Mono");
+  assert.equal(specValues({ name: "Brother HL-L1232W Mono Lazer Yazıcı" }).teknoloji, "Lazer");
+  assert.equal(specValues({ name: "Epson EcoTank Renkli Tanklı Yazıcı" }).baski, "Renkli");
+  assert.equal(specValues({ name: "Epson EcoTank Renkli Tanklı Yazıcı" }).teknoloji, "Tanklı");
+
+  const flash = [
+    { id: "a", name: "Acer 16GB USB Flash Bellek" },
+    { id: "b", name: "Acer 32GB USB Flash Bellek" },
+    { id: "c", name: "Acer 64GB USB Flash Bellek" },
+    { id: "d", name: "Acer 128GB USB Flash Bellek" },
+  ];
+  assert.ok(
+    buildSpecFacets(flash, "bilgisayar-bilesenleri", "usb-ve-kart-bellek-urunleri").some(
+      (group) => group.key === "depolama"
+    )
+  );
+
+  const gpus = [
+    { id: "g1", name: "Asus RTX3050 6GB GDDR6 Ekran Kartı" },
+    { id: "g2", name: "MSI RTX4060 8GB GDDR6 Ekran Kartı" },
+    { id: "g3", name: "Asus RTX5060 8GB GDDR7 Ekran Kartı" },
+    { id: "g4", name: "Asus GT730 2GB DDR5 Ekran Kartı" },
+  ];
+  const gpuKeys = buildSpecFacets(gpus, "bilgisayar-bilesenleri", "ekran-kartlari").map((g) => g.key).sort();
+  assert.ok(gpuKeys.includes("gpu"));
+  assert.ok(gpuKeys.includes("vram"));
 });
 
 test("toner filters follow the toner mids under BASKI ÇÖZÜMLERİ", () => {
