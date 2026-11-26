@@ -640,7 +640,7 @@ test("fully reversed orders hide the items refund form and refetched detail repa
 test("admin buttons do not shift on hover (no translateY from storefront btn)", () => {
   assert.match(css, /\.admin-body \.btn[\s\S]*?transform:\s*none/);
   assert.match(css, /\.admin-body \.btn-primary[\s\S]*?box-shadow:\s*none/);
-  assert.match(html, /admin\.css\?v=siparis-56/);
+  assert.match(html, /admin\.css\?v=siparis-57/);
 });
 
 test("category rows edit their own margin and critical stock; inherited values are placeholders", () => {
@@ -706,8 +706,8 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
   assert.match(script, /fetch\("\/api\/admin\/export"/);
   assert.match(script, /Authorization: "Bearer " \+ token/);
   assert.match(script, /URL\.revokeObjectURL\(url\)/);
-  assert.match(loginScript, /admin-panel\.js\?v=siparis-56/);
-  assert.match(html, /admin-login\.js\?v=siparis-56/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-57/);
+  assert.match(html, /admin-login\.js\?v=siparis-57/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {
@@ -851,8 +851,16 @@ test("admin products view does not overwrite the overview title on reload", () =
   assert.match(fn, /const onProducts = activeAdminTab === "products";[\s\S]*?if \(onProducts\) \{\s*document\.getElementById\("adminPageTitle"\)/);
 });
 
-test("admin mobile shell does not widen the page with the scrolling nav", () => {
+test("admin mobile shell uses off-canvas drawer nav instead of horizontal scroll", () => {
   assert.match(css, /\.admin-shell \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+  assert.match(css, /body\.admin-nav-open \.admin-sidebar/);
+  assert.match(css, /\.admin-nav-toggle/);
+  assert.doesNotMatch(css, /@media \(max-width: 800px\) \{[\s\S]*?\.admin-nav \{ display: flex; overflow-x: auto/);
+  assert.match(html, /id="adminNavToggle"/);
+  assert.match(html, /id="adminNavBackdrop"/);
+  assert.match(script, /function setAdminNavOpen/);
+  assert.match(script, /function closeAdminNav/);
+  assert.match(script, /admin-nav-open/);
 });
 
 test("admin top pages keep view counts aligned when paths are long", () => {

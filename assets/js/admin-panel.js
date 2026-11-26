@@ -962,6 +962,41 @@
     }
   }
 
+  const adminNavToggle = document.getElementById("adminNavToggle");
+  const adminNavBackdrop = document.getElementById("adminNavBackdrop");
+  const MOBILE_NAV_MQ = window.matchMedia("(max-width: 800px)");
+
+  function setAdminNavOpen(open) {
+    const on = Boolean(open) && MOBILE_NAV_MQ.matches;
+    document.body.classList.toggle("admin-nav-open", on);
+    if (adminNavToggle) {
+      adminNavToggle.setAttribute("aria-expanded", String(on));
+      adminNavToggle.setAttribute("aria-label", on ? "Menüyü kapat" : "Menüyü aç");
+    }
+    if (adminNavBackdrop) adminNavBackdrop.hidden = !on;
+  }
+
+  function closeAdminNav() {
+    setAdminNavOpen(false);
+  }
+
+  if (adminNavToggle) {
+    adminNavToggle.addEventListener("click", () => {
+      setAdminNavOpen(!document.body.classList.contains("admin-nav-open"));
+    });
+  }
+  if (adminNavBackdrop) {
+    adminNavBackdrop.addEventListener("click", closeAdminNav);
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAdminNav();
+  });
+  if (typeof MOBILE_NAV_MQ.addEventListener === "function") {
+    MOBILE_NAV_MQ.addEventListener("change", closeAdminNav);
+  } else if (typeof MOBILE_NAV_MQ.addListener === "function") {
+    MOBILE_NAV_MQ.addListener(closeAdminNav);
+  }
+
   function selectAdminTab(name, focus) {
     activeAdminTab = name;
     const tabs = Array.from(document.querySelectorAll(".admin-nav [data-admin-tab][aria-controls]"));
@@ -1051,6 +1086,8 @@
       selectAdminTab(tab.dataset.adminTab, false);
       if (tab.dataset.adminTab === "products") {
         selectProductsView(savedProductsView(), false);
+      } else {
+        closeAdminNav();
       }
     });
   });
@@ -1063,6 +1100,7 @@
         selectProductsView(view, false);
         if (view === "manual") emptyForm();
       }
+      closeAdminNav();
     });
   });
 
@@ -1266,6 +1304,7 @@
     tab.addEventListener("click", () => {
       selectAdminTab("products", false);
       selectProductsView(tab.dataset.productsView);
+      closeAdminNav();
     });
   });
 
