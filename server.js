@@ -189,6 +189,7 @@ const { createCargoShipments } = require("./lib/cargo-shipments");
 const { buildCargoLabelHtml } = require("./lib/cargo-label");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { createManualStock, findStockShortage, trackedStock } = require("./lib/manual-stock");
+const { findCheckoutStockShortage } = require("./lib/checkout-stock");
 const { createPublishedPaths } = require("./lib/published-paths");
 const { imageExtensionFromBytes } = require("./lib/image-bytes");
 const {
@@ -978,13 +979,18 @@ function priceCheckoutItems(rawItems) {
     });
   }
 
-  const shortage = findStockShortage(
+  // Manual-only path kept for callers/tests; checkout also gates XML/supplier qty (was uncapped 1–99).
+  const manualShortage = findStockShortage(
     items,
     manualProducts.filter((item) => item && byId[item.id] && byId[item.id].source === "manual")
   );
+  const shortage = manualShortage || findCheckoutStockShortage(items, byId);
   if (shortage) {
     throw new Error(
-      shortage.name + ": stokta yalnızca " + shortage.available + " adet var; lütfen sepetteki adedi azaltın."
+      shortage.name +
+        (shortage.available <= 0
+          ? " tükendi; lütfen sepetten çıkarın."
+          : ": stokta yalnızca " + shortage.available + " adet var; lütfen sepetteki adedi azaltın.")
     );
   }
 
