@@ -42,6 +42,7 @@ html {
   -webkit-text-size-adjust: 100%;
   scroll-padding-top: calc(var(--header-h) + 12px);
   scrollbar-gutter: stable;
+  min-height: 100%;
 }
 body {
   font-family: var(--font);
@@ -51,6 +52,17 @@ body {
   font-size: 15.5px;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+/* Short pages (empty cart, 404, legal): keep navy footer at the viewport bottom
+   instead of leaving a white strip under it. Admin keeps its own layout. */
+body:not(.admin-body) {
+  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+body:not(.admin-body) > main {
+  flex: 1 0 auto;
 }
 .skip-link {
   position: absolute;
@@ -2678,6 +2690,8 @@ h1, h2, h3, h4 {
   background: var(--navy);
   color: #94a3b8;
   padding: clamp(48px, 6vw, 72px) 0 28px;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 .footer-grid {
   display: grid;

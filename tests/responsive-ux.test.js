@@ -34,6 +34,12 @@ test("mobile nav keeps cart visible and disables mega hover open", () => {
   );
 });
 
+test("short pages stick the navy footer to the viewport bottom", () => {
+  assert.match(css, /body:not\(\.admin-body\)\s*\{[^}]*min-height:\s*100dvh[^}]*display:\s*flex[^}]*flex-direction:\s*column/s);
+  assert.match(css, /body:not\(\.admin-body\)\s*>\s*main\s*\{[^}]*flex:\s*1 0 auto/s);
+  assert.match(css, /\.site-footer\s*\{[^}]*margin-top:\s*auto/s);
+});
+
 test("responsive UX: scroll padding, detail gallery cap, detail price, card actions", () => {
   assert.match(css, /html\s*\{[^}]*scroll-padding-top:\s*calc\(var\(--header-h\) \+ 12px\)/s);
   assert.match(css, /\.detail-info \.price\s*\{[^}]*font-weight:\s*800/s);
