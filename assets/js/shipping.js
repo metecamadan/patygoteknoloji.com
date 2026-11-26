@@ -81,6 +81,7 @@
     const cfg = normalize(settings || cached || {});
     if (!cfg.enabled || cfg.shippingFee <= 0) return 0;
     const merch = round2(merchandiseInclVat);
+    if (merch <= 0) return 0;
     if (cfg.freeShippingThreshold > 0 && merch >= cfg.freeShippingThreshold) return 0;
     return cfg.shippingFee;
   }

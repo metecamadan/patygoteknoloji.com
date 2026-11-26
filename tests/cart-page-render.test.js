@@ -158,6 +158,26 @@ test("cart repaints with catalog images once the catalog arrives after shipping"
   assert.equal(imgs[0].src, "https://patygoteknoloji.com/media/catalog/acer.webp");
 });
 
+test("empty cart summary shows zero total without shipping fee", async () => {
+  const page = bootCartPage([], {
+    shippingFee: 199,
+    freeShippingThreshold: 1500,
+    minOrderAmount: 750,
+    enabled: true,
+  });
+  page.catalogReady.resolve([]);
+  await settle();
+  await settle();
+
+  const totals = page.window.PatygoCart.totals({});
+  assert.equal(totals.lines.length, 0);
+  assert.equal(totals.shipping, 0);
+  assert.equal(totals.total, 0);
+  assert.equal(page.ids.cartTotal.textContent, "0");
+  assert.equal(page.ids.cartShippingRow.hidden, true);
+  assert.equal(page.ids.cartCheckout.attrs["aria-disabled"], "true");
+});
+
 test("cart below the minimum order blocks checkout and says how much is missing", async () => {
   const page = bootCartPage(
     [{ id: "sup-1", qty: 1, brand: "Acer", name: "Acer Klavye", price: 400, vatPercent: 20 }],

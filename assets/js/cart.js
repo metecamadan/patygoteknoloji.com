@@ -211,8 +211,12 @@
       sub = Math.round(sub * 100) / 100;
       vat = Math.round(vat * 100) / 100;
       const merchandiseTotal = Math.round((sub + vat) * 100) / 100;
+      // Empty cart: no shipping fee in the summary (feeForMerchandise(0) would otherwise
+      // return the flat rate because 0 is below the free-shipping threshold).
       const shipping =
-        window.PatygoShipping && typeof window.PatygoShipping.feeForMerchandise === "function"
+        lines.length &&
+        window.PatygoShipping &&
+        typeof window.PatygoShipping.feeForMerchandise === "function"
           ? window.PatygoShipping.feeForMerchandise(merchandiseTotal)
           : 0;
       return {

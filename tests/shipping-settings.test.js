@@ -33,6 +33,11 @@ test("computeShippingFee applies flat fee below threshold and free above", () =>
   assert.equal(computeShippingFee(1200, settings), 0);
 });
 
+test("computeShippingFee returns zero for empty merchandise", () => {
+  const settings = normalizeShippingSettings({ freeShippingThreshold: 1500, shippingFee: 199 });
+  assert.equal(computeShippingFee(0, settings), 0);
+});
+
 test("computeShippingFee returns zero when shipping fee unset", () => {
   assert.equal(computeShippingFee(1000, normalizeShippingSettings({})), 0);
 });
