@@ -28,6 +28,75 @@ test("kolayGelsinConfig: needs user+password; default base is apiintg", () => {
   assert.equal(cfg.mode, "live");
   assert.equal(cfg.baseUrl, kg.DEFAULT_BASE);
   assert.equal(cfg.user, "patygoteknolojiapi");
+  assert.match(cfg.sender.address, /Mevlana/);
+  assert.equal(cfg.sender.ready, false);
+});
+
+test("kolayGelsinConfig: sender ready when city+district ids set", () => {
+  const cfg = kg.kolayGelsinConfig({
+    ...ENV,
+    KOLAY_GELSIN_SENDER_CITY_ID: "34",
+    KOLAY_GELSIN_SENDER_DISTRICT_ID: "19829301",
+  });
+  assert.equal(cfg.sender.ready, true);
+  assert.equal(cfg.sender.cityId, 34);
+  assert.equal(cfg.sender.districtId, 19829301);
+  assert.equal(cfg.sender.gsm, "5555070724");
+});
+
+test("resolveSenderLocation uses env ids without calling API", async () => {
+  const fetchImpl = fakeFetch(() => {
+    throw new Error("should not fetch");
+  });
+  const loc = await kg.resolveSenderLocation({
+    env: {
+      ...ENV,
+      KOLAY_GELSIN_SENDER_CITY_ID: "34",
+      KOLAY_GELSIN_SENDER_DISTRICT_ID: "19829301",
+    },
+    fetchImpl,
+  });
+  assert.equal(loc.ok, true);
+  assert.equal(loc.source, "env");
+  assert.equal(loc.cityId, 34);
+  assert.equal(loc.districtId, 19829301);
+});
+
+test("resolveSenderLocation parses GetCityDistricts for Gaziosmanpasa", async () => {
+  kg.clearTokenCache();
+  const fetchImpl = fakeFetch((url) => {
+    if (String(url).includes("LoginAES")) {
+      return {
+        status: 200,
+        async text() {
+          return JSON.stringify({ result: { Token: "tok" }, StatusCode: 200 });
+        },
+      };
+    }
+    return {
+      status: 200,
+      async text() {
+        return JSON.stringify({
+          result: {
+            CityName: "İstanbul",
+            CityId: 34,
+            Districts: [
+              { DistrictName: "Arnavutköy", DistrictId: 14128027 },
+              { DistrictName: "Gaziosmanpaşa", DistrictId: 19829301 },
+            ],
+          },
+          StatusCode: 200,
+          IsSuccessful: true,
+        });
+      },
+    };
+  });
+  const loc = await kg.resolveSenderLocation({ env: ENV, fetchImpl });
+  assert.equal(loc.ok, true);
+  assert.equal(loc.source, "api");
+  assert.equal(loc.cityId, 34);
+  assert.equal(loc.districtId, 19829301);
+  assert.match(loc.districtName, /Gaziosmanpa/);
 });
 
 test("login posts musteri/sifre to Token/LoginAES and caches Bearer token", async () => {
@@ -35,7 +104,13 @@ test("login posts musteri/sifre to Token/LoginAES and caches Bearer token", asyn
   const fetchImpl = fakeFetch(() => ({
     status: 200,
     async text() {
-      return JSON.stringify({ result: true, data: { token: "tok-abc" } });
+      // Live shape: result.Token (capital T); IsSuccessful may be false even with token
+      return JSON.stringify({
+        requestId: "x",
+        result: { CustomerId: 1, Token: "tok-abc" },
+        StatusCode: 200,
+        IsSuccessful: false,
+      });
     },
   }));
   const logged = await kg.login({ env: ENV, fetchImpl });
@@ -47,6 +122,15 @@ test("login posts musteri/sifre to Token/LoginAES and caches Bearer token", asyn
   const again = await kg.getToken({ env: ENV, fetchImpl });
   assert.equal(again, "tok-abc");
   assert.equal(fetchImpl.calls.length, 1, "second getToken uses cache");
+});
+
+test("extractToken reads result.Token and rejects [object Object]", () => {
+  assert.equal(
+    kg.extractToken({ result: { Token: "jwt-here" }, IsSuccessful: false }),
+    "jwt-here"
+  );
+  assert.equal(kg.extractToken({ result: { nested: true } }), "");
+  assert.equal(kg.extractToken("[object Object]"), "");
 });
 
 test("pingKolayGelsin: OK on token, HATA on auth failure", async () => {
