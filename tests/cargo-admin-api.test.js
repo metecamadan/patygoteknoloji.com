@@ -49,28 +49,36 @@ test("admin cargo API: session required, 503 without Yurtiçi credentials, detai
   assert.equal(create.status, 503);
   assert.match((await create.json()).error, /Yurtiçi/);
 
-  const forged = await fetch(baseUrl + "/api/cargo-labels/PTY-261012-CARGO1/a5?exp=9999999999&sig=" + "0".repeat(64));
+  const forged = await fetch(baseUrl + "/api/cargo-labels/PTY-261012-CARGO1/a4?exp=9999999999&sig=" + "0".repeat(64));
   assert.equal(forged.status, 403);
   assert.match(forged.headers.get("cache-control") || "", /no-store/);
 });
 
-test("panel kargo tab wires Yurtiçi create/refresh/cancel/label to the cargo API", () => {
+test("panel kargo tab wires Yurtiçi + Kolay Gelsin create/refresh/cancel/label to the cargo API", () => {
   const panel = fs.readFileSync(path.join(ROOT, "assets", "js", "admin-panel.js"), "utf8");
   assert.match(panel, /function orderCargoHtml\(order\)/);
+  assert.match(panel, /function orderKolayCargoHtml\(order\)/);
   assert.match(panel, /orderCargoHtml\(order\) \+/);
-  assert.match(panel, /"\/api\/admin\/orders\/" \+ encodeURIComponent\(orderId\) \+ "\/cargo" \+ path/);
-  assert.match(panel, /id='adminCargoDesi' min='0\.1' max='1000' step='0\.1' value='1'/);
-  assert.match(panel, /Etiketi yazdır \(A5\)/);
+  assert.match(panel, /orderKolayCargoHtml\(order\) \+/);
+  assert.match(panel, /apiBase: "\/cargo"/);
+  assert.match(panel, /apiBase: "\/cargo-kolay"/);
+  assert.match(panel, /idPrefix \+ "Desi"/);
+  assert.match(panel, /"Desi' min='0\.1' max='1000' step='0\.1' value='1'/);
+  assert.match(panel, /Etiketi yazdır \(A4\)/);
   assert.match(panel, /order\._cargo = data\.cargo \|\| null/);
+  assert.match(panel, /order\._cargoKolay = data\.cargoKolay \|\| null/);
   assert.match(panel, /bindCargoActions\(orderId\);/);
 });
 
-test("server polls Yurtiçi every 30 minutes and .env.example documents the credentials", () => {
+test("server polls Yurtiçi + Kolay Gelsin every 30 minutes and .env.example documents the credentials", () => {
   const server = fs.readFileSync(path.join(ROOT, "server.js"), "utf8");
   assert.match(server, /CARGO_SYNC_INTERVAL_MS = 30 \* 60 \* 1000/);
   assert.match(server, /cargoShipments\.sync\(\)/);
+  assert.match(server, /kolayCargoShipments\.sync\(\)/);
+  assert.match(server, /cargo-kolay/);
   const example = fs.readFileSync(path.join(ROOT, ".env.example"), "utf8");
   assert.match(example, /# YURTICI_WS_USER=\r?\n/);
   assert.match(example, /# YURTICI_WS_PASSWORD=\r?\n/);
+  assert.match(example, /KOLAY_GELSIN_SENDER_CITY_ID/);
   assert.match(example, /87\.76\.157\.41/);
 });

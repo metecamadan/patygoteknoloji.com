@@ -187,6 +187,7 @@ const {
 const { normalizeAddress, normalizeInvoiceIdentity } = require("./lib/checkout-billing");
 const { createCargoShipments } = require("./lib/cargo-shipments");
 const { buildCargoLabelHtml } = require("./lib/cargo-label");
+const kolayGelsinClient = require("./lib/kolay-gelsin");
 const { lookupCheckoutProductsByIds } = require("./lib/checkout-products");
 const { createManualStock, findStockShortage, trackedStock } = require("./lib/manual-stock");
 const { findCheckoutStockShortage } = require("./lib/checkout-stock");
@@ -735,30 +736,58 @@ function recordManualStockMoves(orderId, label, run) {
 const orderDocStore = createOrderDocStore(DATA_ROOT);
 const orderDocLinks = createDocLinkSigner();
 const cargoLabelLinks = createDocLinkSigner(null, "/api/cargo-labels/");
+const cargoEventSink = (event) => {
+  try {
+    auditStore.record({
+      actorType: event.actorId ? "admin_user" : "system",
+      actorId: event.actorId,
+      action: event.action,
+      entityType: "order",
+      entityId: event.orderId,
+      detail: event.detail,
+    });
+  } catch (_) {}
+};
 const cargoShipments = createCargoShipments({
   orderStore,
   sendStatusMail: (order, key, extra) => sendOrderStatusMail(order, key, { extra, store: orderStore }),
   reviewUrlFor: (order) => reviewPageUrl(order),
-  onEvent: (event) => {
-    try {
-      auditStore.record({
-        actorType: event.actorId ? "admin_user" : "system",
-        actorId: event.actorId,
-        action: event.action,
-        entityType: "order",
-        entityId: event.orderId,
-        detail: event.detail,
-      });
-    } catch (_) {}
-  },
+  onEvent: cargoEventSink,
 });
+const kolayCargoShipments = createCargoShipments({
+  orderStore,
+  client: kolayGelsinClient,
+  provider: "kolay_gelsin_shipment",
+  carrierLabel: "Kolay Gelsin",
+  notConfiguredMessage: "Kolay Gelsin bilgileri sunucuda tanımlı değil.",
+  sendStatusMail: (order, key, extra) => sendOrderStatusMail(order, key, { extra, store: orderStore }),
+  reviewUrlFor: (order) => reviewPageUrl(order),
+  onEvent: cargoEventSink,
+});
+
+function shipmentLabelUrl(orderId, shipment) {
+  return shipment && shipment.state !== "cancelled" ? cargoLabelLinks.link(orderId, "a4") : null;
+}
 
 /** Panel view of the order's Yurtiçi shipment, with a signed label link while the parcel is not cancelled. */
 function cargoViewWithLabel(orderId) {
   const view = cargoShipments.view(orderId);
-  const shipment = view.shipment;
-  view.labelUrl = shipment && shipment.state !== "cancelled" ? cargoLabelLinks.link(orderId, "a5") : null;
+  view.labelUrl = shipmentLabelUrl(orderId, view.shipment);
   return view;
+}
+
+function kolayCargoViewWithLabel(orderId) {
+  const view = kolayCargoShipments.view(orderId);
+  view.labelUrl = shipmentLabelUrl(orderId, view.shipment);
+  return view;
+}
+
+function readOpenCargoShipment(orderId) {
+  const yk = cargoShipments.read(orderId);
+  if (yk && yk.state !== "cancelled") return yk;
+  const kg = kolayCargoShipments.read(orderId);
+  if (kg && kg.state !== "cancelled") return kg;
+  return yk || kg || null;
 }
 
 function orderDocumentsWithLinks(orderId) {
@@ -4334,6 +4363,33 @@ async function handleApi(req, res, urlPath) {
       ok: true,
       order: orderStore.get(orderId),
       cargo: cargoViewWithLabel(orderId),
+      cargoKolay: kolayCargoViewWithLabel(orderId),
+      statusMails: orderStore.listStatusMails(orderId),
+    });
+  }
+
+  const adminOrderKolayCargoMatch = /^\/api\/admin\/orders\/([^/]+)\/cargo-kolay(?:\/(cancel|refresh))?$/.exec(urlPath);
+  if (adminOrderKolayCargoMatch && req.method === "POST") {
+    const orderId = decodeURIComponent(adminOrderKolayCargoMatch[1]);
+    const action = adminOrderKolayCargoMatch[2] || "create";
+    const session = getSession(req);
+    try {
+      if (action === "create") {
+        const body = JSON.parse((await readBody(req, 8 * 1024)).toString("utf8") || "{}");
+        await kolayCargoShipments.create(orderId, { desi: body.desi, kg: body.kg, actorId: session && session.userId });
+      } else if (action === "cancel") {
+        await kolayCargoShipments.cancel(orderId, session && session.userId);
+      } else {
+        await kolayCargoShipments.refresh(orderId);
+      }
+    } catch (err) {
+      return json(res, err.status || 400, { ok: false, error: (err && err.message) || "Kargo işlemi yapılamadı" });
+    }
+    return json(res, 200, {
+      ok: true,
+      order: orderStore.get(orderId),
+      cargo: cargoViewWithLabel(orderId),
+      cargoKolay: kolayCargoViewWithLabel(orderId),
       statusMails: orderStore.listStatusMails(orderId),
     });
   }
@@ -4420,13 +4476,17 @@ async function handleApi(req, res, urlPath) {
     return sendOrderDocument(res, found);
   }
 
-  const cargoLabelMatch = /^\/api\/cargo-labels\/([^/]+)\/(a5)$/.exec(urlPath);
+  const cargoLabelMatch = /^\/api\/cargo-labels\/([^/]+)\/(a4|a5)$/.exec(urlPath);
   if (cargoLabelMatch && req.method === "GET") {
     const orderId = decodeURIComponent(cargoLabelMatch[1]);
     const params = new URL(req.url, "http://localhost").searchParams;
-    const valid = cargoLabelLinks.verify(orderId, cargoLabelMatch[2], params.get("exp"), params.get("sig"));
+    // Accept legacy a5 signatures so older open tabs still print; new links are a4.
+    const kind = cargoLabelMatch[2];
+    const valid =
+      cargoLabelLinks.verify(orderId, kind, params.get("exp"), params.get("sig")) ||
+      (kind === "a4" && cargoLabelLinks.verify(orderId, "a5", params.get("exp"), params.get("sig")));
     const order = valid ? orderStore.get(orderId) : null;
-    const shipment = order ? cargoShipments.read(orderId) : null;
+    const shipment = order ? readOpenCargoShipment(orderId) : null;
     const headers = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
     if (!shipment || shipment.state === "cancelled") {
       res.writeHead(403, securityHeaders(headers));
@@ -4791,6 +4851,7 @@ async function handleApi(req, res, urlPath) {
         ),
         bankInquiryAvailable: Boolean(akbankConfig.enabled),
         cargo: cargoViewWithLabel(orderId),
+        cargoKolay: kolayCargoViewWithLabel(orderId),
       });
     }
     if (req.method === "PATCH") {
@@ -6274,6 +6335,9 @@ const CARGO_SYNC_INTERVAL_MS = 30 * 60 * 1000;
 const cargoSyncTimer = setInterval(() => {
   cargoShipments.sync().catch((err) => {
     console.error("yurtici cargo sync failed:", String((err && err.message) || err).slice(0, 200));
+  });
+  kolayCargoShipments.sync().catch((err) => {
+    console.error("kolay gelsin cargo sync failed:", String((err && err.message) || err).slice(0, 200));
   });
 }, CARGO_SYNC_INTERVAL_MS);
 if (typeof cargoSyncTimer.unref === "function") cargoSyncTimer.unref();

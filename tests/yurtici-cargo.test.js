@@ -238,12 +238,12 @@ test("code128: standard table shape, start B / mod-103 check / stop", () => {
   assert.match(svg, /width="110mm"/);
 });
 
-test("A5 label: barcode of the cargo key, escaped customer text, test-mode tag", () => {
+test("A4 label: barcode of the cargo key, escaped customer text, test-mode tag", () => {
   const html = buildCargoLabelHtml(
     order({ customer: Object.assign({}, order().customer, { name: "<script>x</script> Ayşe" }) }),
     { cargoKey: "PTY-261012-A1B2C3", desi: 1, mode: "test", carrier: "Yurtiçi Kargo" }
   );
-  assert.match(html, /@page\{size:A5 portrait/);
+  assert.match(html, /@page\{size:A4 portrait/);
   assert.match(html, /aria-label="PTY-261012-A1B2C3"/);
   assert.match(html, /TEST ORTAMI/);
   assert.match(html, /Gaziosmanpaşa \/ İstanbul/);

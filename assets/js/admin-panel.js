@@ -6574,19 +6574,24 @@
 
   const CARGO_STATE_TEXT = {
     created: "Gönderi açıldı; şube paketi okutunca takip numarası kendiliğinden gelir ve müşteriye mail gider.",
-    in_transit: "Paket Yurtiçi'de, yolda.",
-    delivered: "Yurtiçi teslim etti.",
-    returning: "Paket iade sürecinde (Yurtiçi). Müşteriyle iletişime geçin.",
+    in_transit: "Paket kargoda, yolda.",
+    delivered: "Kargo teslim etti.",
+    returning: "Paket iade sürecinde. Müşteriyle iletişime geçin.",
     returned: "Paket göndericiye geri döndü.",
     cancelled: "Gönderi iptal edildi.",
   };
 
-  function orderCargoHtml(order) {
-    const cargo = order._cargo;
+  function orderCarrierCargoHtml(order, cargo, opts) {
     if (!cargo) return "";
-    const title = "<h3 class='admin-order-section-title'>Yurtiçi Kargo" + (cargo.mode === "test" ? " <small>(test ortamı)</small>" : "") + "</h3>";
+    const o = opts || {};
+    const idPrefix = o.idPrefix || "adminCargo";
+    const title =
+      "<h3 class='admin-order-section-title'>" +
+      escapeHtml(o.title || "Kargo") +
+      (cargo.mode === "test" ? " <small>(test ortamı)</small>" : "") +
+      "</h3>";
     if (!cargo.configured) {
-      return title + "<p class='admin-field-help'>Yurtiçi bilgileri sunucuda tanımlı değil; kargo bilgisini aşağıdan elle girin.</p>";
+      return title + "<p class='admin-field-help'>" + escapeHtml(o.notConfigured || "Bilgiler sunucuda tanımlı değil; kargo bilgisini aşağıdan elle girin.") + "</p>";
     }
     const s = cargo.shipment;
     const paid = order.paymentTaken || order.paymentStatus === "paid";
@@ -6599,11 +6604,19 @@
         title +
         (s ? "<p class='admin-field-help'>Önceki gönderi (" + escapeHtml(s.cargoKey) + ") iptal edildi; yeniden açabilirsiniz.</p>" : "") +
         "<div class='admin-order-shipping-fields'>" +
-        "<div class='field'><label for='adminCargoDesi'>Desi</label>" +
-        "<input type='number' id='adminCargoDesi' min='0.1' max='1000' step='0.1' value='1'></div>" +
+        "<div class='field'><label for='" +
+        idPrefix +
+        "Desi'>Desi</label>" +
+        "<input type='number' id='" +
+        idPrefix +
+        "Desi' min='0.1' max='1000' step='0.1' value='1'></div>" +
         "</div>" +
-        "<p class='admin-field-help'>Alıcı adı, adres, il/ilçe ve telefon siparişten gider. Etiketi yazdırıp pakete yapıştırın.</p>" +
-        "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='adminCargoCreate'>Yurtiçi'ye gönder</button></div>"
+        "<p class='admin-field-help'>Alıcı adı, adres, il/ilçe ve telefon siparişten gider. A4 etiketi yazdırıp pakete yapıştırın.</p>" +
+        "<div class='admin-form-actions'><button type='button' class='btn btn-primary' id='" +
+        idPrefix +
+        "Create'>" +
+        escapeHtml(o.createLabel || "Gönder") +
+        "</button></div>"
       );
     }
     const rows = [
@@ -6617,21 +6630,25 @@
               : escapeHtml(s.docId),
           ]
         : null,
-      s.operationMessage ? ["Yurtiçi durumu", escapeHtml(s.operationMessage)] : null,
+      s.operationMessage ? ["Durum", escapeHtml(s.operationMessage)] : null,
       s.lastCheckedAt ? ["Son sorgu", escapeHtml(formatOrderDate(s.lastCheckedAt))] : null,
     ];
     const warn = s.state === "returning" || s.state === "returned" || s.orderConflict;
     const actions = [];
     if (cargo.labelUrl) {
       actions.push(
-        "<a class='btn btn-outline' id='adminCargoLabel' href='" + escapeAttr(cargo.labelUrl) + "' target='_blank' rel='noopener'>Etiketi yazdır (A5)</a>"
+        "<a class='btn btn-outline' id='" +
+          idPrefix +
+          "Label' href='" +
+          escapeAttr(cargo.labelUrl) +
+          "' target='_blank' rel='noopener'>Etiketi yazdır (A4)</a>"
       );
     }
     if (s.state === "created" || s.state === "in_transit") {
-      actions.push("<button type='button' class='btn btn-outline' id='adminCargoRefresh'>Durumu sorgula</button>");
+      actions.push("<button type='button' class='btn btn-outline' id='" + idPrefix + "Refresh'>Durumu sorgula</button>");
     }
     if (s.state === "created") {
-      actions.push("<button type='button' class='btn btn-outline' id='adminCargoCancel'>Gönderiyi iptal et</button>");
+      actions.push("<button type='button' class='btn btn-outline' id='" + idPrefix + "Cancel'>Gönderiyi iptal et</button>");
     }
     return (
       title +
@@ -6648,9 +6665,28 @@
     );
   }
 
+  function orderCargoHtml(order) {
+    return orderCarrierCargoHtml(order, order._cargo, {
+      idPrefix: "adminCargo",
+      title: "Yurtiçi Kargo",
+      notConfigured: "Yurtiçi bilgileri sunucuda tanımlı değil; kargo bilgisini aşağıdan elle girin.",
+      createLabel: "Yurtiçi'ye gönder",
+    });
+  }
+
+  function orderKolayCargoHtml(order) {
+    return orderCarrierCargoHtml(order, order._cargoKolay, {
+      idPrefix: "adminKolayCargo",
+      title: "Kolay Gelsin",
+      notConfigured: "Kolay Gelsin bilgileri sunucuda tanımlı değil.",
+      createLabel: "Kolay Gelsin'e gönder",
+    });
+  }
+
   function orderShippingFormHtml(order, shippedMailSent) {
     return (
       orderCargoHtml(order) +
+      orderKolayCargoHtml(order) +
       "<h3 class='admin-order-section-title'>Kargo bilgisi" + (order._cargo && order._cargo.configured ? " <small>(elle)</small>" : "") + "</h3>" +
       "<p class='admin-field-help' data-smtp-mail-help>Kargo firması ve gönderi kodunu kaydedince sipariş kargoya verildi olur ve müşteriye mail gider.</p>" +
       "<div class='admin-order-shipping-fields'>" +
@@ -6916,17 +6952,21 @@
     });
   }
 
-  function bindCargoActions(orderId) {
+  function bindOneCargoActions(orderId, opts) {
+    const o = opts || {};
+    const apiBase = o.apiBase || "/cargo";
+    const idPrefix = o.idPrefix || "adminCargo";
     const run = async (btn, path, body, okText) => {
       if (btn.disabled) return;
       btn.disabled = true;
       try {
-        const result = await api("/api/admin/orders/" + encodeURIComponent(orderId) + "/cargo" + path, {
+        const result = await api("/api/admin/orders/" + encodeURIComponent(orderId) + apiBase + path, {
           method: "POST",
           body: JSON.stringify(body || {}),
           timeout: 45000,
         });
         result.order._cargo = result.cargo || null;
+        result.order._cargoKolay = result.cargoKolay || null;
         note(adminOrdersNote, "ok", okText);
         applyOrderPatchToUi(result.order, result.statusMails);
       } catch (err) {
@@ -6934,34 +6974,54 @@
         note(adminOrdersNote, "err", err.message || "Kargo işlemi yapılamadı");
       }
     };
-    const labelLink = document.getElementById("adminCargoLabel");
+    const labelLink = document.getElementById(idPrefix + "Label");
     if (labelLink) labelLink.addEventListener("click", (event) => event.stopPropagation());
-    const createBtn = document.getElementById("adminCargoCreate");
+    const createBtn = document.getElementById(idPrefix + "Create");
     if (createBtn) {
       createBtn.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const desi = document.getElementById("adminCargoDesi").value;
-        run(createBtn, "", { desi }, "Yurtiçi gönderisi açıldı. Etiketi yazdırıp pakete yapıştırın.");
+        const desiEl = document.getElementById(idPrefix + "Desi");
+        const desi = desiEl ? desiEl.value : "1";
+        run(createBtn, "", { desi }, o.createdOk || "Gönderi açıldı. Etiketi yazdırıp pakete yapıştırın.");
       });
     }
-    const refreshBtn = document.getElementById("adminCargoRefresh");
+    const refreshBtn = document.getElementById(idPrefix + "Refresh");
     if (refreshBtn) {
       refreshBtn.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        run(refreshBtn, "/refresh", null, "Yurtiçi durumu güncellendi.");
+        run(refreshBtn, "/refresh", null, o.refreshedOk || "Kargo durumu güncellendi.");
       });
     }
-    const cancelBtn = document.getElementById("adminCargoCancel");
+    const cancelBtn = document.getElementById(idPrefix + "Cancel");
     if (cancelBtn) {
       cancelBtn.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (!window.confirm("Yurtiçi gönderisi iptal edilsin mi? Paket şubeye verilmediyse iptal olur.")) return;
-        run(cancelBtn, "/cancel", null, "Yurtiçi gönderisi iptal edildi.");
+        if (!window.confirm(o.cancelConfirm || "Gönderi iptal edilsin mi? Paket şubeye verilmediyse iptal olur.")) return;
+        run(cancelBtn, "/cancel", null, o.cancelledOk || "Gönderi iptal edildi.");
       });
     }
+  }
+
+  function bindCargoActions(orderId) {
+    bindOneCargoActions(orderId, {
+      apiBase: "/cargo",
+      idPrefix: "adminCargo",
+      createdOk: "Yurtiçi gönderisi açıldı. Etiketi yazdırıp pakete yapıştırın.",
+      refreshedOk: "Yurtiçi durumu güncellendi.",
+      cancelConfirm: "Yurtiçi gönderisi iptal edilsin mi? Paket şubeye verilmediyse iptal olur.",
+      cancelledOk: "Yurtiçi gönderisi iptal edildi.",
+    });
+    bindOneCargoActions(orderId, {
+      apiBase: "/cargo-kolay",
+      idPrefix: "adminKolayCargo",
+      createdOk: "Kolay Gelsin gönderisi açıldı. A4 etiketi yazdırıp pakete yapıştırın.",
+      refreshedOk: "Kolay Gelsin durumu güncellendi.",
+      cancelConfirm: "Kolay Gelsin gönderisi iptal edilsin mi? Paket şubeye verilmediyse iptal olur.",
+      cancelledOk: "Kolay Gelsin gönderisi iptal edildi.",
+    });
   }
 
   function bindOrderDetailActions(orderId) {
@@ -7405,6 +7465,7 @@
       order._bankReversal = data.bankReversal || null;
       order._bankInquiryAvailable = data.bankInquiryAvailable === true;
       order._cargo = data.cargo || null;
+      order._cargoKolay = data.cargoKolay || null;
       order._detailLoaded = true;
       const idx = ordersCache.findIndex((row) => row.id === orderId);
       if (idx >= 0) ordersCache[idx] = order;

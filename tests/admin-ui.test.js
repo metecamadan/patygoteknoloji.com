@@ -706,8 +706,8 @@ test("every Ürünler tab has an Excel export button wired to its on-screen filt
   assert.match(script, /fetch\("\/api\/admin\/export"/);
   assert.match(script, /Authorization: "Bearer " \+ token/);
   assert.match(script, /URL\.revokeObjectURL\(url\)/);
-  assert.match(loginScript, /admin-panel\.js\?v=siparis-57/);
-  assert.match(html, /admin-login\.js\?v=siparis-57/);
+  assert.match(loginScript, /admin-panel\.js\?v=siparis-58/);
+  assert.match(html, /admin-login\.js\?v=siparis-58/);
 });
 
 test("XML Yönetimi shows the TCMB rate prices are built with", () => {

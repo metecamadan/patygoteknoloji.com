@@ -73,16 +73,16 @@ Başlangıç rehberi PDF: `Şube Kolay Gelsin Başlangıç Rehberi.pdf` (27 Kas 
 - `GetCityDistricts` (canlı): İstanbul `CityId=34`, Gaziosmanpaşa `DistrictId=19829301` → VPS `KOLAY_GELSIN_SENDER_*`.
 - LoginAES gerçek token alanı `result.Token` (extractToken düzeltildi; önceki `[object Object]` sahte yeşil yok).
 
+**Güncelleme (27 Kas 2026 — A4 etiket + SetDelivery):**
+
+- Etiket: Yurtiçi ile aynı barkodlu HTML, sayfa **A4** (`ReferenceNo` = sipariş no).
+- Panel: «Kolay Gelsin'e gönder» + iptal/sorgula; API `/api/admin/orders/:id/cargo-kolay`.
+- `SetDelivery` DeliveryType=1; `CancelDelivery` / `TrackDelivery` bağlı.
+
 **Senin sıradaki adımların:**
 
 1. (Önerilir) API şifresini panelde değiştir; “yeni şifre hazır” de → VPS’e yeniden yazarız.
-2. Etiket tercihi: bizim A5/`ReferenceNo` mı, onların barkodu mu.
-
-**Hâlâ lazım (gönderi oluşturmak için):**
-
-- Etiket tercihi (Yurtiçi ile aynı A5 yolu mı?).
-
-Kod: login/ping + gönderici adres/ID hazır; `SetDelivery` + panel butonu etiket tercihi gelince `cargo-shipments` yanına bağlanacak.
+2. Küçük gerçek siparişte panelden Kolay Gelsin denemesi (etiket + şube).
 
 ### 3. Tedarikçi ↔ satış durum tablosu — tekrar bakılacak (15 Eki 2026)
 
@@ -224,7 +224,7 @@ Canlı canvas: sohbet yan paneli `patygo-master-backlog` (Cursor canvases). Yeni
 | D7 | Tasarım | O | todo | Admin Overview sadeleştir |
 | D8 | Tasarım | D | todo | design-audit.md yenile |
 | K1 | Teknik | Y | blocked | Yurtiçi canlı deneme (sen) |
-| K2 | Teknik | Y | partial | Kolay Gelsin: login+sender ID; SetDelivery+etiket bekleniyor |
+| K2 | Teknik | Y | partial | Kolay Gelsin SetDelivery+A4 panel; canlı sipariş denemesi bekleniyor |
 | K3 | Teknik | Y | todo | Tedarikçi↔satış boşlukları |
 | K4 | Teknik | O | watch | TCMB kur izleme |
 | K5 | Teknik | O | todo | Katalog SSR / ilk boya |
